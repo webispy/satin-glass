@@ -170,6 +170,17 @@ async function check(label, setup) {
   ok(`${label}: calendar — the next month fades in (no sliding)`, still(cal), JSON.stringify(cal));
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
 
+  await go('display');
+  const th = p.locator('[data-demo=media] button').nth(0); await th.scrollIntoViewIfNeeded();
+  const mv = await watch(`() => document.querySelectorAll('[data-demo=media] button')[0].click()`, '.gl-media [data-gl-slide="0"] .gl-media__dismiss', 300);
+  ok(`${label}: media viewer — opens with a fade, in place (no zoom from the thumbnail)`, still(mv), JSON.stringify(mv));
+  const pg = await trace(p, `() => document.querySelector('.gl-media').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))`, `() => new DOMMatrix(getComputedStyle(document.querySelector('.gl-media__track')).transform).e`, 300);
+  const pv = [...new Set(pg.map(([, x]) => Math.round(x)))];
+  ok(`${label}: media viewer — the next photo appears without sliding`, pv.length <= 2, `track positions ${pv.join(', ')}`);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+  const skAnim = await p.evaluate(() => { const e = document.querySelector('.gl-skeleton'); return e ? [getComputedStyle(e).animationName, getComputedStyle(e, '::after').animationName] : null; });
+  ok(`${label}: skeleton — breathes instead of a moving band`, !skAnim || (skAnim[0].includes('breathe') && skAnim[1] === 'none'), JSON.stringify(skAnim));
+
   await go('material');
   for (let i = 0; i < 8; i++) { await p.mouse.move(400 + i * 30, 400); await p.waitForTimeout(16); }
   const hk = await p.locator('.docs__page .gl-glass').first().evaluate((e) => ({ k: getComputedStyle(e).getPropertyValue('--gl-hk') || '0', shown: getComputedStyle(e, '::after').display }));

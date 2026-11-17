@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useRef, useState, type CSSProperties, type ElementType, type HTMLAttributes, type ReactNode } from 'react';
-import { cx, mergeRefs } from './utils';
+import { cx, mergeRefs, useIsoLayoutEffect } from './utils';
 import { glassClass, useGlassLight } from './foundation';
 import { ChevronRightIcon } from './icons';
 
@@ -85,24 +85,37 @@ export type AppBarProps = HTMLAttributes<HTMLElement> & {
 
 export const AppBar = forwardRef<HTMLElement, AppBarProps>(function AppBar({ title, leading, trailing, largeTitle, transparentAtTop, scrollTarget, className, children, ...rest }, ref) {
   const lightRef = useGlassLight();
-  const large = useRef<HTMLHeadingElement>(null);
-  const [collapsed, setCollapsed] = useState(false);
-  const [atTop, setAtTop] = useState(true);
-  useEffect(() => {
+  const header = useRef<HTMLElement>(null), bar = useRef<HTMLDivElement>(null), large = useRef<HTMLHeadingElement>(null);
+  /* Scroll-linked, written straight to the DOM (no React render per scroll event):
+     --_p  0 → 1 while the large title slides under the bar: the large title fades out as the small one rises in,
+           so the title hands over continuously instead of swapping at a threshold
+     data-at-top: the bar's glass fades in once content is under it (transparentAtTop) */
+  useIsoLayoutEffect(() => {
     const target: HTMLElement | Window = scrollTarget ?? window;
+    const h = header.current, b = bar.current, l = large.current;
+    if (!h || !b) return;
+    let last = -1, top: boolean | null = null;
     const read = () => {
       const y = target instanceof Window ? target.scrollY : target.scrollTop;
-      setAtTop(y < 4);
-      if (largeTitle && large.current) setCollapsed(y > large.current.offsetTop + large.current.offsetHeight - 56);
+      const atTop = y < 4;
+      if (atTop !== top) { top = atTop; h.toggleAttribute('data-at-top', atTop); }
+      if (!largeTitle || !l) return;
+      const br = b.getBoundingClientRect(), lr = l.getBoundingClientRect();
+      const p = Math.min(1, Math.max(0, (br.bottom - lr.top) / Math.max(1, lr.height)));
+      if (Math.abs(p - last) < 0.002) return;
+      last = p;
+      h.style.setProperty('--_p', p.toFixed(3)); l.style.setProperty('--_p', p.toFixed(3));
+      h.toggleAttribute('data-collapsed', p >= 0.999);
     };
     read();
     target.addEventListener('scroll', read, { passive: true });
-    return () => target.removeEventListener('scroll', read);
+    addEventListener('resize', read);
+    return () => { target.removeEventListener('scroll', read); removeEventListener('resize', read); };
   }, [scrollTarget, largeTitle]);
   return (
     <>
-      <header ref={ref} className={cx('gl-appbar', className)} data-large={largeTitle || undefined} data-collapsed={collapsed || undefined} {...rest}>
-        <div ref={lightRef} className={cx('gl-appbar__bar', glassClass('regular'), transparentAtTop && atTop && 'gl-appbar__bar--transparent')}>
+      <header ref={mergeRefs(ref, header)} className={cx('gl-appbar', className)} data-large={largeTitle || undefined} data-transparent-top={transparentAtTop || undefined} data-at-top="" {...rest}>
+        <div ref={mergeRefs(bar, lightRef)} className={cx('gl-appbar__bar', glassClass('regular'))}>
           <div className="gl-appbar__leading">{leading}</div>
           <h1 className="gl-appbar__title">{title}</h1>
           <div className="gl-appbar__trailing">{trailing}</div>

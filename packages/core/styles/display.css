@@ -1,0 +1,69 @@
+/* ============================================================================================
+   Skeleton: placeholders in the fill colour; one band of light sweeps them together (transform only).
+   Reduced motion: a slow breath of opacity instead of the moving band.
+   ============================================================================================ */
+.gl-skeleton {
+  position: relative; display: block; overflow: hidden; background: var(--gl-fill); border-radius: 6px; isolation: isolate;
+}
+.gl-skeleton--text { height: 0.8em; margin: 0.3em 0; border-radius: 4px; width: 100%; }
+.gl-skeleton--circle { border-radius: 50%; flex: none; }
+.gl-skeleton--rect { border-radius: var(--gl-radius-md); width: 100%; height: 120px; }
+.gl-skeleton-lines { display: block; width: 100%; }
+.gl-skeleton::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(100deg, transparent 20%, var(--gl-skeleton-light, rgba(255, 255, 255, 0.55)) 50%, transparent 80%);
+  animation: gl-skeleton-sweep 1600ms cubic-bezier(0.4, 0, 0.3, 1) infinite; animation-delay: var(--_sync, 0ms);
+}
+[data-gl-theme^="dark"] .gl-skeleton { --gl-skeleton-light: rgba(255, 255, 255, 0.09); }
+/* high contrast: a visible outline so the placeholder reads as a shape */
+[data-gl-theme$="-hc"] .gl-skeleton { box-shadow: inset 0 0 0 1px var(--gl-separator-strong); }
+@keyframes gl-skeleton-sweep { 0% { transform: translateX(-100%); } 70%, 100% { transform: translateX(100%); } }
+@keyframes gl-skeleton-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+[data-gl-reduce-motion="true"] .gl-skeleton::after { animation: none; opacity: 0; }
+[data-gl-reduce-motion="true"] .gl-skeleton { animation: gl-skeleton-breathe 2000ms ease-in-out infinite; animation-delay: var(--_sync, 0ms); }
+@media (prefers-reduced-motion: reduce) {
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-skeleton::after { animation: none; opacity: 0; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-skeleton { animation: gl-skeleton-breathe 2000ms ease-in-out infinite; animation-delay: var(--_sync, 0ms); }
+}
+
+/* ============================================================================================
+   Media viewer: photos on a deep backdrop; glass bars float above and step aside while you swipe.
+   The stage owns every gesture (touch-action: none); only transform and opacity move.
+   ============================================================================================ */
+.gl-media { position: fixed; inset: 0; pointer-events: auto; outline: none; color: var(--gl-label); }
+.gl-media__backdrop { position: absolute; inset: 0; background: var(--gl-media-bg, #0b0c10); }
+.gl-media__stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: default; }
+.gl-media[data-zoomed] .gl-media__stage { cursor: grab; }
+.gl-media__track { position: absolute; inset: 0; will-change: transform; }
+.gl-media__slide { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.gl-media__dismiss { position: absolute; inset: 0; display: grid; place-items: center; will-change: transform; }
+.gl-media__frame { position: relative; transform-origin: 50% 50%; will-change: transform; }
+.gl-media__frame > img, .gl-media__frame > svg, .gl-media__frame > * { display: block; width: 100%; height: 100%; object-fit: contain; -webkit-user-drag: none; }
+.gl-media__bar {
+  position: absolute; left: 0; right: 0; top: 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
+  padding: max(12px, env(safe-area-inset-top)) 12px 12px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0));
+  transition: opacity var(--gl-duration-base) ease, transform var(--gl-duration-base) var(--gl-ease-out);
+}
+.gl-media__bar > * { pointer-events: auto; }
+.gl-media__bar > :first-child { justify-self: start; }
+.gl-media__count { font-size: var(--gl-text-subhead-size); font-weight: 600; font-variant-numeric: tabular-nums; padding: 4px 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.35); }
+.gl-media__actions { justify-self: end; display: flex; gap: 8px; }
+.gl-media__caption {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 32px 20px max(20px, env(safe-area-inset-bottom)); text-align: center;
+  font-size: var(--gl-text-body-size); line-height: var(--gl-text-body-line); pointer-events: none;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+  transition: opacity var(--gl-duration-base) ease, transform var(--gl-duration-base) var(--gl-ease-out);
+}
+.gl-media__nav { position: absolute; top: 50%; margin-top: -22px; transition: opacity var(--gl-duration-base) ease; }
+.gl-media__nav--prev { left: 16px; }
+.gl-media__nav--next { right: 16px; }
+.gl-media__nav:disabled { opacity: 0 !important; pointer-events: none; }
+/* touch screens page by swiping: the side buttons are for pointers and keyboards */
+@media (hover: none), (max-width: 599px) { .gl-media__nav { display: none; } }
+.gl-media[data-chrome="hidden"] .gl-media__bar { opacity: 0; transform: translateY(-8px); pointer-events: none; }
+.gl-media[data-chrome="hidden"] .gl-media__bar > * { pointer-events: none; }
+.gl-media[data-chrome="hidden"] .gl-media__caption { opacity: 0; transform: translateY(8px); }
+.gl-media[data-chrome="hidden"] .gl-media__nav { opacity: 0; pointer-events: none; }
+[data-gl-reduce-motion="true"] .gl-media__bar, [data-gl-reduce-motion="true"] .gl-media__caption { transform: none !important; }
+@media (prefers-reduced-motion: reduce) { .gl-root:not([data-gl-reduce-motion="false"]) .gl-media__bar, .gl-root:not([data-gl-reduce-motion="false"]) .gl-media__caption { transform: none !important; } }

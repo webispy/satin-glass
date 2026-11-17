@@ -15,18 +15,30 @@
     -webkit-backdrop-filter var(--gl-duration-slow) var(--gl-ease-out), backdrop-filter var(--gl-duration-slow) var(--gl-ease-out);
 }
 .gl-appbar__bar::before { transition: opacity var(--gl-duration-slow) var(--gl-ease-out); }
-.gl-appbar__bar--transparent {
+:where(.gl-appbar[data-transparent-top][data-at-top]) > .gl-appbar__bar {   /* low specificity: reduce transparency (solid glass) wins */
   background-color: rgba(255, 255, 255, 0); --gl-bar-depth: rgba(255, 255, 255, 0);
   box-shadow: 0 0 0 rgba(0, 0, 0, 0), 0 0 0 rgba(0, 0, 0, 0);
   -webkit-backdrop-filter: blur(0px) saturate(1); backdrop-filter: blur(0px) saturate(1);
 }
-.gl-appbar__bar--transparent::before, .gl-appbar__bar--transparent::after { opacity: 0; }
+:where(.gl-appbar[data-transparent-top][data-at-top]) > .gl-appbar__bar::before, :where(.gl-appbar[data-transparent-top][data-at-top]) > .gl-appbar__bar::after { opacity: 0; }
 .gl-appbar__leading { display: flex; align-items: center; gap: 4px; justify-self: start; min-width: 0; }
 .gl-appbar__trailing { display: flex; align-items: center; gap: 4px; justify-self: end; min-width: 0; }
-.gl-appbar__title { margin: 0; font-size: 17px; line-height: 24px; font-weight: 650; letter-spacing: -0.01em; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: opacity var(--gl-duration-base) ease; }
-.gl-appbar[data-large="true"] .gl-appbar__title { opacity: 0; }
-.gl-appbar[data-large="true"][data-collapsed="true"] .gl-appbar__title { opacity: 1; }
-.gl-appbar__large { margin: 12px 0 4px; padding: 0 calc(var(--gl-size-bar-inset) + 8px); font-size: var(--gl-text-title-1-size); line-height: var(--gl-text-title-1-line); font-weight: 750; letter-spacing: -0.02em; }
+.gl-appbar__title { margin: 0; font-size: 17px; line-height: 24px; font-weight: 650; letter-spacing: -0.01em; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* large title hand-over, driven by scroll (--_p: 0 = large title fully below the bar, 1 = fully under it).
+   Scroll-linked, so no transitions: it is exactly where the finger puts it. The small title rises 6 px into place
+   over the second half; the large title fades as it slides under the glass. */
+.gl-appbar[data-large="true"] .gl-appbar__title {
+  opacity: clamp(0, calc((var(--_p, 0) - 0.45) / 0.55), 1);
+  transform: translateY(calc((1 - clamp(0, calc((var(--_p, 0) - 0.45) / 0.55), 1)) * 6px));
+}
+.gl-appbar__large {
+  margin: 12px 0 4px; padding: 0 calc(var(--gl-size-bar-inset) + 8px); font-size: var(--gl-text-title-1-size); line-height: var(--gl-text-title-1-line); font-weight: 750; letter-spacing: -0.02em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  opacity: clamp(0, calc(1 - var(--_p, 0) * 1.6), 1);   /* gone by the time the small title is half in: no double title */
+}
+/* reduced motion: the hand-over is a cross-fade only (no rising) */
+[data-gl-reduce-motion="true"] .gl-appbar[data-large="true"] .gl-appbar__title { transform: none; }
+@media (prefers-reduced-motion: reduce) { .gl-root:not([data-gl-reduce-motion="false"]) .gl-appbar[data-large="true"] .gl-appbar__title { transform: none; } }
 
 /* scroll edge: a cheap colour fade (no blur) under floating bars, so content never fights with the glass */
 .gl-scroll-fade { position: sticky; z-index: calc(var(--gl-z-bar) - 1); left: 0; right: 0; height: 28px; pointer-events: none; background: linear-gradient(var(--_dir, 180deg), var(--gl-bg), color-mix(in srgb, var(--gl-bg) 0%, transparent)); opacity: var(--_o, 1); transition: opacity var(--gl-duration-base) ease; }
@@ -95,3 +107,25 @@
 .gl-sidebar__item:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
 .gl-sidebar__item svg { width: 18px; height: 18px; flex: none; }
 .gl-sidebar__count { margin-left: auto; font-size: 13px; color: var(--gl-label-tertiary); font-variant-numeric: tabular-nums; }
+
+/* ============================================================================================
+   Breadcrumbs: a quiet trail; the current page ends it in full-strength text. Levels truncate rather than wrap.
+   ============================================================================================ */
+.gl-breadcrumbs { min-width: 0; font-size: var(--gl-text-subhead-size); line-height: 20px; }
+.gl-breadcrumbs ol { display: flex; align-items: center; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.gl-crumb { display: flex; align-items: center; min-width: 0; flex: 0 1 auto; }
+.gl-crumb:last-child { flex-shrink: 0.4; }
+.gl-crumb__sep { flex: none; width: 14px; height: 14px; margin: 0 2px; color: var(--gl-label-tertiary); stroke-width: 2.4; }
+.gl-crumb__item {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 14em; height: 32px; padding: 0 6px; border: 0; border-radius: var(--gl-radius-sm);
+  background: none; color: var(--gl-label-secondary); font: inherit; text-decoration: none; cursor: pointer;
+  transition: background-color var(--gl-duration-fast) ease, color var(--gl-duration-fast) ease;
+}
+.gl-crumb__item > svg:not(.gl-crumb__sep) { flex: none; width: 16px; height: 16px; }
+.gl-crumb__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+a.gl-crumb__item:hover, button.gl-crumb__item:hover { background: var(--gl-fill); color: var(--gl-label); }
+.gl-crumb__item:focus-visible { outline: none; box-shadow: var(--gl-ring); }
+.gl-crumb__item[aria-current="page"] { color: var(--gl-label); font-weight: 600; cursor: default; max-width: 22em; }
+.gl-crumb__more { width: 32px; padding: 0; justify-content: center; }
+.gl-crumb__more svg { width: 18px; height: 18px; fill: currentColor; }
+.gl-crumb__more[aria-expanded="true"] { background: var(--gl-fill); color: var(--gl-label); }

@@ -5,12 +5,13 @@ import './docs.css';
 import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, IconButton, Popover, Toaster, type ThemeMode } from '@glass-layer/react';
 import { DisplaySettingsProvider, DisplaySettingsBar, DisplaySettingsList } from './settings';
 import type { MotionName } from '@glass-layer/tokens';
-import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical, ListChecks } from 'lucide-react';
+import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical, ListChecks, GalleryVerticalEnd } from 'lucide-react';
 import { Overview, Colors, Typography, Motion, Material } from './pages/foundations';
 import { Buttons, Inputs, Navigation, Lists, Overlays } from './pages/components';
 import { Showcase } from './pages/showcase';
 import { Lab } from './pages/lab';
 import { Selection } from './pages/selection';
+import { Display } from './pages/display';
 
 const PAGES = [
   { id: 'overview', label: '소개', icon: Layers, el: Overview, group: '기초' },
@@ -24,6 +25,7 @@ const PAGES = [
   { id: 'navigation', label: '내비게이션', icon: NavIcon, el: Navigation, group: '컴포넌트' },
   { id: 'lists', label: '목록과 표시', icon: ListIcon, el: Lists, group: '컴포넌트' },
   { id: 'overlays', label: '오버레이', icon: PanelTop, el: Overlays, group: '컴포넌트' },
+  { id: 'display', label: '구성과 미디어', icon: GalleryVerticalEnd, el: Display, group: '컴포넌트' },
   { id: 'showcase', label: '쇼케이스', icon: Smartphone, el: Showcase, group: '예제' },
   { id: 'lab', label: '예외 상황 랩', icon: FlaskConical, el: Lab, group: '예제' },
 ];

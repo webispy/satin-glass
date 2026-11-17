@@ -56,6 +56,23 @@ await p.goto('http://localhost:4173/#/material'); await p.waitForTimeout(800);
 await measure('pointer light over 5 glass cards', async () => { for (let i = 0; i < 30; i++) await p.mouse.move(350 + i * 25, 380 + (i % 5) * 20); }, 900);
 await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(800);
 await measure('showcase scroll under glass bars', async () => { await p.mouse.move(780, 600); for (let i = 0; i < 12; i++) { await p.mouse.wheel(0, 60); } }, 900);
+await p.goto('http://localhost:4173/#/display'); await p.waitForTimeout(900);
+{
+  const sc = p.locator('[data-scroll=largetitle]'), r = await sc.boundingBox();
+  await measure('large title hand-over while scrolling', async () => { await p.mouse.move(r.x + r.width / 2, r.y + 300); for (let i = 0; i < 10; i++) await p.mouse.wheel(0, 15); }, 700);
+  await sc.evaluate((e) => { e.scrollTop = 0; });
+  await p.getByRole('button', { name: '다시 불러오기' }).click(); await p.waitForTimeout(100);
+  await measure('skeleton light sweep (11 placeholders)', async () => {}, 900);
+  const th = p.locator('[data-demo=media] button').nth(1); await th.scrollIntoViewIfNeeded(); await p.waitForTimeout(300);
+  await measure('media viewer opens out of its thumbnail', () => th.click({ noWaitAfter: true }), 800);
+  await p.waitForTimeout(300);
+  await measure('media viewer: page to the next photo', () => p.keyboard.press('ArrowRight'), 800);
+  await measure('media viewer: swipe with the finger (mouse)', async () => { await p.mouse.move(900, 450); await p.mouse.down(); for (let i = 1; i <= 10; i++) await p.mouse.move(900 - i * 40, 452); await p.mouse.up(); }, 900);
+  await measure('media viewer: double-click zoom', () => p.mouse.dblclick(700, 420), 700);
+  await measure('media viewer: pan while zoomed', async () => { await p.mouse.move(700, 420); await p.mouse.down(); for (let i = 1; i <= 12; i++) await p.mouse.move(700 + i * 15, 420 + i * 5); await p.mouse.up(); }, 900);
+  await p.keyboard.press('0'); await p.waitForTimeout(500);
+  await measure('media viewer: swipe down to close (back into the thumbnail)', async () => { await p.mouse.move(640, 300); await p.mouse.down(); for (let i = 1; i <= 10; i++) await p.mouse.move(640, 300 + i * 30); await p.mouse.up(); }, 900);
+}
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');
 await b.close();
 process.exitCode = failed ? 1 : 0;

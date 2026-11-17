@@ -87,3 +87,8 @@ body { background: var(--gl-bg); }
   .label-row { flex-wrap: wrap; }
   .label-row > .code { white-space: normal; }
 }
+
+/* content arriving after a skeleton */
+.fade-in { animation: docs-fade-in 220ms ease both; }
+@keyframes docs-fade-in { from { opacity: 0; } }
+[data-gl-reduce-motion="true"] .fade-in { animation-duration: 140ms; }
