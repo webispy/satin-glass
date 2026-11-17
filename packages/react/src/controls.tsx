@@ -87,79 +87,140 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
   const onRef = useRef(on); onRef.current = on;
   /* press / drag looks live in React state so a re-render never strips them mid-gesture */
   const [pressed, setPressed] = useState(false);
+  const pressedRef = useRef(false); pressedRef.current = pressed;
   const [draggingSw, setDraggingSw] = useState(false);
+
+  /* ---- the thumb: two edges on JS springs (like the tab bar's drop), so a retarget mid-flight keeps its speed.
+     A tap retargets three times (press reach → toggle → release); CSS transitions restarted from rest each time,
+     which is what made the switch feel slower than everything else. ---- */
+  const eng = useRef<{ L: Spring; R: Spring; W: number; T: number; pad: number; reach: number; stop: (() => void) | null; squashed: boolean; wall: 'l' | 'r' | null } | null>(null);
+  const geom = () => {
+    const b = el.current!, cs = getComputedStyle(b), th = b.querySelector<HTMLElement>('.gl-switch__thumb')!;
+    return { W: b.clientWidth, T: th.offsetHeight, pad: parseFloat(cs.getPropertyValue('--_pad')) || 2, reach: parseFloat(cs.getPropertyValue('--_reach')) || 6 };
+  };
+  const render = () => {
+    const e = eng.current, b = el.current;
+    if (!e || !b) return;
+    const lo = e.pad, hi = e.W - e.pad;
+    const l = Math.min(hi, Math.max(lo, e.L.value)), r = Math.max(lo, Math.min(hi, e.R.value));
+    const th = b.querySelector<HTMLElement>('.gl-switch__thumb')!;
+    th.style.setProperty('--gl-sw-l', `${l.toFixed(2)}px`);
+    th.style.setProperty('--gl-sw-r', `${Math.max(r, l + 1).toFixed(2)}px`);
+    /* the moment the leading edge meets the end of the rail, the knob squashes against it (personality) */
+    if (e.wall && !e.squashed && ((e.wall === 'r' && e.R.value >= hi - 0.6) || (e.wall === 'l' && e.L.value <= lo + 0.6))) {
+      e.squashed = true;
+      squash(e.wall);
+    }
+  };
+  const squash = (side: 'l' | 'r') => {
+    const b = el.current, knob = b?.querySelector<HTMLElement>('.gl-switch__knob');
+    if (!b || !knob || prefersReducedMotion()) return;
+    const s = motionFor(b).squash;
+    if (s <= 0) return;
+    knob.style.transformOrigin = side === 'r' ? 'right center' : 'left center';
+    knob.animate([
+      { transform: 'scale(1, 1)' },
+      { transform: `scale(${1 - s * 1.1}, ${1 + s * 0.35})`, offset: 0.28 },
+      { transform: `scale(${1 + s * 0.4}, ${1 - s * 0.15})`, offset: 0.6 },
+      { transform: `scale(${1 - s * 0.12}, 1)`, offset: 0.82 },
+      { transform: 'scale(1, 1)' },
+    ], { duration: 300, easing: 'ease-out' });
+  };
+  const run = () => {
+    const e = eng.current;
+    if (!e || e.stop) return;
+    e.stop = loop((dt) => {
+      e.L.step(dt); e.R.step(dt); render();
+      if (e.L.settled && e.R.settled) { e.L.jump(e.L.target); e.R.jump(e.R.target); render(); e.stop = null; return false; }
+    });
+  };
+  /** move the edges to where the state says; the edge on the side of travel leads, the other trails a little */
+  const go = (toggle: boolean) => {
+    const e = eng.current, b = el.current;
+    if (!e || !b) return;
+    const isOn = onRef.current, reach = pressedRef.current ? e.reach : 0;
+    const tl = isOn ? e.W - e.pad - e.T - reach : e.pad;
+    const tr = isOn ? e.W - e.pad : e.pad + e.T + reach;
+    if (prefersReducedMotion()) { e.L.jump(tl); e.R.jump(tr); render(); return; }
+    /* short travel, quick spring: a switch moves ~20 px where a segmented control moves ~90, so it uses the
+       personality's snappy spring at 0.62× response (same character, same overshoot) — otherwise it covers a
+       quarter of the distance in the same time and reads as sluggish. A toggle also gets an initial push so it
+       leaves at once instead of easing out of rest. */
+    const snappy = motionFor(b).snappy;
+    const lead = { response: snappy.response * 0.62, damping: snappy.damping };
+    const trail = { response: snappy.response * 0.82, damping: Math.min(1, snappy.damping + 0.05) };
+    const right = tr > e.R.target + 0.01 || tl > e.L.target + 0.01;
+    if (right) { e.R.set(lead); e.L.set(trail); } else { e.L.set(lead); e.R.set(trail); }
+    if (toggle) {
+      e.wall = isOn ? 'r' : 'l'; e.squashed = false;
+      const push = (sp: Spring, to: number) => { sp.velocity += (to - sp.value) * 7; };
+      push(right ? e.R : e.L, right ? tr : tl);
+      push(right ? e.L : e.R, right ? tl : tr);
+    }
+    e.L.target = tl; e.R.target = tr;
+    run();
+  };
+
+  useIsoLayoutEffect(() => {
+    const b = el.current;
+    if (!b) return;
+    const g = geom();
+    const isOn = onRef.current;
+    eng.current = { L: new Spring(isOn ? g.W - g.pad - g.T : g.pad, 'snappy', b), R: new Spring(isOn ? g.W - g.pad : g.pad + g.T, 'snappy', b), ...g, stop: null, squashed: true, wall: null };
+    render();
+    return () => { eng.current?.stop?.(); eng.current = null; };
+  }, []);
+  const firstOn = useRef(true);
+  useIsoLayoutEffect(() => { if (firstOn.current) { firstOn.current = false; return; } go(true); }, [on]);
+  useIsoLayoutEffect(() => { go(false); }, [pressed]);
 
   useEffect(() => {
     const b = el.current;
     if (!b || disabled) return;
-    /* geometry read once per gesture */
-    let W = 0, T = 0, pad = 2, reach = 6, c0 = 0, startOn = false, box: DOMRect | null = null, engaged = false;
-    const thumb = () => b.querySelector<HTMLElement>('.gl-switch__thumb')!;
-    const clearInline = () => { const t = thumb(); t.style.removeProperty('--gl-sw-l'); t.style.removeProperty('--gl-sw-r'); delete b.dataset.drag; };
+    let c0 = 0, startOn = false, box: DOMRect | null = null, engaged = false;
     /* how far the pointer may stray before the switch lets go of it (the thumb then returns to where it was) */
     const SLOP_Y = 48, SLOP_X = 120;
     return drag(b, {
       axis: 'x',
       start: () => {
         dragged.current = false; engaged = false; startOn = onRef.current;
-        const cs = getComputedStyle(b);
-        W = b.clientWidth; T = thumb().offsetHeight;
-        pad = parseFloat(cs.getPropertyValue('--_pad')) || 2; reach = parseFloat(cs.getPropertyValue('--_reach')) || 6;
-        const wide = T + reach;
-        c0 = startOn ? W - pad - wide / 2 : pad + wide / 2;
+        const e = eng.current!;
+        Object.assign(e, geom());
+        const wide = e.T + e.reach;
+        c0 = startOn ? e.W - e.pad - wide / 2 : e.pad + wide / 2;
         box = b.getBoundingClientRect();
         setPressed(true);
       },
       move: ({ x, y, dx }) => {
         if (!dragged.current && Math.abs(dx) < 4) return;
+        const e = eng.current!;
         const far = !box || y < box.top - SLOP_Y || y > box.bottom + SLOP_Y || x < box.left - SLOP_X || x > box.right + SLOP_X;
+        dragged.current = true;
         if (far) {
-          if (engaged) { engaged = false; setDraggingSw(false); clearInline(); }
-          dragged.current = true;
+          if (engaged) { engaged = false; setDraggingSw(false); delete b.dataset.drag; go(false); }
           return;
         }
         if (!engaged) { engaged = true; setDraggingSw(true); }
-        dragged.current = true;
-        const wide = T + reach;
-        const c = Math.min(W - pad - wide / 2, Math.max(pad + wide / 2, c0 + dx));
-        const t = thumb();
-        t.style.setProperty('--gl-sw-l', `${c - wide / 2}px`);
-        t.style.setProperty('--gl-sw-r', `${c + wide / 2}px`);
-        b.dataset.drag = c > W / 2 ? 'on' : 'off';
+        const wide = e.T + e.reach;
+        const c = Math.min(e.W - e.pad - wide / 2, Math.max(e.pad + wide / 2, c0 + dx));
+        /* the finger holds the thumb: both edges follow 1:1 */
+        e.stop?.(); e.stop = null;
+        e.L.jump(c - wide / 2); e.R.jump(c + wide / 2); render();
+        b.dataset.drag = c > e.W / 2 ? 'on' : 'off';
       },
       end: (_i, cancelled) => {
         const next = b.dataset.drag === 'on';
         const commit = dragged.current && engaged && !cancelled && b.dataset.drag !== undefined;
         setDraggingSw(false);
-        clearInline();
-        if (commit && next !== startOn) setOn(next);
+        delete b.dataset.drag;
         engaged = false;
+        if (commit && next !== startOn) setOn(next);
+        else go(false);
         /* keep the press look until the click has toggled, so the thumb never snaps back for a frame */
         requestAnimationFrame(() => requestAnimationFrame(() => setPressed(false)));
       },
     });
   }, [disabled, setOn]);
-
-  /* arrival: the knob meets the end of the rail and squashes against it, then rebounds — scaled by the motion
-     personality's squash (none when calm). Only the inner knob scales, so the geometry never leaves the rail. */
-  const first = useRef(true);
-  useEffect(() => {
-    if (first.current) { first.current = false; return; }
-    const b = el.current, knob = b?.querySelector<HTMLElement>('.gl-switch__knob');
-    if (!b || !knob || prefersReducedMotion()) return;
-    const s = motionFor(b).squash;
-    if (s <= 0) return;
-    knob.style.transformOrigin = on ? 'right center' : 'left center';
-    const { duration } = springTiming('snappy', b);
-    knob.animate([
-      { transform: 'scale(1, 1)', offset: 0 },
-      { transform: 'scale(1, 1)', offset: 0.22 },
-      { transform: `scale(${1 - s * 1.1}, ${1 + s * 0.35})`, offset: 0.4 },
-      { transform: `scale(${1 + s * 0.4}, ${1 - s * 0.15})`, offset: 0.64 },
-      { transform: `scale(${1 - s * 0.12}, 1)`, offset: 0.84 },
-      { transform: 'scale(1, 1)', offset: 1 },
-    ], { duration: Math.max(380, duration), easing: 'ease-in-out' });
-  }, [on]);
 
   return (
     <button
@@ -619,10 +680,26 @@ export const CardBody = ({ className, ...p }: HTMLAttributes<HTMLDivElement>) =>
 /* ================================================================================================ Progress */
 export function Progress({ value, max = 100, size = 'md', label = 'Progress', motion, className }: { value?: number; max?: number; size?: 'sm' | 'md'; label?: string; motion?: MotionName; className?: string }) {
   const indeterminate = value === undefined;
+  const p = indeterminate ? 0 : Math.min(1, Math.max(0, value / max));
+  const el = useRef<HTMLDivElement>(null);
+  /* a JS spring (smooth, of the personality) so frequent updates — a download ticking every 100 ms — keep their
+     momentum instead of restarting a CSS transition from rest each time (which reads as stair-steps) */
+  const eng = useRef<{ s: Spring; stop: (() => void) | null } | null>(null);
+  useIsoLayoutEffect(() => {
+    const d = el.current;
+    if (!d || indeterminate) return;
+    const bar = d.querySelector<HTMLElement>('.gl-progress__bar')!;
+    const draw = (v: number) => bar.style.setProperty('--_p', Math.min(1, Math.max(0, v)).toFixed(4));
+    if (!eng.current) { eng.current = { s: new Spring(p, 'smooth', d), stop: null }; draw(p); return; }
+    const e = eng.current;
+    if (prefersReducedMotion()) { e.stop?.(); e.stop = null; e.s.jump(p); draw(p); return; }
+    e.s.set('smooth', d); e.s.target = p;
+    if (!e.stop) e.stop = loop((dt) => { e.s.step(dt); draw(e.s.value); if (Math.abs(e.s.value - e.s.target) < 0.0005 && Math.abs(e.s.velocity) < 0.005) { e.s.jump(e.s.target); draw(e.s.target); e.stop = null; return false; } });
+  }, [p, indeterminate]);
+  useEffect(() => () => { eng.current?.stop?.(); }, []);
   return (
-    <div role="progressbar" data-gl-motion={motion} aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={indeterminate ? undefined : value}
-      className={cx('gl-progress', size === 'sm' && 'gl-progress--sm', indeterminate && 'gl-progress--indeterminate', className)}
-      style={{ '--_p': indeterminate ? 0 : Math.min(1, Math.max(0, value / max)) } as CSSProperties}>
+    <div ref={el} role="progressbar" data-gl-motion={motion} aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={indeterminate ? undefined : value}
+      className={cx('gl-progress', size === 'sm' && 'gl-progress--sm', indeterminate && 'gl-progress--indeterminate', className)}>
       <span className="gl-progress__bar" />
     </div>
   );

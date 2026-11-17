@@ -140,10 +140,15 @@ ok('sheet: opens', (await sheet.count()) === 1);
   await p.mouse.move(sb.x + sb.width + 80, r.y + r.height / 2, { steps: 8 });
   await p.mouse.move(sb.x + sb.width + 80, sb.y + sb.height + 50, { steps: 8 });
   await p.mouse.move(r.x + 6, sb.y + sb.height + 50, { steps: 10 });
-  const midDrag = await s1.evaluate((e) => ({ dragging: e.classList.contains('is-dragging'), inline: e.querySelector('.gl-switch__thumb').style.getPropertyValue('--gl-sw-l') }));
+  /* where the thumb rests for a state: off → left edge at 2 px, on → right edge 2 px from the end */
+  const thumbGap = (e) => { const t = e.querySelector('.gl-switch__thumb').getBoundingClientRect(), r = e.getBoundingClientRect(); return { left: +(t.left - r.left).toFixed(1), right: +(r.right - t.right).toFixed(1) }; };
+  await p.waitForTimeout(300);
+  const midDrag = await s1.evaluate((e, g) => ({ dragging: e.classList.contains('is-dragging'), drag: e.dataset.drag ?? null, gap: new Function(`return (${g})`)()(e) }), thumbGap.toString());
   await p.mouse.up(); await p.waitForTimeout(700);
-  const after1 = await s1.evaluate((e) => ({ checked: e.getAttribute('aria-checked'), cls: e.className, inline: e.querySelector('.gl-switch__thumb').getAttribute('style') || '', drag: e.dataset.drag }));
-  ok('switch in a sheet: far from the switch it lets go (no thumb tracking) and release changes nothing', !midDrag.dragging && !midDrag.inline && after1.checked === before1 && after1.cls === 'gl-switch' && !after1.inline && !after1.drag, JSON.stringify({ midDrag, after1 }));
+  const after1 = await s1.evaluate((e, g) => ({ checked: e.getAttribute('aria-checked'), cls: e.className, drag: e.dataset.drag ?? null, gap: new Function(`return (${g})`)()(e) }), thumbGap.toString());
+  const home = (st, gap) => (st === 'true' ? Math.abs(gap.right - 2) < 0.6 : Math.abs(gap.left - 2) < 0.6);
+  ok('switch in a sheet: far from the switch it lets go (thumb goes home, no tracking) and release changes nothing',
+    !midDrag.dragging && midDrag.drag === null && home(before1, midDrag.gap) && after1.checked === before1 && after1.cls === 'gl-switch' && after1.drag === null && home(before1, after1.gap), JSON.stringify({ midDrag, after1 }));
   await p.mouse.move(r.x + r.width - 8, r.y + r.height / 2); await p.mouse.down();
   await p.mouse.move(r.x + 4, r.y + r.height / 2, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(600);
   ok('switch in a sheet: still works after that', (await s1.getAttribute('aria-checked')) !== before1);
@@ -295,6 +300,21 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
   }));
   const kn = [await knob(0), await knob(1), await knob(2)];
   ok('personalities: the switch knob squashes against the end on arrival — none when calm, visible when lively', kn[0] > 0.999 && kn[1] < 0.88 && kn[2] < kn[1], kn.map((v) => v.toFixed(3)).join(' / '));
+
+  /* lively switch: as quick for its 20 px as the segmented drop is for its 90 — leading edge home ~100 ms after release */
+  {
+    const sw = cols.nth(1).locator('.gl-switch'), r = await sw.boundingBox();
+    if ((await sw.getAttribute('aria-checked')) === 'true') { await sw.click(); await p.waitForTimeout(500); }
+    await sw.evaluate((s) => { window.__t = []; const th = s.querySelector('.gl-switch__thumb'), tr = s.getBoundingClientRect(); window.__rec = true;
+      s.addEventListener('pointerup', () => { window.__up = performance.now(); }, { once: true });
+      const f = () => { const q = th.getBoundingClientRect(); window.__t.push([performance.now(), tr.right - q.right, q.left - tr.left, q.width]); if (window.__rec) requestAnimationFrame(f); }; requestAnimationFrame(f); });
+    await p.mouse.move(r.x + 12, r.y + r.height / 2); await p.mouse.down(); await p.waitForTimeout(60); await p.mouse.up(); await p.waitForTimeout(600);
+    const { t, up } = await p.evaluate(() => { window.__rec = false; return { t: window.__t, up: window.__up }; });
+    const restW = t[t.length - 1][3];
+    const lead = t.find((f) => f[0] > up && f[1] < 2.6)?.[0] - up;
+    const whole = t.find((f) => f[0] > up && f[1] < 2.6 && Math.abs(f[3] - restW) < 1.2)?.[0] - up;
+    ok('switch (lively): leading edge home ≤ 130 ms, whole thumb ≤ 220 ms after release', lead <= 130 && whole <= 220, `lead ${lead?.toFixed(0)} ms, whole ${whole?.toFixed(0)} ms`);
+  }
 
   /* playful segmented: the drop never leaves the track, even with the bigger overshoot */
   const out = await cols.nth(2).locator('.gl-segmented').evaluate((seg) => new Promise((res) => {

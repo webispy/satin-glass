@@ -90,23 +90,17 @@
   position: absolute; top: var(--_pad); left: 0;
   width: calc(var(--gl-sw-r) - var(--gl-sw-l)); height: var(--_t);
   transform: translateX(var(--gl-sw-l));
-  /* off: the left edge leads (snappy), the right edge trails (smooth) */
-  transition: --gl-sw-l var(--gl-spring-snappy-duration) var(--gl-spring-snappy), --gl-sw-r var(--gl-spring-smooth-duration) var(--gl-spring-smooth);
+  /* the edges are driven by JS springs (React sets --gl-sw-l / --gl-sw-r inline every frame, keeping momentum
+     across retargets); these CSS values are only the resting layout before scripts run */
 }
 .gl-switch[aria-checked="true"] .gl-switch__thumb {
   --gl-sw-l: calc(var(--_w) - var(--_pad) - var(--_t));
   --gl-sw-r: calc(var(--_w) - var(--_pad));
-  /* on: the right edge leads */
-  transition: --gl-sw-r var(--gl-spring-snappy-duration) var(--gl-spring-snappy), --gl-sw-l var(--gl-spring-smooth-duration) var(--gl-spring-smooth);
 }
-.gl-switch.is-pressed[aria-checked="false"] .gl-switch__thumb { --gl-sw-r: calc(var(--_pad) + var(--_t) + var(--_reach)); }
-.gl-switch.is-pressed[aria-checked="true"] .gl-switch__thumb { --gl-sw-l: calc(var(--_w) - var(--_pad) - var(--_t) - var(--_reach)); }
-.gl-switch.is-dragging .gl-switch__thumb { transition: none; }   /* the finger sets both edges */
 /* the visible knob: the thumb positions it, the knob carries the look and the arrival squash (React animates it) */
 .gl-switch__knob { position: absolute; inset: 0; border-radius: var(--gl-radius-full); background: linear-gradient(180deg, #fff, #f3f4f8);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16), 0 0 0 0.5px rgba(0, 0, 0, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.04); }
 .gl-switch--sm { --_w: 40px; --_h: 24px; --_t: 20px; --_reach: 4px; }
-@media (prefers-reduced-motion: reduce) { .gl-switch__thumb { transition: none !important; } }
 
 /* ============================================================================================
    Slider: 6 px track, accent fill, 24 px thumb; a glass value bubble rises while held
@@ -274,7 +268,7 @@ textarea.gl-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
    Progress, spinner, page control
    ============================================================================================ */
 .gl-progress { position: relative; width: 100%; min-width: 48px; height: 6px; border-radius: var(--gl-radius-full); background: var(--gl-fill-strong); overflow: hidden; }
-.gl-progress__bar { position: absolute; inset: 0; border-radius: inherit; background: var(--gl-accent); transform-origin: left center; transform: scaleX(var(--_p, 0)); transition: transform var(--gl-spring-smooth-duration) var(--gl-spring-smooth); }
+.gl-progress__bar { position: absolute; inset: 0; border-radius: inherit; background: var(--gl-accent); transform-origin: left center; transform: scaleX(var(--_p, 0)); }   /* --_p is driven by a JS spring */
 .gl-progress--indeterminate .gl-progress__bar { width: 40%; transform: translateX(-100%); animation: gl-indeterminate 1.3s cubic-bezier(0.45, 0, 0.2, 1) infinite; }
 @keyframes gl-indeterminate { to { transform: translateX(250%); } }
 .gl-progress--sm { height: 4px; }
