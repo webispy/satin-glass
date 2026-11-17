@@ -269,13 +269,12 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
 
   const gel = async (i) => {
     const sl = cols.nth(i).locator('.gl-slider'), b = await sl.boundingBox();
+    /* record the stretch every frame in the page while the drag happens (sampling from the test misses peaks) */
+    await sl.locator('.gl-slider__thumb').evaluate((t) => { window.__peak = 1; window.__rec = true; const f = () => { window.__peak = Math.max(window.__peak, new DOMMatrix(getComputedStyle(t).transform).a); if (window.__rec) requestAnimationFrame(f); }; requestAnimationFrame(f); });
     await p.mouse.move(b.x + 8, b.y + b.height / 2); await p.mouse.down();
-    let peak = 1;
-    for (let k = 1; k <= 8; k++) {
-      await p.mouse.move(b.x + 8 + (b.width - 16) * k / 8, b.y + b.height / 2);
-      peak = Math.max(peak, await sl.locator('.gl-slider__thumb').evaluate((t) => new DOMMatrix(getComputedStyle(t).transform).a));
-    }
+    for (let k = 1; k <= 8; k++) { await p.mouse.move(b.x + 8 + (b.width - 16) * k / 8, b.y + b.height / 2); await p.waitForTimeout(8); }
     await p.mouse.up(); await p.waitForTimeout(700);
+    const peak = await p.evaluate(() => { window.__rec = false; return window.__peak; });
     const rest = await sl.locator('.gl-slider__thumb').evaluate((t) => new DOMMatrix(getComputedStyle(t).transform).a);
     return [peak, rest];
   };
