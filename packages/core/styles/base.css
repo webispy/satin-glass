@@ -55,8 +55,8 @@
    stutter. Instead: --gl-spring-* become a short, critically damped curve (tokens.css), so small state changes
    still slide briefly without overshoot; anything that travels, grows or bounces becomes a fade; squash, gel,
    press-in and the pointer light are off; progress indicators keep moving gently. */
-[data-gl-reduce-motion="true"] .gl-stepper__value > [data-roll] { animation-name: gl-fade-in-plain; }
-[data-gl-reduce-motion="true"] .gl-stepper__value > [data-leave] { animation-name: gl-fade-out-plain; }
+[data-gl-reduce-motion="true"] .gl-stepper__value > [data-roll] { animation: none; }
+[data-gl-reduce-motion="true"] .gl-stepper__value > [data-leave] { display: none; }
 [data-gl-reduce-motion="true"] .gl-field__clear, [data-gl-reduce-motion="true"] .gl-button__spinner { animation-name: gl-fade-in-plain; }
 [data-gl-reduce-motion="true"] .gl-search__cancel { transform: none; }
 [data-gl-reduce-motion="true"] .gl-pressable:active, [data-gl-reduce-motion="true"] .gl-pressable.is-pressed, [data-gl-reduce-motion="true"] .gl-button:active:not(:disabled), [data-gl-reduce-motion="true"] .gl-chip:active, [data-gl-reduce-motion="true"] .gl-card--interactive:active,
@@ -67,8 +67,8 @@
 [data-gl-reduce-motion="true"] .gl-spinner { animation: gl-spin 1.4s linear infinite; }
 [data-gl-reduce-motion="true"] .gl-progress--indeterminate .gl-progress__bar { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__value > [data-roll] { animation-name: gl-fade-in-plain; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__value > [data-leave] { animation-name: gl-fade-out-plain; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__value > [data-roll] { animation: none; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__value > [data-leave] { display: none; }
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-field__clear, .gl-root:not([data-gl-reduce-motion="false"]) .gl-button__spinner { animation-name: gl-fade-in-plain; }
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-search__cancel { transform: none; }
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-pressable:active, .gl-root:not([data-gl-reduce-motion="false"]) .gl-pressable.is-pressed, .gl-root:not([data-gl-reduce-motion="false"]) .gl-button:active:not(:disabled), .gl-root:not([data-gl-reduce-motion="false"]) .gl-chip:active, .gl-root:not([data-gl-reduce-motion="false"]) .gl-card--interactive:active,

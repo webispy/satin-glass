@@ -417,10 +417,14 @@ export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper
   const [dir, setDir] = useState<'up' | 'down' | undefined>(undefined);
   const [leaving, setLeaving] = useState<{ v: number; dir: 'up' | 'down'; id: number }[]>([]);
   const seq = useRef(0);
+  const root = useRef<HTMLDivElement>(null);
   useIsoLayoutEffect(() => {
     if (v === shown.current) return;
     const d = v > shown.current ? 'up' : 'down', old = shown.current;
     shown.current = v;
+    /* reduced motion: a number changing is content, not motion — it just changes (two numbers cross-fading
+       in one spot read as a blur) */
+    if (prefersReducedMotion(root.current)) { setDir(undefined); setLeaving([]); return; }
     setDir(d);
     setLeaving((l) => [...l.slice(-2), { v: old, dir: d, id: ++seq.current }]);
   }, [v]);
@@ -437,7 +441,7 @@ export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper
   const stop = () => { clearTimeout(timer.current.t); clearInterval(timer.current.i); };
   useEffect(() => stop, []);
   return (
-    <div ref={ref} role="group" aria-label={label} data-gl-motion={motion} className={cx('gl-stepper', className)} {...rest}>
+    <div ref={mergeRefs(ref, root)} role="group" aria-label={label} data-gl-motion={motion} className={cx('gl-stepper', className)} {...rest}>
       <button type="button" className="gl-stepper__btn" aria-label={`Decrease ${label}`} disabled={v <= min} onClick={() => bump(-step)} onPointerDown={hold(-step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><MinusIcon /></button>
       <span className="gl-stepper__value" aria-live="polite">
         {leaving.map((l) => (
