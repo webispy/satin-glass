@@ -89,9 +89,6 @@
   --gl-sw-r: calc(var(--_pad) + var(--_t));
   position: absolute; top: var(--_pad); left: 0;
   width: calc(var(--gl-sw-r) - var(--gl-sw-l)); height: var(--_t);
-  border-radius: var(--gl-radius-full);
-  background: linear-gradient(180deg, #fff, #f3f4f8);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16), 0 0 0 0.5px rgba(0, 0, 0, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.04);
   transform: translateX(var(--gl-sw-l));
   /* off: the left edge leads (snappy), the right edge trails (smooth) */
   transition: --gl-sw-l var(--gl-spring-snappy-duration) var(--gl-spring-snappy), --gl-sw-r var(--gl-spring-smooth-duration) var(--gl-spring-smooth);
@@ -105,6 +102,9 @@
 .gl-switch.is-pressed[aria-checked="false"] .gl-switch__thumb { --gl-sw-r: calc(var(--_pad) + var(--_t) + var(--_reach)); }
 .gl-switch.is-pressed[aria-checked="true"] .gl-switch__thumb { --gl-sw-l: calc(var(--_w) - var(--_pad) - var(--_t) - var(--_reach)); }
 .gl-switch.is-dragging .gl-switch__thumb { transition: none; }   /* the finger sets both edges */
+/* the visible knob: the thumb positions it, the knob carries the look and the arrival squash (React animates it) */
+.gl-switch__knob { position: absolute; inset: 0; border-radius: var(--gl-radius-full); background: linear-gradient(180deg, #fff, #f3f4f8);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16), 0 0 0 0.5px rgba(0, 0, 0, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.04); }
 .gl-switch--sm { --_w: 40px; --_h: 24px; --_t: 20px; --_reach: 4px; }
 @media (prefers-reduced-motion: reduce) { .gl-switch__thumb { transition: none !important; } }
 
@@ -179,12 +179,18 @@
 .gl-stepper__btn:disabled { color: var(--gl-label-disabled); cursor: default; }
 .gl-stepper__btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
 .gl-stepper__btn svg { width: 16px; height: 16px; }
-.gl-stepper__value { min-width: 40px; padding: 0 4px; text-align: center; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; overflow: hidden; }
-.gl-stepper__value > span { display: inline-block; }
-.gl-stepper__value > [data-roll="up"] { animation: gl-roll-up var(--gl-spring-snappy-duration) var(--gl-spring-snappy) both; }
-.gl-stepper__value > [data-roll="down"] { animation: gl-roll-down var(--gl-spring-snappy-duration) var(--gl-spring-snappy) both; }
-@keyframes gl-roll-up { from { transform: translateY(55%); opacity: 0; } 35% { opacity: 1; } to { transform: none; opacity: 1; } }
-@keyframes gl-roll-down { from { transform: translateY(-55%); opacity: 0; } 35% { opacity: 1; } to { transform: none; opacity: 1; } }
+/* odometer: the new number rolls in on the snappy spring while the old one rolls out the other way */
+.gl-stepper__value { position: relative; display: grid; min-width: 40px; height: 32px; padding: 0 4px; overflow: hidden; text-align: center; font-size: 15px; line-height: 32px; font-weight: 650; font-variant-numeric: tabular-nums;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent); }
+.gl-stepper__value > span { grid-area: 1 / 1; }
+.gl-stepper__value > [data-roll="up"] { animation: gl-roll-in-up var(--gl-spring-snappy-duration) var(--gl-spring-snappy) both; }
+.gl-stepper__value > [data-roll="down"] { animation: gl-roll-in-down var(--gl-spring-snappy-duration) var(--gl-spring-snappy) both; }
+.gl-stepper__value > [data-leave="up"] { animation: gl-roll-out-up 180ms cubic-bezier(0.4, 0, 1, 1) both; }
+.gl-stepper__value > [data-leave="down"] { animation: gl-roll-out-down 180ms cubic-bezier(0.4, 0, 1, 1) both; }
+@keyframes gl-roll-in-up { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes gl-roll-in-down { from { transform: translateY(-100%); } to { transform: none; } }
+@keyframes gl-roll-out-up { to { transform: translateY(-100%); opacity: 0; } }
+@keyframes gl-roll-out-down { to { transform: translateY(100%); opacity: 0; } }
 
 /* ============================================================================================
    Text fields

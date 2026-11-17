@@ -199,8 +199,8 @@ export const motions: Record<MotionName, Motion> = {
     gentle: { response: 0.5, damping: 0.85 }, pop: { response: 0.3, damping: 0.58 }, squash: 0.14, gel: 0.14, lag: 0.09,
   },
   playful: {
-    snappy: { response: 0.32, damping: 0.55 }, smooth: { response: 0.42, damping: 0.6 }, bouncy: { response: 0.48, damping: 0.5 },
-    gentle: { response: 0.52, damping: 0.72 }, pop: { response: 0.34, damping: 0.5 }, squash: 0.26, gel: 0.24, lag: 0.13,
+    snappy: { response: 0.3, damping: 0.6 }, smooth: { response: 0.4, damping: 0.68 }, bouncy: { response: 0.46, damping: 0.56 },
+    gentle: { response: 0.52, damping: 0.78 }, pop: { response: 0.32, damping: 0.54 }, squash: 0.22, gel: 0.2, lag: 0.12,
   },
 };
 export const defaultMotion: MotionName = 'lively';

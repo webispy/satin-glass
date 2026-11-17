@@ -32,13 +32,21 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
     const el = opts.items()[i];
     return el ? { l: el.offsetLeft, r: el.offsetLeft + el.offsetWidth, w: el.offsetWidth } : null;
   };
+  /* inner bounds of the track: an overshoot past the first/last item is stopped by the wall and squeezes the drop */
+  let lo = 0, hi = Infinity;
+  const bounds = () => {
+    const items = opts.items();
+    if (!items.length) return;
+    lo = items[0].offsetLeft; hi = items[items.length - 1].offsetLeft + items[items.length - 1].offsetWidth;
+  };
   const render = () => {
-    const w = Math.max(0, right.value - left.value);
+    const l = Math.min(hi, Math.max(lo, left.value)), r = Math.max(lo, Math.min(hi, right.value));
+    const w = Math.max(0, r - l);
     const base = geom(current)?.w || w || 1;
     const stretch = Math.max(0, w / base - 1);
     /* the drop flattens as it stretches (volume-ish), and springs back round as it pulls together */
     const sy = 1 - squash * Math.min(1, stretch * 1.4);
-    indicator.style.transform = `translate3d(${left.value.toFixed(2)}px,0,0)${sy < 0.999 ? ` scaleY(${sy.toFixed(3)})` : ''}`;
+    indicator.style.transform = `translate3d(${l.toFixed(2)}px,0,0)${sy < 0.999 ? ` scaleY(${sy.toFixed(3)})` : ''}`;
     indicator.style.width = `${w.toFixed(2)}px`;
     container.style.setProperty('--gl-stretch', stretch.toFixed(3));
   };
@@ -61,6 +69,7 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
   function moveTo(index: number, animate = true) {
     const g = geom(index);
     if (!g) return;
+    bounds();
     const first = current < 0 || !indicator.style.width;
     current = index;
     if (first || !animate || prefersReducedMotion()) { left.jump(g.l); right.jump(g.r); render(); return; }
@@ -83,7 +92,7 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
     if (!opts.draggable || ev.button !== 0) return;
     const item = (ev.target as HTMLElement).closest('[data-gl-item]') as HTMLElement | null;
     if (!item || !container.contains(item)) return;
-    pressed = true; dragging = false; pid = ev.pointerId;
+    pressed = true; dragging = false; pid = ev.pointerId; bounds();
     startX = lastX = localX(ev); lastT = performance.now(); vx = 0;
     const g = geom(current);
     grab = g ? startX - (g.l + g.r) / 2 : 0;

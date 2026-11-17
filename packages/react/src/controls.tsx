@@ -3,7 +3,7 @@ import {
   type ButtonHTMLAttributes, type CSSProperties, type ElementType, type HTMLAttributes, type InputHTMLAttributes,
   type KeyboardEvent, type ReactElement, type ReactNode, type TextareaHTMLAttributes,
 } from 'react';
-import { animate, createBridge, drag, loop, motionFor, prefersReducedMotion, Spring, type Bridge, type MotionName } from '@glass-layer/core';
+import { animate, createBridge, drag, loop, motionFor, prefersReducedMotion, Spring, springTiming, type Bridge, type MotionName } from '@glass-layer/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { glassClass, useGlassLight } from './foundation';
 import { ClearIcon, MinusIcon, PlusIcon, SearchIcon, CloseIcon } from './icons';
@@ -140,6 +140,27 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
     });
   }, [disabled, setOn]);
 
+  /* arrival: the knob meets the end of the rail and squashes against it, then rebounds — scaled by the motion
+     personality's squash (none when calm). Only the inner knob scales, so the geometry never leaves the rail. */
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    const b = el.current, knob = b?.querySelector<HTMLElement>('.gl-switch__knob');
+    if (!b || !knob || prefersReducedMotion()) return;
+    const s = motionFor(b).squash;
+    if (s <= 0) return;
+    knob.style.transformOrigin = on ? 'right center' : 'left center';
+    const { duration } = springTiming('snappy', b);
+    knob.animate([
+      { transform: 'scale(1, 1)', offset: 0 },
+      { transform: 'scale(1, 1)', offset: 0.22 },
+      { transform: `scale(${1 - s * 1.1}, ${1 + s * 0.35})`, offset: 0.4 },
+      { transform: `scale(${1 + s * 0.4}, ${1 - s * 0.15})`, offset: 0.64 },
+      { transform: `scale(${1 - s * 0.12}, 1)`, offset: 0.84 },
+      { transform: 'scale(1, 1)', offset: 1 },
+    ], { duration: Math.max(380, duration), easing: 'ease-in-out' });
+  }, [on]);
+
   return (
     <button
       ref={mergeRefs(ref, el)}
@@ -157,7 +178,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
       }}
       {...rest}
     >
-      <span className="gl-switch__thumb" />
+      <span className="gl-switch__thumb"><span className="gl-switch__knob" /></span>
     </button>
   );
 });
@@ -322,9 +343,18 @@ export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper
   const [v, setV] = useControllable(value, defaultValue, onChange);
   const vr = useRef(v); vr.current = v;            /* latest value, for hold-to-repeat */
   /* direction of the last change, for the roll: up when increasing, down when decreasing */
+  /* odometer: the new number rolls in from the side it came from, the old one rolls out the other way */
   const shown = useRef(v);
-  const dir = useRef<'up' | 'down' | undefined>(undefined);
-  if (v !== shown.current) { dir.current = v > shown.current ? 'up' : 'down'; shown.current = v; }
+  const [dir, setDir] = useState<'up' | 'down' | undefined>(undefined);
+  const [leaving, setLeaving] = useState<{ v: number; dir: 'up' | 'down'; id: number }[]>([]);
+  const seq = useRef(0);
+  useIsoLayoutEffect(() => {
+    if (v === shown.current) return;
+    const d = v > shown.current ? 'up' : 'down', old = shown.current;
+    shown.current = v;
+    setDir(d);
+    setLeaving((l) => [...l.slice(-2), { v: old, dir: d, id: ++seq.current }]);
+  }, [v]);
   const timer = useRef<{ t?: number; i?: number }>({});
   const bump = (d: number) => {
     const nv = Math.min(max, Math.max(min, Number((vr.current + d).toFixed(6))));
@@ -340,7 +370,12 @@ export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper
   return (
     <div ref={ref} role="group" aria-label={label} data-gl-motion={motion} className={cx('gl-stepper', className)} {...rest}>
       <button type="button" className="gl-stepper__btn" aria-label={`Decrease ${label}`} disabled={v <= min} onClick={() => bump(-step)} onPointerDown={hold(-step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><MinusIcon /></button>
-      <span className="gl-stepper__value" aria-live="polite"><span key={v} data-roll={dir.current}>{format(v)}</span></span>
+      <span className="gl-stepper__value" aria-live="polite">
+        {leaving.map((l) => (
+          <span key={`out-${l.id}`} data-leave={l.dir} aria-hidden="true" onAnimationEnd={() => setLeaving((xs) => xs.filter((x) => x.id !== l.id))}>{format(l.v)}</span>
+        ))}
+        <span key={v} data-roll={dir}>{format(v)}</span>
+      </span>
       <button type="button" className="gl-stepper__btn" aria-label={`Increase ${label}`} disabled={v >= max} onClick={() => bump(step)} onPointerDown={hold(step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><PlusIcon /></button>
     </div>
   );

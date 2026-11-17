@@ -224,8 +224,14 @@ await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(600);
 {
   const plus = p.getByRole('button', { name: 'Increase 인원' });
   await plus.click();
-  const roll = await p.locator('.gl-stepper__value > span').first().evaluate((e) => ({ dir: e.dataset.roll, anims: e.getAnimations().length }));
-  ok('stepper: the value rolls in from the direction it changed', roll.dir === 'up' && roll.anims > 0, JSON.stringify(roll));
+  await p.waitForTimeout(30);
+  const roll = await p.locator('.docs__page .gl-stepper__value').first().evaluate((box) => {
+    const inn = box.querySelector('[data-roll]'), out = box.querySelector('[data-leave]');
+    return { dir: inn?.dataset.roll, inAnim: inn?.getAnimations().length, out: out?.dataset.leave, outText: out?.textContent, inText: inn?.textContent };
+  });
+  await p.waitForTimeout(500);
+  const leftover = await p.locator('.docs__page .gl-stepper__value').first().evaluate((box) => box.querySelectorAll('[data-leave]').length);
+  ok('stepper: odometer — the old number rolls out up while the new one rolls in from below, then the old one is gone', roll.dir === 'up' && roll.inAnim > 0 && roll.out === 'up' && roll.outText !== roll.inText && leftover === 0, JSON.stringify({ ...roll, leftover }));
 }
 {
   const ws = await sampleAfter(`({ act: () => document.querySelector('.docs__page .gl-search input').focus(), read: () => document.querySelector('.docs__page .gl-search__cancel').getBoundingClientRect().width })`);
@@ -280,6 +286,25 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
   };
   const g = [await gel(0), await gel(1), await gel(2)];
   ok('personalities: a fast-dragged slider thumb stretches — not when calm, more when playful, and relaxes after', g[0][0] < 1.005 && g[1][0] > 1.03 && g[2][0] > g[1][0] && g.every(([, r]) => Math.abs(r - 1) < 0.01), g.map(([a, r]) => `${a.toFixed(3)}→${r.toFixed(3)}`).join(' / '));
+
+  /* switch: the knob squashes against the end on arrival (calm: no squash) */
+  const knob = async (i) => cols.nth(i).locator('.gl-switch').evaluate((sw) => new Promise((res) => {
+    const k = sw.querySelector('.gl-switch__knob'); let min = 1; const t0 = performance.now(); sw.click();
+    const f = () => { min = Math.min(min, new DOMMatrix(getComputedStyle(k).transform).a); if (performance.now() - t0 < 700) requestAnimationFrame(f); else res(min); };
+    requestAnimationFrame(f);
+  }));
+  const kn = [await knob(0), await knob(1), await knob(2)];
+  ok('personalities: the switch knob squashes against the end on arrival — none when calm, visible when lively', kn[0] > 0.999 && kn[1] < 0.88 && kn[2] < kn[1], kn.map((v) => v.toFixed(3)).join(' / '));
+
+  /* playful segmented: the drop never leaves the track, even with the bigger overshoot */
+  const out = await cols.nth(2).locator('.gl-segmented').evaluate((seg) => new Promise((res) => {
+    const ind = seg.querySelector('.gl-segmented__indicator'), items = seg.querySelectorAll('.gl-segmented__item');
+    const lo = items[0].getBoundingClientRect().left, hi = items[items.length - 1].getBoundingClientRect().right;
+    let worst = 0; const t0 = performance.now(); items[items.length - 1].click();
+    const f = () => { const r = ind.getBoundingClientRect(); worst = Math.max(worst, r.right - hi, lo - r.left); if (performance.now() - t0 < 900) requestAnimationFrame(f); else res(worst); };
+    requestAnimationFrame(f);
+  }));
+  ok('personalities: even playful, the segmented drop stays inside the track', out <= 0.5, `max outside ${out.toFixed(2)}px`);
 
   await cols.nth(2).getByRole('button', { name: '메뉴' }).click(); await p.waitForTimeout(100);
   const pm = await p.evaluate(() => document.querySelector('.gl-menu')?.closest('.gl-portal')?.getAttribute('data-gl-motion'));
