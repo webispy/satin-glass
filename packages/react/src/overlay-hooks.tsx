@@ -1,6 +1,6 @@
 /* Internal overlay plumbing shared by the overlay components (not part of the public API). */
 import { useEffect, useRef } from 'react';
-import { bloomIn, bloomOut, place, pushLayer, type Placement } from '@glass-layer/core';
+import { bloomIn, bloomOut, holdScrollLock, place, pushLayer, type Placement } from '@glass-layer/core';
 import { useIsoLayoutEffect, usePresence } from './utils';
 
 export type CloseReason = 'escape' | 'backdrop' | 'action' | 'swipe' | 'select';
@@ -31,9 +31,14 @@ export function useOverlayLifecycle(open: boolean, enter: () => Promise<void> | 
   useEffect(() => {
     if (!closing) return;
     phase.current = 'exiting';
+    /* the page stays locked until the exit animation is over (no sideways jump when the scrollbar returns) */
+    const hold = holdScrollLock();
     let alive = true;
-    exit().then(() => { if (alive && phase.current === 'exiting') { phase.current = 'idle'; done(); } });
-    return () => { alive = false; };
+    exit().then(() => {
+      if (alive && phase.current === 'exiting') { phase.current = 'idle'; done(); }
+      requestAnimationFrame(() => hold());   /* once the panel has left the screen */
+    });
+    return () => { alive = false; hold(); };
   }, [closing]);
   return { mounted, closing };
 }

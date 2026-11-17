@@ -71,12 +71,12 @@ await go('display');
   await btn.scrollIntoViewIfNeeded(); await btn.click(); await p.waitForTimeout(100);
   const busy = await page.locator('[aria-busy=true]').count();
   /* the light band: position (relative to each element's width) of two skeletons of different widths */
-  const sweep = await frames('() => {}', `() => [...document.querySelectorAll('[data-demo=skeleton] .gl-skeleton')].slice(0, 2).map((e) => { const m = new DOMMatrix(getComputedStyle(e, '::after').transform); return m.e / e.offsetWidth; })`, 600);
+  const sweep = await frames('() => {}', `() => [...document.querySelectorAll('[data-demo=skeleton] .gl-skeleton')].slice(0, 2).map((e) => { const m = new DOMMatrix(getComputedStyle(e, '::after').transform); return m.e / e.offsetWidth; })`, 1700);   /* a whole 1.6 s cycle: the band rests at the end of each pass */
   const xs = sweep.map((v) => v[0]), moving = new Set(xs.map((x) => x.toFixed(2))).size;
   const inStep = sweep.every(([a, c]) => Math.abs(a - c) < 0.02);
   const anim = await page.locator('.gl-skeleton').first().evaluate((e) => getComputedStyle(e).animationName);
   if (reduced) ok('skeleton (reduced motion): no moving band; the placeholders breathe instead', moving <= 1 && anim.includes('breathe'), `band positions ${moving}, animation ${anim}`);
-  else ok('skeleton: one band of light sweeps every placeholder in step', moving > 5 && inStep, `positions ${moving}, in step ${inStep}`);
+  else ok('skeleton: one band of light sweeps every placeholder in step', moving > 10 && inStep, `positions ${moving}, in step ${inStep}`);
   const hidden = await page.locator('.gl-skeleton, .gl-skeleton-lines').evaluateAll((xs) => xs.every((x) => x.closest('[aria-hidden=true]')));
   ok('skeleton: placeholders are hidden from screen readers; the region is aria-busy', hidden && busy === 1);
   await p.waitForTimeout(2000);

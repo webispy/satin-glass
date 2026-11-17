@@ -297,6 +297,46 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   await p.context().close();
 }
 
+/* ================================================================ classic scrollbars: nothing jumps when the page lock comes and goes */
+{
+  /* headless browsers hide scrollbars by default; a visible 15 px scrollbar is what exposes the jump */
+  const sb = await pw[engine].launch(engine === 'chromium' ? { ignoreDefaultArgs: ['--hide-scrollbars'] } : {});
+  const p = await sb.newPage({ viewport: { width: 1280, height: 900 } });
+  await p.goto(U('overlays')); await p.waitForTimeout(700);
+  const width = await p.evaluate(() => innerWidth - document.documentElement.clientWidth);
+  if (!width) console.log(`SKIP classic scrollbars: ${engine} headless shows no scrollbar here`);
+  else {
+    /* centre of the panel in every frame while it closes */
+    /* [centre while open, …centres in every frame while it closes] */
+    const closing = (sel) => p.evaluate((sel) => new Promise((res) => {
+      const o = document.querySelector(sel).getBoundingClientRect();
+      const out = [o.left + o.width / 2]; const t0 = performance.now();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      const f = () => { const el = document.querySelector(sel); if (el && +getComputedStyle(el).opacity > 0.02) { const r = el.getBoundingClientRect(); out.push(r.left + r.width / 2); } if (performance.now() - t0 < 500) requestAnimationFrame(f); else res(out); };
+      requestAnimationFrame(f);
+    }), sel);
+    const pageX = () => p.evaluate(() => document.querySelector('.docs__page h1, .docs__page header').getBoundingClientRect().left);
+    for (const [name, open, sel] of [
+      ['sheet (dialog on wide screens)', () => p.getByRole('button', { name: '장소 편집' }).click(), '.gl-sheet'],
+      ['dialog', () => p.getByRole('button', { name: '장소 삭제…' }).click(), '[role=alertdialog]'],
+    ]) {
+      const x0 = await pageX();
+      await open(); await p.waitForTimeout(800);
+      const x1 = await pageX();
+      const xs = await closing(sel); await p.waitForTimeout(500);
+      const spread = Math.max(...xs.map((x) => Math.abs(x - xs[0])));
+      ok(`classic ${width} px scrollbar — ${name}: the page behind does not shift when it opens, and the panel does not slide sideways while it closes`, Math.abs(x1 - x0) < 0.5 && xs.length >= 4 && spread < 0.5, `page ${x0.toFixed(1)} → ${x1.toFixed(1)}, panel centre moves up to ${spread.toFixed(1)} px from where it was open (${xs.length - 1} frames)`);
+    }
+    await p.goto(U('display')); await p.waitForTimeout(700);
+    await p.locator('[data-demo=media] button').nth(0).scrollIntoViewIfNeeded(); await p.locator('[data-demo=media] button').nth(0).click(); await p.waitForTimeout(800);
+    const cx = await p.evaluate(() => new Promise((res) => { const out = [document.querySelector('.gl-media__stage').getBoundingClientRect().width]; const t0 = performance.now(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      const f = () => { const s = document.querySelector('.gl-media__stage'); if (s) out.push(s.getBoundingClientRect().width); if (performance.now() - t0 < 400) requestAnimationFrame(f); else res(out); }; requestAnimationFrame(f); }));
+    ok(`classic scrollbar — media viewer: its stage keeps its width while it closes`, new Set(cx.map((w) => Math.round(w))).size <= 1, [...new Set(cx.map((w) => Math.round(w)))].join(', '));
+    ok('classic scrollbar: afterwards the page scrolls again and its scrollbar is back', await p.evaluate(() => getComputedStyle(document.body).overflow !== 'hidden' && innerWidth - document.documentElement.clientWidth > 0));
+  }
+  await sb.close();
+}
+
 /* ================================================================ 320 px reflow (≈ 400 % zoom) */
 {
   const p = await newPage({ viewport: { width: 320, height: 640 } });

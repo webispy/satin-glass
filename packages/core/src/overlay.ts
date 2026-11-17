@@ -91,10 +91,10 @@ export function trapFocus(root: HTMLElement, initial?: HTMLElement | null): () =
 /* ---------------------------------------------------------------- layer stack (Esc order, scroll lock) */
 type Layer = { onEscape: () => void; modal: boolean };
 const stack: Layer[] = [];
-let locked = false, savedPad = '', savedOverflow = '';
+let locked = false, savedPad = '', savedOverflow = '', holds = 0;
 
 function syncLock() {
-  const need = stack.some((l) => l.modal);
+  const need = stack.some((l) => l.modal) || holds > 0;
   if (need === locked) return;
   locked = need;
   const b = document.body;
@@ -125,3 +125,13 @@ export function pushLayer(onEscape: () => void, modal: boolean): () => void {
   };
 }
 export const topLayerCount = () => stack.length;
+
+/** Keeps the page's scroll lock (if there is one) until the returned release is called — for an overlay's exit
+    animation. Unlocking brings the scrollbar back, which narrows the window: a centred panel still fading out
+    would jump sideways by half the scrollbar's width. Release is idempotent. */
+export function holdScrollLock(): () => void {
+  if (!locked) return () => {};
+  holds++;
+  let done = false;
+  return () => { if (done) return; done = true; holds--; syncLock(); };
+}
