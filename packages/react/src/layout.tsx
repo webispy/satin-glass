@@ -120,9 +120,13 @@ export function ScrollFade({ edge = 'top', className, style }: { edge?: 'top' | 
 }
 
 /* ================================================================================================ Sidebar */
-export const Sidebar = forwardRef<HTMLElement, HTMLAttributes<HTMLElement> & { glass?: boolean }>(function Sidebar({ glass = true, className, ...rest }, ref) {
+export const Sidebar = forwardRef<HTMLElement, HTMLAttributes<HTMLElement> & { glass?: boolean }>(function Sidebar({ glass = true, className, children, ...rest }, ref) {
   const lightRef = useGlassLight(glass);
-  return <nav ref={mergeRefs(ref, lightRef)} className={cx('gl-sidebar', glass && glassClass('regular'), className)} {...rest} />;
+  return (
+    <nav ref={mergeRefs(ref, lightRef)} className={cx('gl-sidebar', glass && glassClass('regular'), className)} {...rest}>
+      <div className="gl-sidebar__scroll">{children}</div>
+    </nav>
+  );
 });
 export function SidebarSection({ children }: { children: ReactNode }) {
   return <div className="gl-sidebar__section">{children}</div>;

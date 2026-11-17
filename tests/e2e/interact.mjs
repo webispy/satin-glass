@@ -332,6 +332,33 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
 }
 
+/* ---------- the pointer highlight never creates scrollbars: no glass surface scrolls itself ---------- */
+{
+  const offenders = [];
+  for (const id of ['overview', 'material', 'buttons', 'inputs', 'navigation', 'lists', 'overlays', 'motion', 'showcase']) {
+    await p.goto(`http://localhost:4173/#/${id}`); await p.waitForTimeout(400);
+    offenders.push(...await p.evaluate((id) => [...document.querySelectorAll('.gl-glass')].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowX + getComputedStyle(e).overflowY)).map((e) => `${id}: ${e.className}`), id));
+  }
+  /* open a menu and a dialog too (they are rendered on demand) */
+  await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(400);
+  await p.getByRole('button', { name: '길찾기' }).click(); await p.waitForTimeout(400);
+  offenders.push(...await p.evaluate(() => [...document.querySelectorAll('.gl-menu')].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowY)).map((e) => 'menu: ' + e.className)));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+  await p.getByRole('button', { name: '장소 삭제…' }).click(); await p.waitForTimeout(500);
+  offenders.push(...await p.evaluate(() => [...document.querySelectorAll('.gl-dialog')].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowY)).map((e) => 'dialog: ' + e.className)));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+  ok('glass surfaces clip and never scroll themselves (so the light cannot add scrollbars)', offenders.length === 0, offenders.slice(0, 4).join(' | '));
+
+  /* sweep the pointer along the docs sidebar's bottom and right edges: its scroll area must not change */
+  const sc = p.locator('.docs__nav .gl-sidebar__scroll');
+  const size = () => sc.evaluate((e) => [e.scrollWidth - e.clientWidth, e.scrollHeight]);
+  const before = await size(), box = await p.locator('.docs__nav .gl-sidebar').boundingBox();
+  for (let i = 0; i <= 12; i++) { await p.mouse.move(box.x + box.width - 3, box.y + (box.height * i) / 12); await p.waitForTimeout(16); }
+  for (let i = 0; i <= 12; i++) { await p.mouse.move(box.x + (box.width * i) / 12, box.y + box.height - 3); await p.waitForTimeout(16); }
+  const after = await size();
+  ok('sidebar: no scrollbar appears when the pointer light reaches its edges', after[0] <= 0 && after[1] === before[1], `before ${before} after ${after}`);
+}
+
 console.log('page errors:', errs.length ? errs : 'none');
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');
 await b.close();

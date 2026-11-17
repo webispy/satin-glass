@@ -80,7 +80,9 @@
 /* ============================================================================================
    Sidebar (tablet / desktop): a glass column inset from the window edge
    ============================================================================================ */
-.gl-sidebar { display: flex; flex-direction: column; gap: 2px; width: 260px; padding: 10px; overflow: auto; --_radius: var(--gl-radius-xl); }
+/* the glass clips; an inner element scrolls (a scrolling glass would let its pointer highlight grow the scroll area) */
+.gl-sidebar { display: flex; flex-direction: column; width: 260px; --_radius: var(--gl-radius-xl); }
+.gl-sidebar__scroll { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px; overflow: auto; overscroll-behavior: contain; border-radius: inherit; }
 .gl-sidebar__section { margin: 14px 10px 4px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--gl-label-tertiary); letter-spacing: 0.02em; }
 .gl-sidebar__item {
   appearance: none; border: 0; margin: 0; font: inherit; width: 100%; text-align: left;

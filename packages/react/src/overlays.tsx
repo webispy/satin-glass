@@ -71,10 +71,12 @@ export function Dialog({ open, onClose, title, children, icon, tone = 'accent', 
       <div ref={scrim} className="gl-scrim" onClick={() => dismissible && onClose('backdrop')} />
       <div className="gl-dialog-wrap">
         <div ref={mergeRefs(panel, lightRef)} role={role} aria-modal="true" aria-labelledby={`${id}-t`} aria-describedby={children ? `${id}-b` : undefined} className={cx('gl-dialog', glassClass('strong'), className)}>
-          {icon && <div className="gl-dialog__icon" data-tone={tone}>{icon}</div>}
-          <h2 id={`${id}-t`} className="gl-dialog__title">{title}</h2>
-          {children && <div id={`${id}-b`} className="gl-dialog__body">{children}</div>}
-          {actions && <div className={cx('gl-dialog__actions', many && 'gl-dialog__actions--stacked')}>{actions}</div>}
+          <div className="gl-dialog__scroll">
+            {icon && <div className="gl-dialog__icon" data-tone={tone}>{icon}</div>}
+            <h2 id={`${id}-t`} className="gl-dialog__title">{title}</h2>
+            {children && <div id={`${id}-b`} className="gl-dialog__body">{children}</div>}
+            {actions && <div className={cx('gl-dialog__actions', many && 'gl-dialog__actions--stacked')}>{actions}</div>}
+          </div>
         </div>
       </div>
     </Portal></MotionScope>
