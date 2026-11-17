@@ -6,7 +6,9 @@ const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
-p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+/* our own errors only: a third-party resource (the font CDN) failing is reported separately, not as a page error */
+const external = [];
+p.on('console', (m) => { if (m.type() !== 'error') return; const url = m.location()?.url ?? ''; if (url && !url.includes('localhost')) external.push(`${m.text()} (${url})`); else errs.push(m.text()); });
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
 const shot = async (n) => out && p.screenshot({ path: `${out}/i-${n}.png` });
@@ -381,6 +383,7 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
 }
 
 console.log('page errors:', errs.length ? errs : 'none');
+if (external.length) console.log('external resources failed (not counted):', [...new Set(external)].slice(0, 3));
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');
 await b.close();
 process.exitCode = failed ? 1 : 0;

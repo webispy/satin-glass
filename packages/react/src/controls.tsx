@@ -138,10 +138,17 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
   const go = (toggle: boolean) => {
     const e = eng.current, b = el.current;
     if (!e || !b) return;
-    const isOn = onRef.current, reach = pressedRef.current ? e.reach : 0;
+    /* reduced motion: no reach on press and a rigid knob (both edges on the same short spring, no push) —
+       it still slides, briefly and without overshoot, rather than snapping in three steps */
+    const reduced = prefersReducedMotion(b);
+    const isOn = onRef.current, reach = pressedRef.current && !reduced ? e.reach : 0;
     const tl = isOn ? e.W - e.pad - e.T - reach : e.pad;
     const tr = isOn ? e.W - e.pad : e.pad + e.T + reach;
-    if (prefersReducedMotion(b)) { e.L.jump(tl); e.R.jump(tr); render(); return; }
+    if (reduced) {
+      const m = motionFor(b).snappy;
+      e.L.set(m); e.R.set(m); e.L.target = tl; e.R.target = tr; run();
+      return;
+    }
     /* short travel, quick spring: a switch moves ~20 px where a segmented control moves ~90, so it uses the
        personality's snappy spring at 0.62× response (same character, same overshoot) — otherwise it covers a
        quarter of the distance in the same time and reads as sluggish. A toggle also gets an initial push so it
@@ -186,6 +193,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
         dragged.current = false; engaged = false; startOn = onRef.current;
         const e = eng.current!;
         Object.assign(e, geom());
+        if (prefersReducedMotion(b)) e.reach = 0;
         const wide = e.T + e.reach;
         c0 = startOn ? e.W - e.pad - wide / 2 : e.pad + wide / 2;
         box = b.getBoundingClientRect();
@@ -301,7 +309,7 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
   const travelTo = (px: number, how: 'spring' | 'jump') => {
     const m = motor.current, s = el.current;
     if (!m || !s) return;
-    if (how === 'jump' || prefersReducedMotion(s)) { m.stop?.(); m.stop = null; m.pos.jump(px); render(); return; }
+    if (how === 'jump') { m.stop?.(); m.stop = null; m.pos.jump(px); render(); return; }
     m.pos.set('snappy', s); m.pos.target = px; run();
   };
 
@@ -646,8 +654,9 @@ export function Badge({ children, tone = 'danger', dot, max = 99, className, ...
   useEffect(() => {
     const b = el.current;
     if (!b) return;
-    if (!mounted.current) { mounted.current = true; animate(b, [{ transform: 'scale(0.4)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], 'bouncy'); }
-    else if (prev.current !== shown) animate(b, [{ transform: 'scale(1.28)' }, { transform: 'scale(1)' }], 'bouncy');
+    const reduced = prefersReducedMotion(b);
+    if (!mounted.current) { mounted.current = true; animate(b, reduced ? [{ opacity: 0 }, { opacity: 1 }] : [{ transform: 'scale(0.4)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], 'bouncy'); }
+    else if (prev.current !== shown && !reduced) animate(b, [{ transform: 'scale(1.28)' }, { transform: 'scale(1)' }], 'bouncy');
     prev.current = shown;
   }, [shown]);
   return <span ref={el} className={cx('gl-badge', tone !== 'danger' && `gl-badge--${tone}`, dot && 'gl-badge--dot', className)} {...rest}>{dot ? null : shown}</span>;
@@ -692,7 +701,6 @@ export function Progress({ value, max = 100, size = 'md', label = 'Progress', mo
     const draw = (v: number) => bar.style.setProperty('--_p', Math.min(1, Math.max(0, v)).toFixed(4));
     if (!eng.current) { eng.current = { s: new Spring(p, 'smooth', d), stop: null }; draw(p); return; }
     const e = eng.current;
-    if (prefersReducedMotion(d)) { e.stop?.(); e.stop = null; e.s.jump(p); draw(p); return; }
     e.s.set('smooth', d); e.s.target = p;
     if (!e.stop) e.stop = loop((dt) => { e.s.step(dt); draw(e.s.value); if (Math.abs(e.s.value - e.s.target) < 0.0005 && Math.abs(e.s.velocity) < 0.005) { e.s.jump(e.s.target); draw(e.s.target); e.stop = null; return false; } });
   }, [p, indeterminate]);

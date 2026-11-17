@@ -50,17 +50,35 @@
 /* the shared focus ring (keyboard only) */
 .gl-focusable:focus-visible, .gl-root :where(button, [href], [tabindex]):focus-visible { outline: none; box-shadow: var(--gl-ring); }
 
-/* reduce motion: CSS springs collapse to instant. Forced by [data-gl-reduce-motion="true"] (theme option, e.g. a
-   VDI / remote-desktop session where animation streams badly), or the system setting unless a theme says "false".
-   Essential progress indicators keep moving, slowly and without travel. */
-[data-gl-reduce-motion="true"] *, [data-gl-reduce-motion="true"] *::before, [data-gl-reduce-motion="true"] *::after { transition-duration: 0s !important; transition-delay: 0s !important; animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+/* Reduced motion (theme.reduceMotion, e.g. a VDI / remote-desktop session, or the system setting unless a theme
+   says "false"). Not "everything instant" — a control snapping through several states in a few frames reads as
+   stutter. Instead: --gl-spring-* become a short, critically damped curve (tokens.css), so small state changes
+   still slide briefly without overshoot; anything that travels, grows or bounces becomes a fade; squash, gel,
+   press-in and the pointer light are off; progress indicators keep moving gently. */
+[data-gl-reduce-motion="true"] .gl-stepper__value > [data-roll] { animation-name: gl-fade-in-plain; }
+[data-gl-reduce-motion="true"] .gl-stepper__value > [data-leave] { animation-name: gl-fade-out-plain; }
+[data-gl-reduce-motion="true"] .gl-field__clear, [data-gl-reduce-motion="true"] .gl-button__spinner { animation-name: gl-fade-in-plain; }
+[data-gl-reduce-motion="true"] .gl-search__cancel { transform: none; }
+[data-gl-reduce-motion="true"] .gl-pressable:active, [data-gl-reduce-motion="true"] .gl-pressable.is-pressed, [data-gl-reduce-motion="true"] .gl-button:active:not(:disabled), [data-gl-reduce-motion="true"] .gl-chip:active, [data-gl-reduce-motion="true"] .gl-card--interactive:active,
+[data-gl-reduce-motion="true"] .gl-stepper__btn:active:not(:disabled), [data-gl-reduce-motion="true"] .gl-tabbar__item:active .gl-tabbar__icon { transform: none !important; }
+[data-gl-reduce-motion="true"] .gl-glass::after { display: none; }
+[data-gl-reduce-motion="true"] .gl-slider.is-active .gl-slider__thumb { --_s: 1; }
+[data-gl-reduce-motion="true"] .gl-slider__bubble, [data-gl-reduce-motion="true"] .gl-slider.is-active .gl-slider__bubble { transform: none; }
+[data-gl-reduce-motion="true"] .gl-spinner { animation: gl-spin 1.4s linear infinite; }
+[data-gl-reduce-motion="true"] .gl-progress--indeterminate .gl-progress__bar { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .gl-root:not([data-gl-reduce-motion="false"]) *, .gl-root:not([data-gl-reduce-motion="false"]) *::before, .gl-root:not([data-gl-reduce-motion="false"]) *::after { transition-duration: 0s !important; transition-delay: 0s !important; animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__value > [data-roll] { animation-name: gl-fade-in-plain; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__value > [data-leave] { animation-name: gl-fade-out-plain; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-field__clear, .gl-root:not([data-gl-reduce-motion="false"]) .gl-button__spinner { animation-name: gl-fade-in-plain; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-search__cancel { transform: none; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-pressable:active, .gl-root:not([data-gl-reduce-motion="false"]) .gl-pressable.is-pressed, .gl-root:not([data-gl-reduce-motion="false"]) .gl-button:active:not(:disabled), .gl-root:not([data-gl-reduce-motion="false"]) .gl-chip:active, .gl-root:not([data-gl-reduce-motion="false"]) .gl-card--interactive:active,
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__btn:active:not(:disabled), .gl-root:not([data-gl-reduce-motion="false"]) .gl-tabbar__item:active .gl-tabbar__icon { transform: none !important; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-glass::after { display: none; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-slider.is-active .gl-slider__thumb { --_s: 1; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-slider__bubble, .gl-root:not([data-gl-reduce-motion="false"]) .gl-slider.is-active .gl-slider__bubble { transform: none; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-spinner { animation: gl-spin 1.4s linear infinite; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-progress--indeterminate .gl-progress__bar { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite; }
 }
-[data-gl-reduce-motion="true"] .gl-spinner { animation: gl-spin 1.4s linear infinite !important; }
-[data-gl-reduce-motion="true"] .gl-progress--indeterminate .gl-progress__bar { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite !important; }
-@media (prefers-reduced-motion: reduce) {
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-spinner { animation: gl-spin 1.4s linear infinite !important; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-progress--indeterminate .gl-progress__bar { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite !important; }
-}
+@keyframes gl-fade-in-plain { from { opacity: 0; } }
+@keyframes gl-fade-out-plain { to { opacity: 0; } }
 @keyframes gl-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.7; } }

@@ -1,9 +1,9 @@
 import {
-  springs, motions, defaultMotion, springAt, springDuration, springEasing,
+  springs, motions, defaultMotion, reducedMotion, springAt, springDuration, springEasing,
   type SpringParams, type SpringName, type MotionName, type Motion,
 } from '@glass-layer/tokens';
 
-export { springs, motions, defaultMotion, springAt, springDuration, springEasing };
+export { springs, motions, defaultMotion, reducedMotion, springAt, springDuration, springEasing };
 export type { SpringParams, SpringName, MotionName, Motion };
 
 /** The motion personality in effect for an element: the nearest [data-gl-motion], else the default. */
@@ -11,7 +11,8 @@ export function motionOf(el?: Element | null): MotionName {
   const m = el?.closest?.('[data-gl-motion]')?.getAttribute('data-gl-motion');
   return m && m in motions ? (m as MotionName) : defaultMotion;
 }
-export const motionFor = (el?: Element | null): Motion => motions[motionOf(el)];
+/** The motion in effect for `el`: its personality, or the reduced motion when motion is reduced there. */
+export const motionFor = (el?: Element | null): Motion => (prefersReducedMotion(el) ? reducedMotion : motions[motionOf(el)]);
 
 const params = (s: SpringName | SpringParams, el?: Element | null): SpringParams => (typeof s === 'string' ? motionFor(el)[s] : s);
 
@@ -83,7 +84,7 @@ export function springTiming(s: SpringName | SpringParams, el?: Element | null):
   const p = params(s, el), key = `${p.response}/${p.damping}`;
   let t = cache.get(key);
   if (!t) { t = { duration: springDuration(p), easing: springEasing(p) }; cache.set(key, t); }
-  return prefersReducedMotion(el) ? { duration: 1, easing: 'linear' } : t;
+  return t;   /* reduced motion arrives here as the short, non-bouncing reducedMotion springs (see motionFor) */
 }
 
 /** element.animate with a spring; resolves when finished (or immediately if cancelled). */

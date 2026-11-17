@@ -204,6 +204,11 @@ export const motions: Record<MotionName, Motion> = {
   },
 };
 export const defaultMotion: MotionName = 'lively';
+/* Reduced motion (system setting or theme.reduceMotion): small state changes still move, briefly and without
+   overshoot (critically damped, ~110 ms to 90 %); squash, stretch, gel and lag are off. Large movements
+   (sheets, blooming menus, sliding toasts) are replaced by fades in the components. */
+const calmest = { response: 0.18, damping: 1 };
+export const reducedMotion: Motion = { snappy: calmest, smooth: calmest, bouncy: calmest, gentle: calmest, pop: calmest, squash: 0, gel: 0, lag: 0 };
 /** The default personality's springs (kept for direct use). */
 export const springs: Record<SpringName, SpringParams> = {
   snappy: motions.lively.snappy, smooth: motions.lively.smooth, bouncy: motions.lively.bouncy, gentle: motions.lively.gentle, pop: motions.lively.pop,

@@ -4,7 +4,7 @@
    new item. While dragged it follows the finger inside the bar, stretched toward the direction of travel.
    Only the indicator (a plain fill, no backdrop filter) is touched per frame, inside a contained container.
    Gesture state goes on data attributes (not classes) so a framework re-render never strips it mid-gesture. */
-import { Spring, loop, prefersReducedMotion, motionFor } from './motion';
+import { Spring, loop, motionFor } from './motion';
 
 export type BridgeOptions = {
   items: () => HTMLElement[];
@@ -72,7 +72,7 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
     bounds();
     const first = current < 0 || !indicator.style.width;
     current = index;
-    if (first || !animate || prefersReducedMotion(container)) { left.jump(g.l); right.jump(g.r); render(); return; }
+    if (first || !animate) { left.jump(g.l); right.jump(g.r); render(); return; }
     lead(Math.sign(g.l - left.target));
     left.target = g.l; right.target = g.r;
     run();

@@ -1,7 +1,7 @@
 /* Generates dist/tokens.css from src/index.ts and checks contrast. Run: tsx scripts/build-css.ts */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
-  palette, themes, space, radius, font, typography, size, material, z, motions, defaultMotion, SPRING_NAMES, springEasing, springDuration,
+  palette, themes, space, radius, font, typography, size, material, z, motions, defaultMotion, reducedMotion, SPRING_NAMES, springEasing, springDuration,
   duration, easing, contrast, type ThemeName,
 } from '../src/index';
 
@@ -35,6 +35,9 @@ root.push(decl('shadow-md', '0 1px 3px rgba(var(--gl-shadow-color), calc(0.07 * 
 root.push(decl('shadow-lg', '0 2px 6px rgba(var(--gl-shadow-color), calc(0.08 * var(--gl-shadow-strength))), 0 20px 48px rgba(var(--gl-shadow-color), calc(0.16 * var(--gl-shadow-strength)))'));
 out.push(':root {', ...root, '}');
 for (const [name, m] of Object.entries(motions)) out.push(`[data-gl-motion="${name}"] {`, ...motionDecls(m), '}');
+/* reduced motion wins over any personality: forced by the theme, or by the system unless the theme says "false" */
+out.push('[data-gl-reduce-motion="true"], [data-gl-reduce-motion="true"] [data-gl-motion] {', ...motionDecls(reducedMotion), '}');
+out.push('@media (prefers-reduced-motion: reduce) {', '  .gl-root:not([data-gl-reduce-motion="false"]), .gl-root:not([data-gl-reduce-motion="false"]) [data-gl-motion] {', ...motionDecls(reducedMotion).map((l) => '  ' + l), '  }', '}');
 
 const block = (sel: string, t: ThemeName, scheme: 'light' | 'dark') =>
   [`${sel} {`, `  color-scheme: ${scheme};`, ...Object.entries(themes[t]).map(([k, v]) => decl(k, v)), '}'].join('\n');

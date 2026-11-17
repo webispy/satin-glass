@@ -2,7 +2,7 @@ import {
   Children, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
   type HTMLAttributes, type KeyboardEvent, type ReactElement, type ReactNode,
 } from 'react';
-import { animate, bloomIn, bloomOut, drag, focusables, longPress, place, prefersReducedMotion, pushLayer, trapFocus, type Placement } from '@glass-layer/core';
+import { animate, bloomIn, bloomOut, drag, fade, focusables, longPress, place, prefersReducedMotion, pushLayer, trapFocus, type Placement } from '@glass-layer/core';
 import { cx, mergeRefs, useIsoLayoutEffect, usePresence, useStableId } from './utils';
 import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
 import type { MotionName } from '@glass-layer/core';
@@ -138,7 +138,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
     });
     release.current = () => { pop(); trap(); off(); };
     if (wide()) return bloomIn(p, { x: p.offsetWidth / 2, y: p.offsetHeight / 2 }, 0.94);
-    if (prefersReducedMotion(p)) return;
+    if (prefersReducedMotion(p)) return fade(p, 0, 1, 140);   /* reduced: appears in place */
     return animate(p, [{ transform: 'translateY(calc(100% + 24px))' }, { transform: 'none' }], 'gentle').finished.then(() => undefined, () => undefined);
   }, () => {
     release.current();
@@ -148,7 +148,8 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
     if (wide() && !swiped.current) return bloomOut(p, 0.96);
     const from = p.style.transform || 'none';
     p.getAnimations().forEach((a) => a.cancel());
-    return p.animate([{ transform: from }, { transform: 'translateY(calc(100% + 24px))' }], { duration: prefersReducedMotion(p) ? 1 : 260, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' }).finished.then(() => undefined, () => undefined);
+    if (prefersReducedMotion(p)) return fade(p, 1, 0, 110);
+    return p.animate([{ transform: from }, { transform: 'translateY(calc(100% + 24px))' }], { duration: 260, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' }).finished.then(() => undefined, () => undefined);
   });
   if (!mounted) return null;
   return (
@@ -323,12 +324,13 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
     const pop = pushLayer(() => onClose('escape'), true);
     const trap = trapFocus(b, b.querySelector<HTMLElement>('[data-cancel]'));
     release.current = () => { pop(); trap(); };
-    if (prefersReducedMotion(b)) return;
+    if (prefersReducedMotion(b)) return fade(b, 0, 1, 140);
     return animate(b, [{ transform: 'translateY(calc(100% + 24px))' }, { transform: 'none' }], 'smooth').finished.then(() => undefined, () => undefined);
   }, () => {
     release.current();
     scrim.current?.classList.remove('is-open');
-    return box.current!.animate([{ transform: 'none' }, { transform: 'translateY(calc(100% + 24px))' }], { duration: prefersReducedMotion(box.current) ? 1 : 220, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' }).finished.then(() => undefined, () => undefined);
+    if (prefersReducedMotion(box.current)) return fade(box.current!, 1, 0, 110);
+    return box.current!.animate([{ transform: 'none' }, { transform: 'translateY(calc(100% + 24px))' }], { duration: 220, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' }).finished.then(() => undefined, () => undefined);
   });
   if (!mounted) return null;
   return (
@@ -392,7 +394,7 @@ export function ContextMenu({ menu, children, previewSelector, 'aria-label': lab
   useIsoLayoutEffect(() => {
     if (!state.open || !lift.current) return;
     scrim.current?.classList.add('is-open');
-    animate(lift.current, [{ transform: 'scale(1)' }, { transform: 'scale(1.03)' }], 'bouncy');
+    if (!prefersReducedMotion(lift.current)) animate(lift.current, [{ transform: 'scale(1)' }, { transform: 'scale(1.03)' }], 'bouncy');
   }, [state.open]);
   const close = () => {
     scrim.current?.classList.remove('is-open');
@@ -455,12 +457,14 @@ function ToastView({ t, edge, onDone }: { t: ToastItem; edge: 'top' | 'bottom'; 
     if (leaving.current || !el.current) return;
     leaving.current = true;
     const from = el.current.style.transform || 'none';
-    el.current.animate([{ transform: from, opacity: 1 }, { transform: `translateY(${sign * 24}px) scale(0.96)`, opacity: 0 }], { duration: prefersReducedMotion(el.current) ? 1 : 200, easing: 'cubic-bezier(0.4,0,1,1)', fill: 'both' })
+    const reduced = prefersReducedMotion(el.current);
+    el.current.animate(reduced ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: from, opacity: 1 }, { transform: `translateY(${sign * 24}px) scale(0.96)`, opacity: 0 }], { duration: reduced ? 140 : 200, easing: 'cubic-bezier(0.4,0,1,1)', fill: 'both' })
       .finished.then(onDone, onDone);
   }, [onDone, sign]);
   useIsoLayoutEffect(() => {
     const e = el.current!;
-    animate(e, [{ transform: `translateY(${sign * 28}px) scale(0.94)`, opacity: 0 }, { transform: 'none', opacity: 1 }], 'bouncy');
+    if (prefersReducedMotion(e)) fade(e, 0, 1, 140);
+    else animate(e, [{ transform: `translateY(${sign * 28}px) scale(0.94)`, opacity: 0 }, { transform: 'none', opacity: 1 }], 'bouncy');
     const timer = window.setTimeout(leave, t.duration ?? 4000);
     /* swipe toward the edge to dismiss */
     const off = drag(e, {
