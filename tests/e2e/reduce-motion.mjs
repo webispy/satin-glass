@@ -157,6 +157,19 @@ async function check(label, setup) {
   await p.mouse.up(); await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   ok(`${label}: context menu — the item does not lift (no zoom)`, still(lift), JSON.stringify(lift));
 
+  await go('selection');
+  const sel = await watch(`() => document.querySelectorAll('[role=combobox]')[0].click()`, '.gl-listbox', 300);
+  ok(`${label}: select — the list fades in place (no blooming)`, still(sel), JSON.stringify(sel));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+  const tickDraw = await trace(p, `() => document.querySelectorAll('.gl-check__input')[6].click()`, `() => parseFloat(getComputedStyle(document.querySelectorAll('.gl-check__tick')[6]).strokeDashoffset)`, 300);
+  ok(`${label}: checkbox — the tick appears without drawing`, tickDraw.every(([, x]) => x === 0), `dashoffsets ${[...new Set(tickDraw.map(([, x]) => x))].slice(0, 4)}`);
+  const dot = await watch(`() => document.querySelectorAll('.gl-check--radio .gl-check__input')[1].click()`, '.gl-check--radio .gl-check__dot', 300);
+  ok(`${label}: radio — the dot appears without growing`, dot.scale < 0.005, JSON.stringify(dot));
+  await p.getByRole('button', { name: /방문 날짜/ }).click(); await p.waitForTimeout(400);
+  const cal = await watch(`() => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true }))`, '.gl-datepicker-panel .gl-calendar__body', 350);
+  ok(`${label}: calendar — the next month fades in (no sliding)`, still(cal), JSON.stringify(cal));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+
   await go('material');
   for (let i = 0; i < 8; i++) { await p.mouse.move(400 + i * 30, 400); await p.waitForTimeout(16); }
   const hk = await p.locator('.docs__page .gl-glass').first().evaluate((e) => ({ k: getComputedStyle(e).getPropertyValue('--gl-hk') || '0', shown: getComputedStyle(e, '::after').display }));

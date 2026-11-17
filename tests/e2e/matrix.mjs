@@ -7,7 +7,7 @@ import * as pw from 'playwright';
 const out = process.argv[2];
 const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
-const PAGES = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'navigation', 'lists', 'overlays', 'showcase', 'lab'];
+const PAGES = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'overlays', 'showcase', 'lab'];
 const WIDTHS = [1280, 390];
 const all = [];
 for (const mode of ['light', 'dark']) for (const hc of [0, 1]) for (const rt of [0, 1]) for (const rm of [0, 1]) all.push({ mode, hc, rt, rm });
@@ -57,6 +57,7 @@ for (const c of combos) {
           if (cs.display === 'none' || cs.visibility === 'hidden') continue;
           const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
           if (!own) continue;
+          if (el.closest('.gl-visually-hidden')) continue;   /* screen-reader-only text is meant to be clipped */
           const rect = el.getBoundingClientRect();
           if (rect.width === 0 || rect.height === 0) continue;
           /* disabled text and decorative copies are exempt (WCAG 1.4.3) */

@@ -5,11 +5,12 @@ import './docs.css';
 import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, IconButton, Popover, Toaster, type ThemeMode } from '@glass-layer/react';
 import { DisplaySettingsProvider, DisplaySettingsBar, DisplaySettingsList } from './settings';
 import type { MotionName } from '@glass-layer/tokens';
-import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical } from 'lucide-react';
+import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical, ListChecks } from 'lucide-react';
 import { Overview, Colors, Typography, Motion, Material } from './pages/foundations';
 import { Buttons, Inputs, Navigation, Lists, Overlays } from './pages/components';
 import { Showcase } from './pages/showcase';
 import { Lab } from './pages/lab';
+import { Selection } from './pages/selection';
 
 const PAGES = [
   { id: 'overview', label: '소개', icon: Layers, el: Overview, group: '기초' },
@@ -19,6 +20,7 @@ const PAGES = [
   { id: 'motion', label: '모션', icon: Waves, el: Motion, group: '기초' },
   { id: 'buttons', label: '버튼', icon: MousePointerClick, el: Buttons, group: '컴포넌트' },
   { id: 'inputs', label: '입력', icon: TextCursorInput, el: Inputs, group: '컴포넌트' },
+  { id: 'selection', label: '선택', icon: ListChecks, el: Selection, group: '컴포넌트' },
   { id: 'navigation', label: '내비게이션', icon: NavIcon, el: Navigation, group: '컴포넌트' },
   { id: 'lists', label: '목록과 표시', icon: ListIcon, el: Lists, group: '컴포넌트' },
   { id: 'overlays', label: '오버레이', icon: PanelTop, el: Overlays, group: '컴포넌트' },

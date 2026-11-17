@@ -164,6 +164,60 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   await p.context().close();
 }
 
+/* ================================================================ selection components */
+{
+  const p = await newPage();
+  await p.goto(U('lab')); await settle(p, 700);
+  const box = lab(p, 'select');
+  const long = box.getByRole('combobox', { name: /긴 항목 40개/ });
+  await long.scrollIntoViewIfNeeded();
+  for (let i = 0; i < 7; i++) await long.click({ delay: 0 });
+  await settle(p, 700);
+  ok('select: 7 rapid clicks → exactly one list', (await p.getByRole('listbox').count()) === 1);
+  const fit = await p.evaluate(() => { const r = document.querySelector('.gl-listbox').getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth; });
+  const ell = await p.evaluate(() => { const e = [...document.querySelectorAll('.gl-option__label')].find((x) => x.textContent.includes('Very long')); const cs = getComputedStyle(e); return cs.textOverflow === 'ellipsis' && e.scrollWidth > e.clientWidth; });
+  ok('select: a 40-option list stays inside the window; long labels truncate', fit && ell);
+  await p.keyboard.press('Home'); for (let i = 0; i < 6; i++) await p.keyboard.press('ArrowDown');
+  const active = await p.evaluate(() => document.querySelector('.gl-option[data-active]')?.textContent);
+  ok('select: arrows skip the disabled option (6번 is disabled)', !!active && !active.startsWith('6번'), active);
+  await p.keyboard.press('Escape'); await settle(p, 400);
+  const ref = box.getByRole('combobox', { name: /거부 셀렉트/ });
+  await ref.click(); await p.getByRole('option', { name: '나' }).click(); await settle(p, 400);
+  ok('select (refused, controlled): stays on its value', (await ref.textContent()).includes('가'));
+  const dis = box.getByRole('combobox', { name: /비활성 셀렉트/ });
+  await dis.click({ force: true }); await settle(p, 300);
+  ok('select (disabled): does not open', (await p.getByRole('listbox').count()) === 0 && await dis.isDisabled());
+  const dp = box.getByRole('button', { name: /이번 달만/ });
+  await dp.click(); await settle(p, 500);
+  const navOff = await p.locator('.gl-datepicker-panel .gl-calendar__nav button').evaluateAll((bs) => bs.map((x) => x.disabled));
+  await p.keyboard.press('PageDown'); await settle(p, 300);
+  const stillHere = await p.evaluate(() => document.activeElement?.getAttribute('data-date'));
+  const lastDay = await p.evaluate(() => { const n = new Date(); const l = new Date(n.getFullYear(), n.getMonth() + 1, 0); return `${l.getFullYear()}-${String(l.getMonth() + 1).padStart(2, '0')}-${String(l.getDate()).padStart(2, '0')}`; });
+  ok('date picker (min/max = this month): month buttons disabled; PageDown stops at the last allowed day, focus kept', navOff.every(Boolean) && stillHere === lastDay, `${navOff} ${stillHere} (max ${lastDay})`);
+  await p.keyboard.press('Escape'); await settle(p, 300);
+  for (let i = 0; i < 6; i++) { await dp.click({ delay: 0 }); }
+  await settle(p, 700);
+  ok('date picker: 6 rapid clicks → closed again, nothing left', (await p.locator('.gl-datepicker-panel').count()) === 0);
+  await p.context().close();
+}
+{
+  const p = await newPage({ hasTouch: true, isMobile: engine !== 'firefox', viewport: { width: 390, height: 844 } });
+  await p.goto(U('selection')); await settle(p, 700);
+  const cb = p.getByRole('combobox', { name: /이동 수단/ }); await cb.scrollIntoViewIfNeeded(); await cb.tap(); await settle(p, 600);
+  await p.getByRole('option', { name: '자전거' }).tap(); await settle(p, 500);
+  ok('touch: tap a select, tap an option', (await cb.textContent()).includes('자전거') && (await p.getByRole('listbox').count()) === 0);
+  const fit = await (async () => { await cb.tap(); await settle(p, 600); return p.evaluate(() => { const r = document.querySelector('.gl-listbox').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; }); })();
+  ok('touch (390 px): the list fits the phone screen', fit);
+  await p.keyboard.press('Escape'); await settle(p, 300);
+  const box = p.getByRole('checkbox', { name: '화장실' }); await box.scrollIntoViewIfNeeded(); await box.tap();
+  ok('touch: tap a checkbox', await box.isChecked());
+  const dp = p.getByRole('button', { name: /방문 날짜/ }); await dp.scrollIntoViewIfNeeded(); await dp.tap(); await settle(p, 600);
+  const inView = await p.evaluate(() => { const r = document.querySelector('.gl-datepicker-panel').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; });
+  await p.locator('.gl-datepicker-panel .gl-day:not([aria-disabled="true"]):not([data-outside])').nth(3).tap(); await settle(p, 500);
+  ok('touch (390 px): the date panel fits; tapping a day chooses it', inView && (await p.locator('.gl-datepicker-panel').count()) === 0 && /\d/.test(await dp.textContent()));
+  await p.context().close();
+}
+
 /* ================================================================ touch */
 {
   const p = await newPage({ hasTouch: true, isMobile: engine !== 'firefox', viewport: { width: 390, height: 844 } });
@@ -233,7 +287,7 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
 {
   const p = await newPage({ viewport: { width: 320, height: 640 } });
   const wide = [];
-  for (const id of ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'navigation', 'lists', 'overlays', 'showcase', 'lab']) {
+  for (const id of ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'overlays', 'showcase', 'lab']) {
     await p.goto(U(id)); await settle(p, 450);
     const o = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     if (o > 1) wide.push(`${id} +${o}`);
@@ -265,7 +319,7 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   const found = new Map();
   for (const q of ['', '?mode=dark&hc=1']) {
     const p = await newPage();
-    for (const id of ['overview', 'buttons', 'inputs', 'navigation', 'lists', 'overlays', 'showcase', 'lab']) {
+    for (const id of ['overview', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'overlays', 'showcase', 'lab']) {
       await p.goto(U(id, q)); await settle(p, 500);
       await p.addScriptTag({ content: axe });
       const v = await p.evaluate(async () => {

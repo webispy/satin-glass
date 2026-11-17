@@ -44,6 +44,7 @@ pnpm e2e            # 빌드 후 전체 검증: 렌더링 매트릭스, 상호�
 - **기반**: `ThemeProvider` `createTheme` `useTheme` `Glass` `Text` `Stack` `Divider` `Portal` `VisuallyHidden`
 - **버튼**: `Button` `IconButton` `ButtonGroup`
 - **입력**: `TextField` `SearchField` `Switch` `Slider` `Stepper` `SegmentedControl` `Chip`
+- **선택** (0.2): `Checkbox` `RadioGroup` `Radio` `ChoiceList` `Select` `Calendar` `DatePicker`
 - **내비게이션**: `TabBar` `Tab` `TabBarAction` `AppBar` `ScrollFade` `Sidebar` `SidebarItem` `SidebarSection` `PageControl`
 - **표시**: `List` `ListItem` `ListSection` `Card` `CardMedia` `CardBody` `Avatar` `Badge` `BadgeAnchor` `Progress` `Spinner`
 - **오버레이**: `Dialog` `Sheet` `Menu` `MenuItem` `MenuSeparator` `MenuLabel` `Popover` `ActionSheet` `ContextMenu` `Toaster` `useToast`

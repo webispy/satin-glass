@@ -20,6 +20,8 @@ try {
   for (const b of ENGINES) await run(`render matrix · ${b}`, ['tests/e2e/matrix.mjs'], { BROWSER: b });
   for (const b of ENGINES) await run(`interactions · ${b}`, ['tests/e2e/interact.mjs'], { BROWSER: b });
   for (const q of ['?motion=calm', '?motion=playful', '?mode=dark&hc=1&rt=1', '?mode=light&hc=1']) await run(`interactions · chromium ${q}`, ['tests/e2e/interact.mjs'], { Q: q });
+  for (const b of ENGINES) await run(`selection components · ${b}`, ['tests/e2e/selection.mjs'], { BROWSER: b });
+  for (const q of ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']) await run(`selection components · chromium ${q}`, ['tests/e2e/selection.mjs'], { Q: q });
   for (const b of ENGINES) await run(`reduced motion · ${b}`, ['tests/e2e/reduce-motion.mjs'], { BROWSER: b });
   for (const b of ENGINES) await run(`edge cases · ${b}`, ['tests/e2e/edge.mjs'], { BROWSER: b });
   await run('performance (Chromium, CPU ×4)', ['tests/e2e/perf.mjs']);

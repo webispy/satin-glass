@@ -2,7 +2,7 @@
    The e2e edge suite drives this page; it is also a quick way to eyeball the awkward cases. */
 import { useRef, useState } from 'react';
 import {
-  Button, ButtonGroup, Chip, Dialog, IconButton, List, ListItem, ListSection, Menu, MenuItem, PageControl, Progress, SearchField,
+  Button, ButtonGroup, Checkbox, Chip, DatePicker, Dialog, Select, IconButton, List, ListItem, ListSection, Menu, MenuItem, PageControl, Progress, SearchField,
   SegmentedControl, Slider, Stack, Stepper, Switch, Tab, TabBar, Text, TextField, Badge,
 } from '@glass-layer/react';
 import { Home, Map, Bookmark, User, Settings, Bell, Heart, Share, Trash2 } from 'lucide-react';
@@ -80,6 +80,16 @@ export function Lab() {
           <List data-lab="empty-list" />
           <SearchField placeholder="빈 검색" />
           <ButtonGroup><IconButton icon={<Bell />} label="알림" /><IconButton icon={<Trash2 />} label="삭제" /></ButtonGroup>
+        </Demo>
+      </Section>
+
+      <Section title="선택 컴포넌트">
+        <Demo col data-lab="select">
+          <div style={{ maxWidth: 320 }}><Select label="긴 항목 40개" placeholder="고르세요" options={Array.from({ length: 40 }, (_, i) => ({ value: `o${i}`, label: i % 7 === 3 ? `${i + 1}. ${LONG}` : `${i + 1}번 항목`, disabled: i % 9 === 5 }))} /></div>
+          <div style={{ maxWidth: 320 }}><Select label="거부 셀렉트" value="a" onChange={() => setTries((t) => t + 1)} options={[{ value: 'a', label: '가' }, { value: 'b', label: '나' }]} /></div>
+          <div style={{ maxWidth: 320 }}><Select label="비활성 셀렉트" disabled options={[{ value: 'a', label: '가' }]} /></div>
+          <div style={{ maxWidth: 320 }}><DatePicker label="이번 달만" min={new Date(new Date().getFullYear(), new Date().getMonth(), 1)} max={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)} /></div>
+          <Checkbox label={LONG} description={LONG} />
         </Demo>
       </Section>
 
