@@ -44,6 +44,15 @@ const gh = (await p.locator('.gl-button-group').first().boundingBox()).height, i
 const gr = await p.locator('.gl-button-group').first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius), ir = await p.locator('.demo--media .gl-button--glass.gl-button--icon').first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius);
 ok('button group: same height and corner as the buttons beside it', gh === ih && gr === ir, `group ${gh}px/${gr}, button ${ih}px/${ir}`);
 
+await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(500);
+{
+  const geo = await p.locator('.gl-tabbar__icon:has(.gl-badge)').first().evaluate((ic) => {
+    const g = ic.querySelector('svg').getBoundingClientRect(), b = ic.querySelector('.gl-badge').getBoundingClientRect(), bar = ic.closest('.gl-tabbar__bar').getBoundingClientRect();
+    return { overlapX: g.right - b.left, overlapY: b.bottom - g.top, insideBar: b.top >= bar.top && b.right <= bar.right, h: b.height };
+  });
+  ok('tab badge: on the glyph corner (small overlap), inside the bar, 16 px', geo.overlapX > 0 && geo.overlapX <= 8 && geo.overlapY > 0 && geo.overlapY <= 12 && geo.insideBar && geo.h === 16, JSON.stringify(geo));
+}
+
 /* ---------- inputs ---------- */
 await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(600);
 const sw = p.locator('.docs__page .gl-switch').first();

@@ -46,11 +46,16 @@
   font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.01em;
   transition: color var(--gl-duration-fast) ease;
 }
-.gl-tabbar__item svg { width: 24px; height: 24px; transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
+.gl-tabbar__item svg { width: 24px; height: 24px; }
+/* the icon carries its badge, so both press together and the badge is placed against the glyph, not the cell */
+.gl-tabbar__icon { position: relative; display: inline-flex; transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
 .gl-tabbar__item[aria-selected="true"], .gl-tabbar__item[data-hover] { color: var(--gl-accent-text); }
-.gl-tabbar__item:active svg { transform: scale(0.9); }
+.gl-tabbar__item:active .gl-tabbar__icon { transform: scale(0.9); }
 .gl-tabbar__item:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
-.gl-tabbar__item .gl-badge { position: absolute; top: 6px; left: calc(50% + 6px); }
+/* badge: sits on the glyph's top-right corner, only its inner edge overlapping (4 px), with a ring that
+   cuts it out of the glyph; tab-bar size (16 px, 10 px digits) so it reads as a mark, not a button */
+.gl-tabbar__icon > .gl-badge { position: absolute; top: -5px; left: calc(100% - 7px); height: 16px; min-width: 16px; padding: 0 4.5px; font-size: 10px; letter-spacing: 0; box-shadow: 0 0 0 2px var(--gl-bg-elevated); }
+.gl-tabbar__icon > .gl-badge--dot { top: -1px; left: calc(100% - 5px); height: 8px; min-width: 8px; width: 8px; padding: 0; }
 .gl-tabbar__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
 .gl-tabbar__action { flex: none; width: var(--gl-size-tab-bar); height: var(--gl-size-tab-bar); --_radius: var(--gl-radius-xl); border-radius: var(--gl-radius-xl); }   /* same corner as the bar (.gl-button would make it 12) */
 .gl-tabbar__action svg { width: 24px; height: 24px; }

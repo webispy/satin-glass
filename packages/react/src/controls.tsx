@@ -363,9 +363,8 @@ export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ val
         <span ref={ind} className="gl-tabbar__indicator" aria-hidden="true" />
         {tabs.map((t, i) => (
           <button key={t.value} type="button" role="tab" data-gl-item aria-selected={i === index} tabIndex={i === index ? 0 : -1} disabled={t.disabled} aria-label={compact && typeof t.label === 'string' ? t.label : undefined} className="gl-tabbar__item" onClick={() => setV(t.value)}>
-            {t.icon}
+            <span className="gl-tabbar__icon">{t.icon}{t.badge}</span>
             <span className="gl-tabbar__label">{t.label}</span>
-            {t.badge}
           </button>
         ))}
       </div>
@@ -469,8 +468,9 @@ export const Chip = forwardRef<HTMLButtonElement, ChipProps>(function Chip({ sel
   );
 });
 
-export function Badge({ children, tone = 'danger', dot, className, ...rest }: HTMLAttributes<HTMLSpanElement> & { tone?: 'danger' | 'accent' | 'neutral'; dot?: boolean }) {
-  return <span className={cx('gl-badge', tone !== 'danger' && `gl-badge--${tone}`, dot && 'gl-badge--dot', className)} {...rest}>{dot ? null : children}</span>;
+export function Badge({ children, tone = 'danger', dot, max = 99, className, ...rest }: HTMLAttributes<HTMLSpanElement> & { tone?: 'danger' | 'accent' | 'neutral'; dot?: boolean; /** numbers above this show as "99+" */ max?: number }) {
+  const shown = typeof children === 'number' && children > max ? `${max}+` : children;
+  return <span className={cx('gl-badge', tone !== 'danger' && `gl-badge--${tone}`, dot && 'gl-badge--dot', className)} {...rest}>{dot ? null : shown}</span>;
 }
 export function BadgeAnchor({ badge, children }: { badge: ReactNode; children: ReactNode }) {
   return <span className="gl-badge-anchor">{children}{badge}</span>;
