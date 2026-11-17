@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { palette, STEPS, springs, springAt, springDuration, typography, type Hue } from '@glass-layer/tokens';
-import { Button, Glass, Stack, Text, SegmentedControl } from '@glass-layer/react';
+import { palette, STEPS, motions, springAt, springDuration, typography, SPRING_NAMES, type Hue, type MotionName, type SpringName } from '@glass-layer/tokens';
+import { Button, Glass, Stack, Text, SegmentedControl, Switch, Slider, Stepper, Progress, PageControl, TabBar, Tab, MotionScope, Menu, MenuItem, Badge, useTheme } from '@glass-layer/react';
+import { Home, Map, Bookmark, User, Footprints, Bike, Car } from 'lucide-react';
 import { Sun, Sparkles, MousePointer2 } from 'lucide-react';
 import { Demo, Page, Photo, Section, sceneTint } from '../shared';
 
@@ -76,16 +77,23 @@ export function Typography() {
   );
 }
 
-function SpringPlot({ name }: { name: keyof typeof springs }) {
-  const s = springs[name], d = springDuration(s) / 1000, W = 300, H = 110;
-  const pts = Array.from({ length: 101 }, (_, i) => { const t = (d * i) / 100; return `${(i / 100) * W},${H - 12 - springAt(s, t) * (H - 34)}`; }).join(' ');
+const PERSONAS: { id: MotionName; label: string; note: string }[] = [
+  { id: 'calm', label: '차분 calm', note: '넘침 없이 정확하게 멈춤. 업무용·정보 밀도 높은 화면' },
+  { id: 'lively', label: '생동 lively (기본)', note: '한 번 살짝 넘쳤다가 자리 잡음. 늘어남·눌림이 적당히' },
+  { id: 'playful', label: '경쾌 playful', note: '탄성이 크고 늘어남·납작해짐이 뚜렷함. 소비자 앱·온보딩' },
+];
+
+function SpringPlot({ name, motion }: { name: SpringName; motion: MotionName }) {
+  const s = motions[motion][name], d = springDuration(s) / 1000, W = 300, H = 110;
+  const pts = (m: MotionName) => { const p = motions[m][name], dd = springDuration(p) / 1000; return Array.from({ length: 121 }, (_, i) => { const t = (1.1 * i) / 120; return `${(t / 1.1) * W},${H - 14 - Math.min(1.3, springAt(p, Math.min(t, dd))) * (H - 40)}`; }).join(' '); };
   const [on, setOn] = useState(false);
   return (
     <Glass variant="subtle" style={{ padding: 14, borderRadius: 'var(--gl-radius-lg)' }}>
       <div className="label-row"><Text variant="headline">{name}</Text><span className="code">{s.response}s · ζ {s.damping} · {Math.round(d * 1000)}ms</span></div>
       <svg className="spring-plot" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
-        <line x1="0" x2={W} y1={22} y2={22} stroke="var(--gl-separator-strong)" strokeDasharray="3 4" />
-        <polyline points={pts} fill="none" stroke="var(--gl-accent)" strokeWidth="2.5" />
+        <line x1="0" x2={W} y1={26} y2={26} stroke="var(--gl-separator-strong)" strokeDasharray="3 4" />
+        {PERSONAS.filter((p) => p.id !== motion).map((p) => <polyline key={p.id} points={pts(p.id)} fill="none" stroke="var(--gl-label-tertiary)" strokeWidth="1.2" opacity="0.5" />)}
+        <polyline points={pts(motion)} fill="none" stroke="var(--gl-accent)" strokeWidth="2.5" />
       </svg>
       <div className="label-row" style={{ marginTop: 6 }}>
         <div style={{ flex: 1, height: 18 }}>
@@ -97,16 +105,62 @@ function SpringPlot({ name }: { name: keyof typeof springs }) {
   );
 }
 
-export function Motion() {
+/** One column of live controls in a given personality. */
+function MotionColumn({ motion }: { motion: MotionName }) {
+  const [seg, setSeg] = useState('walk');
+  const [sw, setSw] = useState(false);
+  const [val, setVal] = useState(30);
+  const [n, setN] = useState(2);
+  const [page, setPage] = useState(0);
+  const [tab, setTab] = useState('home');
+  const [prog, setProg] = useState(30);
+  const [menu, setMenu] = useState(false);
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const p = PERSONAS.find((x) => x.id === motion)!;
   return (
-    <Page title="모션" intro="움직임은 이름 붙은 스프링 네 가지로만 만듭니다. CSS에서는 linear() 이징으로(합성기에서 실행), 손가락을 따라가는 동작은 JS 스프링으로 같은 값을 씁니다.">
-      <div className="grid grid--2">
-        {(Object.keys(springs) as (keyof typeof springs)[]).map((n) => <SpringPlot key={n} name={n} />)}
-      </div>
+    <MotionScope motion={motion}>
+      <Glass variant="subtle" style={{ padding: 16, borderRadius: 'var(--gl-radius-xl)', display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+        <div><Text variant="headline">{p.label}</Text><Text variant="footnote" tone="secondary">{p.note}</Text></div>
+        <SegmentedControl size="sm" aria-label={`${motion} 세그먼트`} value={seg} onChange={setSeg} options={[{ value: 'walk', label: '도보', icon: <Footprints /> }, { value: 'bike', label: '자전거', icon: <Bike /> }, { value: 'car', label: '차', icon: <Car /> }]} />
+        <TabBar compact value={tab} onChange={setTab} aria-label={`${motion} 탭`} style={{ padding: 0 }}>
+          <Tab value="home" label="홈" icon={<Home />} /><Tab value="map" label="지도" icon={<Map />} /><Tab value="saved" label="저장" icon={<Bookmark />} badge={<Badge>{n}</Badge>} /><Tab value="me" label="나" icon={<User />} />
+        </TabBar>
+        <div className="label-row"><Text variant="subhead">스위치</Text><Switch checked={sw} onChange={setSw} aria-label={`${motion} 스위치`} /></div>
+        <Slider value={val} onChange={setVal} aria-label={`${motion} 슬라이더`} format={(v) => `${v}%`} />
+        <div className="label-row"><Text variant="subhead">스테퍼 · 뱃지</Text><Stepper value={n} onChange={setN} min={0} max={20} label={`${motion} 개수`} /></div>
+        <div className="label-row" style={{ gap: 12 }}><Progress value={prog} label={`${motion} 진행`} /><Button size="sm" variant="neutral" onClick={() => setProg((v) => (v >= 90 ? 10 : v + 30))}>+30</Button></div>
+        <div className="label-row"><PageControl count={5} page={page} onChange={setPage} label={`${motion} 페이지`} />
+          <Button size="sm" variant="tinted" ref={setAnchor as never} onClick={() => setMenu((v) => !v)}>메뉴</Button></div>
+        <Menu open={menu} onClose={() => setMenu(false)} anchor={anchor} placement="bottom-end" aria-label={`${motion} 메뉴`}>
+          <MenuItem icon={<Footprints />}>도보</MenuItem><MenuItem icon={<Bike />}>자전거</MenuItem><MenuItem icon={<Car />}>자동차</MenuItem>
+        </Menu>
+      </Glass>
+    </MotionScope>
+  );
+}
+
+export function Motion() {
+  const theme = useTheme();
+  const current = theme.motion ?? 'lively';
+  return (
+    <Page title="모션" intro="움직임은 이름 붙은 스프링 다섯 가지로 만들고, 그 성격(personality)을 세 가지 중에서 고릅니다. 오른쪽 위에서 앱 전체를 바꾸거나, 컴포넌트마다 motion 속성으로 따로 정할 수 있어요.">
+      <Section title="성격 비교" intro="같은 컨트롤을 세 성격으로 나란히 놓았습니다. 세그먼트·탭을 눌러 보고, 슬라이더를 빠르게 끌어 보고, 스테퍼로 뱃지 숫자를 바꿔 보세요.">
+        <div className="grid grid--3">{PERSONAS.map((p) => <MotionColumn key={p.id} motion={p.id} />)}</div>
+      </Section>
+      <Section title="쓰는 법">
+        <Demo col>
+          <code className="code">{'createTheme({ motion: "playful" })'}</code>
+          <code className="code">{'<MotionScope motion="calm">…</MotionScope>'}</code>
+          <code className="code">{'<SegmentedControl motion="playful" … />'}</code>
+          <Text variant="subhead" tone="secondary">CSS 전환은 [data-gl-motion]의 linear() 이징을 따르고, 손가락을 따르는 JS 스프링과 포털로 뜨는 메뉴·시트도 같은 성격을 씁니다. 동작 줄이기를 켜면 모두 즉시 끝납니다.</Text>
+        </Demo>
+      </Section>
+      <Section title={`스프링 곡선 — ${PERSONAS.find((p) => p.id === current)!.label}`} intro="굵은 선이 현재 성격, 옅은 선이 나머지 두 성격입니다.">
+        <div className="grid grid--2">{SPRING_NAMES.map((n) => <SpringPlot key={n} name={n} motion={current} />)}</div>
+      </Section>
       <Section title="쓰임">
         <Demo col>
-          <Text variant="subhead"><b>snappy</b> — 탭, 토글, 눌림 · <b>smooth</b> — 선택 이동, 제자리 복귀 · <b>bouncy</b> — 메뉴·팝오버가 앵커에서 피어남, 토스트 · <b>gentle</b> — 시트, 화면 전환</Text>
-          <Text variant="subhead" tone="secondary">동작 줄이기를 켜면 모든 스프링이 즉시 끝납니다.</Text>
+          <Text variant="subhead"><b>snappy</b> — 탭, 토글, 눌림, 숫자 · <b>smooth</b> — 선택 이동, 제자리 복귀, 진행 · <b>bouncy</b> — 대화상자, 토스트, 뱃지 · <b>gentle</b> — 시트, 화면 전환 · <b>pop</b> — 메뉴·팝오버</Text>
         </Demo>
       </Section>
     </Page>

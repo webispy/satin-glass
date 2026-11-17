@@ -1,5 +1,6 @@
 /* Overlay helpers: anchored placement, the "bloom" open/close motion, focus management and a layer stack. */
 import { animate, prefersReducedMotion, type SpringName } from './motion';
+/* springs named here resolve against the panel's motion personality (nearest [data-gl-motion]) */
 
 /* ---------------------------------------------------------------- placement */
 export type Side = 'top' | 'bottom' | 'left' | 'right';

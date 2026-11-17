@@ -1,7 +1,7 @@
 /* Generates dist/tokens.css from src/index.ts and checks contrast. Run: tsx scripts/build-css.ts */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
-  palette, themes, space, radius, font, typography, size, material, z, springs, springEasing, springDuration,
+  palette, themes, space, radius, font, typography, size, material, z, motions, defaultMotion, SPRING_NAMES, springEasing, springDuration,
   duration, easing, contrast, type ThemeName,
 } from '../src/index';
 
@@ -20,10 +20,12 @@ for (const [k, v] of Object.entries(material)) root.push(decl(`${k}`, v));
 for (const [k, v] of Object.entries(z)) root.push(decl(`z-${k}`, v));
 for (const [k, v] of Object.entries(duration)) root.push(decl(`duration-${k}`, `${v}ms`));
 for (const [k, v] of Object.entries(easing)) root.push(decl(`ease-${k}`, v));
-for (const [name, s] of Object.entries(springs)) {
-  root.push(decl(`spring-${name}`, springEasing(s)));
-  root.push(decl(`spring-${name}-duration`, `${springDuration(s)}ms`));
-}
+/* motion personality: the default on :root, each one also as [data-gl-motion] so it can be scoped */
+const motionDecls = (m: (typeof motions)[keyof typeof motions]) => [
+  ...SPRING_NAMES.flatMap((n) => [decl(`spring-${n}`, springEasing(m[n])), decl(`spring-${n}-duration`, `${springDuration(m[n])}ms`)]),
+  decl('motion-squash', m.squash), decl('motion-gel', m.gel), decl('motion-lag', m.lag),
+];
+root.push(...motionDecls(motions[defaultMotion]));
 for (const [name, [fs, lh, fw, tr]] of Object.entries(typography)) {
   root.push(decl(`text-${name}-size`, `${fs}px`), decl(`text-${name}-line`, `${lh}px`), decl(`text-${name}-weight`, fw), decl(`text-${name}-tracking`, `${tr}em`));
 }
@@ -32,6 +34,7 @@ root.push(decl('shadow-sm', '0 1px 2px rgba(var(--gl-shadow-color), calc(0.06 * 
 root.push(decl('shadow-md', '0 1px 3px rgba(var(--gl-shadow-color), calc(0.07 * var(--gl-shadow-strength))), 0 8px 24px rgba(var(--gl-shadow-color), calc(0.1 * var(--gl-shadow-strength)))'));
 root.push(decl('shadow-lg', '0 2px 6px rgba(var(--gl-shadow-color), calc(0.08 * var(--gl-shadow-strength))), 0 20px 48px rgba(var(--gl-shadow-color), calc(0.16 * var(--gl-shadow-strength)))'));
 out.push(':root {', ...root, '}');
+for (const [name, m] of Object.entries(motions)) out.push(`[data-gl-motion="${name}"] {`, ...motionDecls(m), '}');
 
 const block = (sel: string, t: ThemeName, scheme: 'light' | 'dark') =>
   [`${sel} {`, `  color-scheme: ${scheme};`, ...Object.entries(themes[t]).map(([k, v]) => decl(k, v)), '}'].join('\n');

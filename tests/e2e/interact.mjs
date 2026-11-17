@@ -75,7 +75,7 @@ const travel = async () => {
   return { minL: Math.min(...frames.map((f) => f[0])), minR: Math.min(...frames.map((f) => f[1])), maxW: Math.max(...frames.map((f) => f[2])), endW: frames[frames.length - 1][2] };
 };
 const tOn = await travel(), tOff = await travel();
-ok('switch: on and off travel alike — stretch toward travel, stay inside the rail', tOn.minL >= 1.5 && tOn.minR >= 1.5 && tOff.minL >= 1.5 && tOff.minR >= 1.5 && tOn.maxW > tOn.endW + 3 && tOff.maxW > tOff.endW + 3 && Math.abs((tOn.maxW - tOn.endW) - (tOff.maxW - tOff.endW)) < 1,
+ok('switch: on and off travel alike — stretch toward travel, stay inside the rail (a lively bounce may use some of the 2 px gap)', tOn.minL >= 0.5 && tOn.minR >= 0.5 && tOff.minL >= 0.5 && tOff.minR >= 0.5 && Math.abs(tOn.minR - tOff.minL) < 0.3 && tOn.maxW > tOn.endW + 3 && tOff.maxW > tOff.endW + 3 && Math.abs((tOn.maxW - tOn.endW) - (tOff.maxW - tOff.endW)) < 1,
   `on: gap L ${tOn.minL.toFixed(1)} R ${tOn.minR.toFixed(1)} stretch ${(tOn.maxW - tOn.endW).toFixed(1)} · off: gap L ${tOff.minL.toFixed(1)} R ${tOff.minR.toFixed(1)} stretch ${(tOff.maxW - tOff.endW).toFixed(1)}`);
 
 const sl = p.locator('.gl-slider').first(), slb = await sl.boundingBox();
@@ -252,6 +252,40 @@ await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(700);
   const bgs = await sampleAfter(`({ act: () => document.querySelector('.phone__screen').scrollTo(0, 400), read: () => parseFloat(getComputedStyle(document.querySelector('.phone .gl-appbar__bar')).backgroundColor.split(',')[3] || '1') })`, 500);
   const mid = bgs.filter((a) => a > 0.02 && a < 0.55).length;
   ok('app bar: the glass fades in when content scrolls under it', mid >= 3, `frames in between ${mid}`);
+}
+
+/* ---------- motion personalities: calm / lively / playful really differ ---------- */
+await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
+{
+  const cols = p.locator('.grid--3 > *');
+  const squash = async (i) => cols.nth(i).locator('.gl-segmented').evaluate((seg) => new Promise((res) => {
+    const ind = seg.querySelector('.gl-segmented__indicator'); const items = seg.querySelectorAll('.gl-segmented__item');
+    let minSy = 1; const t0 = performance.now(); items[items.length - 1].click();
+    const f = () => { const m = new DOMMatrix(getComputedStyle(ind).transform); minSy = Math.min(minSy, m.d); if (performance.now() - t0 < 600) requestAnimationFrame(f); else { items[0].click(); res(minSy); } };
+    requestAnimationFrame(f);
+  }));
+  const sq = [await squash(0), await squash(1), await squash(2)];
+  ok('personalities: the segmented drop squashes — none when calm, more when playful', sq[0] > 0.999 && sq[1] < 0.97 && sq[2] < sq[1] - 0.02, sq.map((v) => v.toFixed(3)).join(' / '));
+
+  const gel = async (i) => {
+    const sl = cols.nth(i).locator('.gl-slider'), b = await sl.boundingBox();
+    await p.mouse.move(b.x + 8, b.y + b.height / 2); await p.mouse.down();
+    let peak = 1;
+    for (let k = 1; k <= 8; k++) {
+      await p.mouse.move(b.x + 8 + (b.width - 16) * k / 8, b.y + b.height / 2);
+      peak = Math.max(peak, await sl.locator('.gl-slider__thumb').evaluate((t) => new DOMMatrix(getComputedStyle(t).transform).a));
+    }
+    await p.mouse.up(); await p.waitForTimeout(700);
+    const rest = await sl.locator('.gl-slider__thumb').evaluate((t) => new DOMMatrix(getComputedStyle(t).transform).a);
+    return [peak, rest];
+  };
+  const g = [await gel(0), await gel(1), await gel(2)];
+  ok('personalities: a fast-dragged slider thumb stretches — not when calm, more when playful, and relaxes after', g[0][0] < 1.005 && g[1][0] > 1.03 && g[2][0] > g[1][0] && g.every(([, r]) => Math.abs(r - 1) < 0.01), g.map(([a, r]) => `${a.toFixed(3)}→${r.toFixed(3)}`).join(' / '));
+
+  await cols.nth(2).getByRole('button', { name: '메뉴' }).click(); await p.waitForTimeout(100);
+  const pm = await p.evaluate(() => document.querySelector('.gl-menu')?.closest('.gl-portal')?.getAttribute('data-gl-motion'));
+  ok('personalities: a menu opened inside a playful scope blooms with the playful springs (portal carries it)', pm === 'playful', String(pm));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
 }
 
 console.log('page errors:', errs.length ? errs : 'none');

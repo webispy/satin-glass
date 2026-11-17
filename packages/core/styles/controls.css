@@ -116,29 +116,29 @@
 .gl-slider:focus-visible .gl-slider__thumb { box-shadow: var(--gl-ring), 0 2px 6px rgba(0, 0, 0, 0.18); }
 .gl-slider[aria-disabled="true"] { opacity: 0.42; cursor: default; }
 .gl-slider__track { position: absolute; left: 0; right: 0; top: 13px; height: 6px; border-radius: var(--gl-radius-full); background: var(--gl-fill-strong); overflow: hidden; }
-.gl-slider__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--gl-accent); transform-origin: left center; transform: scaleX(var(--_p)); }
+.gl-slider__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--gl-accent); transform-origin: left center; transform: scaleX(var(--_fp, 0)); }
+/* position (translate) and gel (transform) come from the JS spring every frame; the press swell (scale) is a CSS spring */
 .gl-slider__thumb {
   position: absolute; top: 4px; left: 0; width: 24px; height: 24px; margin-left: -12px;
   border-radius: 50%; background: linear-gradient(180deg, #fff, #f3f4f8);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
-  transform: translateX(calc(var(--_p) * var(--_w, 0px))) scale(var(--_s, 1));
-  transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
-  will-change: transform;
+  translate: var(--_pos, 0px) 0;
+  transform: scale(var(--_gx, 1), var(--_gy, 1));
+  scale: var(--_s, 1);
+  transition: scale var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
+  will-change: translate, transform;
 }
 .gl-slider.is-active .gl-slider__thumb { --_s: 1.18; }
-/* only while the finger is actually moving does the thumb follow 1:1; a press on the track travels on the spring */
-.gl-slider.is-dragging .gl-slider__thumb, .gl-slider.is-dragging .gl-slider__fill { transition: none; }
-.gl-slider__fill { transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
 .gl-slider__bubble {
   position: absolute; bottom: 30px; left: 0; min-width: 36px; height: 28px; padding: 0 9px;
   display: grid; place-items: center; --_radius: var(--gl-radius-sm); --_shadow: var(--gl-shadow-md);
   font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap;
-  transform: translateX(calc(var(--_p) * var(--_w, 0px) - 50%)) translateY(6px) scale(0.85); opacity: 0;
+  translate: calc(var(--_pos, 0px) - 50%) 0;
+  transform: translateY(6px) scale(0.85); opacity: 0; transform-origin: center bottom;
   transition: opacity 140ms ease, transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
   pointer-events: none;
 }
-.gl-slider.is-active .gl-slider__bubble { opacity: 1; transform: translateX(calc(var(--_p) * var(--_w, 0px) - 50%)) translateY(0) scale(1); }
-.gl-slider.is-dragging .gl-slider__bubble { transition: opacity 140ms ease; }
+.gl-slider.is-active .gl-slider__bubble { opacity: 1; transform: none; }
 
 /* ============================================================================================
    Segmented control (selection indicator = droplet bridge, core/bridge.ts)
@@ -267,7 +267,7 @@ textarea.gl-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 /* ============================================================================================
    Progress, spinner, page control
    ============================================================================================ */
-.gl-progress { position: relative; height: 6px; border-radius: var(--gl-radius-full); background: var(--gl-fill-strong); overflow: hidden; }
+.gl-progress { position: relative; width: 100%; min-width: 48px; height: 6px; border-radius: var(--gl-radius-full); background: var(--gl-fill-strong); overflow: hidden; }
 .gl-progress__bar { position: absolute; inset: 0; border-radius: inherit; background: var(--gl-accent); transform-origin: left center; transform: scaleX(var(--_p, 0)); transition: transform var(--gl-spring-smooth-duration) var(--gl-spring-smooth); }
 .gl-progress--indeterminate .gl-progress__bar { width: 40%; transform: translateX(-100%); animation: gl-indeterminate 1.3s cubic-bezier(0.45, 0, 0.2, 1) infinite; }
 @keyframes gl-indeterminate { to { transform: translateX(250%); } }

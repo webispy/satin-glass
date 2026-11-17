@@ -3,7 +3,7 @@ import {
   type ButtonHTMLAttributes, type CSSProperties, type ElementType, type HTMLAttributes, type InputHTMLAttributes,
   type KeyboardEvent, type ReactElement, type ReactNode, type TextareaHTMLAttributes,
 } from 'react';
-import { animate, createBridge, drag, type Bridge } from '@glass-layer/core';
+import { animate, createBridge, drag, loop, motionFor, prefersReducedMotion, Spring, type Bridge, type MotionName } from '@glass-layer/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { glassClass, useGlassLight } from './foundation';
 import { ClearIcon, MinusIcon, PlusIcon, SearchIcon, CloseIcon } from './icons';
@@ -77,9 +77,10 @@ export type SwitchProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChang
   defaultChecked?: boolean;
   onChange?: (checked: boolean) => void;
   size?: 'sm' | 'md';
+  motion?: MotionName;
 };
 
-export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch({ checked, defaultChecked = false, onChange, size = 'md', className, disabled, onClick, ...rest }, ref) {
+export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch({ checked, defaultChecked = false, onChange, size = 'md', motion, className, disabled, onClick, ...rest }, ref) {
   const [on, setOn] = useControllable(checked, defaultChecked, onChange);
   const el = useRef<HTMLButtonElement>(null);
   const dragged = useRef(false);
@@ -145,6 +146,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
       type="button"
       role="switch"
       aria-checked={on}
+      data-gl-motion={motion}
       disabled={disabled}
       className={cx('gl-switch', size === 'sm' && 'gl-switch--sm', pressed && 'is-pressed', draggingSw && 'is-dragging', className)}
       onClick={(e) => {
@@ -174,53 +176,108 @@ export type SliderProps = Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'def
   /** text in the bubble and for screen readers */
   format?: (value: number) => string;
   showValue?: boolean;
+  /** motion personality for this control (default: the theme's) */
+  motion?: MotionName;
 };
 
 export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
-  { value, defaultValue = 0, onChange, onChangeEnd, min = 0, max = 100, step = 1, disabled, format = (v) => String(v), showValue = true, className, style, ...rest }, ref,
+  { value, defaultValue = 0, onChange, onChangeEnd, min = 0, max = 100, step = 1, disabled, format = (v) => String(v), showValue = true, motion, className, style, ...rest }, ref,
 ) {
   const [v, setV] = useControllable(value, defaultValue, onChange);
   const el = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
-  const [dragging, setDragging] = useState(false);
   const vRef = useRef(v); vRef.current = v;
+  /* the thumb is driven by a JS spring so it can carry character: on a press it travels with the personality's
+     snappy spring; while dragged it trails the finger by `lag` and stretches with speed by `gel` (squash & stretch) */
+  const motor = useRef<{ pos: Spring; W: number; tracking: boolean; finger: number; stop: (() => void) | null } | null>(null);
   const snap = (x: number) => {
     const s = Math.round((x - min) / step) * step + min;
     return Math.min(max, Math.max(min, Number(s.toFixed(6))));
+  };
+  const ratio = (x: number) => (x - min) / (max - min || 1);
+
+  const render = () => {
+    const m = motor.current, s = el.current;
+    if (!m || !s) return;
+    const W = m.W || 1, pos = Math.min(W, Math.max(0, m.pos.value));
+    const mo = motionFor(s);
+    const k = mo.gel * Math.min(1.6, Math.abs(m.pos.velocity) / 900);
+    s.style.setProperty('--_pos', `${pos.toFixed(2)}px`);
+    s.style.setProperty('--_fp', (pos / W).toFixed(4));
+    s.style.setProperty('--_gx', (1 + k).toFixed(3));
+    s.style.setProperty('--_gy', (1 - k * 0.45).toFixed(3));
+  };
+  const run = () => {
+    const m = motor.current;
+    if (!m || m.stop) return;
+    m.stop = loop((dt) => {
+      if (m.tracking) m.pos.target = m.finger;
+      m.pos.step(dt); render();
+      if (!m.tracking && m.pos.settled) { m.pos.jump(m.pos.target); render(); m.stop = null; return false; }
+    });
+  };
+  const travelTo = (px: number, how: 'spring' | 'jump') => {
+    const m = motor.current, s = el.current;
+    if (!m || !s) return;
+    if (how === 'jump' || prefersReducedMotion()) { m.stop?.(); m.stop = null; m.pos.jump(px); render(); return; }
+    m.pos.set('snappy', s); m.pos.target = px; run();
   };
 
   useIsoLayoutEffect(() => {
     const s = el.current;
     if (!s) return;
-    const set = () => s.style.setProperty('--_w', `${s.clientWidth}px`);
-    set();
-    const ro = new ResizeObserver(set); ro.observe(s);
-    return () => ro.disconnect();
+    motor.current = { pos: new Spring(0, 'snappy', s), W: s.clientWidth, tracking: false, finger: 0, stop: null };
+    travelTo(ratio(vRef.current) * s.clientWidth, 'jump');
+    const ro = new ResizeObserver(() => { const m = motor.current!; m.W = s.clientWidth; travelTo(ratio(vRef.current) * m.W, 'jump'); });
+    ro.observe(s);
+    return () => { ro.disconnect(); motor.current?.stop?.(); motor.current = null; };
   }, []);
+  /* value changes that are not the finger (press, keyboard, a controlled update) travel on the spring */
+  useIsoLayoutEffect(() => {
+    const m = motor.current;
+    if (m && !m.tracking) travelTo(ratio(v) * m.W, 'spring');
+  }, [v, min, max]);
 
   useEffect(() => {
     const s = el.current;
     if (!s || disabled) return;
     const at = (clientX: number) => {
       const r = s.getBoundingClientRect();
-      return snap(min + ((clientX - r.left) / r.width) * (max - min));
+      return Math.min(1, Math.max(0, (clientX - r.left) / r.width));
     };
-    let x0 = 0, tracking = false;
+    let x0 = 0;
     return drag(s, {
       start: ({ x, event }) => {
-        /* a press on the track travels there on the snappy spring (like every other control);
-           only once the finger actually moves does the thumb switch to following it 1:1 */
-        x0 = x; tracking = false;
+        x0 = x;
         setActive(true);
         s.focus({ preventScroll: true });
         event.preventDefault();
-        const nv = at(x); if (nv !== vRef.current) setV(nv);
+        const nv = snap(min + at(x) * (max - min)); if (nv !== vRef.current) setV(nv);
       },
       move: ({ x }) => {
-        if (!tracking && Math.abs(x - x0) > 3) { tracking = true; setDragging(true); }
-        const nv = at(x); if (nv !== vRef.current) setV(nv);
+        const m = motor.current!;
+        if (!m.tracking && Math.abs(x - x0) > 3) {
+          /* from here the thumb follows the finger itself (not the stepped value), trailing by the personality's lag */
+          m.tracking = true;
+          const lag = motionFor(s).lag;
+          if (lag > 0) m.pos.set({ response: lag, damping: 0.78 }); else { m.stop?.(); m.stop = null; }
+        }
+        const p = at(x);
+        if (m.tracking) {
+          m.finger = p * m.W;
+          if (motionFor(s).lag > 0 && !prefersReducedMotion()) run(); else { m.pos.jump(m.finger); render(); }
+        }
+        const nv = snap(min + p * (max - min)); if (nv !== vRef.current) setV(nv);
       },
-      end: () => { setDragging(false); setActive(false); onChangeEnd?.(vRef.current); },
+      end: () => {
+        const m = motor.current!;
+        const was = m.tracking;
+        m.tracking = false;
+        setActive(false);
+        /* settle on the stepped value with the snappy spring (and let the gel relax) */
+        if (was) travelTo(ratio(vRef.current) * m.W, 'spring');
+        onChangeEnd?.(vRef.current);
+      },
     });
   }, [disabled, min, max, step]);
 
@@ -235,7 +292,6 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
     e.preventDefault();
     setV(nv); onChangeEnd?.(nv);
   };
-  const p = (v - min) / (max - min || 1);
 
   return (
     <div
@@ -244,8 +300,9 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
       tabIndex={disabled ? -1 : 0}
       aria-valuemin={min} aria-valuemax={max} aria-valuenow={v} aria-valuetext={format(v)}
       aria-disabled={disabled || undefined}
-      className={cx('gl-slider', active && 'is-active', dragging && 'is-dragging', className)}
-      style={{ '--_p': p, ...style } as CSSProperties}
+      data-gl-motion={motion}
+      className={cx('gl-slider', active && 'is-active', className)}
+      style={style}
       onKeyDown={onKey}
       {...rest}
     >
@@ -259,9 +316,9 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
 /* ================================================================================================ Stepper */
 export type StepperProps = Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'defaultValue'> & {
   value?: number; defaultValue?: number; onChange?: (v: number) => void;
-  min?: number; max?: number; step?: number; format?: (v: number) => ReactNode; label?: string;
+  min?: number; max?: number; step?: number; format?: (v: number) => ReactNode; label?: string; motion?: MotionName;
 };
-export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper({ value, defaultValue = 0, onChange, min = -Infinity, max = Infinity, step = 1, format = (v) => v, label = 'Value', className, ...rest }, ref) {
+export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper({ value, defaultValue = 0, onChange, min = -Infinity, max = Infinity, step = 1, format = (v) => v, label = 'Value', motion, className, ...rest }, ref) {
   const [v, setV] = useControllable(value, defaultValue, onChange);
   const vr = useRef(v); vr.current = v;            /* latest value, for hold-to-repeat */
   /* direction of the last change, for the roll: up when increasing, down when decreasing */
@@ -281,7 +338,7 @@ export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper
   const stop = () => { clearTimeout(timer.current.t); clearInterval(timer.current.i); };
   useEffect(() => stop, []);
   return (
-    <div ref={ref} role="group" aria-label={label} className={cx('gl-stepper', className)} {...rest}>
+    <div ref={ref} role="group" aria-label={label} data-gl-motion={motion} className={cx('gl-stepper', className)} {...rest}>
       <button type="button" className="gl-stepper__btn" aria-label={`Decrease ${label}`} disabled={v <= min} onClick={() => bump(-step)} onPointerDown={hold(-step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><MinusIcon /></button>
       <span className="gl-stepper__value" aria-live="polite"><span key={v} data-roll={dir.current}>{format(v)}</span></span>
       <button type="button" className="gl-stepper__btn" aria-label={`Increase ${label}`} disabled={v >= max} onClick={() => bump(step)} onPointerDown={hold(step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><PlusIcon /></button>
@@ -295,6 +352,7 @@ export type SegmentedControlProps<T extends string> = Omit<HTMLAttributes<HTMLDi
   options: SegmentOption<T>[];
   value?: T; defaultValue?: T; onChange?: (v: T) => void;
   size?: 'sm' | 'md';
+  motion?: MotionName;
   'aria-label'?: string;
 };
 
@@ -330,13 +388,13 @@ function rovingKeys(e: KeyboardEvent<HTMLElement>, count: number, current: numbe
   items[next]?.focus();
 }
 
-export function SegmentedControl<T extends string>({ options, value, defaultValue, onChange, size = 'md', className, ...rest }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({ options, value, defaultValue, onChange, size = 'md', motion, className, ...rest }: SegmentedControlProps<T>) {
   const [v, setV] = useControllable(value, defaultValue ?? options[0]?.value, onChange);
   const box = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null);
   const index = Math.max(0, options.findIndex((o) => o.value === v));
   useBridge(box, ind, index, (i) => !options[i].disabled && setV(options[i].value));
   return (
-    <div ref={box} role="radiogroup" className={cx('gl-segmented', size === 'sm' && 'gl-segmented--sm', className)} onKeyDown={(e) => rovingKeys(e, options.length, index, (i) => setV(options[i].value))} {...rest}>
+    <div ref={box} role="radiogroup" data-gl-motion={motion} className={cx('gl-segmented', size === 'sm' && 'gl-segmented--sm', className)} onKeyDown={(e) => rovingKeys(e, options.length, index, (i) => setV(options[i].value))} {...rest}>
       <span ref={ind} className="gl-segmented__indicator" aria-hidden="true" />
       {options.map((o, i) => (
         <button key={o.value} type="button" role="radio" data-gl-item aria-checked={i === index} tabIndex={i === index ? 0 : -1} disabled={o.disabled} className="gl-segmented__item" onClick={() => setV(o.value)}>
@@ -358,10 +416,11 @@ export type TabBarProps = Omit<HTMLAttributes<HTMLElement>, 'onChange' | 'defaul
   /** a separate glass button beside the bar (e.g. search) */
   action?: ReactNode;
   compact?: boolean;
+  motion?: MotionName;
   'aria-label'?: string;
 };
 
-export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ value, defaultValue, onChange, children, action, compact, className, 'aria-label': label = 'Tabs', ...rest }, ref) {
+export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ value, defaultValue, onChange, children, action, compact, motion, className, 'aria-label': label = 'Tabs', ...rest }, ref) {
   const tabs = Children.toArray(children).filter(isValidElement).map((c) => (c as ReactElement<TabProps>).props);
   const [v, setV] = useControllable(value, defaultValue ?? tabs[0]?.value, onChange);
   const bar = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null);
@@ -369,7 +428,7 @@ export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ val
   const index = Math.max(0, tabs.findIndex((t) => t.value === v));
   useBridge(bar, ind, index, (i) => !tabs[i].disabled && setV(tabs[i].value));
   return (
-    <nav ref={ref} className={cx('gl-tabbar', compact && 'gl-tabbar--compact', className)} aria-label={label} {...rest}>
+    <nav ref={ref} data-gl-motion={motion} className={cx('gl-tabbar', compact && 'gl-tabbar--compact', className)} aria-label={label} {...rest}>
       <div ref={mergeRefs(bar, lightRef)} role="tablist" className={cx('gl-tabbar__bar', glassClass('regular'))} onKeyDown={(e) => rovingKeys(e, tabs.length, index, (i) => setV(tabs[i].value))}>
         <span ref={ind} className="gl-tabbar__indicator" aria-hidden="true" />
         {tabs.map((t, i) => (
@@ -523,10 +582,10 @@ export const CardMedia = (p: React.ImgHTMLAttributes<HTMLImageElement>) => <img 
 export const CardBody = ({ className, ...p }: HTMLAttributes<HTMLDivElement>) => <div className={cx('gl-card__body', className)} {...p} />;
 
 /* ================================================================================================ Progress */
-export function Progress({ value, max = 100, size = 'md', label = 'Progress', className }: { value?: number; max?: number; size?: 'sm' | 'md'; label?: string; className?: string }) {
+export function Progress({ value, max = 100, size = 'md', label = 'Progress', motion, className }: { value?: number; max?: number; size?: 'sm' | 'md'; label?: string; motion?: MotionName; className?: string }) {
   const indeterminate = value === undefined;
   return (
-    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={indeterminate ? undefined : value}
+    <div role="progressbar" data-gl-motion={motion} aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={indeterminate ? undefined : value}
       className={cx('gl-progress', size === 'sm' && 'gl-progress--sm', indeterminate && 'gl-progress--indeterminate', className)}
       style={{ '--_p': indeterminate ? 0 : Math.min(1, Math.max(0, value / max)) } as CSSProperties}>
       <span className="gl-progress__bar" />
@@ -538,9 +597,9 @@ export function Progress({ value, max = 100, size = 'md', label = 'Progress', cl
 export type PageControlProps = Omit<HTMLAttributes<HTMLDivElement>, 'onChange'> & {
   count: number; page?: number; defaultPage?: number; onChange?: (p: number) => void;
   /** glass capsule behind the dots */
-  glass?: boolean; onMedia?: boolean; label?: string;
+  glass?: boolean; onMedia?: boolean; label?: string; motion?: MotionName;
 };
-export const PageControl = forwardRef<HTMLDivElement, PageControlProps>(function PageControl({ count, page, defaultPage = 0, onChange, glass, onMedia, label = 'Page', className, ...rest }, ref) {
+export const PageControl = forwardRef<HTMLDivElement, PageControlProps>(function PageControl({ count, page, defaultPage = 0, onChange, glass, onMedia, label = 'Page', motion, className, ...rest }, ref) {
   const [p, setP] = useControllable(page, defaultPage, onChange);
   const el = useRef<HTMLDivElement>(null);
   const lightRef = useGlassLight(Boolean(glass));
@@ -560,7 +619,7 @@ export const PageControl = forwardRef<HTMLDivElement, PageControlProps>(function
     });
   }, [setP]);
   return (
-    <div ref={mergeRefs(ref, el, glass ? lightRef : undefined)} role="group" aria-label={label} tabIndex={0}
+    <div ref={mergeRefs(ref, el, glass ? lightRef : undefined)} role="group" aria-label={label} tabIndex={0} data-gl-motion={motion}
       className={cx('gl-pagecontrol', glass && cx('gl-pagecontrol--glass', glassClass(onMedia ? 'clear' : 'regular')), onMedia && 'gl-pagecontrol--on-media', className)}
       onKeyDown={(e) => { if (e.key === 'ArrowRight' && p < count - 1) { e.preventDefault(); setP(p + 1); } if (e.key === 'ArrowLeft' && p > 0) { e.preventDefault(); setP(p - 1); } }}
       {...rest}>

@@ -179,19 +179,36 @@ export const z = { base: 0, bar: 20, dropdown: 40, sheet: 60, dialog: 70, toast:
    JS gets the parameters for interactive (finger-driven) motion.
    ------------------------------------------------------------------------------------------------ */
 export type SpringParams = { response: number; damping: number };
-export const springs = {
-  /* taps, toggles, small state changes */
-  snappy: { response: 0.26, damping: 0.86 },
-  /* surfaces moving into place, selection travel */
-  smooth: { response: 0.36, damping: 1 },
-  /* panels blooming out of their anchor: one soft overshoot */
-  bouncy: { response: 0.42, damping: 0.72 },
-  /* large surfaces (sheets), page-level transitions */
-  gentle: { response: 0.5, damping: 1 },
-  /* menus and popovers: out of the anchor fast (90 % in ~115 ms) with a clear overshoot, then settles */
-  pop: { response: 0.3, damping: 0.64 },
-} as const satisfies Record<string, SpringParams>;
-export type SpringName = keyof typeof springs;
+export type SpringName = 'snappy' | 'smooth' | 'bouncy' | 'gentle' | 'pop';
+
+/* Motion personalities. Same five named springs, three characters:
+   · calm    — settles without visible overshoot; for dense, work-focused UIs
+   · lively  — (default) a clear, single overshoot on everything that moves; feels alive without wobbling
+   · playful — rubbery: bigger overshoot, more squash & stretch
+   `squash` (0–1): how much a travelling selection flattens while it stretches (segmented, tab bar).
+   `gel` (0–1): how much a dragged knob stretches with speed, and `lag` (s): how far it trails the finger. */
+export type MotionName = 'calm' | 'lively' | 'playful';
+export type Motion = Record<SpringName, SpringParams> & { squash: number; gel: number; lag: number };
+export const motions: Record<MotionName, Motion> = {
+  calm: {
+    snappy: { response: 0.26, damping: 0.86 }, smooth: { response: 0.36, damping: 1 }, bouncy: { response: 0.42, damping: 0.72 },
+    gentle: { response: 0.5, damping: 1 }, pop: { response: 0.3, damping: 0.64 }, squash: 0, gel: 0, lag: 0,
+  },
+  lively: {
+    snappy: { response: 0.28, damping: 0.7 }, smooth: { response: 0.4, damping: 0.72 }, bouncy: { response: 0.44, damping: 0.62 },
+    gentle: { response: 0.5, damping: 0.85 }, pop: { response: 0.3, damping: 0.58 }, squash: 0.14, gel: 0.14, lag: 0.09,
+  },
+  playful: {
+    snappy: { response: 0.32, damping: 0.55 }, smooth: { response: 0.42, damping: 0.6 }, bouncy: { response: 0.48, damping: 0.5 },
+    gentle: { response: 0.52, damping: 0.72 }, pop: { response: 0.34, damping: 0.5 }, squash: 0.26, gel: 0.24, lag: 0.13,
+  },
+};
+export const defaultMotion: MotionName = 'lively';
+/** The default personality's springs (kept for direct use). */
+export const springs: Record<SpringName, SpringParams> = {
+  snappy: motions.lively.snappy, smooth: motions.lively.smooth, bouncy: motions.lively.bouncy, gentle: motions.lively.gentle, pop: motions.lively.pop,
+};
+export const SPRING_NAMES: SpringName[] = ['snappy', 'smooth', 'bouncy', 'gentle', 'pop'];
 
 /** Position of a unit spring released from 0 toward 1 at time t (s). */
 export function springAt({ response, damping }: SpringParams, t: number): number {

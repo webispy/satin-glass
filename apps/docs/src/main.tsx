@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import '@glass-layer/react/styles.css';
 import './docs.css';
 import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, SegmentedControl, Switch, IconButton, Toaster, type ThemeMode } from '@glass-layer/react';
+import type { MotionName } from '@glass-layer/tokens';
 import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon } from 'lucide-react';
 import { Overview, Colors, Typography, Motion, Material } from './pages/foundations';
 import { Buttons, Inputs, Navigation, Lists, Overlays } from './pages/components';
@@ -34,8 +35,9 @@ function App() {
   const [mode, setMode] = useState<ThemeMode>('system');
   const [hc, setHc] = useState(false);
   const [rt, setRt] = useState(false);
+  const [motion, setMotion] = useState<MotionName>('lively');
   const [navOpen, setNavOpen] = useState(false);
-  const theme = useMemo(() => createTheme({ mode, contrast: hc ? 'more' : 'standard', reduceTransparency: rt }), [mode, hc, rt]);
+  const theme = useMemo(() => createTheme({ mode, contrast: hc ? 'more' : 'standard', reduceTransparency: rt, motion }), [mode, hc, rt, motion]);
   const current = PAGES.find((p) => p.id === page) ?? PAGES[0];
   const Current = current.el;
   useEffect(() => { scrollTo(0, 0); setNavOpen(false); }, [page]);
@@ -63,6 +65,7 @@ function App() {
               <IconButton className="docs__menu-btn" variant="glass" icon={<MenuIcon />} label="메뉴" onClick={() => setNavOpen((v) => !v)} />
               <Glass className="docs__settings" style={{ borderRadius: 'var(--gl-radius-lg)' }}>
                 <SegmentedControl size="sm" aria-label="화면 모드" value={mode} onChange={setMode} options={[{ value: 'light', label: '라이트' }, { value: 'dark', label: '다크' }, { value: 'system', label: '시스템' }]} />
+                <SegmentedControl size="sm" aria-label="모션" value={motion} onChange={setMotion} options={[{ value: 'calm', label: '차분' }, { value: 'lively', label: '생동' }, { value: 'playful', label: '경쾌' }]} />
                 <label>고대비 <Switch size="sm" checked={hc} onChange={setHc} aria-label="고대비" /></label>
                 <label className="hide-sm">투명도 줄이기 <Switch size="sm" checked={rt} onChange={setRt} aria-label="투명도 줄이기" /></label>
               </Glass>

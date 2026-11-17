@@ -42,6 +42,16 @@ await measure('toast in', () => p.getByRole('button', { name: '토스트', exact
 await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(800);
 await measure('switch toggle', () => p.locator('.docs__page .gl-switch').first().click({ noWaitAfter: true }), 500);
 await measure('segmented tap', () => p.locator('.docs__page .gl-segmented').first().locator('.gl-segmented__item').nth(3).click({ noWaitAfter: true }));
+await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
+{
+  const sl = p.locator('.grid--3 > *').nth(2).locator('.gl-slider'), b = await sl.boundingBox();
+  await measure('slider drag, playful gel (JS spring)', async () => {
+    await p.mouse.move(b.x + 8, b.y + b.height / 2); await p.mouse.down();
+    for (let k = 1; k <= 20; k++) await p.mouse.move(b.x + 8 + (b.width - 16) * (k % 10) / 10, b.y + b.height / 2);
+    await p.mouse.up();
+  }, 900);
+  await measure('segmented tap, playful squash', () => p.locator('.grid--3 > *').nth(2).locator('.gl-segmented__item').nth(2).click({ noWaitAfter: true }));
+}
 await p.goto('http://localhost:4173/#/material'); await p.waitForTimeout(800);
 await measure('pointer light over 5 glass cards', async () => { for (let i = 0; i < 30; i++) await p.mouse.move(350 + i * 25, 380 + (i % 5) * 20); }, 900);
 await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(800);

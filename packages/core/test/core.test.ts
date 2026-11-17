@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Spring, place, springEasing, springDuration, springs, springAt } from '../src';
+import { Spring, place, springEasing, springDuration, springs, springAt, motions, motionOf } from '../src';
 
 describe('springs', () => {
   it('every named spring reaches its target and the CSS easing ends at exactly 1', () => {
@@ -11,10 +11,20 @@ describe('springs', () => {
       expect(e.endsWith(', 1)')).toBe(true);
     }
   });
-  it('bouncy overshoots once, smooth never does', () => {
-    const peak = (s: typeof springs.bouncy) => Math.max(...Array.from({ length: 300 }, (_, i) => springAt(s, i / 300)));
-    expect(peak(springs.bouncy)).toBeGreaterThan(1.02);
-    expect(peak(springs.smooth)).toBeLessThanOrEqual(1);
+  it('personalities: calm never visibly overshoots on smooth, lively < playful everywhere', () => {
+    const peak = (s: { response: number; damping: number }) => Math.max(...Array.from({ length: 1500 }, (_, i) => springAt(s, i / 1000)));
+    expect(peak(motions.calm.smooth)).toBeLessThanOrEqual(1);
+    for (const n of ['snappy', 'smooth', 'bouncy', 'gentle', 'pop'] as const) {
+      expect(peak(motions.lively[n])).toBeGreaterThanOrEqual(peak(motions.calm[n]) - 1e-9);
+      expect(peak(motions.playful[n])).toBeGreaterThan(peak(motions.lively[n]));
+    }
+    expect(motions.calm.squash).toBe(0);
+    expect(motions.playful.squash).toBeGreaterThan(motions.lively.squash);
+  });
+  it('motionOf resolves the nearest [data-gl-motion], else the default', () => {
+    document.body.innerHTML = '<div data-gl-motion="playful"><span id="a"></span></div><span id="b"></span>';
+    expect(motionOf(document.getElementById('a'))).toBe('playful');
+    expect(motionOf(document.getElementById('b'))).toBe('lively');
   });
   it('the integrated Spring is stable with long frames and settles', () => {
     const s = new Spring(0, 'snappy'); s.target = 100;

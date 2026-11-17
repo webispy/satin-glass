@@ -4,7 +4,7 @@
    new item. While dragged it follows the finger inside the bar, stretched toward the direction of travel.
    Only the indicator (a plain fill, no backdrop filter) is touched per frame, inside a contained container.
    Gesture state goes on data attributes (not classes) so a framework re-render never strips it mid-gesture. */
-import { Spring, loop, prefersReducedMotion } from './motion';
+import { Spring, loop, prefersReducedMotion, motionFor } from './motion';
 
 export type BridgeOptions = {
   items: () => HTMLElement[];
@@ -22,7 +22,9 @@ export type Bridge = {
 };
 
 export function createBridge(container: HTMLElement, indicator: HTMLElement, opts: BridgeOptions): Bridge {
-  const left = new Spring(0, 'snappy'), right = new Spring(0, 'snappy');
+  const left = new Spring(0, 'snappy', container), right = new Spring(0, 'snappy', container);
+  /* squash & stretch from the motion personality, re-read whenever a move starts (personalities can change live) */
+  let squash = motionFor(container).squash;
   let current = -1, stop: (() => void) | null = null, hover = -1;
   let dragging = false, pressed = false, pid: number | null = null, startX = 0, grab = 0, lastX = 0, vx = 0, lastT = 0, swallow = false;
 
@@ -32,10 +34,13 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
   };
   const render = () => {
     const w = Math.max(0, right.value - left.value);
-    indicator.style.transform = `translate3d(${left.value.toFixed(2)}px,0,0)`;
-    indicator.style.width = `${w.toFixed(2)}px`;
     const base = geom(current)?.w || w || 1;
-    container.style.setProperty('--gl-stretch', Math.max(0, w / base - 1).toFixed(3));
+    const stretch = Math.max(0, w / base - 1);
+    /* the drop flattens as it stretches (volume-ish), and springs back round as it pulls together */
+    const sy = 1 - squash * Math.min(1, stretch * 1.4);
+    indicator.style.transform = `translate3d(${left.value.toFixed(2)}px,0,0)${sy < 0.999 ? ` scaleY(${sy.toFixed(3)})` : ''}`;
+    indicator.style.width = `${w.toFixed(2)}px`;
+    container.style.setProperty('--gl-stretch', stretch.toFixed(3));
   };
   const run = () => {
     if (stop) return;
@@ -48,8 +53,9 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
   };
   /* leading edge snappy, trailing edge smooth → the drop stretches toward where it is going */
   const lead = (dir: number) => {
-    if (dir > 0) { right.set('snappy'); left.set('smooth'); }
-    else if (dir < 0) { left.set('snappy'); right.set('smooth'); }
+    squash = motionFor(container).squash;
+    if (dir > 0) { right.set('snappy', container); left.set('smooth', container); }
+    else if (dir < 0) { left.set('snappy', container); right.set('smooth', container); }
   };
 
   function moveTo(index: number, animate = true) {

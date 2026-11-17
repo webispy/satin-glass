@@ -1,9 +1,19 @@
-import { springs, springAt, springDuration, springEasing, type SpringParams, type SpringName } from '@glass-layer/tokens';
+import {
+  springs, motions, defaultMotion, springAt, springDuration, springEasing,
+  type SpringParams, type SpringName, type MotionName, type Motion,
+} from '@glass-layer/tokens';
 
-export { springs, springAt, springDuration, springEasing };
-export type { SpringParams, SpringName };
+export { springs, motions, defaultMotion, springAt, springDuration, springEasing };
+export type { SpringParams, SpringName, MotionName, Motion };
 
-const params = (s: SpringName | SpringParams): SpringParams => (typeof s === 'string' ? springs[s] : s);
+/** The motion personality in effect for an element: the nearest [data-gl-motion], else the default. */
+export function motionOf(el?: Element | null): MotionName {
+  const m = el?.closest?.('[data-gl-motion]')?.getAttribute('data-gl-motion');
+  return m && m in motions ? (m as MotionName) : defaultMotion;
+}
+export const motionFor = (el?: Element | null): Motion => motions[motionOf(el)];
+
+const params = (s: SpringName | SpringParams, el?: Element | null): SpringParams => (typeof s === 'string' ? motionFor(el)[s] : s);
 
 export const prefersReducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -15,15 +25,16 @@ export class Spring {
   target: number;
   private k: number;
   private c: number;
-  constructor(value: number, spring: SpringName | SpringParams = 'smooth') {
+  constructor(value: number, spring: SpringName | SpringParams = 'smooth', el?: Element | null) {
     this.value = this.target = value;
-    const p = params(spring);
+    const p = params(spring, el);
     const w = (2 * Math.PI) / p.response;
     this.k = w * w;
     this.c = 2 * p.damping * w;
   }
-  set(spring: SpringName | SpringParams) {
-    const p = params(spring), w = (2 * Math.PI) / p.response;
+  /** change the spring; a name resolves against the personality of `el` (if given) */
+  set(spring: SpringName | SpringParams, el?: Element | null) {
+    const p = params(spring, el), w = (2 * Math.PI) / p.response;
     this.k = w * w; this.c = 2 * p.damping * w;
   }
   step(dt: number) {
@@ -55,8 +66,8 @@ export function loop(frame: (dt: number) => boolean | void): () => void {
 export type SpringTiming = { duration: number; easing: string };
 const cache = new Map<string, SpringTiming>();
 /** Web Animations timing that traces a spring (compositor-driven when only transform/opacity animate). */
-export function springTiming(s: SpringName | SpringParams): SpringTiming {
-  const p = params(s), key = `${p.response}/${p.damping}`;
+export function springTiming(s: SpringName | SpringParams, el?: Element | null): SpringTiming {
+  const p = params(s, el), key = `${p.response}/${p.damping}`;
   let t = cache.get(key);
   if (!t) { t = { duration: springDuration(p), easing: springEasing(p) }; cache.set(key, t); }
   return prefersReducedMotion() ? { duration: 1, easing: 'linear' } : t;
@@ -64,5 +75,5 @@ export function springTiming(s: SpringName | SpringParams): SpringTiming {
 
 /** element.animate with a spring; resolves when finished (or immediately if cancelled). */
 export function animate(el: Element, keyframes: Keyframe[], spring: SpringName | SpringParams, extra: KeyframeAnimationOptions = {}): Animation {
-  return el.animate(keyframes, { fill: 'both', ...springTiming(spring), ...extra });
+  return el.animate(keyframes, { fill: 'both', ...springTiming(spring, el), ...extra });
 }

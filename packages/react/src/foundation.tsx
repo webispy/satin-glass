@@ -3,7 +3,7 @@ import {
   type CSSProperties, type ElementType, type HTMLAttributes, type ReactNode, type ComponentPropsWithoutRef,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { attachLight } from '@glass-layer/core';
+import { attachLight, type MotionName } from '@glass-layer/core';
 import type { TextStyle } from '@glass-layer/tokens';
 import { cx, mergeRefs } from './utils';
 
@@ -19,6 +19,8 @@ export type Theme = {
   light: boolean;
   /** CSS variable overrides, e.g. { accent: '#0a7' } → --gl-accent */
   tokens?: Record<string, string>;
+  /** motion personality: 'calm' | 'lively' (default) | 'playful' */
+  motion?: MotionName;
 };
 export type ResolvedTheme = Theme & { scheme: 'light' | 'dark'; name: 'light' | 'dark' | 'light-hc' | 'dark-hc' };
 
@@ -28,6 +30,23 @@ export function createTheme(t: Partial<Theme> = {}): Theme {
 
 const ThemeCtx = createContext<ResolvedTheme>({ ...createTheme(), scheme: 'light', name: 'light' });
 export const useTheme = () => useContext(ThemeCtx);
+
+/* the motion personality in effect (overlays rendered in a portal read it from here) */
+const MotionCtx = createContext<MotionName | undefined>(undefined);
+export const useMotion = () => useContext(MotionCtx);
+
+export type MotionScopeProps = { motion?: MotionName; children?: ReactNode; /** context only, no wrapper element (for portals) */ bare?: boolean };
+/** Sets the motion personality for everything inside: CSS springs via [data-gl-motion], JS springs and portals via context. */
+export function MotionScope({ motion, children, bare }: MotionScopeProps) {
+  const outer = useContext(MotionCtx);
+  const m = motion ?? outer;
+  if (!motion) return <>{children}</>;
+  return (
+    <MotionCtx.Provider value={m}>
+      {bare ? children : <div data-gl-motion={m} style={{ display: 'contents' }}>{children}</div>}
+    </MotionCtx.Provider>
+  );
+}
 
 function useMedia(q: string): boolean {
   const [m, setM] = useState(() => typeof matchMedia === 'function' && matchMedia(q).matches);
@@ -58,9 +77,11 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
   const rt = theme.reduceTransparency === 'system' ? sysRT : theme.reduceTransparency;
   return (
     <ThemeCtx.Provider value={resolved}>
-      <div ref={ref} data-gl-theme={resolved.name} className={cx('gl-root', rt && 'gl-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
+     <MotionCtx.Provider value={theme.motion}>
+      <div ref={ref} data-gl-theme={resolved.name} data-gl-motion={theme.motion} className={cx('gl-root', rt && 'gl-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
         {children}
       </div>
+     </MotionCtx.Provider>
     </ThemeCtx.Provider>
   );
 });
@@ -68,11 +89,12 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
 /** Renders into document.body but keeps the surrounding theme. */
 export function Portal({ children, className }: { children: ReactNode; className?: string }) {
   const t = useTheme();
+  const motion = useMotion();
   /* synchronous host so the panel exists in the same commit (enter animations measure it in a layout effect) */
   const host = typeof document !== 'undefined' ? document.body : null;
   if (!host) return null;
   return createPortal(
-    <div className={cx('gl-root gl-portal', className)} data-gl-theme={t.name} style={tokenStyle(t.tokens)}>{children}</div>,
+    <div className={cx('gl-root gl-portal', className)} data-gl-theme={t.name} data-gl-motion={motion} style={tokenStyle(t.tokens)}>{children}</div>,
     host,
   );
 }

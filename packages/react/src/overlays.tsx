@@ -4,7 +4,8 @@ import {
 } from 'react';
 import { animate, bloomIn, bloomOut, drag, focusables, longPress, place, prefersReducedMotion, pushLayer, trapFocus, type Placement } from '@glass-layer/core';
 import { cx, mergeRefs, useIsoLayoutEffect, usePresence, useStableId } from './utils';
-import { Portal, glassClass, useGlassLight } from './foundation';
+import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
+import type { MotionName } from '@glass-layer/core';
 import { Button } from './controls';
 import { CheckIcon, InfoIcon, SuccessIcon, AlertIcon } from './icons';
 
@@ -43,9 +44,10 @@ export type DialogProps = {
   dismissible?: boolean;
   role?: 'dialog' | 'alertdialog';
   className?: string;
+  motion?: MotionName;
 };
 
-export function Dialog({ open, onClose, title, children, icon, tone = 'accent', actions, dismissible = false, role = 'alertdialog', className }: DialogProps) {
+export function Dialog({ open, onClose, title, children, icon, tone = 'accent', actions, dismissible = false, role = 'alertdialog', className, motion }: DialogProps) {
   const panel = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
   const id = useStableId('gl-dialog');
   const lightRef = useGlassLight();
@@ -65,7 +67,7 @@ export function Dialog({ open, onClose, title, children, icon, tone = 'accent', 
   if (!mounted) return null;
   const many = Children.count(actions) >= 3;
   return (
-    <Portal>
+    <MotionScope motion={motion} bare><Portal>
       <div ref={scrim} className="gl-scrim" onClick={() => dismissible && onClose('backdrop')} />
       <div className="gl-dialog-wrap">
         <div ref={mergeRefs(panel, lightRef)} role={role} aria-modal="true" aria-labelledby={`${id}-t`} aria-describedby={children ? `${id}-b` : undefined} className={cx('gl-dialog', glassClass('strong'), className)}>
@@ -75,7 +77,7 @@ export function Dialog({ open, onClose, title, children, icon, tone = 'accent', 
           {actions && <div className={cx('gl-dialog__actions', many && 'gl-dialog__actions--stacked')}>{actions}</div>}
         </div>
       </div>
-    </Portal>
+    </Portal></MotionScope>
   );
 }
 
@@ -94,10 +96,11 @@ export type SheetProps = {
   adaptive?: boolean;
   dismissible?: boolean;
   className?: string;
+  motion?: MotionName;
   'aria-label'?: string;
 };
 
-export function Sheet({ open, onClose, title, leading, trailing, children, size = 'auto', adaptive = true, dismissible = true, className, 'aria-label': ariaLabel }: SheetProps) {
+export function Sheet({ open, onClose, title, leading, trailing, children, size = 'auto', adaptive = true, dismissible = true, className, motion, 'aria-label': ariaLabel }: SheetProps) {
   const panel = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
   const id = useStableId('gl-sheet');
   const lightRef = useGlassLight();
@@ -147,7 +150,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
   });
   if (!mounted) return null;
   return (
-    <Portal>
+    <MotionScope motion={motion} bare><Portal>
       <div ref={scrim} className="gl-scrim" onClick={() => dismissible && onClose('backdrop')} />
       <div className={cx('gl-sheet-wrap', adaptive && 'gl-sheet-wrap--adaptive')}>
         <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined} aria-label={title ? undefined : ariaLabel} className={cx('gl-sheet', size === 'full' && 'gl-sheet--full', glassClass('strong'), className)}>
@@ -164,7 +167,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
           <div className="gl-sheet__body">{children}</div>
         </div>
       </div>
-    </Portal>
+    </Portal></MotionScope>
   );
 }
 
@@ -264,10 +267,11 @@ export type MenuProps = {
   placement?: Placement;
   children: ReactNode;
   className?: string;
+  motion?: MotionName;
   'aria-label'?: string;
 };
 
-export function Menu({ open, onClose, anchor, placement = 'bottom-start', children, className, 'aria-label': label }: MenuProps) {
+export function Menu({ open, onClose, anchor, placement = 'bottom-start', children, className, motion, 'aria-label': label }: MenuProps) {
   const lightRef = useGlassLight();
   const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => {
     (p.querySelector<HTMLElement>('.gl-menu__item:not([aria-disabled="true"])') ?? p).focus({ preventScroll: true });
@@ -275,28 +279,28 @@ export function Menu({ open, onClose, anchor, placement = 'bottom-start', childr
   const ctx = useMemo<MenuCtx>(() => ({ select: (fn) => { onClose('select'); fn?.(); } }), [onClose]);
   if (!mounted) return null;
   return (
-    <Portal className="gl-portal--passthrough">
+    <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough">
       <MenuContext.Provider value={ctx}>
         <div ref={mergeRefs(panel, lightRef)} role="menu" aria-label={label} tabIndex={-1} className={cx('gl-menu', glassClass('strong'), className)} onKeyDown={menuKeys}>
           <div data-gl-content>{children}</div>
         </div>
       </MenuContext.Provider>
-    </Portal>
+    </Portal></MotionScope>
   );
 }
 
 /* ================================================================================================ Popover */
 export type PopoverProps = Omit<MenuProps, 'aria-label'> & { 'aria-label'?: string; 'aria-labelledby'?: string };
-export function Popover({ open, onClose, anchor, placement = 'bottom', children, className, ...aria }: PopoverProps) {
+export function Popover({ open, onClose, anchor, placement = 'bottom', children, className, motion, ...aria }: PopoverProps) {
   const lightRef = useGlassLight();
   const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => { (focusables(p)[0] ?? p).focus({ preventScroll: true }); });
   if (!mounted) return null;
   return (
-    <Portal className="gl-portal--passthrough">
+    <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough">
       <div ref={mergeRefs(panel, lightRef)} role="dialog" tabIndex={-1} className={cx('gl-popover', glassClass('strong'), className)} {...aria}>
         <div data-gl-content>{children}</div>
       </div>
-    </Portal>
+    </Portal></MotionScope>
   );
 }
 
@@ -304,9 +308,9 @@ export function Popover({ open, onClose, anchor, placement = 'bottom', children,
 export type ActionSheetAction = { label: ReactNode; onSelect?: () => void; tone?: 'default' | 'danger'; icon?: ReactNode; disabled?: boolean };
 export type ActionSheetProps = {
   open: boolean; onClose: (reason: CloseReason) => void;
-  title?: ReactNode; message?: ReactNode; actions: ActionSheetAction[]; cancelLabel?: ReactNode;
+  title?: ReactNode; message?: ReactNode; actions: ActionSheetAction[]; cancelLabel?: ReactNode; motion?: MotionName;
 };
-export function ActionSheet({ open, onClose, title, message, actions, cancelLabel = 'Cancel' }: ActionSheetProps) {
+export function ActionSheet({ open, onClose, title, message, actions, cancelLabel = 'Cancel', motion }: ActionSheetProps) {
   const box = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
   const release = useRef<() => void>(() => {});
   const id = useStableId('gl-as');
@@ -326,7 +330,7 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
   });
   if (!mounted) return null;
   return (
-    <Portal>
+    <MotionScope motion={motion} bare><Portal>
       <div ref={scrim} className="gl-scrim" onClick={() => onClose('backdrop')} />
       <div className="gl-actionsheet-wrap">
         <div ref={box} className="gl-actionsheet" role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined}>
@@ -348,7 +352,7 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
           </div>
         </div>
       </div>
-    </Portal>
+    </Portal></MotionScope>
   );
 }
 
