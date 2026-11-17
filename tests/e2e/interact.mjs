@@ -36,6 +36,9 @@ ok('tab drag: release selects the tab under it', (await tabs.nth(0).getAttribute
 await tabs.nth(1).focus(); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(400);
 ok('tab keyboard: arrow keys move the selection', (await tabs.nth(1).getAttribute('aria-selected')) === 'true' || (await tabs.nth(2).getAttribute('aria-selected')) === 'true');
 
+const rad = async (sel) => parseFloat(await p.locator(sel).first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius));
+ok('tab bar: the search button has the same corner radius as the bar', (await rad('.gl-tabbar__action')) === (await rad('.gl-tabbar__bar')), `${await rad('.gl-tabbar__action')} / ${await rad('.gl-tabbar__bar')}`);
+
 /* ---------- inputs ---------- */
 await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(600);
 const sw = p.locator('.docs__page .gl-switch').first();
@@ -73,6 +76,16 @@ const early = await p.locator('.gl-menu').evaluate((e) => new DOMMatrix(getCompu
 await p.waitForTimeout(600); await shot('menu');
 const menuBox = await p.locator('.gl-menu').boundingBox(), btnBox = await dirBtn.boundingBox();
 ok('menu: blooms from the anchor (scaled < 1 early, placed below it)', early < 0.98 && menuBox.y >= btnBox.y + btnBox.height, `early scale ${early.toFixed(2)}`);
+/* snappy enough: sampled every frame, how long until the menu is ≥ 90 % of its size */
+await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+const t90 = await p.evaluate(() => new Promise((res) => {
+  const btn = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === '길찾기');
+  const t0 = performance.now(); btn.click();
+  const f = () => { const m = document.querySelector('.gl-menu'); const k = m ? new DOMMatrix(getComputedStyle(m).transform).d : 0;
+    if (m && k >= 0.9 && +getComputedStyle(m).opacity > 0.95) res(performance.now() - t0); else if (performance.now() - t0 > 1000) res(9999); else requestAnimationFrame(f); };
+  requestAnimationFrame(f);
+}));
+ok('menu: reaches 90 % size (and full opacity) within ~150 ms', t90 <= 170, `${t90.toFixed(0)} ms`);
 ok('menu: focus moves into the menu', await p.evaluate(() => document.activeElement?.classList.contains('gl-menu__item')));
 await p.keyboard.press('ArrowDown'); await p.keyboard.press('Enter'); await p.waitForTimeout(400);
 ok('menu: Enter selects and closes; focus returns to the button', (await p.locator('.gl-menu').count()) === 0 && (await dirBtn.evaluate((e) => e === document.activeElement)));
@@ -113,6 +126,21 @@ ok('context menu: Esc closes and the lift goes away', (await p.locator('.gl-menu
 
 await p.getByRole('button', { name: '토스트', exact: true }).click(); await p.waitForTimeout(500); await shot('toast');
 ok('toast: appears as a status message', (await p.locator('.gl-toast[role=status]').count()) === 1);
+
+/* ---------- showcase: an open popover, then another ⓘ — the new one must open (it used to get stuck) ---------- */
+await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(700);
+const infos = p.locator('.phone .gl-list-item .gl-button--icon');
+await infos.nth(0).scrollIntoViewIfNeeded(); await infos.nth(0).click(); await p.waitForTimeout(500);
+const first = await p.locator('.gl-popover').textContent();
+await infos.nth(2).click(); await p.waitForTimeout(600);
+const second = (await p.locator('.gl-popover').count()) === 1 ? await p.locator('.gl-popover').textContent() : '';
+const vis = (await p.locator('.gl-popover').count()) === 1 ? await p.locator('.gl-popover').evaluate((e) => +getComputedStyle(e).opacity) : 0;
+await shot('popover-switch');
+ok('popover: tapping another ⓘ while one is open opens the new one', second && second !== first && vis > 0.95, `${first?.slice(0, 6)} → ${second?.slice(0, 6)}, opacity ${vis}`);
+await infos.nth(3).click(); await p.waitForTimeout(600);
+ok('popover: …and again', (await p.locator('.gl-popover').count()) === 1 && (await p.locator('.gl-popover').textContent()).includes('별빛'));
+await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+ok('popover: Esc still closes after switching', (await p.locator('.gl-popover').count()) === 0);
 
 console.log('page errors:', errs.length ? errs : 'none');
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');

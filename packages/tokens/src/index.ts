@@ -188,6 +188,8 @@ export const springs = {
   bouncy: { response: 0.42, damping: 0.72 },
   /* large surfaces (sheets), page-level transitions */
   gentle: { response: 0.5, damping: 1 },
+  /* menus and popovers: out of the anchor fast (90 % in ~115 ms) with a clear overshoot, then settles */
+  pop: { response: 0.3, damping: 0.64 },
 } as const satisfies Record<string, SpringParams>;
 export type SpringName = keyof typeof springs;
 

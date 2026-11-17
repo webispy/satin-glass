@@ -1,5 +1,5 @@
 /* Overlay helpers: anchored placement, the "bloom" open/close motion, focus management and a layer stack. */
-import { animate, prefersReducedMotion } from './motion';
+import { animate, prefersReducedMotion, type SpringName } from './motion';
 
 /* ---------------------------------------------------------------- placement */
 export type Side = 'top' | 'bottom' | 'left' | 'right';
@@ -32,21 +32,26 @@ export function place(size: { width: number; height: number }, anchor: DOMRect, 
 }
 
 /* ---------------------------------------------------------------- bloom (compositor-only: transform + opacity) */
-/** The panel grows out of its anchor with one soft overshoot; its content settles a beat later. */
-export function bloomIn(panel: HTMLElement, origin: { x: number; y: number }, from = 0.55): Promise<void> {
+/** The panel grows out of its anchor (per-axis start scale: it unfolds away from the anchor) with an overshoot;
+    its content settles a beat later. Cancels a running exit, so re-opening mid-close just turns around. */
+export function bloomIn(panel: HTMLElement, origin: { x: number; y: number }, from: number | [number, number] = 0.55, spring: SpringName = 'bouncy'): Promise<void> {
+  panel.getAnimations().forEach((a) => a.cancel());
   panel.style.transformOrigin = `${origin.x}px ${origin.y}px`;
   if (prefersReducedMotion()) return fade(panel, 0, 1, 120);
-  const a = animate(panel, [{ transform: `scale(${from})` }, { transform: 'scale(1)' }], 'bouncy');
-  const o = panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, easing: 'linear', fill: 'both' });
+  const [sx, sy] = typeof from === 'number' ? [from, from] : from;
+  const a = animate(panel, [{ transform: `scale(${sx}, ${sy})` }, { transform: 'scale(1)' }], spring);
+  const o = panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: spring === 'pop' ? 70 : 120, easing: 'linear', fill: 'both' });
   const content = panel.querySelector<HTMLElement>('[data-gl-content]');
-  if (content) animate(content, [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], 'smooth', { delay: 40 });
+  if (content) animate(content, [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], 'snappy', { delay: spring === 'pop' ? 25 : 40 });
   return Promise.all([a.finished, o.finished]).then(() => undefined, () => undefined);
 }
 
-export function bloomOut(panel: HTMLElement, to = 0.9): Promise<void> {
+/** Folds back toward the anchor: quick ease-in, gone in ~150 ms. */
+export function bloomOut(panel: HTMLElement, to: number | [number, number] = 0.9, duration = 160): Promise<void> {
   if (prefersReducedMotion()) return fade(panel, 1, 0, 100);
   panel.getAnimations().forEach((a) => a.cancel());
-  const a = panel.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: `scale(${to})`, opacity: 0 }], { duration: 160, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' });
+  const [sx, sy] = typeof to === 'number' ? [to, to] : to;
+  const a = panel.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: `scale(${sx}, ${sy})`, opacity: 0 }], { duration, easing: 'cubic-bezier(0.5, 0, 0.75, 0.25)', fill: 'both' });
   return a.finished.then(() => undefined, () => undefined);
 }
 

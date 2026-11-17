@@ -52,7 +52,7 @@
 .gl-tabbar__item:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
 .gl-tabbar__item .gl-badge { position: absolute; top: 6px; left: calc(50% + 6px); }
 .gl-tabbar__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
-.gl-tabbar__action { flex: none; width: var(--gl-size-tab-bar); height: var(--gl-size-tab-bar); --_radius: var(--gl-radius-xl); }
+.gl-tabbar__action { flex: none; width: var(--gl-size-tab-bar); height: var(--gl-size-tab-bar); --_radius: var(--gl-radius-xl); border-radius: var(--gl-radius-xl); }   /* same corner as the bar (.gl-button would make it 12) */
 .gl-tabbar__action svg { width: 24px; height: 24px; }
 /* compact: icons only */
 .gl-tabbar--compact .gl-tabbar__label { display: none; }
