@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Spring, place, springEasing, springDuration, springs, springAt, motions, motionOf } from '../src';
+import { Spring, place, springEasing, springDuration, springs, springAt, motions, motionOf, prefersReducedMotion } from '../src';
 
 describe('springs', () => {
   it('every named spring reaches its target and the CSS easing ends at exactly 1', () => {
@@ -50,5 +50,13 @@ describe('place', () => {
   it('sets the transform origin at the point nearest the anchor centre', () => {
     const r = place({ width: 200, height: 150 }, new DOMRect(100, 100, 80, 40), 'bottom-start');
     expect(r.originX).toBe(40); expect(r.originY).toBe(0);
+  });
+});
+
+describe('reduce motion scope', () => {
+  it('the nearest [data-gl-reduce-motion] decides; without one, the system setting', () => {
+    document.body.innerHTML = '<div data-gl-reduce-motion="true"><span id="a"></span><div data-gl-reduce-motion="false"><span id="b"></span></div></div>';
+    expect(prefersReducedMotion(document.getElementById('a'))).toBe(true);
+    expect(prefersReducedMotion(document.getElementById('b'))).toBe(false);
   });
 });

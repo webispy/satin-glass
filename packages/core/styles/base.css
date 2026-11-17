@@ -50,7 +50,17 @@
 /* the shared focus ring (keyboard only) */
 .gl-focusable:focus-visible, .gl-root :where(button, [href], [tabindex]):focus-visible { outline: none; box-shadow: var(--gl-ring); }
 
-/* reduce motion: CSS springs collapse to instant */
+/* reduce motion: CSS springs collapse to instant. Forced by [data-gl-reduce-motion="true"] (theme option, e.g. a
+   VDI / remote-desktop session where animation streams badly), or the system setting unless a theme says "false".
+   Essential progress indicators keep moving, slowly and without travel. */
+[data-gl-reduce-motion="true"] *, [data-gl-reduce-motion="true"] *::before, [data-gl-reduce-motion="true"] *::after { transition-duration: 0s !important; transition-delay: 0s !important; animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
 @media (prefers-reduced-motion: reduce) {
-  .gl-root *, .gl-root *::before, .gl-root *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+  .gl-root:not([data-gl-reduce-motion="false"]) *, .gl-root:not([data-gl-reduce-motion="false"]) *::before, .gl-root:not([data-gl-reduce-motion="false"]) *::after { transition-duration: 0s !important; transition-delay: 0s !important; animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
 }
+[data-gl-reduce-motion="true"] .gl-spinner { animation: gl-spin 1.4s linear infinite !important; }
+[data-gl-reduce-motion="true"] .gl-progress--indeterminate .gl-progress__bar { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite !important; }
+@media (prefers-reduced-motion: reduce) {
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-spinner { animation: gl-spin 1.4s linear infinite !important; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-progress--indeterminate .gl-progress__bar { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite !important; }
+}
+@keyframes gl-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.7; } }

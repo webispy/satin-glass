@@ -10,6 +10,7 @@ const run = (args, env = {}) => new Promise((res) => {
 try {
   await wait(1500);
   for (const b of ['chromium', 'webkit', 'firefox']) { console.log(`\n=== interactions · ${b}`); await run(['tests/e2e/interact.mjs'], { BROWSER: b }); }
+  for (const b of ['chromium', 'webkit', 'firefox']) { console.log(`\n=== reduce motion · ${b}`); await run(['tests/e2e/reduce-motion.mjs'], { BROWSER: b }); }
   console.log('\n=== performance (Chromium, CPU ×4)'); await run(['tests/e2e/perf.mjs']);
   console.log('\n=== progress keeps momentum across updates'); await run(['tests/e2e/progress-tick.mjs']);
   console.log('\n=== arrival timing per personality (informational)'); await run(['tests/e2e/timing.mjs']);

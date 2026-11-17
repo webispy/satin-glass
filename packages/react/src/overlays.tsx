@@ -138,7 +138,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
     });
     release.current = () => { pop(); trap(); off(); };
     if (wide()) return bloomIn(p, { x: p.offsetWidth / 2, y: p.offsetHeight / 2 }, 0.94);
-    if (prefersReducedMotion()) return;
+    if (prefersReducedMotion(p)) return;
     return animate(p, [{ transform: 'translateY(calc(100% + 24px))' }, { transform: 'none' }], 'gentle').finished.then(() => undefined, () => undefined);
   }, () => {
     release.current();
@@ -148,7 +148,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
     if (wide() && !swiped.current) return bloomOut(p, 0.96);
     const from = p.style.transform || 'none';
     p.getAnimations().forEach((a) => a.cancel());
-    return p.animate([{ transform: from }, { transform: 'translateY(calc(100% + 24px))' }], { duration: prefersReducedMotion() ? 1 : 260, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' }).finished.then(() => undefined, () => undefined);
+    return p.animate([{ transform: from }, { transform: 'translateY(calc(100% + 24px))' }], { duration: prefersReducedMotion(p) ? 1 : 260, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' }).finished.then(() => undefined, () => undefined);
   });
   if (!mounted) return null;
   return (
@@ -323,12 +323,12 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
     const pop = pushLayer(() => onClose('escape'), true);
     const trap = trapFocus(b, b.querySelector<HTMLElement>('[data-cancel]'));
     release.current = () => { pop(); trap(); };
-    if (prefersReducedMotion()) return;
+    if (prefersReducedMotion(b)) return;
     return animate(b, [{ transform: 'translateY(calc(100% + 24px))' }, { transform: 'none' }], 'smooth').finished.then(() => undefined, () => undefined);
   }, () => {
     release.current();
     scrim.current?.classList.remove('is-open');
-    return box.current!.animate([{ transform: 'none' }, { transform: 'translateY(calc(100% + 24px))' }], { duration: prefersReducedMotion() ? 1 : 220, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' }).finished.then(() => undefined, () => undefined);
+    return box.current!.animate([{ transform: 'none' }, { transform: 'translateY(calc(100% + 24px))' }], { duration: prefersReducedMotion(box.current) ? 1 : 220, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' }).finished.then(() => undefined, () => undefined);
   });
   if (!mounted) return null;
   return (
@@ -455,7 +455,7 @@ function ToastView({ t, edge, onDone }: { t: ToastItem; edge: 'top' | 'bottom'; 
     if (leaving.current || !el.current) return;
     leaving.current = true;
     const from = el.current.style.transform || 'none';
-    el.current.animate([{ transform: from, opacity: 1 }, { transform: `translateY(${sign * 24}px) scale(0.96)`, opacity: 0 }], { duration: prefersReducedMotion() ? 1 : 200, easing: 'cubic-bezier(0.4,0,1,1)', fill: 'both' })
+    el.current.animate([{ transform: from, opacity: 1 }, { transform: `translateY(${sign * 24}px) scale(0.96)`, opacity: 0 }], { duration: prefersReducedMotion(el.current) ? 1 : 200, easing: 'cubic-bezier(0.4,0,1,1)', fill: 'both' })
       .finished.then(onDone, onDone);
   }, [onDone, sign]);
   useIsoLayoutEffect(() => {

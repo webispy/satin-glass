@@ -15,8 +15,21 @@ export const motionFor = (el?: Element | null): Motion => motions[motionOf(el)];
 
 const params = (s: SpringName | SpringParams, el?: Element | null): SpringParams => (typeof s === 'string' ? motionFor(el)[s] : s);
 
-export const prefersReducedMotion = () =>
-  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** Whether motion should be reduced for `el`: the nearest [data-gl-reduce-motion] decides ("true" / "false",
+    set by ThemeProvider or reduceMotionScope), otherwise the system setting (prefers-reduced-motion). */
+export function prefersReducedMotion(el?: Element | null): boolean {
+  const scope = el?.closest?.('[data-gl-reduce-motion]') ?? (typeof document !== 'undefined' ? document.querySelector('[data-gl-reduce-motion]') : null);
+  const forced = scope?.getAttribute('data-gl-reduce-motion');
+  if (forced === 'true') return true;
+  if (forced === 'false') return false;
+  return systemReduced();
+}
+let mq: MediaQueryList | null = null;
+const systemReduced = () => {
+  if (typeof matchMedia !== 'function') return false;
+  mq ??= matchMedia('(prefers-reduced-motion: reduce)');
+  return mq.matches;
+};
 
 /** A damped spring integrated in fixed 4 ms steps (stable at any frame rate). For finger-driven motion. */
 export class Spring {
@@ -70,7 +83,7 @@ export function springTiming(s: SpringName | SpringParams, el?: Element | null):
   const p = params(s, el), key = `${p.response}/${p.damping}`;
   let t = cache.get(key);
   if (!t) { t = { duration: springDuration(p), easing: springEasing(p) }; cache.set(key, t); }
-  return prefersReducedMotion() ? { duration: 1, easing: 'linear' } : t;
+  return prefersReducedMotion(el) ? { duration: 1, easing: 'linear' } : t;
 }
 
 /** element.animate with a spring; resolves when finished (or immediately if cancelled). */

@@ -72,7 +72,7 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
     bounds();
     const first = current < 0 || !indicator.style.width;
     current = index;
-    if (first || !animate || prefersReducedMotion()) { left.jump(g.l); right.jump(g.r); render(); return; }
+    if (first || !animate || prefersReducedMotion(container)) { left.jump(g.l); right.jump(g.r); render(); return; }
     lead(Math.sign(g.l - left.target));
     left.target = g.l; right.target = g.r;
     run();

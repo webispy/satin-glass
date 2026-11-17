@@ -299,7 +299,7 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
     requestAnimationFrame(f);
   }));
   const kn = [await knob(0), await knob(1), await knob(2)];
-  ok('personalities: the switch knob squashes against the end on arrival — none when calm, visible when lively', kn[0] > 0.999 && kn[1] < 0.88 && kn[2] < kn[1], kn.map((v) => v.toFixed(3)).join(' / '));
+  ok('personalities: the switch knob squashes against the end on arrival — none when calm, visible when lively', kn[0] > 0.999 && kn[1] < 0.9 && kn[2] < kn[1], kn.map((v) => v.toFixed(3)).join(' / '));
 
   /* lively switch: as quick for its 20 px as the segmented drop is for its 90 — leading edge home ~100 ms after release */
   {

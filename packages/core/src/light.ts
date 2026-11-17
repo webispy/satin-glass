@@ -1,3 +1,5 @@
+import { prefersReducedMotion } from './motion';
+
 /* Light-following glass: every registered glass surface carries a soft highlight that sits where the pointer is
    (or where the finger presses). One passive pointermove listener, rAF-batched, rects cached until scroll/resize.
    The highlight is moved with a transform on a composited pseudo-element, so moving it never repaints the glass. */
@@ -12,6 +14,8 @@ const REACH = 220; /* px outside the surface where the light still glows on its 
 function frame() {
   pending = false;
   for (const e of entries) {
+    /* reduced motion (forced by the theme, or the system): no light chasing the pointer */
+    if (prefersReducedMotion(e.el)) { e.el.style.setProperty('--gl-hk', '0'); continue; }
     if (dirty || !e.rect) e.rect = e.el.getBoundingClientRect();
     const r = e.rect;
     const x = px - r.left, y = py - r.top;

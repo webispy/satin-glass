@@ -21,11 +21,13 @@ export type Theme = {
   tokens?: Record<string, string>;
   /** motion personality: 'calm' | 'lively' (default) | 'playful' */
   motion?: MotionName;
+  /** reduce motion: true = always (e.g. a remote desktop / VDI session), false = never, 'system' = follow prefers-reduced-motion */
+  reduceMotion: boolean | 'system';
 };
 export type ResolvedTheme = Theme & { scheme: 'light' | 'dark'; name: 'light' | 'dark' | 'light-hc' | 'dark-hc' };
 
 export function createTheme(t: Partial<Theme> = {}): Theme {
-  return { mode: 'system', contrast: 'system', reduceTransparency: 'system', light: true, ...t };
+  return { mode: 'system', contrast: 'system', reduceTransparency: 'system', reduceMotion: 'system', light: true, ...t };
 }
 
 const ThemeCtx = createContext<ResolvedTheme>({ ...createTheme(), scheme: 'light', name: 'light' });
@@ -78,7 +80,7 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
   return (
     <ThemeCtx.Provider value={resolved}>
      <MotionCtx.Provider value={theme.motion}>
-      <div ref={ref} data-gl-theme={resolved.name} data-gl-motion={theme.motion} className={cx('gl-root', rt && 'gl-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
+      <div ref={ref} data-gl-theme={resolved.name} data-gl-motion={theme.motion} data-gl-reduce-motion={theme.reduceMotion === 'system' ? undefined : String(theme.reduceMotion)} className={cx('gl-root', rt && 'gl-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
         {children}
       </div>
      </MotionCtx.Provider>
@@ -94,7 +96,7 @@ export function Portal({ children, className }: { children: ReactNode; className
   const host = typeof document !== 'undefined' ? document.body : null;
   if (!host) return null;
   return createPortal(
-    <div className={cx('gl-root gl-portal', className)} data-gl-theme={t.name} data-gl-motion={motion} style={tokenStyle(t.tokens)}>{children}</div>,
+    <div className={cx('gl-root gl-portal', className)} data-gl-theme={t.name} data-gl-motion={motion} data-gl-reduce-motion={t.reduceMotion === 'system' ? undefined : String(t.reduceMotion)} style={tokenStyle(t.tokens)}>{children}</div>,
     host,
   );
 }

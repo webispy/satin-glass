@@ -38,7 +38,7 @@ export function place(size: { width: number; height: number }, anchor: DOMRect, 
 export function bloomIn(panel: HTMLElement, origin: { x: number; y: number }, from: number | [number, number] = 0.55, spring: SpringName = 'bouncy'): Promise<void> {
   panel.getAnimations().forEach((a) => a.cancel());
   panel.style.transformOrigin = `${origin.x}px ${origin.y}px`;
-  if (prefersReducedMotion()) return fade(panel, 0, 1, 120);
+  if (prefersReducedMotion(panel)) return fade(panel, 0, 1, 120);
   const [sx, sy] = typeof from === 'number' ? [from, from] : from;
   const a = animate(panel, [{ transform: `scale(${sx}, ${sy})` }, { transform: 'scale(1)' }], spring);
   const o = panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: spring === 'pop' ? 70 : 120, easing: 'linear', fill: 'both' });
@@ -49,7 +49,7 @@ export function bloomIn(panel: HTMLElement, origin: { x: number; y: number }, fr
 
 /** Folds back toward the anchor: quick ease-in, gone in ~150 ms. */
 export function bloomOut(panel: HTMLElement, to: number | [number, number] = 0.9, duration = 160): Promise<void> {
-  if (prefersReducedMotion()) return fade(panel, 1, 0, 100);
+  if (prefersReducedMotion(panel)) return fade(panel, 1, 0, 100);
   panel.getAnimations().forEach((a) => a.cancel());
   const [sx, sy] = typeof to === 'number' ? [to, to] : to;
   const a = panel.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: `scale(${sx}, ${sy})`, opacity: 0 }], { duration, easing: 'cubic-bezier(0.5, 0, 0.75, 0.25)', fill: 'both' });

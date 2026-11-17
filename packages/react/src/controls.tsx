@@ -114,7 +114,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
   };
   const squash = (side: 'l' | 'r') => {
     const b = el.current, knob = b?.querySelector<HTMLElement>('.gl-switch__knob');
-    if (!b || !knob || prefersReducedMotion()) return;
+    if (!b || !knob || prefersReducedMotion(b)) return;
     const s = motionFor(b).squash;
     if (s <= 0) return;
     knob.style.transformOrigin = side === 'r' ? 'right center' : 'left center';
@@ -141,7 +141,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
     const isOn = onRef.current, reach = pressedRef.current ? e.reach : 0;
     const tl = isOn ? e.W - e.pad - e.T - reach : e.pad;
     const tr = isOn ? e.W - e.pad : e.pad + e.T + reach;
-    if (prefersReducedMotion()) { e.L.jump(tl); e.R.jump(tr); render(); return; }
+    if (prefersReducedMotion(b)) { e.L.jump(tl); e.R.jump(tr); render(); return; }
     /* short travel, quick spring: a switch moves ~20 px where a segmented control moves ~90, so it uses the
        personality's snappy spring at 0.62× response (same character, same overshoot) — otherwise it covers a
        quarter of the distance in the same time and reads as sluggish. A toggle also gets an initial push so it
@@ -301,7 +301,7 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
   const travelTo = (px: number, how: 'spring' | 'jump') => {
     const m = motor.current, s = el.current;
     if (!m || !s) return;
-    if (how === 'jump' || prefersReducedMotion()) { m.stop?.(); m.stop = null; m.pos.jump(px); render(); return; }
+    if (how === 'jump' || prefersReducedMotion(s)) { m.stop?.(); m.stop = null; m.pos.jump(px); render(); return; }
     m.pos.set('snappy', s); m.pos.target = px; run();
   };
 
@@ -347,7 +347,7 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
         const p = at(x);
         if (m.tracking) {
           m.finger = p * m.W;
-          if (motionFor(s).lag > 0 && !prefersReducedMotion()) run(); else { m.pos.jump(m.finger); render(); }
+          if (motionFor(s).lag > 0 && !prefersReducedMotion(s)) run(); else { m.pos.jump(m.finger); render(); }
         }
         const nv = snap(min + p * (max - min)); if (nv !== vRef.current) setV(nv);
       },
@@ -692,7 +692,7 @@ export function Progress({ value, max = 100, size = 'md', label = 'Progress', mo
     const draw = (v: number) => bar.style.setProperty('--_p', Math.min(1, Math.max(0, v)).toFixed(4));
     if (!eng.current) { eng.current = { s: new Spring(p, 'smooth', d), stop: null }; draw(p); return; }
     const e = eng.current;
-    if (prefersReducedMotion()) { e.stop?.(); e.stop = null; e.s.jump(p); draw(p); return; }
+    if (prefersReducedMotion(d)) { e.stop?.(); e.stop = null; e.s.jump(p); draw(p); return; }
     e.s.set('smooth', d); e.s.target = p;
     if (!e.stop) e.stop = loop((dt) => { e.s.step(dt); draw(e.s.value); if (Math.abs(e.s.value - e.s.target) < 0.0005 && Math.abs(e.s.velocity) < 0.005) { e.s.jump(e.s.target); draw(e.s.target); e.stop = null; return false; } });
   }, [p, indeterminate]);

@@ -35,9 +35,10 @@ function App() {
   const [mode, setMode] = useState<ThemeMode>('system');
   const [hc, setHc] = useState(false);
   const [rt, setRt] = useState(false);
+  const [rm, setRm] = useState(false);
   const [motion, setMotion] = useState<MotionName>('lively');
   const [navOpen, setNavOpen] = useState(false);
-  const theme = useMemo(() => createTheme({ mode, contrast: hc ? 'more' : 'standard', reduceTransparency: rt, motion }), [mode, hc, rt, motion]);
+  const theme = useMemo(() => createTheme({ mode, contrast: hc ? 'more' : 'standard', reduceTransparency: rt, reduceMotion: rm ? true : 'system', motion }), [mode, hc, rt, rm, motion]);
   const current = PAGES.find((p) => p.id === page) ?? PAGES[0];
   const Current = current.el;
   useEffect(() => { scrollTo(0, 0); setNavOpen(false); }, [page]);
@@ -67,6 +68,7 @@ function App() {
                 <SegmentedControl size="sm" aria-label="화면 모드" value={mode} onChange={setMode} options={[{ value: 'light', label: '라이트' }, { value: 'dark', label: '다크' }, { value: 'system', label: '시스템' }]} />
                 <SegmentedControl size="sm" aria-label="모션" value={motion} onChange={setMotion} options={[{ value: 'calm', label: '차분' }, { value: 'lively', label: '생동' }, { value: 'playful', label: '경쾌' }]} />
                 <label>고대비 <Switch size="sm" checked={hc} onChange={setHc} aria-label="고대비" /></label>
+                <label className="hide-sm">동작 줄이기 <Switch size="sm" checked={rm} onChange={setRm} aria-label="동작 줄이기" /></label>
                 <label className="hide-sm">투명도 줄이기 <Switch size="sm" checked={rt} onChange={setRt} aria-label="투명도 줄이기" /></label>
               </Glass>
             </div>

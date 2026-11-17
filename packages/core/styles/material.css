@@ -92,6 +92,9 @@
   .gl-glass { background: Canvas; color: CanvasText; border: 1px solid CanvasText; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .gl-glass::before, .gl-glass::after { display: none; }
 }
+[data-gl-reduce-motion="true"] .gl-pressable:active, [data-gl-reduce-motion="true"] .gl-pressable.is-pressed,
+[data-gl-reduce-motion="true"] .gl-button:active { transform: none !important; }
+[data-gl-reduce-motion="true"] .gl-glass::after { display: none; }   /* no chasing highlight */
 @media (prefers-reduced-motion: reduce) {
-  .gl-pressable:active, .gl-pressable.is-pressed { transform: none; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-pressable:active, .gl-root:not([data-gl-reduce-motion="false"]) .gl-pressable.is-pressed { transform: none; }
 }
