@@ -65,9 +65,10 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
   return <Button ref={ref} variant={variant} aria-label={label} title={rest.title ?? label} className={cx('gl-button--icon', className)} startIcon={icon} {...rest} />;
 });
 
-export const ButtonGroup = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { vertical?: boolean; glass?: boolean }>(function ButtonGroup({ vertical, glass = true, className, ...rest }, ref) {
+/** One glass shared by several buttons; as tall as a standalone button of the same size. */
+export const ButtonGroup = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { vertical?: boolean; glass?: boolean; size?: 'sm' | 'md' | 'lg' }>(function ButtonGroup({ vertical, glass = true, size = 'md', className, ...rest }, ref) {
   const lightRef = useGlassLight(glass);
-  return <div ref={mergeRefs(ref, lightRef)} role="group" className={cx('gl-button-group', vertical && 'gl-button-group--vertical', glass && glassClass('regular'), className)} {...rest} />;
+  return <div ref={mergeRefs(ref, lightRef)} role="group" className={cx('gl-button-group', size !== 'md' && `gl-button-group--${size}`, vertical && 'gl-button-group--vertical', glass && glassClass('regular'), className)} {...rest} />;
 });
 
 /* ================================================================================================ Switch */
@@ -90,33 +91,48 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
   useEffect(() => {
     const b = el.current;
     if (!b || disabled) return;
-    let x0 = 0, max = 0, startOn = false;
+    /* geometry read once per gesture */
+    let W = 0, T = 0, pad = 2, reach = 6, c0 = 0, startOn = false, box: DOMRect | null = null, engaged = false;
     const thumb = () => b.querySelector<HTMLElement>('.gl-switch__thumb')!;
+    const clearInline = () => { const t = thumb(); t.style.removeProperty('--gl-sw-l'); t.style.removeProperty('--gl-sw-r'); delete b.dataset.drag; };
+    /* how far the pointer may stray before the switch lets go of it (the thumb then returns to where it was) */
+    const SLOP_Y = 48, SLOP_X = 120;
     return drag(b, {
       axis: 'x',
       start: () => {
-        dragged.current = false; startOn = onRef.current;
-        const cs = getComputedStyle(b), w = b.clientWidth, t = thumb().offsetHeight, pad = parseFloat(cs.getPropertyValue('--_pad')) || 2;
-        max = w - t - 2 * pad; x0 = startOn ? max : 0;
+        dragged.current = false; engaged = false; startOn = onRef.current;
+        const cs = getComputedStyle(b);
+        W = b.clientWidth; T = thumb().offsetHeight;
+        pad = parseFloat(cs.getPropertyValue('--_pad')) || 2; reach = parseFloat(cs.getPropertyValue('--_reach')) || 6;
+        const wide = T + reach;
+        c0 = startOn ? W - pad - wide / 2 : pad + wide / 2;
+        box = b.getBoundingClientRect();
         setPressed(true);
       },
-      move: ({ dx }) => {
+      move: ({ x, y, dx }) => {
         if (!dragged.current && Math.abs(dx) < 4) return;
-        if (!dragged.current) setDraggingSw(true);
+        const far = !box || y < box.top - SLOP_Y || y > box.bottom + SLOP_Y || x < box.left - SLOP_X || x > box.right + SLOP_X;
+        if (far) {
+          if (engaged) { engaged = false; setDraggingSw(false); clearInline(); }
+          dragged.current = true;
+          return;
+        }
+        if (!engaged) { engaged = true; setDraggingSw(true); }
         dragged.current = true;
-        const x = Math.min(max, Math.max(0, x0 + dx));
-        thumb().style.setProperty('--_x', `${x}px`);
-        b.dataset.drag = x > max / 2 ? 'on' : 'off';
+        const wide = T + reach;
+        const c = Math.min(W - pad - wide / 2, Math.max(pad + wide / 2, c0 + dx));
+        const t = thumb();
+        t.style.setProperty('--gl-sw-l', `${c - wide / 2}px`);
+        t.style.setProperty('--gl-sw-r', `${c + wide / 2}px`);
+        b.dataset.drag = c > W / 2 ? 'on' : 'off';
       },
       end: (_i, cancelled) => {
-        const th = thumb();
+        const next = b.dataset.drag === 'on';
+        const commit = dragged.current && engaged && !cancelled && b.dataset.drag !== undefined;
         setDraggingSw(false);
-        if (dragged.current && !cancelled) {
-          const next = b.dataset.drag === 'on';
-          th.style.removeProperty('--_x');
-          if (next !== startOn) setOn(next);
-        } else th.style.removeProperty('--_x');
-        delete b.dataset.drag;
+        clearInline();
+        if (commit && next !== startOn) setOn(next);
+        engaged = false;
         /* keep the press look until the click has toggled, so the thumb never snaps back for a frame */
         requestAnimationFrame(() => requestAnimationFrame(() => setPressed(false)));
       },

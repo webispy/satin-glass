@@ -39,6 +39,11 @@ ok('tab keyboard: arrow keys move the selection', (await tabs.nth(1).getAttribut
 const rad = async (sel) => parseFloat(await p.locator(sel).first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius));
 ok('tab bar: the search button has the same corner radius as the bar', (await rad('.gl-tabbar__action')) === (await rad('.gl-tabbar__bar')), `${await rad('.gl-tabbar__action')} / ${await rad('.gl-tabbar__bar')}`);
 
+await p.goto('http://localhost:4173/#/buttons'); await p.waitForTimeout(500);
+const gh = (await p.locator('.gl-button-group').first().boundingBox()).height, ih = (await p.locator('.demo--media .gl-button--glass.gl-button--icon').first().boundingBox()).height;
+const gr = await p.locator('.gl-button-group').first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius), ir = await p.locator('.demo--media .gl-button--glass.gl-button--icon').first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius);
+ok('button group: same height and corner as the buttons beside it', gh === ih && gr === ir, `group ${gh}px/${gr}, button ${ih}px/${ir}`);
+
 /* ---------- inputs ---------- */
 await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(600);
 const sw = p.locator('.docs__page .gl-switch').first();
@@ -49,6 +54,21 @@ const sb = await sw.boundingBox();
 await p.mouse.move(sb.x + 10, sb.y + sb.height / 2); await p.mouse.down();
 await p.mouse.move(sb.x + sb.width - 6, sb.y + sb.height / 2, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(350);
 ok('switch: drag to the on side turns it on', (await sw.getAttribute('aria-checked')) === 'true');
+/* both directions: the thumb stretches toward travel and never leaves the rail */
+const sw2 = p.locator('.docs__page .gl-switch').nth(1);
+const travel = async () => {
+  const frames = await sw2.evaluate((e) => new Promise((res) => {
+    const out = [], t0 = performance.now(), tr = e.getBoundingClientRect(), th = e.querySelector('.gl-switch__thumb');
+    e.click();
+    const f = () => { const r = th.getBoundingClientRect(); out.push([r.left - tr.left, tr.right - r.right, r.width]); if (performance.now() - t0 < 700) requestAnimationFrame(f); else res(out); };
+    requestAnimationFrame(f);
+  }));
+  return { minL: Math.min(...frames.map((f) => f[0])), minR: Math.min(...frames.map((f) => f[1])), maxW: Math.max(...frames.map((f) => f[2])), endW: frames[frames.length - 1][2] };
+};
+const tOn = await travel(), tOff = await travel();
+ok('switch: on and off travel alike — stretch toward travel, stay inside the rail', tOn.minL >= 1.5 && tOn.minR >= 1.5 && tOff.minL >= 1.5 && tOff.minR >= 1.5 && tOn.maxW > tOn.endW + 3 && tOff.maxW > tOff.endW + 3 && Math.abs((tOn.maxW - tOn.endW) - (tOff.maxW - tOff.endW)) < 1,
+  `on: gap L ${tOn.minL.toFixed(1)} R ${tOn.minR.toFixed(1)} stretch ${(tOn.maxW - tOn.endW).toFixed(1)} · off: gap L ${tOff.minL.toFixed(1)} R ${tOff.minR.toFixed(1)} stretch ${(tOff.maxW - tOff.endW).toFixed(1)}`);
+
 const sl = p.locator('.gl-slider').first(), slb = await sl.boundingBox();
 await p.mouse.move(slb.x + slb.width * 0.2, slb.y + slb.height / 2); await p.mouse.down();
 await p.mouse.move(slb.x + slb.width * 0.8, slb.y + slb.height / 2, { steps: 8 });
@@ -103,6 +123,22 @@ ok('dialog: Esc closes and unlocks scroll', (await p.locator('[role=alertdialog]
 await p.getByRole('button', { name: '장소 편집' }).click(); await p.waitForTimeout(800); await shot('sheet');
 const sheet = p.locator('.gl-sheet');
 ok('sheet: opens', (await sheet.count()) === 1);
+/* a switch dragged inside the sheet, out to the right, then down past the sheet: it lets go and nothing sticks */
+{
+  const s1 = p.getByRole('switch', { name: '지도에 고정' }), before1 = await s1.getAttribute('aria-checked');
+  const r = await s1.boundingBox(), sb = await sheet.boundingBox();
+  await p.mouse.move(r.x + r.width - 8, r.y + r.height / 2); await p.mouse.down();
+  await p.mouse.move(sb.x + sb.width + 80, r.y + r.height / 2, { steps: 8 });
+  await p.mouse.move(sb.x + sb.width + 80, sb.y + sb.height + 50, { steps: 8 });
+  await p.mouse.move(r.x + 6, sb.y + sb.height + 50, { steps: 10 });
+  const midDrag = await s1.evaluate((e) => ({ dragging: e.classList.contains('is-dragging'), inline: e.querySelector('.gl-switch__thumb').style.getPropertyValue('--gl-sw-l') }));
+  await p.mouse.up(); await p.waitForTimeout(700);
+  const after1 = await s1.evaluate((e) => ({ checked: e.getAttribute('aria-checked'), cls: e.className, inline: e.querySelector('.gl-switch__thumb').getAttribute('style') || '', drag: e.dataset.drag }));
+  ok('switch in a sheet: far from the switch it lets go (no thumb tracking) and release changes nothing', !midDrag.dragging && !midDrag.inline && after1.checked === before1 && after1.cls === 'gl-switch' && !after1.inline && !after1.drag, JSON.stringify({ midDrag, after1 }));
+  await p.mouse.move(r.x + r.width - 8, r.y + r.height / 2); await p.mouse.down();
+  await p.mouse.move(r.x + 4, r.y + r.height / 2, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(600);
+  ok('switch in a sheet: still works after that', (await s1.getAttribute('aria-checked')) !== before1);
+}
 const grab = await p.locator('.gl-sheet__grabber').boundingBox();
 await p.mouse.move(grab.x + grab.width / 2, grab.y + 8); await p.mouse.down();
 await p.mouse.move(grab.x + grab.width / 2, grab.y + 60, { steps: 6 }); await p.waitForTimeout(150); await p.mouse.up(); await p.waitForTimeout(700);
@@ -111,6 +147,12 @@ const g2 = await p.locator('.gl-sheet__grabber').boundingBox();
 await p.mouse.move(g2.x + g2.width / 2, g2.y + 8); await p.mouse.down();
 await p.mouse.move(g2.x + g2.width / 2, g2.y + 420, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(700);
 ok('sheet: a long drag (or a quick flick) dismisses', (await sheet.count()) === 0);
+await p.getByRole('button', { name: '장소 편집' }).click(); await p.waitForTimeout(700);
+await p.locator('.gl-sheet__header').getByRole('button', { name: '취소' }).click(); await p.waitForTimeout(600);
+ok('sheet: header Cancel closes it', (await sheet.count()) === 0);
+await p.getByRole('button', { name: '장소 편집' }).click(); await p.waitForTimeout(700);
+await p.locator('.gl-sheet__header').getByRole('button', { name: '완료' }).click(); await p.waitForTimeout(600);
+ok('sheet: header Done closes it (and toasts)', (await sheet.count()) === 0 && (await p.locator('.gl-toast').count()) >= 1);
 
 await p.getByRole('button', { name: '공유 옵션…' }).click(); await p.waitForTimeout(600); await shot('actionsheet');
 ok('action sheet: opens with focus on Cancel', await p.evaluate(() => document.activeElement?.hasAttribute('data-cancel')));
@@ -125,7 +167,11 @@ await p.keyboard.press('Escape'); await p.waitForTimeout(500);
 ok('context menu: Esc closes and the lift goes away', (await p.locator('.gl-menu').count()) === 0 && (await p.locator('.gl-lift').count()) === 0);
 
 await p.getByRole('button', { name: '토스트', exact: true }).click(); await p.waitForTimeout(500); await shot('toast');
-ok('toast: appears as a status message', (await p.locator('.gl-toast[role=status]').count()) === 1);
+ok('toast: appears as a status message', (await p.locator('.gl-toast[role=status]').count()) >= 1);
+await p.getByRole('button', { name: '오류 토스트' }).click(); await p.waitForTimeout(500);
+const n0 = await p.locator('.gl-toast').count();
+await p.locator('.gl-toast').getByRole('button', { name: '다시 시도' }).click(); await p.waitForTimeout(500);
+ok('toast: its action button works (and dismisses it)', (await p.locator('.gl-toast').count()) < n0);
 
 /* ---------- showcase: an open popover, then another ⓘ — the new one must open (it used to get stuck) ---------- */
 await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(700);

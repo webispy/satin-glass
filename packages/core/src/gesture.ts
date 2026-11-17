@@ -15,14 +15,26 @@ export function drag(el: HTMLElement, h: DragHandlers): () => void {
   let id: number | null = null, sx = 0, sy = 0, lx = 0, ly = 0, lt = 0, vx = 0, vy = 0, active = false;
   const thr = h.threshold ?? 0;
   const info = (e: PointerEvent): DragInfo => ({ x: e.clientX, y: e.clientY, dx: e.clientX - sx, dy: e.clientY - sy, vx, vy, event: e });
+  const capture = () => { try { if (id !== null) el.setPointerCapture(id); } catch { /* not supported */ } };
+  /* window-level listeners for the life of one gesture: moves and the release are seen wherever the pointer is,
+     captured or not, so a gesture can never be left half-finished */
+  const listen = (on: boolean) => {
+    const m = on ? addEventListener : removeEventListener;
+    m('pointermove', move, true);
+    m('pointerup', up, true);
+    m('pointercancel', cancel, true);
+  };
   const down = (e: PointerEvent) => {
     if (id !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
     sx = lx = e.clientX; sy = ly = e.clientY; lt = e.timeStamp; vx = vy = 0; active = thr === 0;
     if (h.start?.(info(e)) === false) return;
     id = e.pointerId;
-    try { el.setPointerCapture(id); } catch { /* not supported */ }
+    listen(true);
+    /* with a threshold, capture only once the drag is real: capturing on pointerdown would retarget the click
+       away from buttons inside the handle (a sheet header's Cancel/Done, a toast's action, page dots) */
+    if (active) capture();
   };
-  const move = (e: PointerEvent) => {
+  function move(e: PointerEvent) {
     if (e.pointerId !== id) return;
     const dt = Math.max(1, e.timeStamp - lt);
     vx = 0.6 * vx + 0.4 * ((e.clientX - lx) / dt) * 1000;
@@ -35,28 +47,30 @@ export function drag(el: HTMLElement, h: DragHandlers): () => void {
       /* a vertical scroll is not a horizontal drag (and vice versa) */
       if ((h.axis === 'x' && dy > dx) || (h.axis === 'y' && dx > dy)) { finish(e, true); return; }
       active = true;
+      capture();
     }
     h.move?.(info(e));
-  };
-  const finish = (e: PointerEvent, cancelled: boolean) => {
+  }
+  function finish(e: PointerEvent, cancelled: boolean) {
     if (e.pointerId !== id) return;
-    try { if (el.hasPointerCapture(id)) el.releasePointerCapture(id); } catch { /* released */ }
-    id = null;
+    const pid = id, wasActive = active;
+    id = null; active = false;
+    listen(false);
+    try { if (el.hasPointerCapture(pid)) el.releasePointerCapture(pid); } catch { /* released */ }
     /* a release after a pause carries no fling */
     if (e.timeStamp - lt > 80) { vx = 0; vy = 0; }
-    h.end?.(info(e), cancelled);
-  };
-  const up = (e: PointerEvent) => finish(e, false);
-  const cancel = (e: PointerEvent) => finish(e, true);
+    if (wasActive) h.end?.(info(e), cancelled);
+  }
+  function up(e: PointerEvent) { finish(e, false); }
+  function cancel(e: PointerEvent) { finish(e, true); }
+  /* the browser can drop the capture (window lost focus, element removed…): end the gesture there */
+  const lost = (e: PointerEvent) => { if (e.pointerId === id && active) finish(e, true); };
   el.addEventListener('pointerdown', down);
-  el.addEventListener('pointermove', move);
-  el.addEventListener('pointerup', up);
-  el.addEventListener('pointercancel', cancel);
+  el.addEventListener('lostpointercapture', lost);
   return () => {
+    listen(false);
     el.removeEventListener('pointerdown', down);
-    el.removeEventListener('pointermove', move);
-    el.removeEventListener('pointerup', up);
-    el.removeEventListener('pointercancel', cancel);
+    el.removeEventListener('lostpointercapture', lost);
   };
 }
 

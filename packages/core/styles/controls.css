@@ -50,16 +50,26 @@
 .gl-button[data-loading="true"] > :not(.gl-button__spinner) { visibility: hidden; }
 
 /* a glass group: one shared glass, plain buttons inside (no glass on glass) */
-.gl-button-group { display: inline-flex; align-items: center; padding: 3px; gap: 2px; --_radius: var(--gl-radius-lg); }
-.gl-button-group > .gl-button { border-radius: calc(var(--gl-radius-lg) - 3px); }
+/* the group is exactly as tall as a standalone button of its size and shares its corner radius;
+   the buttons inside shrink by the 3 px inset and keep a concentric radius */
+.gl-button-group { --_gh: var(--gl-size-control-md); --_gr: var(--gl-radius-md); display: inline-flex; align-items: center; height: var(--_gh); padding: 3px; gap: 2px; --_radius: var(--_gr); border-radius: var(--_gr); }
+.gl-button-group--sm { --_gh: var(--gl-size-control-sm); --_gr: var(--gl-radius-sm); }
+.gl-button-group--lg { --_gh: var(--gl-size-control-lg); --_gr: var(--gl-radius-lg); }
+.gl-button-group > .gl-button { --_h: calc(var(--_gh) - 6px); border-radius: calc(var(--_gr) - 3px); }
+.gl-button-group > .gl-button--icon { width: calc(var(--_gh) - 6px); }
 .gl-button-group > .gl-button:hover:not(:disabled) { background: var(--gl-fill); }
-.gl-button-group--vertical { flex-direction: column; }
+.gl-button-group--vertical { flex-direction: column; height: auto; }
 
 /* ============================================================================================
-   Switch: 50 × 30, accent when on; the thumb stretches toward where it is going while pressed
+   Switch: 50 × 30, accent when on. The thumb is a droplet (same language as the tab bar): its two edges move
+   on their own springs — the leading edge snaps ahead, the trailing edge follows — so it stretches toward
+   where it is going and pulls together on arrival. It never leaves the rail, in either direction.
+   While pressed it reaches 6 px toward the side it would travel to.
    ============================================================================================ */
+@property --gl-sw-l { syntax: "<length>"; inherits: false; initial-value: 2px; }
+@property --gl-sw-r { syntax: "<length>"; inherits: false; initial-value: 28px; }
 .gl-switch {
-  --_w: 50px; --_h: 30px; --_t: 26px; --_pad: 2px;
+  --_w: 50px; --_h: 30px; --_t: 26px; --_pad: 2px; --_reach: 6px;
   position: relative; flex: none; display: inline-block;
   width: var(--_w); height: var(--_h); padding: 0; margin: 0; border: 0;
   border-radius: var(--gl-radius-full);
@@ -67,24 +77,33 @@
   cursor: pointer; touch-action: pan-y; -webkit-tap-highlight-color: transparent;
   transition: background-color 220ms var(--gl-ease-out);
 }
-.gl-switch[aria-checked="true"] { background: var(--gl-accent); }
+.gl-switch[aria-checked="true"], .gl-switch[data-drag="on"] { background: var(--gl-accent); }
+.gl-switch[data-drag="off"] { background: var(--gl-fill-strong); }
 .gl-switch:disabled { opacity: 0.42; cursor: default; }
 .gl-switch:focus-visible { outline: none; box-shadow: var(--gl-ring); }
 .gl-switch__thumb {
-  --_x: 0px; --_grow: 0px;
-  position: absolute; top: var(--_pad); left: var(--_pad);
-  width: calc(var(--_t) + var(--_grow)); height: var(--_t);
+  --gl-sw-l: var(--_pad);
+  --gl-sw-r: calc(var(--_pad) + var(--_t));
+  position: absolute; top: var(--_pad); left: 0;
+  width: calc(var(--gl-sw-r) - var(--gl-sw-l)); height: var(--_t);
   border-radius: var(--gl-radius-full);
   background: linear-gradient(180deg, #fff, #f3f4f8);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16), 0 0 0 0.5px rgba(0, 0, 0, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.04);
-  transform: translateX(var(--_x));
-  transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy), width var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
-  will-change: transform;
+  transform: translateX(var(--gl-sw-l));
+  /* off: the left edge leads (snappy), the right edge trails (smooth) */
+  transition: --gl-sw-l var(--gl-spring-snappy-duration) var(--gl-spring-snappy), --gl-sw-r var(--gl-spring-smooth-duration) var(--gl-spring-smooth);
 }
-.gl-switch[aria-checked="true"] .gl-switch__thumb { --_x: calc(var(--_w) - var(--_t) - 2 * var(--_pad) - var(--_grow)); }
-.gl-switch.is-pressed .gl-switch__thumb { --_grow: 6px; }
-.gl-switch.is-dragging .gl-switch__thumb { transition: width var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
-.gl-switch--sm { --_w: 40px; --_h: 24px; --_t: 20px; }
+.gl-switch[aria-checked="true"] .gl-switch__thumb {
+  --gl-sw-l: calc(var(--_w) - var(--_pad) - var(--_t));
+  --gl-sw-r: calc(var(--_w) - var(--_pad));
+  /* on: the right edge leads */
+  transition: --gl-sw-r var(--gl-spring-snappy-duration) var(--gl-spring-snappy), --gl-sw-l var(--gl-spring-smooth-duration) var(--gl-spring-smooth);
+}
+.gl-switch.is-pressed[aria-checked="false"] .gl-switch__thumb { --gl-sw-r: calc(var(--_pad) + var(--_t) + var(--_reach)); }
+.gl-switch.is-pressed[aria-checked="true"] .gl-switch__thumb { --gl-sw-l: calc(var(--_w) - var(--_pad) - var(--_t) - var(--_reach)); }
+.gl-switch.is-dragging .gl-switch__thumb { transition: none; }   /* the finger sets both edges */
+.gl-switch--sm { --_w: 40px; --_h: 24px; --_t: 20px; --_reach: 4px; }
+@media (prefers-reduced-motion: reduce) { .gl-switch__thumb { transition: none !important; } }
 
 /* ============================================================================================
    Slider: 6 px track, accent fill, 24 px thumb; a glass value bubble rises while held
