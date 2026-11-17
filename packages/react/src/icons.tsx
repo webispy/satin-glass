@@ -7,6 +7,7 @@ const base = (p: P): P => ({ viewBox: '0 0 24 24', fill: 'none', stroke: 'curren
 
 export const CheckIcon = (p: P) => <svg {...base(p)}><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
 export const ChevronRightIcon = (p: P) => <svg {...base(p)}><path d="M9.5 6l6 6-6 6" /></svg>;
+export const ChevronDownIcon = (p: P) => <svg {...base(p)}><path d="M6 9.5l6 6 6-6" /></svg>;
 export const ChevronLeftIcon = (p: P) => <svg {...base(p)}><path d="M14.5 6l-6 6 6 6" /></svg>;
 export const CloseIcon = (p: P) => <svg {...base(p)}><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" /></svg>;
 export const PlusIcon = (p: P) => <svg {...base(p)}><path d="M12 5.5v13M5.5 12h13" /></svg>;

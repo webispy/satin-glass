@@ -56,6 +56,10 @@ const light = {
   'glass-selection': rgba(p.iris[500], 0.14),
   'shadow-color': '18, 20, 44',
   'shadow-strength': '1',
+  /* data series, in order: hues spaced around the wheel and alternating light/dark, so neighbours differ in
+     both hue and lightness (and still separate for common colour-vision deficiencies); each ≥ 3:1 on surface */
+  'chart-1': p.iris[600], 'chart-2': p.teal[600], 'chart-3': p.coral[600], 'chart-4': p.azure[700], 'chart-5': p.orchid[600], 'chart-6': p.jade[700],
+  'chart-grid': rgba(p.slate[900], 0.08),
 };
 type Semantic = typeof light;
 
@@ -99,6 +103,8 @@ const dark: Semantic = {
   'glass-selection': rgba(p.iris[400], 0.24),
   'shadow-color': '0, 0, 0',
   'shadow-strength': '2.2',
+  'chart-1': p.iris[400], 'chart-2': p.teal[400], 'chart-3': p.coral[400], 'chart-4': p.azure[300], 'chart-5': p.orchid[400], 'chart-6': p.jade[300],
+  'chart-grid': 'rgba(255, 255, 255, 0.08)',
 };
 
 const lightHc: Semantic = {
@@ -118,6 +124,8 @@ const lightHc: Semantic = {
   'glass-fill': '#ffffff', 'glass-fill-strong': '#ffffff', 'glass-fill-subtle': '#ffffff', 'glass-fill-clear': 'rgba(0, 0, 0, 0.72)',
   'glass-rim-lit': '#000000', 'glass-rim-shade': '#000000', 'glass-depth': 'rgba(255, 255, 255, 0)', 'glass-highlight': 'rgba(255, 255, 255, 0)',
   'glass-selection': rgba(p.iris[700], 0.16),
+  'chart-1': p.iris[800], 'chart-2': p.teal[800], 'chart-3': p.coral[800], 'chart-4': p.azure[900], 'chart-5': p.orchid[800], 'chart-6': p.jade[900],
+  'chart-grid': rgba(p.slate[900], 0.22),
 };
 
 const darkHc: Semantic = {
@@ -136,6 +144,8 @@ const darkHc: Semantic = {
   'glass-fill': '#000000', 'glass-fill-strong': '#000000', 'glass-fill-subtle': '#000000', 'glass-fill-clear': 'rgba(0, 0, 0, 0.78)',
   'glass-rim-lit': '#ffffff', 'glass-rim-shade': '#ffffff', 'glass-depth': 'rgba(255, 255, 255, 0)', 'glass-highlight': 'rgba(255, 255, 255, 0)',
   'glass-selection': rgba(p.iris[300], 0.3),
+  'chart-1': p.iris[300], 'chart-2': p.teal[200], 'chart-3': p.coral[300], 'chart-4': p.azure[200], 'chart-5': p.orchid[300], 'chart-6': p.jade[200],
+  'chart-grid': 'rgba(255, 255, 255, 0.24)',
 };
 
 export const themes: Record<ThemeName, Semantic> = { light, dark, 'light-hc': lightHc, 'dark-hc': darkHc };

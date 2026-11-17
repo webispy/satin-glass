@@ -62,6 +62,8 @@ const pairs: [string, string, number][] = [
   ['label-tertiary', 'bg', 4.5], ['label-tertiary', 'surface', 4.5], ['label-tertiary', 'bg-grouped', 4.5], ['accent-text', 'bg', 4.5], ['accent-text', 'bg-elevated', 4.5], ['on-accent', 'accent', 4.5],
   ['danger-text', 'bg', 4.5], ['success-text', 'bg', 4.5], ['info-text', 'bg', 4.5], ['warning-text', 'bg', 4.5],
   ['focus-ring', 'bg', 3],
+  /* data marks (lines, bars, slices) are non-text graphics: 3:1 against the card they sit on */
+  ['chart-1', 'surface', 3], ['chart-2', 'surface', 3], ['chart-3', 'surface', 3], ['chart-4', 'surface', 3], ['chart-5', 'surface', 3], ['chart-6', 'surface', 3],
 ];
 /* a few pairs need a composited background (translucent fill over the surface) or plain white text */
 const composite = (fill: string, under: string) => {

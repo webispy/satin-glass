@@ -106,3 +106,7 @@
 .gl-toast[data-tone="danger"] .gl-toast__icon { color: var(--gl-danger-text); }
 .gl-toast__text { flex: 1; min-width: 0; font-size: 15px; line-height: 20px; font-weight: 520; padding: 6px 4px 6px 0; }
 .gl-toast__text small { display: block; font-size: 13px; line-height: 18px; font-weight: 450; color: var(--gl-label-secondary); }
+
+/* anchored panels clip but never scroll themselves (their content does): while the bloom's content offset overhangs
+   the panel, nothing (scrollIntoView, focus(), find-in-page) can scroll it and drag the glass rim along */
+.gl-menu, .gl-popover, .gl-listbox, .gl-datepicker-panel { overflow: hidden; overflow: clip; }

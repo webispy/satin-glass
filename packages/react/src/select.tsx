@@ -6,7 +6,7 @@ import type { MotionName, Placement } from '@glass-layer/core';
 import { cx, mergeRefs, useControllable, useStableId } from './utils';
 import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
 import { useAnchored } from './overlay-hooks';
-import { CheckIcon } from './icons';
+import { CheckIcon, ChevronDownIcon } from './icons';
 
 export type SelectOption<T extends string = string> = {
   value: T; label: ReactNode; description?: ReactNode; icon?: ReactNode; disabled?: boolean;
@@ -23,8 +23,9 @@ export type SelectProps<T extends string = string> = {
   disabled?: boolean;
   /** submits with forms */
   name?: string;
-  /** 'field' (default) or 'inline' — accent text without field chrome, for a list row's trailing slot */
-  variant?: 'field' | 'inline';
+  /** 'field' (default); 'inline' — accent text without field chrome, for a list row's trailing slot;
+      'filter' — a compact pill that reads "label value ▾" (toolbars and filter bars) */
+  variant?: 'field' | 'inline' | 'filter';
   placement?: Placement;
   motion?: MotionName;
   id?: string; className?: string; style?: CSSProperties; 'aria-label'?: string;
@@ -110,7 +111,16 @@ export const Select = forwardRef(function Select<T extends string = string>(
   /* keep the active option in view */
   useEffect(() => {
     if (!open || active < 0) return;
-    document.getElementById(optId(active))?.scrollIntoView?.({ block: 'nearest' });
+    /* scroll the list only, never its ancestors: scrollIntoView would also scroll the panel (glass clips with
+       overflow: hidden, which makes it a scroll container) while the bloom's 4 px content offset overhangs it — the
+       rim and the items then stepped back down as the offset settled. Layout offsets, not rects: the panel is still
+       scaled while it blooms. */
+    const o = document.getElementById(optId(active)), list = o?.closest<HTMLElement>('[data-gl-content]');
+    if (!o || !list) return;
+    const m = parseFloat(getComputedStyle(o).scrollMarginTop) || 0;
+    const top = o.offsetTop, bottom = top + o.offsetHeight;
+    if (top - m < list.scrollTop) list.scrollTop = top - m;
+    else if (bottom + m > list.scrollTop + list.clientHeight) list.scrollTop = bottom + m - list.clientHeight;
   }, [open, active, mounted]);
 
   const invalid = Boolean(error);
@@ -148,22 +158,23 @@ export const Select = forwardRef(function Select<T extends string = string>(
       aria-describedby={help ? `${fid}-help` : undefined}
       disabled={disabled}
       data-gl-motion={motion}
-      className={cx('gl-select', variant === 'inline' && 'gl-select--inline', variant === 'field' ? className : undefined)}
-      style={variant === 'field' ? style : undefined}
+      className={cx('gl-select', variant === 'inline' && 'gl-select--inline', variant === 'filter' && 'gl-select--filter', variant !== 'inline' ? className : undefined)}
+      style={variant !== 'inline' ? style : undefined}
       onClick={() => (open ? setOpen(false) : openAt(selectedIndex >= 0 ? selectedIndex : enabled[0]))}
       onKeyDown={onKey}
     >
+      {variant === 'filter' && label && <span id={labelId} className="gl-select__prefix">{label}</span>}
       <span className="gl-select__value">
         {selected?.icon}
         {selected ? <span>{selected.label}</span> : <span className="gl-select__placeholder">{placeholder}</span>}
       </span>
-      <ChevronsIcon className="gl-select__chevrons" />
+      {variant === 'filter' ? <ChevronDownIcon className="gl-select__chevrons" /> : <ChevronsIcon className="gl-select__chevrons" />}
     </button>
   );
 
   return (
     <>
-      {variant === 'inline' && !label && !help ? button : (
+      {variant === 'filter' || (variant === 'inline' && !label && !help) ? button : (
         <div className={cx('gl-field', variant === 'inline' ? className : undefined)} style={variant === 'inline' ? style : undefined} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
           {label && <span id={labelId} className="gl-field__label">{label}</span>}
           {button}

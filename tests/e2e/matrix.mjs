@@ -7,7 +7,7 @@ import * as pw from 'playwright';
 const out = process.argv[2];
 const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
-const PAGES = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'overlays', 'display', 'showcase', 'lab'];
+const PAGES = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'overlays', 'display', 'showcase', 'dashboard', 'lab'];
 const WIDTHS = [1280, 390];
 const all = [];
 for (const mode of ['light', 'dark']) for (const hc of [0, 1]) for (const rt of [0, 1]) for (const rm of [0, 1]) all.push({ mode, hc, rt, rm });
@@ -32,7 +32,13 @@ for (const c of combos) {
       await p.goto(`http://localhost:4173/${q}#/${id}`);
       await p.waitForTimeout(450);
       const r = await p.evaluate(({ hc, rt }) => {
-        const parse = (s) => { const m = s.match(/[\d.]+/g); if (!m) return null; const [r, g, b, a] = m.map(Number); return { r, g, b, a: a ?? 1 }; };
+        /* rgb()/rgba() (0–255), and color(srgb r g b / a) (0–1) — what color-mix() computes to */
+        const parse = (s) => {
+          const m = s.match(/[\d.]+/g); if (!m) return null;
+          const n = m.map(Number);
+          if (/^color\(srgb/.test(s)) { const [r, g, b, a] = n; return { r: r * 255, g: g * 255, b: b * 255, a: a ?? 1 }; }
+          const [r, g, b, a] = n; return { r, g, b, a: a ?? 1 };
+        };
         const over = (top, bot) => { const a = top.a + bot.a * (1 - top.a); return a === 0 ? { r: 0, g: 0, b: 0, a: 0 } : { r: (top.r * top.a + bot.r * bot.a * (1 - top.a)) / a, g: (top.g * top.a + bot.g * bot.a * (1 - top.a)) / a, b: (top.b * top.a + bot.b * bot.a * (1 - top.a)) / a, a }; };
         const lum = ({ r, g, b }) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
         const ratio = (x, y) => { const a = lum(x), b = lum(y); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); };

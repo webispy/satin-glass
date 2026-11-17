@@ -96,6 +96,22 @@ await go('selection');
   ok('select (inline, bottom-end): the panel aligns to the field\'s right edge', Math.abs(il.x + il.width - (ir.x + ir.width)) < 2, `${(il.x + il.width).toFixed(0)} vs ${(ir.x + ir.width).toFixed(0)}`);
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
 }
+/* ---------------- regression: a select whose chosen option is the last one (inline "거리 단위" → 마일) must not
+   scroll its own panel while it blooms (the glass rim and the items used to step down 4 px) */
+{
+  const unit = p.getByRole('combobox', { name: '거리 단위' });
+  await unit.scrollIntoViewIfNeeded(); await unit.click(); await p.waitForTimeout(500);
+  await p.getByRole('option', { name: '마일' }).click(); await p.waitForTimeout(500);
+  const st = await p.evaluate(() => new Promise((res) => {
+    const out = []; const t0 = performance.now();
+    document.querySelector('[role=combobox][aria-label="거리 단위"]').click();
+    const f = () => { const l = document.querySelector('.gl-listbox'); if (l) out.push(l.scrollTop); if (performance.now() - t0 < 600) requestAnimationFrame(f); else res(out); };
+    requestAnimationFrame(f);
+  }));
+  ok('select (last option chosen): the panel never scrolls itself while it opens (rim and items stay put)', st.length > 5 && st.every((v) => v === 0), `panel scrollTop ${[...new Set(st)].join('→')}`);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+}
+
 /* ---------------- date picker & calendar */
 {
   const dp = p.getByRole('button', { name: /방문 날짜/ });

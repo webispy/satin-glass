@@ -63,7 +63,8 @@
 .gl-select--inline:focus-visible, .gl-select--inline[aria-expanded="true"] { background: var(--gl-fill); box-shadow: var(--gl-ring); }
 
 .gl-listbox { position: absolute; left: 0; top: 0; max-width: min(360px, calc(100vw - 24px)); max-height: min(340px, calc(100vh - 24px)); display: flex; flex-direction: column; --_radius: var(--gl-radius-lg); outline: none; }
-.gl-listbox > [data-gl-content] { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 6px; }
+/* position: relative → options' offsetTop is measured from this scroller (Select keeps the active one in view) */
+.gl-listbox > [data-gl-content] { position: relative; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 6px; }
 .gl-option {
   display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px; border-radius: calc(var(--gl-radius-lg) - 6px);
   color: var(--gl-label); font-size: 15px; line-height: 20px; cursor: pointer; scroll-margin: 6px;

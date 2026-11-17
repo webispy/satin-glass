@@ -466,7 +466,7 @@ export type SegmentedControlProps<T extends string> = Omit<HTMLAttributes<HTMLDi
 };
 
 /** Shared by SegmentedControl and TabBar: the droplet-bridge indicator. */
-function useBridge(container: React.RefObject<HTMLElement | null>, indicator: React.RefObject<HTMLElement | null>, index: number, onDragCommit: (i: number) => void, draggable = true) {
+export function useBridge(container: React.RefObject<HTMLElement | null>, indicator: React.RefObject<HTMLElement | null>, index: number, onDragCommit: (i: number) => void, draggable = true) {
   const bridge = useRef<Bridge | null>(null);
   const commit = useRef(onDragCommit); commit.current = onDragCommit;
   useIsoLayoutEffect(() => {

@@ -56,10 +56,10 @@ export function Display() {
 
       <Section title="스켈레톤" intro="불러오는 동안 내용의 모양을 미리 보여 줍니다. 빛 한 줄기가 모든 자리 표시를 함께 지나갑니다. 동작 줄이기에서는 천천히 숨 쉬듯 밝아졌다 어두워집니다.">
         <Demo col data-demo="skeleton">
-          <Stack direction="row" gap={12} align="center"><Button variant="tinted" onClick={load} disabled={loading}>다시 불러오기</Button><Text variant="footnote" tone="secondary">{loading ? '불러오는 중…' : '불러옴'}</Text></Stack>
+          <Stack direction="row" gap={3} align="center"><Button variant="tinted" onClick={load} disabled={loading}>다시 불러오기</Button><Text variant="footnote" tone="secondary">{loading ? '불러오는 중…' : '불러옴'}</Text></Stack>
           <div aria-busy={loading} aria-live="polite" style={{ width: '100%', maxWidth: 520 }}>
             {[0, 1, 2].map((i) => (
-              <Stack key={i} direction="row" gap={12} align="center" style={{ padding: '10px 0' }}>
+              <Stack key={i} direction="row" gap={3} align="center" style={{ padding: '10px 0' }}>
                 {loading ? <Skeleton variant="circle" size={44} /> : <Avatar name={['김하늘', 'Lee Sora', '박지민'][i]} size={44} />}
                 <div style={{ flex: 1, minWidth: 0 }} className={loading ? undefined : 'fade-in'}>
                   {loading ? <Skeleton lines={2} /> : <>

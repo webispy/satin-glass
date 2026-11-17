@@ -39,10 +39,14 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
     if (!items.length) return;
     lo = items[0].offsetLeft; hi = items[items.length - 1].offsetLeft + items[items.length - 1].offsetWidth;
   };
+  /* the width of the selected item, measured when a move starts — never per frame: reading layout every frame
+     would force a synchronous layout whenever something else changes the page mid-animation (a tab switch mounting
+     a whole panel) */
+  let baseW = 0;
   const render = () => {
     const l = Math.min(hi, Math.max(lo, left.value)), r = Math.max(lo, Math.min(hi, right.value));
     const w = Math.max(0, r - l);
-    const base = geom(current)?.w || w || 1;
+    const base = baseW || w || 1;
     const stretch = Math.max(0, w / base - 1);
     /* the drop flattens as it stretches (volume-ish), and springs back round as it pulls together */
     const sy = 1 - squash * Math.min(1, stretch * 1.4);
@@ -71,7 +75,7 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
     if (!g) return;
     bounds();
     const first = current < 0 || !indicator.style.width;
-    current = index;
+    current = index; baseW = g.w;
     if (first || !animate) { left.jump(g.l); right.jump(g.r); render(); return; }
     lead(Math.sign(g.l - left.target));
     left.target = g.l; right.target = g.r;
