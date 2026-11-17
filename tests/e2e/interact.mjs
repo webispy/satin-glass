@@ -359,6 +359,27 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
   ok('sidebar: no scrollbar appears when the pointer light reaches its edges', after[0] <= 0 && after[1] === before[1], `before ${before} after ${after}`);
 }
 
+/* ---------- display settings are reachable at every width, and from inside the showcase app ---------- */
+{
+  const rootAttr = () => p.evaluate(() => document.querySelector('.gl-root')?.getAttribute('data-gl-reduce-motion'));
+  await p.setViewportSize({ width: 820, height: 900 });
+  await p.goto('http://localhost:4173/#/overview'); await p.waitForTimeout(500);
+  const barHidden = await p.locator('.docs__settings--bar').evaluate((e) => getComputedStyle(e).display === 'none');
+  await p.getByRole('button', { name: '표시 설정' }).click(); await p.waitForTimeout(500);
+  const inPop = p.locator('.gl-popover').getByRole('switch', { name: '동작 줄이기' });
+  await inPop.click(); await p.waitForTimeout(200);
+  ok('narrow window: settings move into a button + popover (nothing hidden), and its toggle works', barHidden && (await rootAttr()) === 'true', `bar hidden ${barHidden}, reduce-motion ${await rootAttr()}`);
+  await inPop.click(); await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+  await p.setViewportSize({ width: 1280, height: 900 });
+
+  await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(600);
+  await p.getByRole('button', { name: '설정', exact: true }).click(); await p.waitForTimeout(700);
+  await p.locator('.gl-sheet').getByRole('switch', { name: '동작 줄이기' }).click(); await p.waitForTimeout(200);
+  const barSwitch = await p.locator('.docs__settings--bar').getByRole('switch', { name: '동작 줄이기' }).getAttribute('aria-checked');
+  ok('showcase settings sheet: 동작 줄이기 applies to the whole app (and the top bar reflects it)', (await rootAttr()) === 'true' && barSwitch === 'true', `root ${await rootAttr()}, top bar ${barSwitch}`);
+  await p.locator('.gl-sheet').getByRole('switch', { name: '동작 줄이기' }).click(); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+}
+
 console.log('page errors:', errs.length ? errs : 'none');
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');
 await b.close();

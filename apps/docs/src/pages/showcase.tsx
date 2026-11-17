@@ -5,6 +5,7 @@ import {
 } from '@glass-layer/react';
 import { Bookmark, Compass, Heart, Home, Info, Map, MoreHorizontal, Plus, Search, Settings2, Share, Trash2, User, Mountain, Waves, Tent, Building2 } from 'lucide-react';
 import { Photo, sceneTint } from '../shared';
+import { DisplaySettingsList } from '../settings';
 
 const PLACES = [
   { name: '노을 언덕', dist: '2.4 km', scene: 1, kind: 'hike' },
@@ -118,7 +119,8 @@ export function Showcase() {
       </Popover>
       <Sheet open={settings} onClose={() => setSettings(false)} title="설정" trailing={<Button variant="plain" onClick={() => setSettings(false)}>완료</Button>}>
         <Stack gap={5}>
-          <SegmentedControl aria-label="단위" defaultValue="km" options={[{ value: 'km', label: '킬로미터' }, { value: 'mi', label: '마일' }]} />
+          <DisplaySettingsList header="화면" />
+          <ListSection header="단위"><SegmentedControl aria-label="단위" defaultValue="km" options={[{ value: 'km', label: '킬로미터' }, { value: 'mi', label: '마일' }]} /></ListSection>
           <ListSection header="알림"><List>
             <ListItem title="일몰 알림" trailing={<Switch defaultChecked aria-label="일몰 알림" />} />
             <ListItem title="새 장소 추천" trailing={<Switch aria-label="새 장소 추천" />} />

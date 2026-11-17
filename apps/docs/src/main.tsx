@@ -2,9 +2,10 @@ import { StrictMode, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@glass-layer/react/styles.css';
 import './docs.css';
-import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, SegmentedControl, Switch, IconButton, Toaster, type ThemeMode } from '@glass-layer/react';
+import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, IconButton, Popover, Toaster, type ThemeMode } from '@glass-layer/react';
+import { DisplaySettingsProvider, DisplaySettingsBar, DisplaySettingsList } from './settings';
 import type { MotionName } from '@glass-layer/tokens';
-import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon } from 'lucide-react';
+import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal } from 'lucide-react';
 import { Overview, Colors, Typography, Motion, Material } from './pages/foundations';
 import { Buttons, Inputs, Navigation, Lists, Overlays } from './pages/components';
 import { Showcase } from './pages/showcase';
@@ -38,12 +39,16 @@ function App() {
   const [rm, setRm] = useState(false);
   const [motion, setMotion] = useState<MotionName>('lively');
   const [navOpen, setNavOpen] = useState(false);
+  const [setOpen, setSetOpen] = useState(false);
+  const [setBtn, setSetBtn] = useState<HTMLButtonElement | null>(null);
+  const display = { mode, setMode, motion, setMotion, hc, setHc, rm, setRm, rt, setRt };
   const theme = useMemo(() => createTheme({ mode, contrast: hc ? 'more' : 'standard', reduceTransparency: rt, reduceMotion: rm ? true : 'system', motion }), [mode, hc, rt, rm, motion]);
   const current = PAGES.find((p) => p.id === page) ?? PAGES[0];
   const Current = current.el;
   useEffect(() => { scrollTo(0, 0); setNavOpen(false); }, [page]);
   let group = '';
   return (
+    <DisplaySettingsProvider value={display}>
     <ThemeProvider theme={theme} style={{ minHeight: '100vh' }}>
       <Toaster>
         <div className="docs" data-nav-open={navOpen}>
@@ -64,19 +69,21 @@ function App() {
           <main className="docs__main">
             <div className="docs__top">
               <IconButton className="docs__menu-btn" variant="glass" icon={<MenuIcon />} label="메뉴" onClick={() => setNavOpen((v) => !v)} />
-              <Glass className="docs__settings" style={{ borderRadius: 'var(--gl-radius-lg)' }}>
-                <SegmentedControl size="sm" aria-label="화면 모드" value={mode} onChange={setMode} options={[{ value: 'light', label: '라이트' }, { value: 'dark', label: '다크' }, { value: 'system', label: '시스템' }]} />
-                <SegmentedControl size="sm" aria-label="모션" value={motion} onChange={setMotion} options={[{ value: 'calm', label: '차분' }, { value: 'lively', label: '생동' }, { value: 'playful', label: '경쾌' }]} />
-                <label>고대비 <Switch size="sm" checked={hc} onChange={setHc} aria-label="고대비" /></label>
-                <label className="hide-sm">동작 줄이기 <Switch size="sm" checked={rm} onChange={setRm} aria-label="동작 줄이기" /></label>
-                <label className="hide-sm">투명도 줄이기 <Switch size="sm" checked={rt} onChange={setRt} aria-label="투명도 줄이기" /></label>
+              {/* wide: every display setting in one bar; narrow: one button opens them all (nothing is hidden) */}
+              <Glass className="docs__settings docs__settings--bar" style={{ borderRadius: 'var(--gl-radius-lg)' }}>
+                <DisplaySettingsBar />
               </Glass>
+              <IconButton ref={setSetBtn} className="docs__settings-btn" variant="glass" icon={<SlidersHorizontal />} label="표시 설정" aria-expanded={setOpen} onClick={() => setSetOpen((v) => !v)} />
+              <Popover open={setOpen} onClose={() => setSetOpen(false)} anchor={setBtn} placement="bottom-end" aria-label="표시 설정">
+                <div style={{ width: 300 }}><DisplaySettingsList header="표시 설정" /></div>
+              </Popover>
             </div>
             <Current />
           </main>
         </div>
       </Toaster>
     </ThemeProvider>
+    </DisplaySettingsProvider>
   );
 }
 
