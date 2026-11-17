@@ -372,6 +372,7 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
   }, [disabled, min, max, step]);
 
   const onKey = (e: KeyboardEvent) => {
+    if (disabled) return;
     const big = Math.max(step, (max - min) / 10);
     const map: Record<string, number> = { ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step, PageUp: big, PageDown: -big };
     let nv: number | undefined;
@@ -506,7 +507,7 @@ export function SegmentedControl<T extends string>({ options, value, defaultValu
       <span ref={ind} className="gl-segmented__indicator" aria-hidden="true" />
       {options.map((o, i) => (
         <button key={o.value} type="button" role="radio" data-gl-item aria-checked={i === index} tabIndex={i === index ? 0 : -1} disabled={o.disabled} className="gl-segmented__item" onClick={() => setV(o.value)}>
-          {o.icon}{o.label}
+          {o.icon}<span className="gl-segmented__label">{o.label}</span>
         </button>
       ))}
     </div>
@@ -638,13 +639,22 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
 export type ChipProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'> & {
   selected?: boolean; onSelectedChange?: (v: boolean) => void; icon?: ReactNode; onRemove?: () => void;
 };
-export const Chip = forwardRef<HTMLButtonElement, ChipProps>(function Chip({ selected, onSelectedChange, icon, onRemove, className, children, onClick, ...rest }, ref) {
+export const Chip = forwardRef<HTMLButtonElement, ChipProps>(function Chip({ selected, onSelectedChange, icon, onRemove, className, children, onClick, style, ...rest }, ref) {
   const toggle = selected !== undefined;
+  if (onRemove) {
+    /* an input chip: a group with a label and its own remove button (a button may not contain another button) */
+    const name = typeof children === 'string' ? children : undefined;
+    return (
+      <span role="group" aria-label={name} className={cx('gl-chip', 'gl-chip--removable', className)} style={style}>
+        {icon}<span className="gl-chip__label">{children}</span>
+        <button ref={ref} type="button" className="gl-chip__remove" aria-label={name ? `Remove ${name}` : 'Remove'} onClick={onRemove} disabled={rest.disabled}><CloseIcon width={14} height={14} /></button>
+      </span>
+    );
+  }
   return (
-    <button ref={ref} type="button" aria-pressed={toggle ? selected : undefined} className={cx('gl-chip', className)}
+    <button ref={ref} type="button" aria-pressed={toggle ? selected : undefined} className={cx('gl-chip', className)} style={style}
       onClick={(e) => { onClick?.(e); if (toggle) onSelectedChange?.(!selected); }} {...rest}>
-      {icon}{children}
-      {onRemove && <span className="gl-chip__remove" role="button" aria-label="Remove" tabIndex={-1} onClick={(e) => { e.stopPropagation(); onRemove(); }}><CloseIcon width={14} height={14} /></span>}
+      {icon}<span className="gl-chip__label">{children}</span>
     </button>
   );
 });
@@ -675,7 +685,7 @@ export function Avatar({ name = '', src, size = 40, className, style }: { name?:
   const hue = AVATAR_HUES[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_HUES.length];
   return (
     <span className={cx('gl-avatar', className)} role="img" aria-label={name || undefined}
-      style={{ '--_s': `${size}px`, '--_bg': `var(--gl-${hue}-200)`, '--_fg': `var(--gl-${hue}-800)`, ...style } as CSSProperties}>
+      style={{ '--_s': `${size}px`, '--_bg': `var(--gl-${hue}-200)`, '--_fg': `var(--gl-${hue}-800)`, '--_fg-hc': `var(--gl-${hue}-950)`, ...style } as CSSProperties}>
       {src ? <img src={src} alt="" /> : initials}
     </span>
   );

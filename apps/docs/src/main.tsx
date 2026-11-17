@@ -5,10 +5,11 @@ import './docs.css';
 import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, IconButton, Popover, Toaster, type ThemeMode } from '@glass-layer/react';
 import { DisplaySettingsProvider, DisplaySettingsBar, DisplaySettingsList } from './settings';
 import type { MotionName } from '@glass-layer/tokens';
-import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal } from 'lucide-react';
+import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical } from 'lucide-react';
 import { Overview, Colors, Typography, Motion, Material } from './pages/foundations';
 import { Buttons, Inputs, Navigation, Lists, Overlays } from './pages/components';
 import { Showcase } from './pages/showcase';
+import { Lab } from './pages/lab';
 
 const PAGES = [
   { id: 'overview', label: '소개', icon: Layers, el: Overview, group: '기초' },
@@ -22,6 +23,7 @@ const PAGES = [
   { id: 'lists', label: '목록과 표시', icon: ListIcon, el: Lists, group: '컴포넌트' },
   { id: 'overlays', label: '오버레이', icon: PanelTop, el: Overlays, group: '컴포넌트' },
   { id: 'showcase', label: '쇼케이스', icon: Smartphone, el: Showcase, group: '예제' },
+  { id: 'lab', label: '예외 상황 랩', icon: FlaskConical, el: Lab, group: '예제' },
 ];
 
 function useHash() {
@@ -33,11 +35,13 @@ function useHash() {
 
 function App() {
   const page = useHash();
-  const [mode, setMode] = useState<ThemeMode>('system');
-  const [hc, setHc] = useState(false);
-  const [rt, setRt] = useState(false);
-  const [rm, setRm] = useState(false);
-  const [motion, setMotion] = useState<MotionName>('lively');
+  /* initial display settings can come from the URL (?mode=dark&hc=1&rt=1&rm=1&motion=calm) — used by the test matrix */
+  const q = new URLSearchParams(location.search);
+  const [mode, setMode] = useState<ThemeMode>((q.get('mode') as ThemeMode) || 'system');
+  const [hc, setHc] = useState(q.get('hc') === '1');
+  const [rt, setRt] = useState(q.get('rt') === '1');
+  const [rm, setRm] = useState(q.get('rm') === '1');
+  const [motion, setMotion] = useState<MotionName>((q.get('motion') as MotionName) || 'lively');
   const [navOpen, setNavOpen] = useState(false);
   const [setOpen, setSetOpen] = useState(false);
   const [setBtn, setSetBtn] = useState<HTMLButtonElement | null>(null);

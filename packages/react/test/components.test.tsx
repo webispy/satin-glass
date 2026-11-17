@@ -148,3 +148,32 @@ describe('ThemeProvider', () => {
     expect(root.style.getPropertyValue('--gl-accent')).toBe('#0a7');
   });
 });
+
+describe('Overlay unmounted while open', () => {
+  it('releases the scroll lock and focus trap (e.g. a route change mid-animation)', () => {
+    const { unmount } = render(<Dialog open onClose={() => {}} title="열림">내용</Dialog>);
+    expect(document.body.style.overflow).toBe('hidden');
+    unmount();
+    expect(document.body.style.overflow).not.toBe('hidden');
+  });
+});
+
+describe('Chip with remove', () => {
+  it('is a group with its own remove button (no button inside a button)', () => {
+    const rm = vi.fn();
+    render(<Chip onRemove={rm}>서울</Chip>);
+    const remove = screen.getByRole('button', { name: 'Remove 서울' });
+    expect(remove.closest('button')).toBe(remove);
+    expect(remove.parentElement?.closest('button')).toBeNull();
+    fireEvent.click(remove); expect(rm).toHaveBeenCalled();
+  });
+});
+
+describe('Disabled slider', () => {
+  it('ignores the keyboard', () => {
+    render(<Slider aria-label="d" disabled defaultValue={40} />);
+    const s = screen.getByRole('slider');
+    fireEvent.keyDown(s, { key: 'End' });
+    expect(s.getAttribute('aria-valuenow')).toBe('40');
+  });
+});

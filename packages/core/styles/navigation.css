@@ -40,7 +40,7 @@
 .gl-tabbar { position: relative; display: flex; align-items: flex-end; gap: 8px; padding: 0 var(--gl-size-bar-inset); pointer-events: none; }
 .gl-tabbar > * { pointer-events: auto; }
 .gl-tabbar__bar {
-  flex: 1; position: relative; display: flex; height: var(--gl-size-tab-bar); padding: 5px; gap: 0;
+  flex: 1; min-width: 0; position: relative; display: flex; height: var(--gl-size-tab-bar); padding: 5px; gap: 0;   /* min-width 0: long labels truncate instead of widening the page */
   --_radius: var(--gl-radius-xl); contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
 }
 .gl-tabbar__indicator {

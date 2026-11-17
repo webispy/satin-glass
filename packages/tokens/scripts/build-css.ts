@@ -59,13 +59,23 @@ writeFileSync(new URL('../dist/tokens.css', import.meta.url), out.join('\n') + '
 /* ---- contrast report (WCAG 2): fails the build if a required pair is below its target ---- */
 const pairs: [string, string, number][] = [
   ['label', 'bg', 7], ['label', 'bg-elevated', 7], ['label-secondary', 'bg', 4.5], ['label-secondary', 'bg-grouped', 4.5],
-  ['label-tertiary', 'bg', 3], ['accent-text', 'bg', 4.5], ['accent-text', 'bg-elevated', 4.5], ['on-accent', 'accent', 4.5],
+  ['label-tertiary', 'bg', 4.5], ['label-tertiary', 'surface', 4.5], ['label-tertiary', 'bg-grouped', 4.5], ['accent-text', 'bg', 4.5], ['accent-text', 'bg-elevated', 4.5], ['on-accent', 'accent', 4.5],
   ['danger-text', 'bg', 4.5], ['success-text', 'bg', 4.5], ['info-text', 'bg', 4.5], ['warning-text', 'bg', 4.5],
   ['focus-ring', 'bg', 3],
 ];
+/* a few pairs need a composited background (translucent fill over the surface) or plain white text */
+const composite = (fill: string, under: string) => {
+  const m = fill.match(/rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)/);
+  if (!m) return fill;
+  const a = m[4] === undefined ? 1 : +m[4];
+  const u = [1, 3, 5].map((i) => parseInt(under.slice(i, i + 2), 16));
+  return '#' + [1, 2, 3].map((i, k) => Math.round(+m[i] * a + u[k] * (1 - a)).toString(16).padStart(2, '0')).join('');
+};
+pairs.push(['accent-on-soft', 'accent-soft@surface', 4.5], ['danger-on-soft', 'danger-soft@surface', 4.5], ['#ffffff', 'danger-fill', 4.5]);
 let failed = 0;
 for (const t of Object.keys(themes) as ThemeName[]) {
-  const th = themes[t] as Record<string, string>;
+  const th = { ...(themes[t] as Record<string, string>), '#ffffff': '#ffffff' } as Record<string, string>;
+  for (const [, bg] of pairs) if (bg.includes('@')) { const [f, u] = bg.split('@'); th[bg] = composite(th[f], th[u]); }
   const row = pairs.map(([fg, bg, min]) => {
     const r = contrast(th[fg], th[bg]);
     const target = t.endsWith('hc') ? Math.max(min, min >= 4.5 ? 7 : 4.5) : min;

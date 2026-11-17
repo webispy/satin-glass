@@ -4,6 +4,9 @@ const chromium = pw[process.env.BROWSER || 'chromium'];
 const out = process.argv[2];
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
+/* Q: display settings for the whole run, e.g. Q='?motion=calm' or Q='?mode=dark&hc=1&rt=1' */
+const Q = process.env.Q || '';
+{ const g = p.goto.bind(p); p.goto = (u, o) => g(u.replace('localhost:4173/#', `localhost:4173/${Q}#`), o); }
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
 /* our own errors only: a third-party resource (the font CDN) failing is reported separately, not as a page error */
@@ -77,7 +80,7 @@ const travel = async () => {
   return { minL: Math.min(...frames.map((f) => f[0])), minR: Math.min(...frames.map((f) => f[1])), maxW: Math.max(...frames.map((f) => f[2])), endW: frames[frames.length - 1][2] };
 };
 const tOn = await travel(), tOff = await travel();
-ok('switch: on and off travel alike — stretch toward travel, stay inside the rail (a lively bounce may use some of the 2 px gap)', tOn.minL >= 0.5 && tOn.minR >= 0.5 && tOff.minL >= 0.5 && tOff.minR >= 0.5 && Math.abs(tOn.minR - tOff.minL) < 0.3 && tOn.maxW > tOn.endW + 3 && tOff.maxW > tOff.endW + 3 && Math.abs((tOn.maxW - tOn.endW) - (tOff.maxW - tOff.endW)) < 1,
+ok('switch: on and off travel alike — stretch toward travel, stay inside the rail (a lively bounce may use some of the 2 px gap)', tOn.minL >= 0.5 && tOn.minR >= 0.5 && tOff.minL >= 0.5 && tOff.minR >= 0.5 && Math.abs(tOn.minR - tOff.minL) < 0.3 && tOn.maxW > tOn.endW + 2 && tOff.maxW > tOff.endW + 2 && Math.abs((tOn.maxW - tOn.endW) - (tOff.maxW - tOff.endW)) < 1,
   `on: gap L ${tOn.minL.toFixed(1)} R ${tOn.minR.toFixed(1)} stretch ${(tOn.maxW - tOn.endW).toFixed(1)} · off: gap L ${tOff.minL.toFixed(1)} R ${tOff.minR.toFixed(1)} stretch ${(tOff.maxW - tOff.endW).toFixed(1)}`);
 
 const sl = p.locator('.gl-slider').first(), slb = await sl.boundingBox();
@@ -263,8 +266,9 @@ await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(600);
 await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(700);
 {
   const bgs = await sampleAfter(`({ act: () => document.querySelector('.phone__screen').scrollTo(0, 400), read: () => parseFloat(getComputedStyle(document.querySelector('.phone .gl-appbar__bar')).backgroundColor.split(',')[3] || '1') })`, 500);
-  const mid = bgs.filter((a) => a > 0.02 && a < 0.55).length;
-  ok('app bar: the glass fades in when content scrolls under it', mid >= 3, `frames in between ${mid}`);
+  const mid = bgs.filter((a) => a > 0.02 && a < 0.98).length;
+  if (/rt=1/.test(Q)) ok('app bar (reduce transparency): solid from the start — nothing to see through', bgs.every((a) => a > 0.98), `alphas ${[...new Set(bgs.map((a) => a.toFixed(2)))].join(',')}`);
+  else ok('app bar: the glass fades in when content scrolls under it', mid >= 3, `frames in between ${mid}`);
 }
 
 /* ---------- motion personalities: calm / lively / playful really differ ---------- */

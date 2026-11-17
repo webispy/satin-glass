@@ -23,9 +23,9 @@ export function Section({ title, intro, children }: { title: string; intro?: Rea
   );
 }
 
-export function Demo({ children, col, center, media, style, caption }: { children: ReactNode; col?: boolean; center?: boolean; media?: boolean; style?: CSSProperties; caption?: ReactNode }) {
+export function Demo({ children, col, center, media, style, caption, ...rest }: { children: ReactNode; col?: boolean; center?: boolean; media?: boolean; style?: CSSProperties; caption?: ReactNode; [data: `data-${string}`]: string | undefined }) {
   return (
-    <div className={['demo', col && 'demo--col', center && 'demo--center', media && 'demo--media'].filter(Boolean).join(' ')} style={style}>
+    <div className={['demo', col && 'demo--col', center && 'demo--center', media && 'demo--media'].filter(Boolean).join(' ')} style={style} {...rest}>
       {children}
       {caption && <p className="demo__caption">{caption}</p>}
     </div>
@@ -44,8 +44,8 @@ const SCENES = [
 export function Photo({ scene = 0, style, className, children }: { scene?: number; style?: CSSProperties; className?: string; children?: ReactNode }) {
   const k = scene % SCENES.length, s = SCENES[k], id = `ph${k}`;
   return (
-    <div className={['photo', className].filter(Boolean).join(' ')} role="img" aria-label="풍경 사진" style={style}>
-      <svg viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+    <div className={['photo', className].filter(Boolean).join(' ')} style={style}>
+      <svg viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" role="img" aria-label="풍경 사진" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
         <defs>
           <linearGradient id={`${id}s`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={s.sky[0]} /><stop offset="0.6" stopColor={s.sky[1]} /><stop offset="1" stopColor={s.sky[2]} /></linearGradient>
           <radialGradient id={`${id}g`}><stop offset="0" stopColor={s.sun} stopOpacity="0.95" /><stop offset="0.35" stopColor={s.sun} stopOpacity="0.5" /><stop offset="1" stopColor={s.sun} stopOpacity="0" /></radialGradient>

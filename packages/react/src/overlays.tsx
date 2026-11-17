@@ -11,12 +11,26 @@ import { CheckIcon, InfoIcon, SuccessIcon, AlertIcon } from './icons';
 
 export type CloseReason = 'escape' | 'backdrop' | 'action' | 'swipe' | 'select';
 
+/** Holds an overlay's cleanup (scroll lock, focus trap, listeners). Runs it at most once per opening — on close,
+    or on unmount if the overlay disappears while open (route change, a parent removing it mid-animation). */
+function useRelease() {
+  const fn = useRef<() => void>(() => {});
+  const api = useRef({
+    set(f: () => void) { let done = false; fn.current = () => { if (done) return; done = true; f(); }; },
+    run() { fn.current(); fn.current = () => {}; },
+  }).current;
+  useEffect(() => () => api.run(), []);
+  return api;
+}
+
 /** Shared lifecycle: mount → enter animation → (open) → exit animation → unmount. */
 function useOverlayLifecycle(open: boolean, enter: () => Promise<void> | void, exit: () => Promise<void>) {
   const { mounted, closing, done } = usePresence(open);
   /* 'idle' → 'open' → 'exiting' → idle. Re-opened while exiting (e.g. a click on another anchor closes and
      re-opens in two events): the exit is abandoned and enter runs again, so the overlay never gets stuck. */
   const phase = useRef<'idle' | 'open' | 'exiting'>('idle');
+  /* unmounted (or StrictMode's simulated remount): start over, so a remount that is open runs enter again */
+  useIsoLayoutEffect(() => () => { phase.current = 'idle'; }, []);
   useIsoLayoutEffect(() => {
     if (mounted && !closing && phase.current !== 'open') { phase.current = 'open'; enter(); }
   }, [mounted, closing]);
@@ -51,16 +65,16 @@ export function Dialog({ open, onClose, title, children, icon, tone = 'accent', 
   const panel = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
   const id = useStableId('gl-dialog');
   const lightRef = useGlassLight();
-  const release = useRef<() => void>(() => {});
+  const release = useRelease();
   const { mounted } = useOverlayLifecycle(open, () => {
     const p = panel.current!;
     scrim.current?.classList.add('is-open');
     const pop = pushLayer(() => onClose('escape'), true);
     const trap = trapFocus(p);
-    release.current = () => { pop(); trap(); };
+    release.set(() => { pop(); trap(); });
     return bloomIn(p, { x: p.offsetWidth / 2, y: p.offsetHeight / 2 }, 0.9);
   }, () => {
-    release.current();
+    release.run();
     scrim.current?.classList.remove('is-open');
     return bloomOut(panel.current!, 0.96);
   });
@@ -106,7 +120,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
   const panel = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
   const id = useStableId('gl-sheet');
   const lightRef = useGlassLight();
-  const release = useRef<() => void>(() => {});
+  const release = useRelease();
   const swiped = useRef(false);
   const close = useRef(onClose); close.current = onClose;
   const wide = () => adaptive && typeof matchMedia === 'function' && matchMedia('(min-width: 900px)').matches;
@@ -136,12 +150,12 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
         y = 0;
       },
     });
-    release.current = () => { pop(); trap(); off(); };
+    release.set(() => { pop(); trap(); off(); });
     if (wide()) return bloomIn(p, { x: p.offsetWidth / 2, y: p.offsetHeight / 2 }, 0.94);
     if (prefersReducedMotion(p)) return fade(p, 0, 1, 140);   /* reduced: appears in place */
     return animate(p, [{ transform: 'translateY(calc(100% + 24px))' }, { transform: 'none' }], 'gentle').finished.then(() => undefined, () => undefined);
   }, () => {
-    release.current();
+    release.run();
     const p = panel.current!;
     scrim.current?.classList.remove('is-open');
     if (scrim.current) scrim.current.style.opacity = '';
@@ -220,7 +234,7 @@ const rectOf = (a: Anchor) => (a instanceof HTMLElement ? a.getBoundingClientRec
 /** Anchored floating panel shared by Menu and Popover. */
 function useAnchored(open: boolean, anchor: Anchor, placement: Placement, onClose: (r: CloseReason) => void, focusFirst: (p: HTMLElement) => void) {
   const panel = useRef<HTMLDivElement>(null);
-  const release = useRef<() => void>(() => {});
+  const release = useRelease();
   const close = useRef(onClose); close.current = onClose;
   const before = useRef<Element | null>(null);
   const life = useOverlayLifecycle(open, () => {
@@ -241,7 +255,7 @@ function useAnchored(open: boolean, anchor: Anchor, placement: Placement, onClos
        just scrolled into view) is delivered a frame late and must not close the panel it preceded */
     let armed = true;
     const arm = requestAnimationFrame(() => requestAnimationFrame(() => { if (armed) window.addEventListener('scroll', onScroll, true); }));
-    release.current = () => {
+    release.set(() => {
       pop();
       armed = false; cancelAnimationFrame(arm);
       document.removeEventListener('pointerdown', outside, true);
@@ -250,13 +264,13 @@ function useAnchored(open: boolean, anchor: Anchor, placement: Placement, onClos
       const prev = before.current as HTMLElement | null;
       const b = (!prev || prev === document.body) && anchor instanceof HTMLElement ? anchor : prev;
       if (b && document.contains(b) && (p.contains(document.activeElement) || document.activeElement === document.body)) b.focus({ preventScroll: true });
-    };
+    });
     focusFirst(p);
     /* unfold away from the anchor: the axis pointing away from it starts flatter */
     const vertical = at.side === 'top' || at.side === 'bottom';
     return bloomIn(p, { x: at.originX, y: at.originY }, vertical ? [0.6, 0.3] : [0.3, 0.6], 'pop');
   }, () => {
-    release.current();
+    release.run();
     const vertical = (panel.current!.dataset.side ?? 'bottom').match(/top|bottom/);
     return bloomOut(panel.current!, vertical ? [0.7, 0.45] : [0.45, 0.7], 150);
   });
@@ -315,7 +329,7 @@ export type ActionSheetProps = {
 };
 export function ActionSheet({ open, onClose, title, message, actions, cancelLabel = 'Cancel', motion }: ActionSheetProps) {
   const box = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
-  const release = useRef<() => void>(() => {});
+  const release = useRelease();
   const id = useStableId('gl-as');
   const l1 = useGlassLight(), l2 = useGlassLight();
   const { mounted } = useOverlayLifecycle(open, () => {
@@ -323,11 +337,11 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
     scrim.current?.classList.add('is-open');
     const pop = pushLayer(() => onClose('escape'), true);
     const trap = trapFocus(b, b.querySelector<HTMLElement>('[data-cancel]'));
-    release.current = () => { pop(); trap(); };
+    release.set(() => { pop(); trap(); });
     if (prefersReducedMotion(b)) return fade(b, 0, 1, 140);
     return animate(b, [{ transform: 'translateY(calc(100% + 24px))' }, { transform: 'none' }], 'smooth').finished.then(() => undefined, () => undefined);
   }, () => {
-    release.current();
+    release.run();
     scrim.current?.classList.remove('is-open');
     if (prefersReducedMotion(box.current)) return fade(box.current!, 1, 0, 110);
     return box.current!.animate([{ transform: 'none' }, { transform: 'translateY(calc(100% + 24px))' }], { duration: 220, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' }).finished.then(() => undefined, () => undefined);

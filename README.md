@@ -2,7 +2,7 @@
 
 빛을 따르는 유리 재질 위에 만든 React UI 라이브러리. 디자인 토큰, 프레임워크 없는 동작 코어, React 컴포넌트, 문서·카탈로그 앱으로 이루어진 pnpm 모노레포다.
 
-> 상태: 0.1 (로컬 개발용).
+> 상태: **0.1.0** (로컬 개발용, 변경 내역은 [`CHANGELOG.md`](CHANGELOG.md)).
 
 ## 구성
 
@@ -34,8 +34,10 @@ pnpm install
 pnpm build          # tokens → core → react
 pnpm dev            # 문서 앱 (http://localhost:5173)
 pnpm test           # 단위 테스트 (Vitest)
-pnpm e2e            # 빌드 후 상호작용 3개 엔진 + 성능 검사
+pnpm e2e            # 빌드 후 전체 검증: 렌더링 매트릭스, 상호작용, 동작 줄이기, 예외 상황 (3개 엔진) + 성능
 ```
+
+문서 앱은 URL로 표시 설정을 받는다(`?mode=dark&hc=1&rt=1&rm=1&motion=calm`). 예외 상황을 모아 둔 `#/lab` 페이지가 있다.
 
 ## 컴포넌트
 
