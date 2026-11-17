@@ -44,13 +44,13 @@ const gh = (await p.locator('.gl-button-group').first().boundingBox()).height, i
 const gr = await p.locator('.gl-button-group').first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius), ir = await p.locator('.demo--media .gl-button--glass.gl-button--icon').first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius);
 ok('button group: same height and corner as the buttons beside it', gh === ih && gr === ir, `group ${gh}px/${gr}, button ${ih}px/${ir}`);
 
-await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(500);
+await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(1000); /* badges pop in on mount */
 {
   const geo = await p.locator('.gl-tabbar__icon:has(.gl-badge)').first().evaluate((ic) => {
     const g = ic.querySelector('svg').getBoundingClientRect(), b = ic.querySelector('.gl-badge').getBoundingClientRect(), bar = ic.closest('.gl-tabbar__bar').getBoundingClientRect();
     return { overlapX: g.right - b.left, overlapY: b.bottom - g.top, insideBar: b.top >= bar.top && b.right <= bar.right, h: b.height };
   });
-  ok('tab badge: on the glyph corner (small overlap), inside the bar, 16 px', geo.overlapX > 0 && geo.overlapX <= 8 && geo.overlapY > 0 && geo.overlapY <= 12 && geo.insideBar && geo.h === 16, JSON.stringify(geo));
+  ok('tab badge: on the glyph corner (small overlap), inside the bar, 16 px', geo.overlapX > 0 && geo.overlapX <= 8 && geo.overlapY > 0 && geo.overlapY <= 12 && geo.insideBar && Math.abs(geo.h - 16) < 0.5, JSON.stringify(geo));
 }
 
 /* ---------- inputs ---------- */
@@ -196,6 +196,63 @@ await infos.nth(3).click(); await p.waitForTimeout(600);
 ok('popover: …and again', (await p.locator('.gl-popover').count()) === 1 && (await p.locator('.gl-popover').textContent()).includes('별빛'));
 await p.keyboard.press('Escape'); await p.waitForTimeout(400);
 ok('popover: Esc still closes after switching', (await p.locator('.gl-popover').count()) === 0);
+
+/* ---------- motion audit: every state change moves, nothing jumps ---------- */
+/* sample a numeric reading every frame for `ms` after running `act` in the page; returns distinct rounded values */
+const sampleAfter = (fnSrc, ms = 450) => p.evaluate(({ fnSrc, ms }) => new Promise((res) => {
+  const { act, read } = new Function(`return (${fnSrc})`)();
+  const out = []; const t0 = performance.now(); act();
+  const f = () => { out.push(read()); if (performance.now() - t0 < ms) requestAnimationFrame(f); else res(out); };
+  requestAnimationFrame(f);
+}), { fnSrc, ms });
+const distinct = (a) => new Set(a.map((v) => Math.round(v))).size;
+
+await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(600);
+{
+  const sl2 = p.locator('.docs__page .gl-slider').first(), b2 = await sl2.boundingBox();
+  const thumbX = () => p.locator('.docs__page .gl-slider__thumb').first().evaluate((e) => e.getBoundingClientRect().left);
+  const before = await thumbX();
+  await p.mouse.move(b2.x + b2.width * 0.1, b2.y + b2.height / 2);
+  const xs = [];
+  await p.mouse.down();
+  for (let i = 0; i < 14; i++) { xs.push(await thumbX()); await p.waitForTimeout(16); }
+  await p.mouse.up(); await p.waitForTimeout(400);
+  const after = await thumbX();
+  const mids = xs.filter((x) => Math.abs(x - before) > 2 && Math.abs(x - after) > 2).length;
+  ok('slider: a press on the track travels there with motion (not a jump)', mids >= 2 && Math.abs(after - before) > 40, `in-between frames ${mids}, ${before.toFixed(0)} → ${after.toFixed(0)}`);
+}
+{
+  const plus = p.getByRole('button', { name: 'Increase 인원' });
+  await plus.click();
+  const roll = await p.locator('.gl-stepper__value > span').first().evaluate((e) => ({ dir: e.dataset.roll, anims: e.getAnimations().length }));
+  ok('stepper: the value rolls in from the direction it changed', roll.dir === 'up' && roll.anims > 0, JSON.stringify(roll));
+}
+{
+  const ws = await sampleAfter(`({ act: () => document.querySelector('.docs__page .gl-search input').focus(), read: () => document.querySelector('.docs__page .gl-search__cancel').getBoundingClientRect().width })`);
+  const end = ws[ws.length - 1];
+  ok('search field: Cancel slides in (width grows over several frames)', ws.filter((w) => w > 1 && w < end - 1).length >= 3 && end > 40, `frames between ${ws.filter((w) => w > 1 && w < end - 1).length}, end ${end.toFixed(0)}`);
+  await p.locator('.docs__page .gl-search input').blur();
+}
+await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(600);
+{
+  /* error toast (with an action) on top, a plain one below; dismissing the top one makes the other glide up */
+  await p.getByRole('button', { name: '오류 토스트' }).click(); await p.waitForTimeout(120);
+  await p.getByRole('button', { name: '토스트', exact: true }).click(); await p.waitForTimeout(600);
+  const flip = await p.evaluate(() => new Promise((res) => {
+    const list = [...document.querySelectorAll('.gl-toast')], lower = list[list.length - 1], y0 = lower.getBoundingClientRect().top;
+    list[0].querySelector('button').click();
+    const ys = []; const t0 = performance.now();
+    const f = () => { ys.push(lower.getBoundingClientRect().top); if (performance.now() - t0 < 700) requestAnimationFrame(f); else res({ y0, end: ys[ys.length - 1], between: ys.filter((y) => y < y0 - 2 && y > ys[ys.length - 1] + 2).length }); };
+    requestAnimationFrame(f);
+  }));
+  ok('toasts: when one leaves, the rest glide into place', flip.end < flip.y0 - 20 && flip.between >= 3, JSON.stringify(flip));
+}
+await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(700);
+{
+  const bgs = await sampleAfter(`({ act: () => document.querySelector('.phone__screen').scrollTo(0, 400), read: () => parseFloat(getComputedStyle(document.querySelector('.phone .gl-appbar__bar')).backgroundColor.split(',')[3] || '1') })`, 500);
+  const mid = bgs.filter((a) => a > 0.02 && a < 0.55).length;
+  ok('app bar: the glass fades in when content scrolls under it', mid >= 3, `frames in between ${mid}`);
+}
 
 console.log('page errors:', errs.length ? errs : 'none');
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');

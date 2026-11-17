@@ -46,8 +46,11 @@
 
 .gl-button[data-tone="danger"] { --gl-accent: var(--gl-danger); --gl-accent-hover: color-mix(in oklab, var(--gl-danger), #000 12%); --gl-accent-pressed: color-mix(in oklab, var(--gl-danger), #000 22%); --gl-accent-soft: var(--gl-danger-soft); --gl-accent-text: var(--gl-danger-text); }
 .gl-button[data-tone="neutral"] { --gl-accent-text: var(--gl-label); }
-.gl-button__spinner { position: absolute; inset: 0; display: grid; place-items: center; }
-.gl-button[data-loading="true"] > :not(.gl-button__spinner) { visibility: hidden; }
+/* loading: the label fades out as the spinner fades in (no hard swap) */
+.gl-button__spinner { position: absolute; inset: 0; display: grid; place-items: center; animation: gl-fade-in var(--gl-duration-base) var(--gl-ease-out) both; }
+.gl-button > :not(.gl-button__spinner) { transition: opacity var(--gl-duration-fast) ease; }
+.gl-button[data-loading="true"] > :not(.gl-button__spinner) { opacity: 0; }
+@keyframes gl-fade-in { from { opacity: 0; transform: scale(0.6); } }
 
 /* a glass group: one shared glass, plain buttons inside (no glass on glass) */
 /* the group is exactly as tall as a standalone button of its size and shares its corner radius;
@@ -123,8 +126,8 @@
   will-change: transform;
 }
 .gl-slider.is-active .gl-slider__thumb { --_s: 1.18; }
+/* only while the finger is actually moving does the thumb follow 1:1; a press on the track travels on the spring */
 .gl-slider.is-dragging .gl-slider__thumb, .gl-slider.is-dragging .gl-slider__fill { transition: none; }
-.gl-slider.is-dragging .gl-slider__thumb { transition: transform 0s, scale 0s; }
 .gl-slider__fill { transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
 .gl-slider__bubble {
   position: absolute; bottom: 30px; left: 0; min-width: 36px; height: 28px; padding: 0 9px;
@@ -176,7 +179,12 @@
 .gl-stepper__btn:disabled { color: var(--gl-label-disabled); cursor: default; }
 .gl-stepper__btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
 .gl-stepper__btn svg { width: 16px; height: 16px; }
-.gl-stepper__value { min-width: 40px; padding: 0 4px; text-align: center; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.gl-stepper__value { min-width: 40px; padding: 0 4px; text-align: center; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; overflow: hidden; }
+.gl-stepper__value > span { display: inline-block; }
+.gl-stepper__value > [data-roll="up"] { animation: gl-roll-up var(--gl-spring-snappy-duration) var(--gl-spring-snappy) both; }
+.gl-stepper__value > [data-roll="down"] { animation: gl-roll-down var(--gl-spring-snappy-duration) var(--gl-spring-snappy) both; }
+@keyframes gl-roll-up { from { transform: translateY(55%); opacity: 0; } 35% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes gl-roll-down { from { transform: translateY(-55%); opacity: 0; } 35% { opacity: 1; } to { transform: none; opacity: 1; } }
 
 /* ============================================================================================
    Text fields
@@ -200,17 +208,23 @@ textarea.gl-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 .gl-field__control:has(textarea) { height: auto; align-items: flex-start; }
 .gl-field__adorn { display: inline-flex; color: var(--gl-label-tertiary); }
 .gl-field__adorn svg { width: 18px; height: 18px; }
+@keyframes gl-pop-in { from { opacity: 0; transform: scale(0.4); } }
+.gl-field__clear { animation: gl-pop-in var(--gl-spring-snappy-duration) var(--gl-spring-snappy) both; }
 .gl-field__clear { appearance: none; border: 0; margin: 0 -4px 0 0; padding: 0; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: none; color: var(--gl-label-tertiary); cursor: pointer; }
 .gl-field__clear:hover { color: var(--gl-label-secondary); }
 .gl-field__clear svg { width: 18px; height: 18px; }
 .gl-field__help { font-size: 12px; line-height: 16px; color: var(--gl-label-secondary); }
 .gl-field[data-invalid="true"] .gl-field__help { color: var(--gl-danger-text); }
 
-.gl-search { display: flex; align-items: center; gap: 8px; }
+.gl-search { display: flex; align-items: center; }
 .gl-search .gl-field { flex: 1; }
 .gl-search .gl-field__control { height: 40px; border-radius: var(--gl-radius-md); }
 .gl-search--glass .gl-field__control:focus-within { box-shadow: 0 0 0 4px var(--gl-accent-soft), var(--_shadow); }
-.gl-search__cancel { flex: none; }
+/* Cancel slides in from the right while the field narrows; hidden it takes no room (and no focus) */
+.gl-search { gap: 0; }
+.gl-search__cancel { flex: none; max-width: 0; padding-inline: 0; margin-left: 0; opacity: 0; overflow: hidden; transform: translateX(12px);
+  transition: max-width var(--gl-spring-smooth-duration) var(--gl-spring-smooth), padding var(--gl-spring-smooth-duration) var(--gl-spring-smooth), margin var(--gl-spring-smooth-duration) var(--gl-spring-smooth), opacity var(--gl-duration-fast) ease, transform var(--gl-spring-smooth-duration) var(--gl-spring-smooth); }
+.gl-search__cancel.is-shown { max-width: 120px; padding-inline: 12px; margin-left: 4px; opacity: 1; transform: none; }
 
 /* ============================================================================================
    Chips, badges, avatars, cards

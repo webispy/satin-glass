@@ -6,7 +6,20 @@
   pointer-events: auto; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
   height: var(--gl-size-bar); padding: 0 8px; --_radius: var(--gl-radius-xl);
 }
-.gl-appbar__bar--transparent { background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* see-through at the top of the page; the glass fades in as content scrolls under it (no hard swap) */
+@property --gl-bar-depth { syntax: "<color>"; inherits: false; initial-value: transparent; }
+.gl-appbar__bar {
+  --gl-bar-depth: var(--gl-glass-depth);
+  background-image: linear-gradient(180deg, var(--gl-bar-depth), rgba(255, 255, 255, 0) 52%);
+  transition: background-color var(--gl-duration-slow) var(--gl-ease-out), box-shadow var(--gl-duration-slow) var(--gl-ease-out), --gl-bar-depth var(--gl-duration-slow) var(--gl-ease-out),
+    -webkit-backdrop-filter var(--gl-duration-slow) var(--gl-ease-out), backdrop-filter var(--gl-duration-slow) var(--gl-ease-out);
+}
+.gl-appbar__bar::before { transition: opacity var(--gl-duration-slow) var(--gl-ease-out); }
+.gl-appbar__bar--transparent {
+  background-color: rgba(255, 255, 255, 0); --gl-bar-depth: rgba(255, 255, 255, 0);
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0), 0 0 0 rgba(0, 0, 0, 0);
+  -webkit-backdrop-filter: blur(0px) saturate(1); backdrop-filter: blur(0px) saturate(1);
+}
 .gl-appbar__bar--transparent::before, .gl-appbar__bar--transparent::after { opacity: 0; }
 .gl-appbar__leading { display: flex; align-items: center; gap: 4px; justify-self: start; min-width: 0; }
 .gl-appbar__trailing { display: flex; align-items: center; gap: 4px; justify-self: end; min-width: 0; }

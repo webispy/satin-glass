@@ -3,7 +3,7 @@ import {
   type ButtonHTMLAttributes, type CSSProperties, type ElementType, type HTMLAttributes, type InputHTMLAttributes,
   type KeyboardEvent, type ReactElement, type ReactNode, type TextareaHTMLAttributes,
 } from 'react';
-import { createBridge, drag, type Bridge } from '@glass-layer/core';
+import { animate, createBridge, drag, type Bridge } from '@glass-layer/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { glassClass, useGlassLight } from './foundation';
 import { ClearIcon, MinusIcon, PlusIcon, SearchIcon, CloseIcon } from './icons';
@@ -205,14 +205,21 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
       const r = s.getBoundingClientRect();
       return snap(min + ((clientX - r.left) / r.width) * (max - min));
     };
+    let x0 = 0, tracking = false;
     return drag(s, {
       start: ({ x, event }) => {
-        setActive(true); setDragging(true);
+        /* a press on the track travels there on the snappy spring (like every other control);
+           only once the finger actually moves does the thumb switch to following it 1:1 */
+        x0 = x; tracking = false;
+        setActive(true);
         s.focus({ preventScroll: true });
         event.preventDefault();
         const nv = at(x); if (nv !== vRef.current) setV(nv);
       },
-      move: ({ x }) => { const nv = at(x); if (nv !== vRef.current) setV(nv); },
+      move: ({ x }) => {
+        if (!tracking && Math.abs(x - x0) > 3) { tracking = true; setDragging(true); }
+        const nv = at(x); if (nv !== vRef.current) setV(nv);
+      },
       end: () => { setDragging(false); setActive(false); onChangeEnd?.(vRef.current); },
     });
   }, [disabled, min, max, step]);
@@ -256,7 +263,11 @@ export type StepperProps = Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'de
 };
 export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper({ value, defaultValue = 0, onChange, min = -Infinity, max = Infinity, step = 1, format = (v) => v, label = 'Value', className, ...rest }, ref) {
   const [v, setV] = useControllable(value, defaultValue, onChange);
-  const vr = useRef(v); vr.current = v;
+  const vr = useRef(v); vr.current = v;            /* latest value, for hold-to-repeat */
+  /* direction of the last change, for the roll: up when increasing, down when decreasing */
+  const shown = useRef(v);
+  const dir = useRef<'up' | 'down' | undefined>(undefined);
+  if (v !== shown.current) { dir.current = v > shown.current ? 'up' : 'down'; shown.current = v; }
   const timer = useRef<{ t?: number; i?: number }>({});
   const bump = (d: number) => {
     const nv = Math.min(max, Math.max(min, Number((vr.current + d).toFixed(6))));
@@ -272,7 +283,7 @@ export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper
   return (
     <div ref={ref} role="group" aria-label={label} className={cx('gl-stepper', className)} {...rest}>
       <button type="button" className="gl-stepper__btn" aria-label={`Decrease ${label}`} disabled={v <= min} onClick={() => bump(-step)} onPointerDown={hold(-step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><MinusIcon /></button>
-      <span className="gl-stepper__value" aria-live="polite">{format(v)}</span>
+      <span className="gl-stepper__value" aria-live="polite"><span key={v} data-roll={dir.current}>{format(v)}</span></span>
       <button type="button" className="gl-stepper__btn" aria-label={`Increase ${label}`} disabled={v >= max} onClick={() => bump(step)} onPointerDown={hold(step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><PlusIcon /></button>
     </div>
   );
@@ -448,7 +459,10 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
         enterKeyHint="search"
         {...rest}
       />
-      {onCancel && focused && <Button variant="plain" className="gl-search__cancel" onClick={onCancel}>{cancelLabel}</Button>}
+      {onCancel && (
+        <Button variant="plain" className={cx('gl-search__cancel', focused && 'is-shown')} tabIndex={focused ? undefined : -1} aria-hidden={focused ? undefined : true}
+          onMouseDown={(e) => e.preventDefault() /* keep focus in the field until the click */} onClick={onCancel}>{cancelLabel}</Button>
+      )}
     </div>
   );
 });
@@ -470,7 +484,18 @@ export const Chip = forwardRef<HTMLButtonElement, ChipProps>(function Chip({ sel
 
 export function Badge({ children, tone = 'danger', dot, max = 99, className, ...rest }: HTMLAttributes<HTMLSpanElement> & { tone?: 'danger' | 'accent' | 'neutral'; dot?: boolean; /** numbers above this show as "99+" */ max?: number }) {
   const shown = typeof children === 'number' && children > max ? `${max}+` : children;
-  return <span className={cx('gl-badge', tone !== 'danger' && `gl-badge--${tone}`, dot && 'gl-badge--dot', className)} {...rest}>{dot ? null : shown}</span>;
+  const el = useRef<HTMLSpanElement>(null);
+  const prev = useRef<ReactNode>(undefined);
+  const mounted = useRef(false);
+  /* appears: pops in from half size with one overshoot; count changes: a short bump */
+  useEffect(() => {
+    const b = el.current;
+    if (!b) return;
+    if (!mounted.current) { mounted.current = true; animate(b, [{ transform: 'scale(0.4)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], 'bouncy'); }
+    else if (prev.current !== shown) animate(b, [{ transform: 'scale(1.28)' }, { transform: 'scale(1)' }], 'bouncy');
+    prev.current = shown;
+  }, [shown]);
+  return <span ref={el} className={cx('gl-badge', tone !== 'danger' && `gl-badge--${tone}`, dot && 'gl-badge--dot', className)} {...rest}>{dot ? null : shown}</span>;
 }
 export function BadgeAnchor({ badge, children }: { badge: ReactNode; children: ReactNode }) {
   return <span className="gl-badge-anchor">{children}{badge}</span>;

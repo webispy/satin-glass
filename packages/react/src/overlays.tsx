@@ -467,6 +467,17 @@ function ToastView({ t, edge, onDone }: { t: ToastItem; edge: 'top' | 'bottom'; 
     });
     return () => { clearTimeout(timer); off(); };
   }, []);
+  /* the stack reflows when a toast arrives or leaves: glide from the old slot instead of jumping */
+  const lastTop = useRef<number | null>(null);
+  useIsoLayoutEffect(() => {
+    const e = el.current;
+    if (!e) return;
+    const top = e.offsetTop;
+    if (lastTop.current !== null && lastTop.current !== top && !leaving.current) {
+      animate(e, [{ translate: `0 ${lastTop.current - top}px` }, { translate: '0 0' }], 'smooth', { composite: 'add' });
+    }
+    lastTop.current = top;
+  });
   const icon = t.icon ?? (t.tone === 'success' ? <SuccessIcon /> : t.tone === 'danger' ? <AlertIcon /> : <InfoIcon />);
   return (
     <div ref={mergeRefs(el, lightRef)} role={t.tone === 'danger' ? 'alert' : 'status'} className={cx('gl-toast', glassClass('strong'))} data-tone={t.tone}>
