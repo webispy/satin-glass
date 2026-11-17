@@ -229,7 +229,8 @@ export function Menu({ open, onClose, anchor, placement = 'bottom-start', childr
 export type PopoverProps = Omit<MenuProps, 'aria-label'> & { 'aria-label'?: string; 'aria-labelledby'?: string };
 export function Popover({ open, onClose, anchor, placement = 'bottom', children, className, motion, ...aria }: PopoverProps) {
   const lightRef = useGlassLight();
-  const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => { (focusables(p)[0] ?? p).focus({ preventScroll: true }); });
+  /* a popover holds content you read or act on: it follows its anchor when the page scrolls */
+  const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => { (focusables(p)[0] ?? p).focus({ preventScroll: true }); }, { scroll: 'follow' });
   if (!mounted) return null;
   return (
     <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough">

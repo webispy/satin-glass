@@ -43,8 +43,10 @@ const rectOf = (a: Anchor) => (a instanceof HTMLElement ? a.getBoundingClientRec
 
 /** Anchored floating panel shared by Menu, Popover, Select and DatePicker.
     focusFirst: move focus into the panel (and give it back on close); null keeps focus where it is (a combobox).
-    matchWidth: the panel is at least as wide as the anchor (selects). */
-export function useAnchored(open: boolean, anchor: Anchor, placement: Placement, onClose: (r: CloseReason) => void, focusFirst: ((p: HTMLElement) => void) | null, opts: { matchWidth?: boolean } = {}) {
+    matchWidth: the panel is at least as wide as the anchor (selects).
+    scroll: 'close' (menus: short-lived, a scroll dismisses them) or 'follow' (pickers and popovers: the panel
+    stays attached to its anchor while the page scrolls, and closes only once the anchor has left the window). */
+export function useAnchored(open: boolean, anchor: Anchor, placement: Placement, onClose: (r: CloseReason) => void, focusFirst: ((p: HTMLElement) => void) | null, opts: { matchWidth?: boolean; scroll?: 'close' | 'follow' } = {}) {
   const panel = useRef<HTMLDivElement>(null);
   const release = useRelease();
   const close = useRef(onClose); close.current = onClose;
@@ -62,17 +64,36 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       if (anchor instanceof HTMLElement && anchor.contains(e.target as Node)) return; /* the anchor toggles itself */
       close.current('backdrop');
     };
-    const onScroll = (e: Event) => { if (!p.contains(e.target as Node)) close.current('backdrop'); };
+    const follow = opts.scroll === 'follow' && anchor instanceof HTMLElement;
+    /* follow: on scroll / resize, re-place the panel next to the anchor (once per frame), keeping the side it
+       opened on while it fits; close once the anchor is entirely out of the window */
+    let side = at.side, raf = 0;
+    const align = placement.includes('-') ? placement.slice(placement.indexOf('-')) : '';
+    const reposition = () => {
+      raf = 0;
+      const a = (anchor as HTMLElement).getBoundingClientRect();
+      if (a.bottom <= 0 || a.top >= innerHeight || a.right <= 0 || a.left >= innerWidth) { close.current('backdrop'); return; }
+      const next = place({ width: p.offsetWidth, height: p.offsetHeight }, a, `${side}${align}` as Placement);
+      side = next.side;
+      p.style.left = `${next.x}px`; p.style.top = `${next.y}px`; p.dataset.side = next.side;
+    };
+    const onScroll = (e: Event) => {
+      if (p.contains(e.target as Node)) return;   /* scrolling inside the panel (a long list) is the panel's own */
+      if (follow) { if (!raf) raf = requestAnimationFrame(reposition); }
+      else close.current('backdrop');
+    };
     document.addEventListener('pointerdown', outside, true);
+    if (follow) addEventListener('resize', onScroll);
     /* listen for scrolling only from the next frames on: a scroll queued before opening (e.g. the anchor was
        just scrolled into view) is delivered a frame late and must not close the panel it preceded */
     let armed = true;
     const arm = requestAnimationFrame(() => requestAnimationFrame(() => { if (armed) window.addEventListener('scroll', onScroll, true); }));
     release.set(() => {
       pop();
-      armed = false; cancelAnimationFrame(arm);
+      armed = false; cancelAnimationFrame(arm); cancelAnimationFrame(raf);
       document.removeEventListener('pointerdown', outside, true);
       window.removeEventListener('scroll', onScroll, true);
+      removeEventListener('resize', onScroll);
       /* Safari does not focus a button on click: fall back to the anchor so focus still goes home */
       const prev = before.current as HTMLElement | null;
       const b = (!prev || prev === document.body) && anchor instanceof HTMLElement ? anchor : prev;

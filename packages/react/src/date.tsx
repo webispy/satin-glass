@@ -193,7 +193,7 @@ export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(functio
   const fmt = useMemo(() => format ?? ((d: Date) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(d)), [format, locale]);
   const { panel, mounted } = useAnchored(open, trigger.current, placement, () => setOpen(false), (p) => {
     (p.querySelector<HTMLButtonElement>('.gl-day[tabindex="0"]') ?? p).focus({ preventScroll: true });
-  });
+  }, { scroll: 'follow' });
   const invalid = Boolean(error);
   const help = typeof error === 'string' || (error && typeof error !== 'boolean') ? error : helperText;
   const labelId = label ? `${fid}-label` : undefined;

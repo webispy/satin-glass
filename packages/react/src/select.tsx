@@ -53,7 +53,7 @@ export const Select = forwardRef(function Select<T extends string = string>(
   const lightRef = useGlassLight();
   const typed = useRef({ buf: '', t: 0 });
 
-  const { panel, mounted } = useAnchored(open, trigger.current, placement, () => setOpen(false), null, { matchWidth: variant === 'field' });
+  const { panel, mounted } = useAnchored(open, trigger.current, placement, () => setOpen(false), null, { matchWidth: variant === 'field', scroll: 'follow' });
 
   const openAt = (i: number) => { setActive(i); setOpen(true); };
   const choose = (i: number) => {

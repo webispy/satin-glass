@@ -126,6 +126,51 @@ await go('selection');
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
 }
 
+/* ---------------- scrolling the page with a picker open: it follows its field; it closes once the field is gone */
+{
+  /* gap between field and panel (panel below → positive; flipped above → measured from the panel's bottom) */
+  const attach = (panelSel, fieldLoc) => p.evaluate(({ panelSel }) => {
+    const pr = document.querySelector(panelSel)?.getBoundingClientRect(); return pr ? { top: pr.top, bottom: pr.bottom } : null;
+  }, { panelSel }).then(async (pr) => { if (!pr) return null; const f = await fieldLoc.boundingBox(); return Math.min(Math.abs(pr.top - (f.y + f.height)), Math.abs(f.y - pr.bottom)); });
+  const check = async (name, open, panelSel, fieldLoc) => {
+    await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(200);
+    await fieldLoc.scrollIntoViewIfNeeded(); await p.evaluate(() => scrollBy(0, -150)); await p.waitForTimeout(250);
+    await open(); await p.waitForTimeout(600);
+    const g0 = await attach(panelSel, fieldLoc);
+    await p.mouse.move(1150, 500);
+    for (let i = 0; i < 4; i++) { await p.mouse.wheel(0, 60); await p.waitForTimeout(60); }
+    await p.waitForTimeout(300);
+    const still = (await p.locator(panelSel).count()) === 1, g1 = await attach(panelSel, fieldLoc);
+    ok(`${name}: scrolling the page keeps it open, attached to its field`, still && g1 !== null && Math.abs(g1 - g0) < 2 && g1 < 14, `gap ${g0?.toFixed(1)} → ${g1?.toFixed(1)}`);
+    /* push the field out of the window — down if the page has room below, otherwise up */
+    const need = await fieldLoc.evaluate((e) => { const r = e.getBoundingClientRect(); const room = document.documentElement.scrollHeight - innerHeight - scrollY; return room > r.bottom + 20 ? r.bottom + 20 : -(innerHeight - r.top + 20); });
+    /* scroll in 100 px steps that apply at once (Firefox animates wheel scrolling, which would race the check) */
+    const steps = Math.ceil(Math.abs(need) / 100);
+    for (let i = 0; i < steps; i++) { await p.evaluate((d) => scrollBy({ top: d, behavior: 'instant' }), Math.sign(need) * 100); await p.waitForTimeout(30); }
+    await p.waitForTimeout(500);
+    const gone = await fieldLoc.evaluate((e) => { const r = e.getBoundingClientRect(); return r.bottom <= 0 || r.top >= innerHeight; });
+    ok(`${name}: once the field has scrolled out of the window, it closes`, gone && (await p.locator(panelSel).count()) === 0, `field out of view ${gone}`);
+  };
+  await go('selection');
+  const dp = p.getByRole('button', { name: /방문 날짜/ });
+  await check('date picker', () => dp.click(), '.gl-datepicker-panel', dp);
+  const sel = p.getByRole('combobox', { name: /이동 수단/ });
+  await check('select', () => sel.click(), '.gl-listbox', sel);
+  await go('overlays');
+  /* the overlays page is short: a lower window gives it room to scroll its button away */
+  await p.setViewportSize({ width: 1280, height: 480 });
+  const info = p.locator('.docs__page').getByRole('button', { name: '정보' });
+  await check('popover', () => info.click(), '.gl-popover', info);
+  /* menus stay short-lived: a scroll closes them */
+  const dir = p.locator('.docs__page').getByRole('button', { name: '길찾기' });
+  await p.evaluate(() => scrollTo(0, 0)); await dir.scrollIntoViewIfNeeded(); await dir.click(); await p.waitForTimeout(500);
+  const way = await p.evaluate(() => (document.documentElement.scrollHeight - innerHeight - scrollY > 60 ? 1 : -1));
+  for (let i = 0; i < 3; i++) { await p.evaluate((d) => scrollBy({ top: d, behavior: 'instant' }), way * 40); await p.waitForTimeout(60); }
+  await p.waitForTimeout(400);
+  ok('menu: a page scroll still closes it (menus are short-lived)', (await p.locator('.gl-menu').count()) === 0);
+  await p.setViewportSize({ width: 1280, height: 900 });
+}
+
 console.log('page errors:', errs.length ? errs : 'none');
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');
 await b.close();
