@@ -62,7 +62,7 @@ function App() {
         <div className="docs" data-nav-open={navOpen}>
           <div className="docs__nav">
             <Sidebar aria-label="문서">
-              <div className="docs__brand"><span className="docs__logo" aria-hidden="true" /><div><b>Glass Layer</b><small>React UI · 0.1</small></div></div>
+              <div className="docs__brand"><span className="docs__logo" aria-hidden="true" /><div><b>Glass Layer</b><small>React UI · 0.2</small></div></div>
               {PAGES.map((p) => {
                 const head = p.group !== group ? (group = p.group) : null;
                 return (
