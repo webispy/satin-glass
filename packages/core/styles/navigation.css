@@ -1,0 +1,77 @@
+/* ============================================================================================
+   App bar: a floating glass bar inset from the edges (not edge-to-edge); title in the middle or large below
+   ============================================================================================ */
+.gl-appbar { position: sticky; top: 0; z-index: var(--gl-z-bar); padding: var(--gl-size-bar-inset) var(--gl-size-bar-inset) 0; pointer-events: none; }
+.gl-appbar__bar {
+  pointer-events: auto; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
+  height: var(--gl-size-bar); padding: 0 8px; --_radius: var(--gl-radius-xl);
+}
+.gl-appbar__bar--transparent { background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.gl-appbar__bar--transparent::before, .gl-appbar__bar--transparent::after { opacity: 0; }
+.gl-appbar__leading { display: flex; align-items: center; gap: 4px; justify-self: start; min-width: 0; }
+.gl-appbar__trailing { display: flex; align-items: center; gap: 4px; justify-self: end; min-width: 0; }
+.gl-appbar__title { margin: 0; font-size: 17px; line-height: 24px; font-weight: 650; letter-spacing: -0.01em; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: opacity var(--gl-duration-base) ease; }
+.gl-appbar[data-large="true"] .gl-appbar__title { opacity: 0; }
+.gl-appbar[data-large="true"][data-collapsed="true"] .gl-appbar__title { opacity: 1; }
+.gl-appbar__large { margin: 12px 0 4px; padding: 0 calc(var(--gl-size-bar-inset) + 8px); font-size: var(--gl-text-title-1-size); line-height: var(--gl-text-title-1-line); font-weight: 750; letter-spacing: -0.02em; }
+
+/* scroll edge: a cheap colour fade (no blur) under floating bars, so content never fights with the glass */
+.gl-scroll-fade { position: sticky; z-index: calc(var(--gl-z-bar) - 1); left: 0; right: 0; height: 28px; pointer-events: none; background: linear-gradient(var(--_dir, 180deg), var(--gl-bg), color-mix(in srgb, var(--gl-bg) 0%, transparent)); opacity: var(--_o, 1); transition: opacity var(--gl-duration-base) ease; }
+.gl-scroll-fade--top { top: 0; margin-bottom: -28px; }
+.gl-scroll-fade--bottom { bottom: 0; margin-top: -28px; --_dir: 0deg; }
+
+/* ============================================================================================
+   Tab bar: a floating glass bar with fixed corner radius; the selection is a soft accent fill that travels
+   as a droplet bridge (core/bridge.ts). An optional separate action (search) sits beside it.
+   ============================================================================================ */
+.gl-tabbar { position: relative; display: flex; align-items: flex-end; gap: 8px; padding: 0 var(--gl-size-bar-inset); pointer-events: none; }
+.gl-tabbar > * { pointer-events: auto; }
+.gl-tabbar__bar {
+  flex: 1; position: relative; display: flex; height: var(--gl-size-tab-bar); padding: 5px; gap: 0;
+  --_radius: var(--gl-radius-xl); contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+}
+.gl-tabbar__indicator {
+  position: absolute; top: 5px; bottom: 5px; left: 0; width: 0; z-index: 0;
+  border-radius: calc(var(--gl-radius-xl) - 5px);
+  background: var(--gl-glass-selection);
+  will-change: transform, width;
+  transition: background-color var(--gl-duration-fast) ease;
+}
+/* while held, the drop is a little denser */
+.gl-tabbar__bar[data-gl-pressing] .gl-tabbar__indicator { background: color-mix(in oklab, var(--gl-glass-selection), var(--gl-accent) 10%); }
+.gl-tabbar__item {
+  position: relative; z-index: 1; flex: 1; min-width: 0; appearance: none; border: 0; margin: 0; padding: 0; background: none; font: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  color: var(--gl-label-secondary); border-radius: calc(var(--gl-radius-xl) - 5px); cursor: pointer;
+  font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.01em;
+  transition: color var(--gl-duration-fast) ease;
+}
+.gl-tabbar__item svg { width: 24px; height: 24px; transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
+.gl-tabbar__item[aria-selected="true"], .gl-tabbar__item[data-hover] { color: var(--gl-accent-text); }
+.gl-tabbar__item:active svg { transform: scale(0.9); }
+.gl-tabbar__item:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
+.gl-tabbar__item .gl-badge { position: absolute; top: 6px; left: calc(50% + 6px); }
+.gl-tabbar__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+.gl-tabbar__action { flex: none; width: var(--gl-size-tab-bar); height: var(--gl-size-tab-bar); --_radius: var(--gl-radius-xl); }
+.gl-tabbar__action svg { width: 24px; height: 24px; }
+/* compact: icons only */
+.gl-tabbar--compact .gl-tabbar__label { display: none; }
+.gl-tabbar--compact .gl-tabbar__bar { height: 52px; }
+.gl-tabbar--compact .gl-tabbar__action { width: 52px; height: 52px; }
+
+/* ============================================================================================
+   Sidebar (tablet / desktop): a glass column inset from the window edge
+   ============================================================================================ */
+.gl-sidebar { display: flex; flex-direction: column; gap: 2px; width: 260px; padding: 10px; overflow: auto; --_radius: var(--gl-radius-xl); }
+.gl-sidebar__section { margin: 14px 10px 4px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--gl-label-tertiary); letter-spacing: 0.02em; }
+.gl-sidebar__item {
+  appearance: none; border: 0; margin: 0; font: inherit; width: 100%; text-align: left;
+  display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 8px 10px; border-radius: var(--gl-radius-md);
+  background: none; color: var(--gl-label); font-size: 15px; cursor: pointer; text-decoration: none;
+  transition: background-color var(--gl-duration-instant) ease;
+}
+.gl-sidebar__item:hover { background: var(--gl-fill); }
+.gl-sidebar__item[aria-current="page"] { background: var(--gl-glass-selection); color: var(--gl-accent-text); font-weight: 620; }
+.gl-sidebar__item:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
+.gl-sidebar__item svg { width: 18px; height: 18px; flex: none; }
+.gl-sidebar__count { margin-left: auto; font-size: 13px; color: var(--gl-label-tertiary); font-variant-numeric: tabular-nums; }

@@ -1,0 +1,283 @@
+/* ============================================================================================
+   Buttons
+   ============================================================================================ */
+.gl-button {
+  --_h: var(--gl-size-control-md);
+  appearance: none; border: 0; margin: 0; font: inherit;
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: var(--_h); min-width: var(--_h); padding: 0 16px;
+  border-radius: var(--gl-radius-md);
+  font-size: 15px; line-height: 20px; font-weight: 620; letter-spacing: -0.005em;
+  white-space: nowrap; text-decoration: none;
+  cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  color: var(--gl-accent-text); background: transparent;
+  transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy), background-color var(--gl-duration-fast) ease, color var(--gl-duration-fast) ease, box-shadow var(--gl-duration-fast) ease;
+}
+.gl-button:active:not(:disabled):not([aria-disabled="true"]) { transform: scale(0.965); transition-duration: 90ms, var(--gl-duration-fast), var(--gl-duration-fast), var(--gl-duration-fast); transition-timing-function: var(--gl-ease-out); }
+.gl-button:focus-visible { outline: none; box-shadow: var(--gl-ring); }
+.gl-button:disabled, .gl-button[aria-disabled="true"] { opacity: 0.42; cursor: default; }
+.gl-button svg { width: 18px; height: 18px; flex: none; }
+.gl-button--sm { --_h: var(--gl-size-control-sm); padding: 0 12px; border-radius: var(--gl-radius-sm); font-size: 14px; gap: 6px; }
+.gl-button--sm svg { width: 16px; height: 16px; }
+.gl-button--lg { --_h: var(--gl-size-control-lg); padding: 0 20px; border-radius: var(--gl-radius-lg); font-size: 16px; }
+.gl-button--lg svg { width: 20px; height: 20px; }
+.gl-button--block { display: flex; width: 100%; }
+.gl-button--icon { padding: 0; width: var(--_h); }
+.gl-button--round { border-radius: var(--gl-radius-full); }
+
+.gl-button--filled { background: var(--gl-accent); color: var(--gl-on-accent); box-shadow: 0 1px 2px rgba(var(--gl-shadow-color), 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+.gl-button--filled:hover:not(:disabled) { background: var(--gl-accent-hover); }
+.gl-button--filled:active:not(:disabled) { background: var(--gl-accent-pressed); }
+.gl-button--tinted { background: var(--gl-accent-soft); color: var(--gl-accent-text); }
+.gl-button--tinted:hover:not(:disabled) { background: color-mix(in oklab, var(--gl-accent-soft), var(--gl-accent) 8%); }
+.gl-button--plain:hover:not(:disabled) { background: var(--gl-fill); }
+.gl-button--plain:active:not(:disabled) { background: var(--gl-fill-strong); }
+.gl-button--neutral { background: var(--gl-fill); color: var(--gl-label); }
+.gl-button--neutral:hover:not(:disabled) { background: var(--gl-fill-hover); }
+/* glass buttons keep the glass fill (.gl-button's own transparent background must not win) */
+.gl-button--glass, .gl-search--glass .gl-field__control { background-color: var(--_fill); background-image: linear-gradient(180deg, var(--gl-glass-depth), rgba(255, 255, 255, 0) 52%); }
+.gl-button--glass:hover:not(:disabled) { background-color: color-mix(in oklab, var(--_fill), var(--gl-glass-highlight) 30%); }
+.gl-button--glass { color: var(--gl-glass-ink); --_radius: var(--gl-radius-md); --_shadow: var(--gl-shadow-sm); }
+.gl-glass--clear.gl-button--glass, .gl-glass--clear .gl-button--glass { color: #fff; }
+.gl-button--glass.gl-button--sm { --_radius: var(--gl-radius-sm); }
+.gl-button--glass.gl-button--lg { --_radius: var(--gl-radius-lg); }
+.gl-button--glass.gl-button--round { --_radius: var(--gl-radius-full); }
+
+.gl-button[data-tone="danger"] { --gl-accent: var(--gl-danger); --gl-accent-hover: color-mix(in oklab, var(--gl-danger), #000 12%); --gl-accent-pressed: color-mix(in oklab, var(--gl-danger), #000 22%); --gl-accent-soft: var(--gl-danger-soft); --gl-accent-text: var(--gl-danger-text); }
+.gl-button[data-tone="neutral"] { --gl-accent-text: var(--gl-label); }
+.gl-button__spinner { position: absolute; inset: 0; display: grid; place-items: center; }
+.gl-button[data-loading="true"] > :not(.gl-button__spinner) { visibility: hidden; }
+
+/* a glass group: one shared glass, plain buttons inside (no glass on glass) */
+.gl-button-group { display: inline-flex; align-items: center; padding: 3px; gap: 2px; --_radius: var(--gl-radius-lg); }
+.gl-button-group > .gl-button { border-radius: calc(var(--gl-radius-lg) - 3px); }
+.gl-button-group > .gl-button:hover:not(:disabled) { background: var(--gl-fill); }
+.gl-button-group--vertical { flex-direction: column; }
+
+/* ============================================================================================
+   Switch: 50 × 30, accent when on; the thumb stretches toward where it is going while pressed
+   ============================================================================================ */
+.gl-switch {
+  --_w: 50px; --_h: 30px; --_t: 26px; --_pad: 2px;
+  position: relative; flex: none; display: inline-block;
+  width: var(--_w); height: var(--_h); padding: 0; margin: 0; border: 0;
+  border-radius: var(--gl-radius-full);
+  background: var(--gl-fill-strong);
+  cursor: pointer; touch-action: pan-y; -webkit-tap-highlight-color: transparent;
+  transition: background-color 220ms var(--gl-ease-out);
+}
+.gl-switch[aria-checked="true"] { background: var(--gl-accent); }
+.gl-switch:disabled { opacity: 0.42; cursor: default; }
+.gl-switch:focus-visible { outline: none; box-shadow: var(--gl-ring); }
+.gl-switch__thumb {
+  --_x: 0px; --_grow: 0px;
+  position: absolute; top: var(--_pad); left: var(--_pad);
+  width: calc(var(--_t) + var(--_grow)); height: var(--_t);
+  border-radius: var(--gl-radius-full);
+  background: linear-gradient(180deg, #fff, #f3f4f8);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16), 0 0 0 0.5px rgba(0, 0, 0, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+  transform: translateX(var(--_x));
+  transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy), width var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
+  will-change: transform;
+}
+.gl-switch[aria-checked="true"] .gl-switch__thumb { --_x: calc(var(--_w) - var(--_t) - 2 * var(--_pad) - var(--_grow)); }
+.gl-switch.is-pressed .gl-switch__thumb { --_grow: 6px; }
+.gl-switch.is-dragging .gl-switch__thumb { transition: width var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
+.gl-switch--sm { --_w: 40px; --_h: 24px; --_t: 20px; }
+
+/* ============================================================================================
+   Slider: 6 px track, accent fill, 24 px thumb; a glass value bubble rises while held
+   ============================================================================================ */
+.gl-slider { --_p: 0; position: relative; height: 32px; touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+.gl-slider:focus-visible { outline: none; }
+.gl-slider:focus-visible .gl-slider__thumb { box-shadow: var(--gl-ring), 0 2px 6px rgba(0, 0, 0, 0.18); }
+.gl-slider[aria-disabled="true"] { opacity: 0.42; cursor: default; }
+.gl-slider__track { position: absolute; left: 0; right: 0; top: 13px; height: 6px; border-radius: var(--gl-radius-full); background: var(--gl-fill-strong); overflow: hidden; }
+.gl-slider__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--gl-accent); transform-origin: left center; transform: scaleX(var(--_p)); }
+.gl-slider__thumb {
+  position: absolute; top: 4px; left: 0; width: 24px; height: 24px; margin-left: -12px;
+  border-radius: 50%; background: linear-gradient(180deg, #fff, #f3f4f8);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  transform: translateX(calc(var(--_p) * var(--_w, 0px))) scale(var(--_s, 1));
+  transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
+  will-change: transform;
+}
+.gl-slider.is-active .gl-slider__thumb { --_s: 1.18; }
+.gl-slider.is-dragging .gl-slider__thumb, .gl-slider.is-dragging .gl-slider__fill { transition: none; }
+.gl-slider.is-dragging .gl-slider__thumb { transition: transform 0s, scale 0s; }
+.gl-slider__fill { transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
+.gl-slider__bubble {
+  position: absolute; bottom: 30px; left: 0; min-width: 36px; height: 28px; padding: 0 9px;
+  display: grid; place-items: center; --_radius: var(--gl-radius-sm); --_shadow: var(--gl-shadow-md);
+  font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap;
+  transform: translateX(calc(var(--_p) * var(--_w, 0px) - 50%)) translateY(6px) scale(0.85); opacity: 0;
+  transition: opacity 140ms ease, transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
+  pointer-events: none;
+}
+.gl-slider.is-active .gl-slider__bubble { opacity: 1; transform: translateX(calc(var(--_p) * var(--_w, 0px) - 50%)) translateY(0) scale(1); }
+.gl-slider.is-dragging .gl-slider__bubble { transition: opacity 140ms ease; }
+
+/* ============================================================================================
+   Segmented control (selection indicator = droplet bridge, core/bridge.ts)
+   ============================================================================================ */
+.gl-segmented {
+  position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  height: 36px; padding: 3px; gap: 0; border-radius: var(--gl-radius-md);
+  background: var(--gl-fill); contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+}
+.gl-segmented__indicator {
+  position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; z-index: 0;
+  border-radius: calc(var(--gl-radius-md) - 3px);
+  background: var(--gl-surface);
+  box-shadow: 0 1px 3px rgba(var(--gl-shadow-color), calc(0.12 * var(--gl-shadow-strength))), 0 0 0 0.5px rgba(var(--gl-shadow-color), 0.06);
+  will-change: transform, width;
+}
+[data-gl-theme="dark"] .gl-segmented__indicator, [data-gl-theme="dark-hc"] .gl-segmented__indicator { background: var(--gl-fill-strong); }
+.gl-segmented__item {
+  position: relative; z-index: 1; appearance: none; border: 0; background: none; margin: 0; padding: 0 12px;
+  font: inherit; font-size: 14px; font-weight: 560; color: var(--gl-label-secondary); border-radius: calc(var(--gl-radius-md) - 3px);
+  cursor: pointer; white-space: nowrap; transition: color var(--gl-duration-fast) ease;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.gl-segmented__item[aria-checked="true"], .gl-segmented__item[aria-selected="true"], .gl-segmented__item[data-hover] { color: var(--gl-label); font-weight: 650; }
+.gl-segmented__item:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
+.gl-segmented__item svg { width: 16px; height: 16px; }
+.gl-segmented[data-gl-pressing] .gl-segmented__indicator { transform-origin: center; }
+.gl-segmented--sm { height: 30px; }
+.gl-segmented--sm .gl-segmented__item { font-size: 13px; }
+
+/* ============================================================================================
+   Stepper: [ − | value | + ]
+   ============================================================================================ */
+.gl-stepper { display: inline-flex; align-items: center; height: 36px; padding: 2px; border-radius: var(--gl-radius-md); background: var(--gl-fill); user-select: none; -webkit-user-select: none; }
+.gl-stepper__btn { appearance: none; border: 0; margin: 0; width: 32px; height: 32px; display: grid; place-items: center; border-radius: calc(var(--gl-radius-md) - 2px); background: none; color: var(--gl-label); cursor: pointer; transition: background-color var(--gl-duration-fast) ease, transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
+.gl-stepper__btn:hover:not(:disabled) { background: var(--gl-fill-hover); }
+.gl-stepper__btn:active:not(:disabled) { transform: scale(0.9); background: var(--gl-fill-strong); }
+.gl-stepper__btn:disabled { color: var(--gl-label-disabled); cursor: default; }
+.gl-stepper__btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
+.gl-stepper__btn svg { width: 16px; height: 16px; }
+.gl-stepper__value { min-width: 40px; padding: 0 4px; text-align: center; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+/* ============================================================================================
+   Text fields
+   ============================================================================================ */
+.gl-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.gl-field__label { font-size: 13px; line-height: 18px; font-weight: 620; color: var(--gl-label-secondary); }
+.gl-field__control {
+  position: relative; display: flex; align-items: center; gap: 8px;
+  height: 44px; padding: 0 12px; border-radius: var(--gl-radius-md);
+  background: var(--gl-fill); box-shadow: inset 0 0 0 1px transparent;
+  transition: background-color var(--gl-duration-fast) ease, box-shadow var(--gl-duration-fast) ease;
+}
+.gl-field__control:hover { background: var(--gl-fill-hover); }
+.gl-field__control:focus-within { background: var(--gl-surface); box-shadow: inset 0 0 0 1.5px var(--gl-accent), 0 0 0 4px var(--gl-accent-soft); }
+.gl-field[data-invalid="true"] .gl-field__control { box-shadow: inset 0 0 0 1.5px var(--gl-danger); }
+.gl-field[data-invalid="true"] .gl-field__control:focus-within { box-shadow: inset 0 0 0 1.5px var(--gl-danger), 0 0 0 4px var(--gl-danger-soft); }
+.gl-field[data-disabled="true"] { opacity: 0.5; }
+.gl-field__input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; margin: 0; padding: 0; background: none; font: inherit; font-size: 16px; color: var(--gl-label); }
+.gl-field__input::placeholder { color: var(--gl-label-tertiary); }
+textarea.gl-field__input { padding: 10px 0; resize: vertical; min-height: 88px; }
+.gl-field__control:has(textarea) { height: auto; align-items: flex-start; }
+.gl-field__adorn { display: inline-flex; color: var(--gl-label-tertiary); }
+.gl-field__adorn svg { width: 18px; height: 18px; }
+.gl-field__clear { appearance: none; border: 0; margin: 0 -4px 0 0; padding: 0; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: none; color: var(--gl-label-tertiary); cursor: pointer; }
+.gl-field__clear:hover { color: var(--gl-label-secondary); }
+.gl-field__clear svg { width: 18px; height: 18px; }
+.gl-field__help { font-size: 12px; line-height: 16px; color: var(--gl-label-secondary); }
+.gl-field[data-invalid="true"] .gl-field__help { color: var(--gl-danger-text); }
+
+.gl-search { display: flex; align-items: center; gap: 8px; }
+.gl-search .gl-field { flex: 1; }
+.gl-search .gl-field__control { height: 40px; border-radius: var(--gl-radius-md); }
+.gl-search--glass .gl-field__control:focus-within { box-shadow: 0 0 0 4px var(--gl-accent-soft), var(--_shadow); }
+.gl-search__cancel { flex: none; }
+
+/* ============================================================================================
+   Chips, badges, avatars, cards
+   ============================================================================================ */
+.gl-chip {
+  appearance: none; border: 0; margin: 0; font: inherit;
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+  border-radius: var(--gl-radius-full); background: var(--gl-fill); color: var(--gl-label);
+  font-size: 14px; font-weight: 560; white-space: nowrap; cursor: pointer;
+  transition: background-color var(--gl-duration-fast) ease, color var(--gl-duration-fast) ease, transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
+}
+.gl-chip:hover { background: var(--gl-fill-hover); }
+.gl-chip:active { transform: scale(0.96); }
+.gl-chip:focus-visible { outline: none; box-shadow: var(--gl-ring); }
+.gl-chip[aria-pressed="true"], .gl-chip[aria-checked="true"] { background: var(--gl-accent-soft); color: var(--gl-accent-text); }
+.gl-chip svg { width: 16px; height: 16px; }
+.gl-chip__remove { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: -4px; border-radius: 50%; color: var(--gl-label-tertiary); }
+.gl-chip--static { cursor: default; }
+.gl-chip--static:active { transform: none; }
+
+.gl-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--gl-radius-full); background: var(--gl-danger); color: #fff; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.gl-badge--accent { background: var(--gl-accent); color: var(--gl-on-accent); }
+.gl-badge--neutral { background: var(--gl-fill-strong); color: var(--gl-label); }
+.gl-badge--dot { min-width: 8px; width: 8px; height: 8px; padding: 0; }
+.gl-badge-anchor { position: relative; display: inline-flex; }
+.gl-badge-anchor > .gl-badge { position: absolute; top: -4px; right: -4px; box-shadow: 0 0 0 2px var(--gl-bg); }
+
+.gl-avatar { --_s: 40px; position: relative; flex: none; display: inline-grid; place-items: center; width: var(--_s); height: var(--_s); border-radius: 50%; overflow: hidden; background: var(--_bg, var(--gl-iris-200)); color: var(--_fg, var(--gl-iris-800)); font-size: calc(var(--_s) * 0.38); font-weight: 650; letter-spacing: -0.01em; user-select: none; }
+.gl-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.gl-card { position: relative; overflow: hidden; border-radius: var(--gl-radius-xl); background: var(--gl-surface); box-shadow: var(--gl-shadow-sm); }
+.gl-card--outlined { box-shadow: inset 0 0 0 1px var(--gl-separator); }
+.gl-card--interactive { appearance: none; border: 0; margin: 0; padding: 0; width: 100%; font: inherit; color: inherit; text-align: inherit; display: block; cursor: pointer; transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy), box-shadow var(--gl-duration-base) ease; }
+.gl-card--interactive:hover { box-shadow: var(--gl-shadow-md); }
+.gl-card--interactive:active { transform: scale(0.98); }
+.gl-card--interactive:focus-visible { outline: none; box-shadow: var(--gl-ring); }
+.gl-card__media { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--gl-fill); }
+.gl-card__body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
+
+/* ============================================================================================
+   Progress, spinner, page control
+   ============================================================================================ */
+.gl-progress { position: relative; height: 6px; border-radius: var(--gl-radius-full); background: var(--gl-fill-strong); overflow: hidden; }
+.gl-progress__bar { position: absolute; inset: 0; border-radius: inherit; background: var(--gl-accent); transform-origin: left center; transform: scaleX(var(--_p, 0)); transition: transform var(--gl-spring-smooth-duration) var(--gl-spring-smooth); }
+.gl-progress--indeterminate .gl-progress__bar { width: 40%; transform: translateX(-100%); animation: gl-indeterminate 1.3s cubic-bezier(0.45, 0, 0.2, 1) infinite; }
+@keyframes gl-indeterminate { to { transform: translateX(250%); } }
+.gl-progress--sm { height: 4px; }
+
+.gl-spinner { --_s: 20px; width: var(--_s); height: var(--_s); flex: none; color: currentColor; animation: gl-spin 0.8s linear infinite; }
+.gl-spinner circle { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
+.gl-spinner .gl-spinner__track { opacity: 0.2; }
+@keyframes gl-spin { to { transform: rotate(360deg); } }
+
+.gl-pagecontrol { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--gl-radius-full); touch-action: none; user-select: none; contain: layout; }
+.gl-pagecontrol--glass { --_radius: var(--gl-radius-full); --_shadow: var(--gl-shadow-sm); }
+.gl-pagecontrol__dot { appearance: none; border: 0; padding: 0; margin: 0; width: 7px; height: 7px; border-radius: var(--gl-radius-full); background: currentColor; color: var(--gl-label); opacity: 0.28; cursor: pointer; transition: width var(--gl-spring-snappy-duration) var(--gl-spring-snappy), opacity var(--gl-duration-fast) ease; }
+.gl-pagecontrol__dot[aria-current="true"] { width: 20px; opacity: 1; color: var(--gl-accent-text); }
+.gl-pagecontrol--on-media .gl-pagecontrol__dot { color: #fff; opacity: 0.5; }
+.gl-pagecontrol--on-media .gl-pagecontrol__dot[aria-current="true"] { color: #fff; opacity: 1; }
+.gl-pagecontrol:focus-visible { outline: none; box-shadow: var(--gl-ring); }
+
+/* ============================================================================================
+   Grouped list
+   ============================================================================================ */
+.gl-list-section { display: flex; flex-direction: column; gap: 6px; }
+.gl-list-section__header { margin: 0; padding: 0 16px; font-size: 13px; line-height: 18px; font-weight: 620; color: var(--gl-label-secondary); }
+.gl-list-section__footer { margin: 0; padding: 0 16px; font-size: 12px; line-height: 16px; color: var(--gl-label-secondary); }
+.gl-list { margin: 0; padding: 0; list-style: none; border-radius: var(--gl-radius-lg); background: var(--gl-surface); overflow: hidden; }
+.gl-list--plain { background: none; border-radius: 0; }
+.gl-list-item { position: relative; display: flex; align-items: center; gap: 12px; min-height: var(--gl-size-row); padding: 8px 16px; color: var(--gl-label); }
+/* every row is an li.gl-list-row; separators hang off the li so they work for plain and pressable rows alike */
+.gl-list-row { position: relative; }
+.gl-list-row:not(.gl-list-item) { display: block; }
+.gl-list-row + .gl-list-row::before { content: ""; position: absolute; z-index: 1; top: 0; right: 0; left: var(--_inset, 16px); height: 1px; transform: scaleY(0.5); transform-origin: top; background: var(--gl-separator-strong); pointer-events: none; }
+.gl-list-row[data-has-leading="true"] { --_inset: 58px; }
+.gl-list-item--action { width: 100%; appearance: none; border: 0; margin: 0; font: inherit; text-align: left; background: none; cursor: pointer; transition: background-color var(--gl-duration-instant) ease; }
+.gl-list-item--action:hover { background: var(--gl-fill); }
+.gl-list-item--action:active { background: var(--gl-fill-strong); }
+.gl-list-item--action:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
+.gl-list-item__leading { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: #fff; background: var(--_tile, var(--gl-accent)); }
+.gl-list-item__leading svg { width: 18px; height: 18px; }
+.gl-list-item__leading--plain { background: none; color: var(--gl-accent-text); }
+.gl-list-item__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.gl-list-item__title { font-size: 16px; line-height: 22px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gl-list-item__subtitle { font-size: 13px; line-height: 18px; color: var(--gl-label-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gl-list-item__trailing { flex: none; display: inline-flex; align-items: center; gap: 6px; color: var(--gl-label-secondary); font-size: 15px; }
+.gl-list-item__chevron { width: 16px; height: 16px; color: var(--gl-label-tertiary); }
+.gl-list-item[data-tone="danger"] .gl-list-item__title { color: var(--gl-danger-text); }
+.gl-list-item[data-tone="accent"] .gl-list-item__title { color: var(--gl-accent-text); }

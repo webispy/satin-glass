@@ -1,0 +1,30 @@
+{
+  "name": "@glass-layer/core",
+  "version": "0.1.0",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean && node scripts/bundle-css.mjs",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@glass-layer/tokens": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "5.1.0",
+    "jsdom": "31.0.1"
+  }
+}

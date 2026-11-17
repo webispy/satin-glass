@@ -1,0 +1,93 @@
+/* Pointer helpers: drag with velocity (sliders, switches, sheets) and long press (context menus). */
+
+export type DragInfo = { x: number; y: number; dx: number; dy: number; vx: number; vy: number; event: PointerEvent };
+export type DragHandlers = {
+  /** return false to ignore this pointer */
+  start?: (info: DragInfo) => boolean | void;
+  move?: (info: DragInfo) => void;
+  end?: (info: DragInfo, cancelled: boolean) => void;
+  /** px the pointer must travel before `move` fires (0 = immediately) */
+  threshold?: number;
+  axis?: 'x' | 'y' | 'both';
+};
+
+export function drag(el: HTMLElement, h: DragHandlers): () => void {
+  let id: number | null = null, sx = 0, sy = 0, lx = 0, ly = 0, lt = 0, vx = 0, vy = 0, active = false;
+  const thr = h.threshold ?? 0;
+  const info = (e: PointerEvent): DragInfo => ({ x: e.clientX, y: e.clientY, dx: e.clientX - sx, dy: e.clientY - sy, vx, vy, event: e });
+  const down = (e: PointerEvent) => {
+    if (id !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    sx = lx = e.clientX; sy = ly = e.clientY; lt = e.timeStamp; vx = vy = 0; active = thr === 0;
+    if (h.start?.(info(e)) === false) return;
+    id = e.pointerId;
+    try { el.setPointerCapture(id); } catch { /* not supported */ }
+  };
+  const move = (e: PointerEvent) => {
+    if (e.pointerId !== id) return;
+    const dt = Math.max(1, e.timeStamp - lt);
+    vx = 0.6 * vx + 0.4 * ((e.clientX - lx) / dt) * 1000;
+    vy = 0.6 * vy + 0.4 * ((e.clientY - ly) / dt) * 1000;
+    lx = e.clientX; ly = e.clientY; lt = e.timeStamp;
+    if (!active) {
+      const dx = Math.abs(e.clientX - sx), dy = Math.abs(e.clientY - sy);
+      const d = h.axis === 'x' ? dx : h.axis === 'y' ? dy : Math.hypot(dx, dy);
+      if (d < thr) return;
+      /* a vertical scroll is not a horizontal drag (and vice versa) */
+      if ((h.axis === 'x' && dy > dx) || (h.axis === 'y' && dx > dy)) { finish(e, true); return; }
+      active = true;
+    }
+    h.move?.(info(e));
+  };
+  const finish = (e: PointerEvent, cancelled: boolean) => {
+    if (e.pointerId !== id) return;
+    try { if (el.hasPointerCapture(id)) el.releasePointerCapture(id); } catch { /* released */ }
+    id = null;
+    /* a release after a pause carries no fling */
+    if (e.timeStamp - lt > 80) { vx = 0; vy = 0; }
+    h.end?.(info(e), cancelled);
+  };
+  const up = (e: PointerEvent) => finish(e, false);
+  const cancel = (e: PointerEvent) => finish(e, true);
+  el.addEventListener('pointerdown', down);
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', cancel);
+  return () => {
+    el.removeEventListener('pointerdown', down);
+    el.removeEventListener('pointermove', move);
+    el.removeEventListener('pointerup', up);
+    el.removeEventListener('pointercancel', cancel);
+  };
+}
+
+/** Fires `fire` after the pointer rests `ms` without moving more than `slop` px. Suppresses the click that follows. */
+export function longPress(el: HTMLElement, fire: (e: PointerEvent) => void, ms = 420, slop = 8): () => void {
+  let t = 0, sx = 0, sy = 0, fired = false;
+  const clear = () => { clearTimeout(t); el.classList.remove('is-holding'); };
+  const down = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    fired = false; sx = e.clientX; sy = e.clientY;
+    el.classList.add('is-holding');
+    t = window.setTimeout(() => { fired = true; el.classList.remove('is-holding'); fire(e); }, ms);
+  };
+  const move = (e: PointerEvent) => { if (Math.hypot(e.clientX - sx, e.clientY - sy) > slop) clear(); };
+  const click = (e: MouseEvent) => { if (fired) { e.preventDefault(); e.stopPropagation(); fired = false; } };
+  const ctx = (e: MouseEvent) => { if (fired) e.preventDefault(); };
+  el.addEventListener('pointerdown', down);
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', clear);
+  el.addEventListener('pointercancel', clear);
+  el.addEventListener('pointerleave', clear);
+  el.addEventListener('click', click, true);
+  el.addEventListener('contextmenu', ctx);
+  return () => {
+    clear();
+    el.removeEventListener('pointerdown', down);
+    el.removeEventListener('pointermove', move);
+    el.removeEventListener('pointerup', clear);
+    el.removeEventListener('pointercancel', clear);
+    el.removeEventListener('pointerleave', clear);
+    el.removeEventListener('click', click, true);
+    el.removeEventListener('contextmenu', ctx);
+  };
+}
