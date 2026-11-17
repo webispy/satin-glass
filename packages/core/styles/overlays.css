@@ -4,6 +4,9 @@
    ============================================================================================ */
 .gl-portal, .gl-root.gl-portal { position: fixed; inset: 0; z-index: var(--gl-z-dialog); pointer-events: none; background: none; }
 .gl-portal > * { pointer-events: auto; }
+/* anchored panels (menu, popover, listbox, date panel) live in document coordinates: the page's own scrolling
+   carries them with their anchor on the compositor, with no frame of lag; only inner scroll areas need JS */
+.gl-portal.gl-portal--anchored { position: absolute; inset: 0 auto auto 0; width: 100%; height: 0; }
 .gl-portal--passthrough > .gl-scrim { pointer-events: auto; }
 
 .gl-scrim { position: fixed; inset: 0; background: var(--gl-scrim); opacity: 0; transition: opacity var(--gl-duration-base) ease; }
@@ -48,7 +51,7 @@
 
 /* ---- Menu ---- */
 .gl-menu {
-  position: fixed; left: 0; top: 0; min-width: 220px; max-width: min(320px, calc(100vw - 24px)); max-height: calc(100vh - 24px);
+  position: absolute; left: 0; top: 0; min-width: 220px; max-width: min(320px, calc(100vw - 24px)); max-height: calc(100vh - 24px);
   display: flex; flex-direction: column; --_radius: var(--gl-radius-lg); outline: none;
 }
 .gl-menu > [data-gl-content] { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 6px; }
@@ -68,7 +71,7 @@
 .gl-menu__label { padding: 8px 10px 4px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--gl-label-tertiary); }
 
 /* ---- Popover ---- */
-.gl-popover { position: fixed; left: 0; top: 0; max-width: min(340px, calc(100vw - 24px)); padding: 16px; --_radius: var(--gl-radius-lg); outline: none; }
+.gl-popover { position: absolute; left: 0; top: 0; max-width: min(340px, calc(100vw - 24px)); padding: 16px; --_radius: var(--gl-radius-lg); outline: none; }
 
 /* ---- Action sheet: grouped actions above a separate cancel ---- */
 .gl-actionsheet-wrap { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); pointer-events: none; }

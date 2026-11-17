@@ -193,7 +193,7 @@ export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(functio
   const fmt = useMemo(() => format ?? ((d: Date) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(d)), [format, locale]);
   const { panel, mounted } = useAnchored(open, trigger.current, placement, () => setOpen(false), (p) => {
     (p.querySelector<HTMLButtonElement>('.gl-day[tabindex="0"]') ?? p).focus({ preventScroll: true });
-  }, { scroll: 'follow' });
+  });
   const invalid = Boolean(error);
   const help = typeof error === 'string' || (error && typeof error !== 'boolean') ? error : helperText;
   const labelId = label ? `${fid}-label` : undefined;
@@ -212,7 +212,7 @@ export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(functio
       </div>
       {name && <input type="hidden" name={name} value={v ? toISODate(v) : ''} />}
       {mounted && (
-        <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough">
+        <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough gl-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : t.choose} tabIndex={-1} className={cx('gl-datepicker-panel', glassClass('strong'))}>
             <div data-gl-content>
               <Calendar {...calendar} locale={locale} motion={motion} value={v} onChange={(d) => { setV(d); setOpen(false); }} />

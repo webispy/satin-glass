@@ -44,9 +44,10 @@ const rectOf = (a: Anchor) => (a instanceof HTMLElement ? a.getBoundingClientRec
 /** Anchored floating panel shared by Menu, Popover, Select and DatePicker.
     focusFirst: move focus into the panel (and give it back on close); null keeps focus where it is (a combobox).
     matchWidth: the panel is at least as wide as the anchor (selects).
-    scroll: 'close' (menus: short-lived, a scroll dismisses them) or 'follow' (pickers and popovers: the panel
-    stays attached to its anchor while the page scrolls, and closes only once the anchor has left the window). */
-export function useAnchored(open: boolean, anchor: Anchor, placement: Placement, onClose: (r: CloseReason) => void, focusFirst: ((p: HTMLElement) => void) | null, opts: { matchWidth?: boolean; scroll?: 'close' | 'follow' } = {}) {
+    lockScroll: the page does not scroll while it is open (a context menu over its scrim).
+    Scrolling never closes a panel: it stays glued to its anchor and moves with it, like part of the page —
+    out of the window and back again. */
+export function useAnchored(open: boolean, anchor: Anchor, placement: Placement, onClose: (r: CloseReason) => void, focusFirst: ((p: HTMLElement) => void) | null, opts: { matchWidth?: boolean; lockScroll?: boolean } = {}) {
   const panel = useRef<HTMLDivElement>(null);
   const release = useRelease();
   const close = useRef(onClose); close.current = onClose;
@@ -57,43 +58,45 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
     const r = rectOf(anchor);
     if (opts.matchWidth) p.style.minWidth = `${r.width}px`;
     const at = place({ width: p.offsetWidth, height: p.offsetHeight }, r, placement);
-    p.style.left = `${at.x}px`; p.style.top = `${at.y}px`; p.dataset.side = at.side;
-    const pop = pushLayer(() => close.current('escape'), false);
+    /* document coordinates (the panel is position: absolute in an anchored portal) */
+    p.style.left = `${at.x + scrollX}px`; p.style.top = `${at.y + scrollY}px`; p.dataset.side = at.side;
+    const pop = pushLayer(() => close.current('escape'), !!opts.lockScroll);
     const outside = (e: PointerEvent) => {
       if (p.contains(e.target as Node)) return;
       if (anchor instanceof HTMLElement && anchor.contains(e.target as Node)) return; /* the anchor toggles itself */
       close.current('backdrop');
     };
-    const follow = opts.scroll === 'follow' && anchor instanceof HTMLElement;
-    /* follow: on scroll / resize, re-place the panel next to the anchor (once per frame), keeping the side it
-       opened on while it fits; close once the anchor is entirely out of the window */
-    let side = at.side, raf = 0;
+    /* glued to the anchor. Page scrolling needs nothing: the panel sits in document coordinates and the browser
+       moves it with the page. An inner scroll area (a sidebar, a dialog body) moves the anchor within the page:
+       the panel follows by exactly as much, in the same scroll event (no frame of lag, no flipping or clamping
+       mid-scroll, so it never jumps). On resize it is placed again, on the side it opened on.
+       A DOMRect anchor is a fixed point and has nothing to follow. */
+    const el = anchor instanceof HTMLElement ? anchor : null;
+    const doc = (a: DOMRect) => ({ left: a.left + scrollX, top: a.top + scrollY });
+    let side = at.side, base = doc(r), pos = { x: at.x + scrollX, y: at.y + scrollY };
     const align = placement.includes('-') ? placement.slice(placement.indexOf('-')) : '';
-    const reposition = () => {
-      raf = 0;
-      const a = (anchor as HTMLElement).getBoundingClientRect();
-      if (a.bottom <= 0 || a.top >= innerHeight || a.right <= 0 || a.left >= innerWidth) { close.current('backdrop'); return; }
-      const next = place({ width: p.offsetWidth, height: p.offsetHeight }, a, `${side}${align}` as Placement);
-      side = next.side;
-      p.style.left = `${next.x}px`; p.style.top = `${next.y}px`; p.dataset.side = next.side;
-    };
     const onScroll = (e: Event) => {
-      if (p.contains(e.target as Node)) return;   /* scrolling inside the panel (a long list) is the panel's own */
-      if (follow) { if (!raf) raf = requestAnimationFrame(reposition); }
-      else close.current('backdrop');
+      const t = e.target;
+      if (t === document || t === document.documentElement || p.contains(t as Node)) return;   /* the page, or the panel's own list */
+      if (!el || !el.isConnected) return;
+      const a = doc(el.getBoundingClientRect());
+      p.style.left = `${pos.x + a.left - base.left}px`; p.style.top = `${pos.y + a.top - base.top}px`;
+    };
+    const replace = () => {
+      if (!el || !el.isConnected) return;
+      const a = el.getBoundingClientRect();
+      if (opts.matchWidth) p.style.minWidth = `${a.width}px`;
+      const next = place({ width: p.offsetWidth, height: p.offsetHeight }, a, `${side}${align}` as Placement);
+      side = next.side; base = doc(a); pos = { x: next.x + scrollX, y: next.y + scrollY };
+      p.style.left = `${pos.x}px`; p.style.top = `${pos.y}px`; p.dataset.side = next.side;
     };
     document.addEventListener('pointerdown', outside, true);
-    if (follow) addEventListener('resize', onScroll);
-    /* listen for scrolling only from the next frames on: a scroll queued before opening (e.g. the anchor was
-       just scrolled into view) is delivered a frame late and must not close the panel it preceded */
-    let armed = true;
-    const arm = requestAnimationFrame(() => requestAnimationFrame(() => { if (armed) window.addEventListener('scroll', onScroll, true); }));
+    if (el) { window.addEventListener('scroll', onScroll, { capture: true, passive: true }); addEventListener('resize', replace); }
     release.set(() => {
       pop();
-      armed = false; cancelAnimationFrame(arm); cancelAnimationFrame(raf);
       document.removeEventListener('pointerdown', outside, true);
       window.removeEventListener('scroll', onScroll, true);
-      removeEventListener('resize', onScroll);
+      removeEventListener('resize', replace);
       /* Safari does not focus a button on click: fall back to the anchor so focus still goes home */
       const prev = before.current as HTMLElement | null;
       const b = (!prev || prev === document.body) && anchor instanceof HTMLElement ? anchor : prev;

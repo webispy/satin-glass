@@ -53,7 +53,7 @@ export const Select = forwardRef(function Select<T extends string = string>(
   const lightRef = useGlassLight();
   const typed = useRef({ buf: '', t: 0 });
 
-  const { panel, mounted } = useAnchored(open, trigger.current, placement, () => setOpen(false), null, { matchWidth: variant === 'field', scroll: 'follow' });
+  const { panel, mounted } = useAnchored(open, trigger.current, placement, () => setOpen(false), null, { matchWidth: variant === 'field' });
 
   const openAt = (i: number) => { setActive(i); setOpen(true); };
   const choose = (i: number) => {
@@ -172,7 +172,7 @@ export const Select = forwardRef(function Select<T extends string = string>(
       )}
       {name && <input type="hidden" name={name} value={v ?? ''} />}
       {mounted && (
-        <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough">
+        <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough gl-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} id={listId} role="listbox" aria-labelledby={labelId} aria-label={labelId ? undefined : ariaLabel} tabIndex={-1}
             className={cx('gl-listbox', glassClass('strong'))}>
             <div data-gl-content>

@@ -90,6 +90,11 @@ export function Lab() {
           <div style={{ maxWidth: 320 }}><Select label="비활성 셀렉트" disabled options={[{ value: 'a', label: '가' }]} /></div>
           <div style={{ maxWidth: 320 }}><DatePicker label="이번 달만" min={new Date(new Date().getFullYear(), new Date().getMonth(), 1)} max={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)} /></div>
           <Checkbox label={LONG} description={LONG} />
+          <div data-lab="inner-scroll" style={{ height: 180, overflow: 'auto', border: '1px dashed var(--gl-separator)', borderRadius: 12, padding: 12 }}>
+            <div style={{ height: 120 }}>안쪽 스크롤 영역 ↓</div>
+            <Select label="안쪽 스크롤 안의 셀렉트" options={[{ value: 'a', label: '가' }, { value: 'b', label: '나' }, { value: 'c', label: '다' }]} />
+            <div style={{ height: 300 }} />
+          </div>
         </Demo>
       </Section>
 

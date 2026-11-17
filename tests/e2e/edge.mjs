@@ -195,6 +195,20 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   const lastDay = await p.evaluate(() => { const n = new Date(); const l = new Date(n.getFullYear(), n.getMonth() + 1, 0); return `${l.getFullYear()}-${String(l.getMonth() + 1).padStart(2, '0')}-${String(l.getDate()).padStart(2, '0')}`; });
   ok('date picker (min/max = this month): month buttons disabled; PageDown stops at the last allowed day, focus kept', navOff.every(Boolean) && stillHere === lastDay, `${navOff} ${stillHere} (max ${lastDay})`);
   await p.keyboard.press('Escape'); await settle(p, 300);
+  /* an anchor inside an inner scroll area: the panel follows that scrolling too */
+  {
+    const area = p.locator('[data-lab="inner-scroll"]');
+    await area.scrollIntoViewIfNeeded();
+    const cb = area.getByRole('combobox');
+    await area.evaluate((e) => { e.scrollTop = 40; }); await settle(p, 200);
+    await cb.click(); await settle(p, 600);
+    const gap = () => p.evaluate(() => { const l = document.querySelector('.gl-listbox').getBoundingClientRect(), a = document.querySelector('[data-lab="inner-scroll"] [role=combobox]').getBoundingClientRect(); return Math.round(l.top - a.top); });
+    const g0 = await gap();
+    await area.hover(); await p.mouse.wheel(0, 60); await settle(p, 300);
+    const moved = await area.evaluate((e) => e.scrollTop), g1 = await gap(), still = (await p.getByRole('listbox').count()) === 1;
+    ok('inner scroll area: scrolling it keeps the select open and its list glued to the field', still && moved > 40 && g0 === g1, `scrollTop ${moved}, gap ${g0} → ${g1}`);
+    await p.keyboard.press('Escape'); await settle(p, 400);
+  }
   for (let i = 0; i < 6; i++) { await dp.click({ delay: 0 }); }
   await settle(p, 700);
   ok('date picker: 6 rapid clicks → closed again, nothing left', (await p.locator('.gl-datepicker-panel').count()) === 0);

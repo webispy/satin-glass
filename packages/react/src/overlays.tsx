@@ -205,17 +205,20 @@ export type MenuProps = {
   className?: string;
   motion?: MotionName;
   'aria-label'?: string;
+  /** keep the page from scrolling while the menu is open (used by ContextMenu, whose lifted item and scrim
+      are a moment of focus) */
+  lockScroll?: boolean;
 };
 
-export function Menu({ open, onClose, anchor, placement = 'bottom-start', children, className, motion, 'aria-label': label }: MenuProps) {
+export function Menu({ open, onClose, anchor, placement = 'bottom-start', children, className, motion, lockScroll, 'aria-label': label }: MenuProps) {
   const lightRef = useGlassLight();
   const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => {
     (p.querySelector<HTMLElement>('.gl-menu__item:not([aria-disabled="true"])') ?? p).focus({ preventScroll: true });
-  });
+  }, { lockScroll });
   const ctx = useMemo<MenuCtx>(() => ({ select: (fn) => { onClose('select'); fn?.(); } }), [onClose]);
   if (!mounted) return null;
   return (
-    <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough">
+    <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough gl-portal--anchored">
       <MenuContext.Provider value={ctx}>
         <div ref={mergeRefs(panel, lightRef)} role="menu" aria-label={label} tabIndex={-1} className={cx('gl-menu', glassClass('strong'), className)} onKeyDown={menuKeys}>
           <div data-gl-content>{children}</div>
@@ -226,14 +229,13 @@ export function Menu({ open, onClose, anchor, placement = 'bottom-start', childr
 }
 
 /* ================================================================================================ Popover */
-export type PopoverProps = Omit<MenuProps, 'aria-label'> & { 'aria-label'?: string; 'aria-labelledby'?: string };
+export type PopoverProps = Omit<MenuProps, 'aria-label' | 'lockScroll'> & { 'aria-label'?: string; 'aria-labelledby'?: string };
 export function Popover({ open, onClose, anchor, placement = 'bottom', children, className, motion, ...aria }: PopoverProps) {
   const lightRef = useGlassLight();
-  /* a popover holds content you read or act on: it follows its anchor when the page scrolls */
-  const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => { (focusables(p)[0] ?? p).focus({ preventScroll: true }); }, { scroll: 'follow' });
+  const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => { (focusables(p)[0] ?? p).focus({ preventScroll: true }); });
   if (!mounted) return null;
   return (
-    <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough">
+    <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough gl-portal--anchored">
       <div ref={mergeRefs(panel, lightRef)} role="dialog" tabIndex={-1} className={cx('gl-popover', glassClass('strong'), className)} {...aria}>
         <div data-gl-content>{children}</div>
       </div>
@@ -350,7 +352,7 @@ export function ContextMenu({ menu, children, previewSelector, 'aria-label': lab
           <div ref={lift} className="gl-lift" style={{ left: r.left, top: r.top, width: r.width, height: r.height }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: state.clone }} />
         </Portal>
       )}
-      <Menu open={state.open} onClose={close} anchor={anchorRect} placement="bottom-start" aria-label={label}>{menu}</Menu>
+      <Menu open={state.open} onClose={close} anchor={anchorRect} placement="bottom-start" aria-label={label} lockScroll>{menu}</Menu>
     </>
   );
 }
