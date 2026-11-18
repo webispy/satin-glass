@@ -149,7 +149,10 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
   container.addEventListener('pointermove', onMove);
   container.addEventListener('pointerup', onUp);
   container.addEventListener('pointercancel', onCancel);
-  container.addEventListener('lostpointercapture', onUp);
+  /* only the container's own capture ending counts: on touch the item under the finger holds the pointer first, and
+     handing it to the container fires lostpointercapture on that item — it bubbles here and would end the drag at once */
+  const onLost = (ev: PointerEvent) => { if (ev.target === container) onUp(); };
+  container.addEventListener('lostpointercapture', onLost);
   container.addEventListener('click', onClick, true);
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { if (current >= 0) moveTo(current, false); }) : null;
   ro?.observe(container);
@@ -163,7 +166,7 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
       container.removeEventListener('pointermove', onMove);
       container.removeEventListener('pointerup', onUp);
       container.removeEventListener('pointercancel', onCancel);
-      container.removeEventListener('lostpointercapture', onUp);
+      container.removeEventListener('lostpointercapture', onLost);
       container.removeEventListener('click', onClick, true);
     },
   };

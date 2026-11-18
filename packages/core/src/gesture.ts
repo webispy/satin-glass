@@ -63,8 +63,11 @@ export function drag(el: HTMLElement, h: DragHandlers): () => void {
   }
   function up(e: PointerEvent) { finish(e, false); }
   function cancel(e: PointerEvent) { finish(e, true); }
-  /* the browser can drop the capture (window lost focus, element removed…): end the gesture there */
-  const lost = (e: PointerEvent) => { if (e.pointerId === id && active) finish(e, true); };
+  /* the browser can drop the capture (window lost focus, element removed…): end the gesture there. Only our own
+     capture counts: on touch the browser first captures the pointer to the element under the finger (a sheet's
+     grabber inside its drag handle); moving that capture to the handle fires lostpointercapture on the grabber,
+     which bubbles up here — taking it for the end of the gesture stopped every touch drag the moment it began */
+  const lost = (e: PointerEvent) => { if (e.target === el && e.pointerId === id && active) finish(e, true); };
   el.addEventListener('pointerdown', down);
   el.addEventListener('lostpointercapture', lost);
   return () => {
