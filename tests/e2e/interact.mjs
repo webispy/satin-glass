@@ -131,7 +131,9 @@ ok('dialog: opens modal with focus inside', (await p.locator('[role=alertdialog]
 await p.keyboard.press('Tab'); await p.keyboard.press('Tab'); await p.keyboard.press('Tab');
 ok('dialog: Tab stays inside', await p.evaluate(() => !!document.activeElement?.closest('[role=alertdialog]')));
 ok('dialog: page scroll locked', await p.evaluate(() => document.body.style.overflow === 'hidden'));
-await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+await p.keyboard.press('Escape');
+/* until the exit animation has finished (up to 2 s): on a busy machine (suites run side by side) it can take longer than its nominal length */
+await p.waitForFunction(() => !document.querySelector('[role=alertdialog]') && document.body.style.overflow !== 'hidden', null, { timeout: 2000 }).catch(() => {});
 ok('dialog: Esc closes and unlocks scroll', (await p.locator('[role=alertdialog]').count()) === 0 && await p.evaluate(() => document.body.style.overflow !== 'hidden'));
 
 await p.getByRole('button', { name: '장소 편집' }).click(); await p.waitForTimeout(800); await shot('sheet');

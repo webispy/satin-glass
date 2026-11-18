@@ -2,7 +2,8 @@
 // docs page, desktop and phone widths. Checks: page errors, horizontal overflow, clipped text, text contrast
 // (against the real composited background; skipped over glass/photos where it cannot be known), and that reduce
 // transparency really removes blur.
-// usage: node tests/e2e/matrix.mjs [shotDir]   (BROWSER=webkit|firefox, FULL=1 for all 16 combos in other engines)
+// usage: node tests/e2e/matrix.mjs [shotDir]   (BROWSER=webkit|firefox, FULL=1 for all 16 combos in other engines,
+//        SHARD=2/4 to run only every 4th combo starting at the 2nd — the runner splits the matrix this way)
 import * as pw from 'playwright';
 const out = process.argv[2];
 const engine = process.env.BROWSER || 'chromium';
@@ -12,7 +13,9 @@ const WIDTHS = [1280, 390];
 const all = [];
 for (const mode of ['light', 'dark']) for (const hc of [0, 1]) for (const rt of [0, 1]) for (const rm of [0, 1]) all.push({ mode, hc, rt, rm });
 /* reduce motion does not change static rendering: chromium covers all 16, other engines the 8 visual ones unless FULL */
-const combos = engine === 'chromium' || process.env.FULL ? all : all.filter((c) => c.rm === 0);
+const every = engine === 'chromium' || process.env.FULL ? all : all.filter((c) => c.rm === 0);
+const [shard, shards] = (process.env.SHARD || '1/1').split('/').map(Number);
+const combos = every.filter((_, i) => i % shards === shard - 1);
 
 let failed = 0;
 const problems = {};
@@ -110,8 +113,8 @@ for (const k of ['errors', 'overflow', 'clipped', 'contrast', 'reduce-transparen
   console.log(`${list.length ? 'FAIL' : 'PASS'} ${k}: ${list.length} (${uniq.length} distinct)`);
   for (const m of uniq.slice(0, 12)) console.log('   ', m);
 }
-if (out) (await import('node:fs')).writeFileSync(`${out}/matrix-${engine}.json`, JSON.stringify(problems, null, 1));
-console.log(`${engine}: ${combos.length} combos × ${PAGES.length} pages × ${WIDTHS.length} widths`);
+if (out) (await import('node:fs')).writeFileSync(`${out}/matrix-${engine}${shards > 1 ? `-${shard}of${shards}` : ''}.json`, JSON.stringify(problems, null, 1));
+console.log(`${engine}${shards > 1 ? ` shard ${shard}/${shards}` : ''}: ${combos.length} combos × ${PAGES.length} pages × ${WIDTHS.length} widths`);
 console.log(failed ? `${failed} CHECKS FAILED` : 'ALL PASSED');
 await b.close();
 process.exitCode = failed ? 1 : 0;

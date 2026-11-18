@@ -378,6 +378,9 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
     const p = await newPage();
     for (const id of ['overview', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'lab']) {
       await p.goto(U(id, q)); await settle(p, 500);
+      /* let entrance animations (fades) finish first — half-faded text would read as low contrast; endless ones
+         (spinners, shimmer) are left running */
+      await p.evaluate(() => Promise.race([Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {}))), new Promise((r) => setTimeout(r, 3000))]));
       await p.addScriptTag({ content: axe });
       const v = await p.evaluate(async () => {
         const r = await window.axe.run(document, { resultTypes: ['violations'], rules: { 'color-contrast': { enabled: true } } });

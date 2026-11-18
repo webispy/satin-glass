@@ -157,7 +157,8 @@ await go('table');
   ok('table: the header box selects every row', (await sg.locator('tbody:last-of-type tr[aria-selected=true]').count()) === 8);
   await head.click(); await p.waitForTimeout(100);
   ok('table: …and clears them', (await sg.locator('tbody:last-of-type tr[aria-selected=true]').count()) === 0);
-  ok('table: the row boxes are the library checkbox (drawn tick), not the browser\'s', (await sg.locator('.gl-check__box').count()) === 9);
+  ok('table: the boxes look like the library checkbox (header: Checkbox; rows: the same box drawn on the input)', (await sg.locator('thead .gl-check__box').count()) === 1
+    && (await sg.locator('.gl-table__rowcheck').count()) === 8 && (await sg.locator('.gl-table__rowcheck').first().evaluate((e) => getComputedStyle(e).appearance)) === 'none');
   await sg.locator('tbody:last-of-type tr').nth(2).locator('th').click(); await p.keyboard.press(' '); await p.waitForTimeout(80);
   ok('table: Space on a row selects it', (await sg.locator('tbody:last-of-type tr[aria-selected=true]').count()) === 1);
   await p.keyboard.press(' ');

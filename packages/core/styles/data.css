@@ -258,6 +258,19 @@
 .gl-table__checkbox { vertical-align: middle; }
 .gl-table__checkbox .gl-check__input { top: 0; }
 .gl-table__checkbox .gl-check__box { margin-top: 0; }
+/* row boxes: the same box, radius, colours and tick as .gl-check, on the input itself (one element per row) */
+.gl-table__rowcheck {
+  appearance: none; -webkit-appearance: none; display: inline-block; width: 22px; height: 22px; margin: 0; vertical-align: middle; cursor: pointer;
+  border-radius: 7px; background: var(--gl-surface) no-repeat center / 16px 16px; box-shadow: inset 0 0 0 1.5px var(--gl-label-tertiary);
+  transition: background-color var(--gl-duration-fast) ease, box-shadow var(--gl-duration-fast) ease, transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
+}
+.gl-table__rowcheck:active { transform: scale(0.9); transition-duration: 90ms; }
+.gl-table__rowcheck:checked {
+  background-color: var(--gl-accent); box-shadow: inset 0 0 0 1.5px var(--gl-accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.4l3 3 6-6.6' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.gl-table [data-r] .gl-table__rowcheck:focus-visible { outline: none; box-shadow: inset 0 0 0 1.5px var(--gl-label-tertiary), var(--gl-ring); border-radius: 7px; }
+.gl-table [data-r] .gl-table__rowcheck:checked:focus-visible { box-shadow: inset 0 0 0 1.5px var(--gl-accent), var(--gl-ring); }
 .gl-table__none { color: var(--gl-label-tertiary); }
 .gl-table__empty { height: auto !important; padding: 0 !important; white-space: normal !important; }
 .gl-table__busy td { position: sticky; top: 0; height: 0; padding: 0 !important; box-shadow: none !important; }

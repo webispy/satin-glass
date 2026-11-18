@@ -297,7 +297,9 @@ export function DataTable<T>({
     <>
       {selectable && (
         <td className="gl-table__sticky gl-table__check" style={{ left: 0 }} data-r={gridRow} data-c={0} tabIndex={-1}>
-          {!pinned && <Checkbox className="gl-table__checkbox" aria-label={labels.selectRow?.(row) ?? 'Select row'} checked={isSel}
+          {/* rows: one native element drawn like the library checkbox (data.css). Rows mount and unmount by the dozen
+              while a virtualised table scrolls; the full Checkbox (label, box, svg, hooks) per row cost frames there */}
+          {!pinned && <input type="checkbox" className="gl-table__rowcheck" aria-label={labels.selectRow?.(row) ?? 'Select row'} checked={isSel}
             onChange={() => {}} onClick={(e) => { e.stopPropagation(); toggleRow(ri, e.shiftKey); }} />}
         </td>
       )}
