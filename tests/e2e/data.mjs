@@ -308,6 +308,31 @@ await go('charts');
   const ring = demo('donut').locator('.gl-donut__ring');
   await ring.focus(); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(150);
   ok('donut: arrow keys pick a slice; the centre and the announcement say its share', (await demo('donut').locator('.gl-donut__label').textContent()) === '의류' && (await demo('donut').locator('[aria-live]').textContent()).includes('의류'));
+  await ring.blur();
+
+  /* a mouse resting on a slice — at its middle and right at its inner edge, where the lift moves the slice away from
+     the pointer — picks that slice and keeps it (it used to drop and catch it again, bouncing for as long as it rested) */
+  {
+    const dn = demo('donut'), label = () => dn.locator('.gl-donut__label').textContent();
+    await ring.scrollIntoViewIfNeeded();
+    const g = await ring.evaluate((e) => { const b = e.getBoundingClientRect(), c = b.width / 2, r = c - 6;
+      return { x: b.left, y: b.top, c, r, ri: r - 22, names: [...e.closest('.gl-donut').querySelectorAll('.gl-donut__name')].map((n) => n.textContent) }; });
+    /* each slice's middle angle, from the legend's shares (the default ring: 22 px thick, 6 px in from the edge) */
+    const shares = await dn.locator('.gl-donut__pct').evaluateAll((ns) => ns.map((n) => parseFloat(n.textContent)));
+    const tot = shares.reduce((a, v) => a + v, 0);
+    let acc = 0, wrong = [], bounce = 0;
+    for (let i = 0; i < shares.length; i++) {
+      const mid = ((acc + shares[i] / 2) / tot) * Math.PI * 2; acc += shares[i];
+      for (const rad of [(g.r + g.ri) / 2, g.ri + 1.5]) {
+        await p.mouse.move(g.x + g.c + Math.sin(mid) * rad, g.y + g.c - Math.cos(mid) * rad); await p.waitForTimeout(80);
+        const changes = await dn.evaluate((el) => new Promise((res) => { const lab = el.querySelector('.gl-donut__label'); let n = 0; const o = new MutationObserver(() => n++); o.observe(lab, { childList: true, characterData: true, subtree: true }); setTimeout(() => { o.disconnect(); res(n); }, 500); }));
+        bounce = Math.max(bounce, changes);
+        const now = await label(); if (now !== g.names[i]) wrong.push(`${g.names[i]}@${rad.toFixed(0)}→${now}`);
+      }
+    }
+    ok('donut (mouse): resting on a slice — middle or inner edge — picks it and it stays put', wrong.length === 0 && bounce === 0, `${wrong.join(', ')} / most changes while resting: ${bounce}`);
+    await p.mouse.move(5, 5); await p.waitForTimeout(200);
+  }
 }
 
 /* ================================================================ the dashboard example: the parts together */

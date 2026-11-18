@@ -407,18 +407,30 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
     if (e - s >= Math.PI * 2 - 0.001) return `M${p(r, 0)}A${r},${r} 0 1 1 ${p(r, Math.PI)}A${r},${r} 0 1 1 ${p(r, 0)}M${p(ri, 0)}A${ri},${ri} 0 1 0 ${p(ri, Math.PI)}A${ri},${ri} 0 1 0 ${p(ri, 0)}Z`;
     return `M${p(r, s)}A${r},${r} 0 ${large} 1 ${p(r, e)}L${p(ri, e)}A${ri},${ri} 0 ${large} 0 ${p(ri, s)}Z`;
   };
+  /* which slice is under the pointer, from where it is on the ring — not from the slice paths, which move when one
+     lifts: a pointer resting on a slice's inner edge would otherwise be left behind by the lift, drop it, catch it
+     again and set it bouncing forever. The band takes the lift and the gaps between slices in. */
+  const at = (e: { clientX: number; clientY: number; currentTarget: Element }) => {
+    const b = e.currentTarget.getBoundingClientRect(), x = e.clientX - b.left - c, y = e.clientY - b.top - c, dist = Math.hypot(x, y);
+    if (dist < ri - 2 || dist > r + 6) return null;
+    const a = (Math.atan2(x, -y) + Math.PI * 2) % (Math.PI * 2);
+    const i = ang.findIndex((end) => a < end);
+    return i < 0 ? null : i;
+  };
   const say = (i: number) => `${data[i].label}: ${fmt(data[i].value)} (${pct.format(data[i].value / total)})`;
   return (
     <figure ref={fig} className={cx('gl-chart', 'gl-donut', className)} style={style} aria-label={label}>
       <div className="gl-donut__ring" tabIndex={0} role="img" aria-label={label} style={{ width: size, height: size }}
-        onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }} onBlur={() => setActive(null)}>
+        onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }} onBlur={() => setActive(null)}
+        onPointerMove={(e) => { touch.current = e.pointerType === 'touch'; if (!touch.current) { setKbd(false); setActive(at(e)); } }}
+        onPointerLeave={hover(null)} onPointerDown={(e) => { touch.current = e.pointerType === 'touch'; }}
+        onClick={(e) => { const i = at(e); if (touch.current && i !== null) tap(i)(); }}>
         <svg ref={svg} width={size} height={size} aria-hidden="true">
           <g data-rings style={{ transformOrigin: 'center' }}>
             {data.map((d, i) => (
               /* the active slice lifts outward along its middle — a transform, so it moves on a spring instead of jumping */
               <path key={d.label} className="gl-donut__slice" d={arc(i ? ang[i - 1] : 0, ang[i])} data-active={active === i || undefined}
-                style={{ fill: d.color ?? COLOR(i), opacity: active !== null && active !== i ? 0.45 : 1, transform: active === i ? (() => { const m = ((i ? ang[i - 1] : 0) + ang[i]) / 2; return `translate(${(Math.sin(m) * 4).toFixed(2)}px, ${(-Math.cos(m) * 4).toFixed(2)}px)`; })() : undefined }}
-                onPointerEnter={hover(i)} onPointerLeave={hover(null)} onPointerDown={(e) => { touch.current = e.pointerType === 'touch'; }} onClick={tap(i)} />
+                style={{ fill: d.color ?? COLOR(i), opacity: active !== null && active !== i ? 0.45 : 1, transform: active === i ? (() => { const m = ((i ? ang[i - 1] : 0) + ang[i]) / 2; return `translate(${(Math.sin(m) * 4).toFixed(2)}px, ${(-Math.cos(m) * 4).toFixed(2)}px)`; })() : undefined }} />
             ))}
           </g>
         </svg>
