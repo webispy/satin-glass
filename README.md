@@ -45,6 +45,7 @@ pnpm e2e            # 빌드 후 전체 검증: 렌더링 매트릭스, 상호�
 - **버튼**: `Button` `IconButton` `ButtonGroup`
 - **입력**: `TextField` `SearchField` `Switch` `Slider` `Stepper` `SegmentedControl` `Chip`
 - **선택** (0.2): `Checkbox` `RadioGroup` `Radio` `ChoiceList` `Select` `Calendar` `DatePicker`
+- **휠·시간·요일·단계 탐색** (0.3, 진행 중): `Wheel` `WheelGroup` `TimePicker` `TimeWheel` `WeekdayPicker` `describeWeekdays` `NavigationStack` `NavigationPage` `useNavigation` (달력: 연도·월 휠, `openTo`, `defaultMonth`)
 - **구성과 미디어** (0.2): `AppBar largeTitle`(스크롤 연동) `Breadcrumbs` `Skeleton` `MediaViewer`
 - **데이터** (0.3, 진행 중): `DataTable` `Pagination` `LineChart` `BarChart` `DonutChart` `Sparkline` `BarMeter` `IntervalPlot` `Stat` `CardHeader`
 - **상태와 피드백 · 구성** (0.3, 진행 중): `Tabs` `Tooltip` `Banner` `EmptyState` `Tag` `Accordion` `Select variant="filter"`

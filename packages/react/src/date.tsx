@@ -6,6 +6,7 @@ import { animate, fade, prefersReducedMotion, type MotionName, type Placement } 
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
 import { IconButton } from './controls';
+import { Wheel, WheelGroup } from './wheel';
 import { useAnchored } from './overlay-hooks';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
 
@@ -23,8 +24,8 @@ const sameMonth = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a
 export const toISODate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 const strings = (locale: string) => locale.toLowerCase().startsWith('ko')
-  ? { prev: '이전 달', next: '다음 달', today: '오늘', choose: '날짜 선택', placeholder: '날짜 선택' }
-  : { prev: 'Previous month', next: 'Next month', today: 'Today', choose: 'Choose a date', placeholder: 'Select a date' };
+  ? { prev: '이전 달', next: '다음 달', today: '오늘', choose: '날짜 선택', placeholder: '날짜 선택', pick: '연도와 월 고르기', year: '연도', month: '월' }
+  : { prev: 'Previous month', next: 'Next month', today: 'Today', choose: 'Choose a date', placeholder: 'Select a date', pick: 'Choose month and year', year: 'Year', month: 'Month' };
 
 /* ================================================================================================ Calendar */
 export type CalendarProps = {
@@ -38,17 +39,23 @@ export type CalendarProps = {
   weekStartsOn?: 0 | 1;
   /** move focus to the selected (or today's) day when shown */
   autoFocus?: boolean;
+  /** the month shown while there is no value (default: this month) — e.g. some decades back for a birth date */
+  defaultMonth?: Date;
+  /** open on the days (default) or on the month / year wheels — a birth date is quicker to reach by its year */
+  openTo?: 'day' | 'month';
   motion?: MotionName;
   className?: string; style?: CSSProperties; 'aria-label'?: string;
 };
 
 export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calendar(
-  { value, defaultValue = null, onChange, min, max, isDateDisabled, locale = 'ko-KR', weekStartsOn = 0, autoFocus, motion, className, style, 'aria-label': ariaLabel }, ref,
+  { value, defaultValue = null, onChange, min, max, isDateDisabled, locale = 'ko-KR', weekStartsOn = 0, autoFocus, defaultMonth, openTo = 'day', motion, className, style, 'aria-label': ariaLabel }, ref,
 ) {
   const [v, setV] = useControllable<Date | null>(value, defaultValue, onChange as (d: Date | null) => void);
   const today = useMemo(() => { const n = new Date(); return day(n.getFullYear(), n.getMonth(), n.getDate()); }, []);
-  const [focused, setFocused] = useState<Date>(() => v ?? today);
-  const [month, setMonth] = useState<Date>(() => startOfMonth(v ?? today));
+  const initial = defaultMonth ? day(defaultMonth.getFullYear(), defaultMonth.getMonth(), 1) : today;
+  const [focused, setFocused] = useState<Date>(() => v ?? initial);
+  const [month, setMonth] = useState<Date>(() => startOfMonth(v ?? initial));
+  const [view, setView] = useState<'day' | 'month'>(openTo);
   const root = useRef<HTMLDivElement>(null), body = useRef<HTMLTableSectionElement>(null);
   const t = strings(locale);
   const id = useStableId('gl-cal');
@@ -57,7 +64,34 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     full: new Intl.DateTimeFormat(locale, { dateStyle: 'full' }),
     wdShort: new Intl.DateTimeFormat(locale, { weekday: 'narrow' }),
     wdLong: new Intl.DateTimeFormat(locale, { weekday: 'long' }),
+    month: new Intl.DateTimeFormat(locale, { month: 'long' }),
+    year: new Intl.DateTimeFormat(locale, { year: 'numeric' }),
   }), [locale]);
+  /* month / year wheels: the years min..max (or a century either side of today); months outside min / max are passed over */
+  const y0 = min ? min.getFullYear() : today.getFullYear() - 100, y1 = max ? max.getFullYear() : today.getFullYear() + 100;
+  const years = useMemo(() => Array.from({ length: y1 - y0 + 1 }, (_, i) => ({ value: y0 + i, label: fmt.year.format(day(y0 + i, 0, 1)) })), [y0, y1, fmt]);
+  const months = useMemo(() => Array.from({ length: 12 }, (_, m) => ({
+    value: m, label: fmt.month.format(day(2000, m, 1)),
+    disabled: Boolean((min && (month.getFullYear() * 12 + m) < min.getFullYear() * 12 + min.getMonth()) || (max && (month.getFullYear() * 12 + m) > max.getFullYear() * 12 + max.getMonth())),
+  })), [fmt, month.getFullYear(), min ? ymd(min) : 0, max ? ymd(max) : 0]);
+  /* year first where the locale writes it first ("2026년 11월"), month first otherwise ("November 2026") */
+  const yearFirst = useMemo(() => { const p = fmt.title.formatToParts(day(2000, 0, 1)); return p.findIndex((x) => x.type === 'year') < p.findIndex((x) => x.type === 'month'); }, [fmt]);
+  const toMonth = (y: number, m: number) => {
+    let t = day(y, m, 1);
+    if (min && t.getFullYear() * 12 + t.getMonth() < min.getFullYear() * 12 + min.getMonth()) t = day(min.getFullYear(), min.getMonth(), 1);
+    if (max && t.getFullYear() * 12 + t.getMonth() > max.getFullYear() * 12 + max.getMonth()) t = day(max.getFullYear(), max.getMonth(), 1);
+    setMonth(t);
+    setFocused((f) => { const last = day(t.getFullYear(), t.getMonth() + 1, 0).getDate(); return day(t.getFullYear(), t.getMonth(), Math.min(f.getDate(), last)); });
+  };
+  /* swap days ↔ wheels: the new view rises in a little (reduced motion: a fade) */
+  const viewBox = useRef<HTMLDivElement>(null), firstView = useRef(true);
+  useIsoLayoutEffect(() => {
+    if (firstView.current) { firstView.current = false; return; }
+    const b = viewBox.current; if (!b) return;
+    if (prefersReducedMotion(b)) { fade(b, 0, 1, 140); return; }
+    animate(b, [{ transform: 'translateY(6px) scale(0.98)', opacity: 0 }, { transform: 'none', opacity: 1 }], 'smooth');
+  }, [view]);
+  const backToDays = () => { setView('day'); keyboard.current = true; requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>(`[data-date="${toISODate(focused)}"]`)?.focus({ preventScroll: true })); };
 
   const disabled = (d: Date) => (min && ymd(d) < ymd(min)) || (max && ymd(d) > ymd(max)) || Boolean(isDateDisabled?.(d));
   /* follow an outside change of value to its month */
@@ -126,12 +160,28 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   return (
     <div ref={mergeRefs(ref, root)} className={cx('gl-calendar', className)} style={style} data-gl-motion={motion}>
       <div className="gl-calendar__head">
-        <h2 id={titleId} className="gl-calendar__title" aria-live="polite">{fmt.title.format(month)}</h2>
-        <div className="gl-calendar__nav">
+        <h2 id={titleId} className="gl-calendar__title" aria-live="polite">
+          <button type="button" className="gl-calendar__title-btn" aria-expanded={view === 'month'} aria-label={`${fmt.title.format(month)}, ${t.pick}`}
+            onClick={() => (view === 'month' ? backToDays() : setView('month'))}>
+            {fmt.title.format(month)}<ChevronRightIcon className="gl-calendar__title-chevron" />
+          </button>
+        </h2>
+        <div className="gl-calendar__nav" hidden={view === 'month'}>
           <IconButton size="sm" icon={<ChevronLeftIcon />} label={t.prev} onClick={() => goMonth(-1)} disabled={min ? ymd(addDays(month, -1)) < ymd(min) : false} />
           <IconButton size="sm" icon={<ChevronRightIcon />} label={t.next} onClick={() => goMonth(1)} disabled={max ? ymd(addMonths(month, 1)) > ymd(max) : false} />
         </div>
       </div>
+      <div ref={viewBox}>
+      {view === 'month' ? (
+        <div className="gl-calendar__wheels">
+          <WheelGroup rows={7} aria-label={t.pick}>
+            {[
+              <Wheel key="y" aria-label={t.year} options={years} value={month.getFullYear()} pageStep={10} onChange={(y) => toMonth(y, month.getMonth())} onCommit={backToDays} />,
+              <Wheel key="m" aria-label={t.month} options={months} value={month.getMonth()} pageStep={3} onChange={(m) => toMonth(month.getFullYear(), m)} onCommit={backToDays} />,
+            ][yearFirst ? 'slice' : 'reverse']()}
+          </WheelGroup>
+        </div>
+      ) : (
       <table role="grid" aria-labelledby={ariaLabel ? undefined : titleId} aria-label={ariaLabel} className="gl-calendar__grid" onKeyDown={onKey}>
         <thead>
           <tr>{weeks[0].map((d) => <th key={d.getDay()} scope="col" abbr={fmt.wdLong.format(d)}>{fmt.wdShort.format(d)}</th>)}</tr>
@@ -158,6 +208,8 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
           ))}
         </tbody>
       </table>
+      )}
+      </div>
     </div>
   );
 });
@@ -192,7 +244,7 @@ export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(functio
   const lightRef = useGlassLight();
   const fmt = useMemo(() => format ?? ((d: Date) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(d)), [format, locale]);
   const { panel, mounted } = useAnchored(open, trigger.current, placement, () => setOpen(false), (p) => {
-    (p.querySelector<HTMLButtonElement>('.gl-day[tabindex="0"]') ?? p).focus({ preventScroll: true });
+    (p.querySelector<HTMLElement>('.gl-day[tabindex="0"], .gl-wheel__scroller') ?? p).focus({ preventScroll: true });
   });
   const invalid = Boolean(error);
   const help = typeof error === 'string' || (error && typeof error !== 'boolean') ? error : helperText;

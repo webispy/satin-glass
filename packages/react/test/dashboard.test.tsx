@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, within, act } from '@testing-library/react';
+import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import {
   Tabs, Tooltip, Banner, EmptyState, Pagination, pageWindow, Stat, Tag, Accordion, Card, CardHeader, CardBody, DataTable, niceTicks,
@@ -33,7 +33,7 @@ describe('Tabs', () => {
 });
 
 describe('Tooltip', () => {
-  it('shows on keyboard focus, describes its trigger, hides on Escape', () => {
+  it('shows on keyboard focus, describes its trigger, hides on Escape (after its short fade)', async () => {
     render(<Tooltip content="설명"><button>정보</button></Tooltip>);
     const b = screen.getByRole('button');
     b.matches = ((sel: string) => sel === ':focus-visible' || Element.prototype.matches.call(b, sel)) as typeof b.matches;
@@ -41,7 +41,8 @@ describe('Tooltip', () => {
     const tip = screen.getByRole('tooltip');
     expect(b.getAttribute('aria-describedby')).toContain(tip.id);
     act(() => { fireEvent.keyDown(document, { key: 'Escape' }); });
-    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(b.getAttribute('aria-describedby') ?? '').not.toContain(tip.id);   /* no longer describes it at once */
+    await waitFor(() => expect(screen.queryByRole('tooltip')).toBeNull());
   });
 });
 

@@ -2,10 +2,13 @@
    small marks that live inside table cells (BarMeter, IntervalPlot).
    Every chart: series colours from the theme (--gl-chart-1…6, ≥ 3:1 on the card), a legend that hides and shows
    series, a crosshair tooltip that follows the pointer or the arrow keys (the plot is focusable and announces the
-   point), and the full data as a hidden table for screen readers. Entrances draw in (transform / stroke offset);
-   new data tweens from the old; with reduced motion everything simply appears. */
+   point), and the full data as a hidden table for screen readers. Motion is the library's: entrances draw in on
+   the named springs (bars rise on 'bouncy', the donut turns in on 'smooth', lines draw on a non-overshooting
+   'gentle'), so they follow the motion personality; new data moves there on a spring per value that keeps its
+   velocity when the data changes again mid-way. With reduced motion a chart fades in (140 ms) and data changes
+   land at once. */
 import { startTransition, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { prefersReducedMotion } from '@glass-layer/core';
+import { Spring, animate, fade, loop, motionFor, prefersReducedMotion } from '@glass-layer/core';
 import { cx, useIsoLayoutEffect, useStableId, type Tone } from './utils';
 
 /* ------------------------------------------------------------------------------------------------ shared */
@@ -63,27 +66,31 @@ function useWidth<T extends HTMLElement>(fallback = 480) {
   return [ref, w] as const;
 }
 
-/** Tween numbers from the previous render to these (ease-out, ~420 ms); instant with reduced motion / first time. */
+/** Move numbers from the previous render to these on a spring each ('smooth' of the motion personality), keeping
+    their velocity if the target changes again mid-way. At once the first time and with reduced motion. */
 function useTween(target: number[], el: React.RefObject<Element | null>, key: string): number[] {
   const [shown, setShown] = useState(target);
-  const from = useRef(target), cur = useRef(target), raf = useRef(0);
+  const springs = useRef<Spring[] | null>(null), stop = useRef<(() => void) | null>(null);
   useIsoLayoutEffect(() => {
-    cancelAnimationFrame(raf.current);
-    const a = cur.current, b = target;
-    if (a.length !== b.length || prefersReducedMotion(el.current)) { cur.current = b; setShown(b); return; }
-    if (a.every((v, i) => v === b[i])) return;
-    from.current = a;
-    const t0 = performance.now(), dur = 420;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - t0) / dur), k = 1 - Math.pow(1 - t, 3);
-      const v = b.map((x, i) => from.current[i] + (x - from.current[i]) * k);
-      cur.current = v; setShown(v);
-      if (t < 1) raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf.current);
+    const b = target, cur = springs.current;
+    if (!cur || cur.length !== b.length || prefersReducedMotion(el.current)) {
+      stop.current?.(); stop.current = null;
+      springs.current = b.map((v) => new Spring(v, 'smooth', el.current));
+      setShown(b);
+      return;
+    }
+    if (cur.every((sp, i) => sp.target === b[i])) return;
+    cur.forEach((sp, i) => { sp.set('smooth', el.current); sp.target = b[i]; });
+    if (stop.current) return;   /* already running: it simply heads for the new targets */
+    stop.current = loop((dt) => {
+      let moving = false;
+      for (const sp of cur) { sp.step(dt); if (sp.settled) sp.jump(sp.target); else moving = true; }
+      setShown(cur.map((sp) => sp.value));
+      if (!moving) stop.current = null;
+      return moving;
+    });
   }, [key]);
-  useEffect(() => () => cancelAnimationFrame(raf.current), []);
+  useEffect(() => () => { stop.current?.(); }, []);
   return shown;
 }
 
@@ -107,11 +114,12 @@ function pathOf(pts: [number, number][], smooth: boolean): string {
 function useDrawIn(ref: React.RefObject<SVGGElement | null>, deps: unknown[] = []) {
   useIsoLayoutEffect(() => {
     const g = ref.current;
-    if (!g || prefersReducedMotion(g)) return;
-    g.querySelectorAll<SVGPathElement>('[data-draw]').forEach((p, i) => {
-      p.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 700, delay: i * 60, easing: 'cubic-bezier(0.3, 0, 0.2, 1)', fill: 'backwards' });
-    });
-    g.querySelectorAll<SVGElement>('[data-fade]').forEach((p) => p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 200, easing: 'ease-out', fill: 'backwards' }));
+    if (!g) return;
+    if (prefersReducedMotion(g)) { fade(g as unknown as HTMLElement, 0, 1, 140); return; }
+    /* the pace of the personality's 'gentle', never overshooting (a stroke drawn past its end would leave a gap) */
+    const draw = { response: motionFor(g).gentle.response, damping: 1 };
+    g.querySelectorAll<SVGPathElement>('[data-draw]').forEach((p, i) => { animate(p, [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], draw, { delay: i * 60, fill: 'backwards' }); });
+    g.querySelectorAll<SVGElement>('[data-fade]').forEach((p) => { animate(p, [{ opacity: 0 }, { opacity: 1 }], 'gentle', { delay: 200, fill: 'backwards' }); });
   }, deps);
 }
 
@@ -311,10 +319,11 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
   /* entrance: bars rise from the baseline, one category after another */
   useIsoLayoutEffect(() => {
     const el = g.current;
-    if (!el || measured === null || prefersReducedMotion(el)) return;
+    if (!el || measured === null) return;
+    if (prefersReducedMotion(el)) { fade(el as unknown as HTMLElement, 0, 1, 140); return; }
     el.querySelectorAll<SVGRectElement>('rect[data-bar]').forEach((r) => {
       const i = +(r.dataset.i ?? 0);
-      r.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { duration: 520, delay: Math.min(i * 28, 300), easing: 'cubic-bezier(0.25, 1.1, 0.4, 1)', fill: 'backwards' });
+      animate(r, [{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], 'bouncy', { delay: Math.min(i * 28, 300), fill: 'backwards' });
     });
   }, [measured !== null]);
   const groupW = stacked ? inner : inner / Math.max(1, shown.length);
@@ -395,8 +404,9 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
   const ang = useTween(ends, svg, ends.map((v) => v.toFixed(4)).join(','));
   useIsoLayoutEffect(() => {
     const el = svg.current?.querySelector<SVGGElement>('g[data-rings]');
-    if (!el || prefersReducedMotion(el)) return;
-    el.animate([{ transform: 'rotate(-60deg) scale(0.86)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 640, easing: 'cubic-bezier(0.25, 1.15, 0.4, 1)', fill: 'backwards' });
+    if (!el) return;
+    if (prefersReducedMotion(el)) { fade(el as unknown as HTMLElement, 0, 1, 140); return; }
+    animate(el, [{ transform: 'rotate(-60deg) scale(0.86)', opacity: 0 }, { transform: 'none', opacity: 1 }], 'smooth', { fill: 'backwards' });
   }, []);
   const r = size / 2 - 6, ri = r - thickness, c = size / 2, gap = data.length > 1 ? 0.012 : 0;
   const arc = (a0: number, a1: number) => {

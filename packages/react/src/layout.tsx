@@ -71,7 +71,7 @@ export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(function ListIt
 });
 
 /* ================================================================================================ AppBar */
-export type AppBarProps = HTMLAttributes<HTMLElement> & {
+export type AppBarProps = Omit<HTMLAttributes<HTMLElement>, 'title'> & {
   title?: ReactNode;
   leading?: ReactNode;
   trailing?: ReactNode;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
-  Button, Calendar, Checkbox, ChoiceList, DatePicker, List, ListItem, ListSection, Radio, RadioGroup, Select, Stack, Text, useToast,
+  Button, Calendar, Checkbox, ChoiceList, DatePicker, List, ListItem, ListSection, Radio, RadioGroup, Select, Stack, Switch, Text, TimePicker, TimeWheel,
+  WeekdayPicker, describeWeekdays, useToast,
 } from '@glass-layer/react';
 import { Bike, Car, Footprints, Train, Moon, Sun, Monitor, Wifi, Bell, MapPin } from 'lucide-react';
 import { Demo, Page, Section } from '../shared';
@@ -17,6 +18,10 @@ export function Selection() {
   const [cal, setCal] = useState<Date | null>(new Date());
   const [notif, setNotif] = useState<string[]>(['sunset']);
   const [appearance, setAppearance] = useState('system');
+  const [birth, setBirth] = useState<Date | null>(null);
+  const [meet, setMeet] = useState<string | null>(null);
+  const [al, setAl] = useState({ time: '07:30', days: [1, 2, 3, 4, 5], on: true });
+  const putAlarm = (patch: Partial<typeof al>) => setAl((a) => ({ ...a, ...patch }));
   const [fCat, setFCat] = useState('all'), [fSort, setFSort] = useState('new'), [fShip, setFShip] = useState('all');
   const toast = useToast();
   const all = am.length === AMENITIES.length, some = am.length > 0 && !all;
@@ -110,15 +115,37 @@ export function Selection() {
         </Demo>
       </Section>
 
-      <Section title="날짜" intro="방향키로 하루·한 주, PageUp/PageDown으로 한 달(Shift는 1년)씩 움직입니다. 달이 바뀌면 그쪽에서 미끄러져 들어와요.">
+      <Section title="날짜" intro="방향키로 하루·한 주, PageUp/PageDown으로 한 달(Shift는 1년)씩 움직입니다. 달이 바뀌면 그쪽에서 미끄러져 들어와요. 위쪽의 ‘2026년 11월’을 누르면 그 자리에 연도와 월 휠이 열려, 수십 년 전으로도 한 번에 갑니다(휠에서 1·9·8·0을 차례로 치면 1980년으로). 생년월일처럼 먼 과거가 보통인 칸은 처음부터 휠로 열고(openTo=&quot;month&quot;), 처음 보여 줄 달(defaultMonth)을 정할 수 있어요.">
         <div className="grid grid--2">
-          <Demo col>
+          <Demo col data-demo="date">
+            <DatePicker label="생년월일" value={birth} onChange={setBirth} openTo="month" defaultMonth={new Date(1990, 0, 1)} min={new Date(1920, 0, 1)} max={new Date()} name="birth" helperText="연도와 월을 먼저 고르고, 제목을 눌러 날짜로" />
             <DatePicker label="방문 날짜" value={date} onChange={setDate} min={new Date()} max={maxDate} helperText="오늘부터 3개월 안" name="visit" />
             <DatePicker label="주말만 (평일 선택 불가)" isDateDisabled={(d) => d.getDay() !== 0 && d.getDay() !== 6} />
             <DatePicker label="English, Monday first" locale="en-US" weekStartsOn={1} />
           </Demo>
-          <Demo center>
+          <Demo center data-demo="calendar">
             <Calendar value={cal} onChange={setCal} aria-label="달력" />
+          </Demo>
+        </div>
+      </Section>
+
+      <Section title="시간과 요일" intro="시간은 휠로 고릅니다. 손가락으로 튕기면 관성대로 굴러가 한 칸에 멈추고, 마우스는 끌거나 휠을 굴리거나 칸을 누르면 됩니다. 키보드는 위아래로 한 칸, PageUp/PageDown으로 여러 칸, 숫자를 치면 그 값으로 갑니다. 오전/오후와 그 순서는 언어 설정을 따릅니다. 요일은 여러 개를 고르는 둥근 토글로, 달력의 날짜와 같은 모양입니다. describeWeekdays는 고른 요일을 ‘주중’, ‘주말’, ‘월, 수, 금’처럼 말로 바꿔 줍니다.">
+        <div className="grid grid--2">
+          <Demo col data-demo="time">
+            <TimePicker label="회의 시작" value={meet} onChange={setMeet} minuteStep={5} name="meet" helperText="5분 단위" />
+            <TimePicker label="24시간제" hour12={false} defaultValue="18:45" />
+            <TimePicker label="영어 표기 (en-US)" locale="en-US" defaultValue="21:15" />
+            <WeekdayPicker aria-label="영업일" defaultValue={[1, 2, 3, 4, 5]} weekStartsOn={1} size="sm" />
+          </Demo>
+          <Demo col data-demo="alarm">
+            <ListSection header="알람" footer={`반복: ${describeWeekdays(al.days)}`}>
+              <List>
+                <ListItem title={<span className="alarm-time" style={{ opacity: al.on ? 1 : 0.5 }}>{new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '2-digit' }).format(new Date(2000, 0, 1, +al.time.slice(0, 2), +al.time.slice(3)))}</span>}
+                  trailing={<Switch checked={al.on} onChange={(on) => putAlarm({ on })} aria-label="알람 켜기" />} />
+              </List>
+            </ListSection>
+            <TimeWheel aria-label="알람 시간" value={al.time} onChange={(time) => putAlarm({ time })} />
+            <WeekdayPicker aria-label="반복 요일" value={al.days} onChange={(days) => putAlarm({ days })} />
           </Demo>
         </div>
       </Section>

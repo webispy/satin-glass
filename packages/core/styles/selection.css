@@ -124,3 +124,89 @@
 }
 /* increased contrast: boxes get a solid 2 px border */
 [data-gl-theme$="-hc"] .gl-check__box { box-shadow: inset 0 0 0 2px var(--gl-label); }
+
+/* ============================================================================================
+   Wheels: a column scrolls under a fixed band (shared by the columns of a group); rows bend away like a drum (JS)
+   ============================================================================================ */
+.gl-wheels { --_row: 36px; --_rows: 5; }   /* a lone wheel falls back to the same (the group's own values reach its wheels) */
+.gl-wheels { position: relative; display: flex; justify-content: center; align-items: stretch; height: calc(var(--_row) * var(--_rows)); user-select: none; -webkit-user-select: none; }
+.gl-wheels::before, .gl-wheel:not(.gl-wheels > .gl-wheel)::before {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(50% - var(--_row, 36px) / 2); height: var(--_row, 36px);
+  border-radius: var(--gl-radius-sm); background: var(--gl-fill); pointer-events: none;
+}
+.gl-wheel { position: relative; flex: 1 1 auto; min-width: 3.2em; height: calc(var(--_row, 36px) * var(--_rows, 5)); }
+.gl-wheel__scroller {
+  position: relative; z-index: 1; box-sizing: border-box; height: 100%; padding-block: calc(var(--_row, 36px) * (var(--_rows, 5) - 1) / 2);
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; scrollbar-width: none;
+  touch-action: pan-y; outline: none; cursor: grab;
+  -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+}
+.gl-wheel__scroller::-webkit-scrollbar { display: none; }
+.gl-wheel__scroller:active { cursor: grabbing; }
+.gl-wheel__item {
+  height: var(--_row, 36px); display: flex; align-items: center; justify-content: center; padding: 0 10px;
+  font-size: 20px; line-height: 24px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--gl-label); white-space: nowrap;
+  scroll-snap-align: center;
+}
+.gl-wheel__label { display: block; will-change: transform, opacity; }
+.gl-wheel[data-align="start"] .gl-wheel__item { justify-content: flex-start; }
+.gl-wheel[data-align="end"] .gl-wheel__item { justify-content: flex-end; }
+.gl-wheel__item[data-disabled] { color: var(--gl-label-disabled); }
+/* keyboard focus rings the band of the focused column */
+.gl-wheel:has(> .gl-wheel__scroller:focus-visible)::after {
+  content: ""; position: absolute; z-index: 2; left: 0; right: 0; top: calc(50% - var(--_row, 36px) / 2); height: var(--_row, 36px);
+  border-radius: var(--gl-radius-sm); box-shadow: inset 0 0 0 2px var(--gl-focus-ring); pointer-events: none;
+}
+.gl-wheels__sep { position: relative; z-index: 1; align-self: center; padding-bottom: 2px; font-size: 20px; line-height: 24px; font-weight: 600; color: var(--gl-label); }
+.gl-timewheel { min-width: 200px; }
+.gl-timewheel .gl-wheel { flex: 0 0 auto; min-width: 3.6em; }
+.gl-timewheel .gl-wheel--period { min-width: 4.4em; }
+.gl-timepicker-panel { position: absolute; left: 0; top: 0; padding: 12px; --_radius: var(--gl-radius-xl); outline: none; }
+.gl-time-value { font-variant-numeric: tabular-nums; }
+[data-gl-theme$="-hc"] .gl-wheels::before, [data-gl-theme$="-hc"] .gl-wheel:not(.gl-wheels > .gl-wheel)::before { box-shadow: inset 0 0 0 1.5px var(--gl-label); }
+
+/* calendar: the title opens month / year wheels in place of the days (same size: the panel does not jump) */
+.gl-calendar__title-btn {
+  appearance: none; border: 0; margin: 0 0 0 -6px; padding: 4px 6px; background: none; font: inherit; color: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px; border-radius: var(--gl-radius-sm);
+  transition: background-color var(--gl-duration-instant) ease, color var(--gl-duration-fast) ease;
+}
+@media (hover: hover) { .gl-calendar__title-btn:hover { background: var(--gl-fill); } }
+.gl-calendar__title-btn:active { background: var(--gl-fill-strong); }
+.gl-calendar__title-btn:focus-visible { outline: none; box-shadow: var(--gl-ring); }
+.gl-calendar__title-btn[aria-expanded="true"] { color: var(--gl-accent-text); }
+.gl-calendar__title-chevron { width: 16px; height: 16px; color: var(--gl-accent-text); transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
+.gl-calendar__title-btn[aria-expanded="true"] .gl-calendar__title-chevron { transform: rotate(90deg); }
+.gl-calendar__wheels { height: calc(28px + 6 * var(--_cell)); display: flex; align-items: center; }
+.gl-calendar__wheels > .gl-wheels { flex: 1; --_rows: 7; }
+.gl-calendar__nav[hidden] { display: flex !important; visibility: hidden; }
+
+/* ============================================================================================
+   Weekdays: round toggles in the calendar day's shape; a chosen day fills from the middle (pop spring)
+   ============================================================================================ */
+.gl-weekdays { --_s: 40px; display: grid; grid-template-columns: repeat(7, minmax(28px, var(--_s))); gap: 6px; }
+.gl-weekdays--sm { --_s: 32px; gap: 4px; }
+.gl-weekday {
+  appearance: none; border: 0; margin: 0; padding: 0; font: inherit; position: relative; isolation: isolate;
+  width: 100%; aspect-ratio: 1; border-radius: 50%; background: var(--gl-fill); color: var(--gl-label);
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: background-color var(--gl-duration-instant) ease, color var(--gl-duration-fast) ease, transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
+}
+.gl-weekdays--sm .gl-weekday { font-size: 13px; }
+.gl-weekday::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--gl-accent);
+  opacity: 0; transform: scale(0.4); transition: transform var(--gl-spring-pop-duration) var(--gl-spring-pop), opacity var(--gl-duration-fast) ease;
+}
+.gl-weekday[aria-pressed="true"] { color: var(--gl-on-accent); }
+.gl-weekday[aria-pressed="true"]::before { opacity: 1; transform: none; }
+@media (hover: hover) { .gl-weekday:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--gl-fill-hover); } }
+.gl-weekday:active:not(:disabled) { transform: scale(0.9); }
+.gl-weekday:focus-visible { outline: none; box-shadow: var(--gl-ring); }
+.gl-weekday:disabled { opacity: 0.45; cursor: default; }
+[data-gl-theme$="-hc"] .gl-weekday:not([aria-pressed="true"]) { box-shadow: inset 0 0 0 1.5px var(--gl-label); }
+[data-gl-theme$="-hc"] .gl-weekday:focus-visible { box-shadow: var(--gl-ring); }
+/* reduced motion: no fill growth, no press-in; the fill fades */
+[data-gl-reduce-motion="true"] .gl-weekday, [data-gl-reduce-motion="true"] .gl-weekday::before { transform: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-weekday, .gl-root:not([data-gl-reduce-motion="false"]) .gl-weekday::before { transform: none !important; }
+}

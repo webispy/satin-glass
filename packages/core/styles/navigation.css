@@ -145,3 +145,21 @@ a.gl-crumb__item:active, button.gl-crumb__item:active { background: var(--gl-fil
 .gl-crumb__more { width: 32px; padding: 0; justify-content: center; }
 .gl-crumb__more svg { width: 18px; height: 18px; fill: currentColor; }
 .gl-crumb__more[aria-expanded="true"] { background: var(--gl-fill); color: var(--gl-label); }
+
+/* ============================================================================================
+   Navigation stack: pages slide in over each other inside a region (the region sets the height)
+   ============================================================================================ */
+.gl-nav { position: relative; overflow: hidden; overflow: clip; isolation: isolate; background: var(--gl-bg-grouped); touch-action: pan-y; }
+.gl-nav__page { position: absolute; inset: 0; background: var(--gl-bg-grouped); }
+.gl-nav__page[data-hidden] { visibility: hidden; }
+/* the page coming in casts a soft edge on the one it covers (clipped away when it rests at 0) */
+.gl-nav__page:not([data-depth="0"]) { box-shadow: -1px 0 0 var(--gl-separator), -16px 0 32px rgba(0, 0, 0, 0.08); }
+.gl-nav[data-moving] .gl-nav__page { will-change: transform; }
+.gl-nav__scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }   /* a sideways finger is the stack's (swipe back), not the browser's */
+.gl-nav__shade { position: absolute; inset: 0; z-index: calc(var(--gl-z-bar) + 1); background: var(--gl-scrim); opacity: 0; pointer-events: none; }
+.gl-navpage__body { display: flex; flex-direction: column; gap: 24px; padding: 12px var(--gl-size-bar-inset) 32px; }
+.gl-nav__back { max-width: 100%; min-width: 0; padding-left: 2px; padding-right: 8px; }
+.gl-nav__back > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gl-nav__back svg { flex: none; }
+[data-gl-nav-title] { outline: none; border-radius: 4px; }
+[data-gl-nav-title]:focus-visible { box-shadow: var(--gl-ring); }

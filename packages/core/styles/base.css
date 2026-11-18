@@ -62,24 +62,27 @@
 [data-gl-reduce-motion="true"] .gl-field__clear, [data-gl-reduce-motion="true"] .gl-button__spinner { animation-name: gl-fade-in-plain; }
 [data-gl-reduce-motion="true"] .gl-search__cancel { transform: none; }
 [data-gl-reduce-motion="true"] .gl-pressable:active, [data-gl-reduce-motion="true"] .gl-pressable.is-pressed, [data-gl-reduce-motion="true"] .gl-button:active:not(:disabled), [data-gl-reduce-motion="true"] .gl-chip:active, [data-gl-reduce-motion="true"] .gl-card--interactive:active,
-[data-gl-reduce-motion="true"] .gl-stepper__btn:active:not(:disabled), [data-gl-reduce-motion="true"] .gl-tabbar__item:active .gl-tabbar__icon { transform: none !important; }
+[data-gl-reduce-motion="true"] .gl-stepper__btn:active:not(:disabled), [data-gl-reduce-motion="true"] .gl-tabbar__item:active .gl-tabbar__icon,
+[data-gl-reduce-motion="true"] .gl-pagination__page:active, [data-gl-reduce-motion="true"] .gl-pagination__step:active, [data-gl-reduce-motion="true"] .gl-weekday:active { transform: none !important; }
 [data-gl-reduce-motion="true"] .gl-glass::after { display: none; }
 [data-gl-reduce-motion="true"] .gl-slider.is-active .gl-slider__thumb { --_s: 1; }
 [data-gl-reduce-motion="true"] .gl-slider__bubble, [data-gl-reduce-motion="true"] .gl-slider.is-active .gl-slider__bubble { transform: none; }
 [data-gl-reduce-motion="true"] .gl-spinner { animation: gl-spin 1.4s linear infinite; }
 [data-gl-reduce-motion="true"] .gl-progress--indeterminate .gl-progress__bar { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite; }
+[data-gl-reduce-motion="true"] .gl-table__busy span::after { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__value > [data-roll] { animation: none; }
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__value > [data-leave] { display: none; }
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-field__clear, .gl-root:not([data-gl-reduce-motion="false"]) .gl-button__spinner { animation-name: gl-fade-in-plain; }
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-search__cancel { transform: none; }
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-pressable:active, .gl-root:not([data-gl-reduce-motion="false"]) .gl-pressable.is-pressed, .gl-root:not([data-gl-reduce-motion="false"]) .gl-button:active:not(:disabled), .gl-root:not([data-gl-reduce-motion="false"]) .gl-chip:active, .gl-root:not([data-gl-reduce-motion="false"]) .gl-card--interactive:active,
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__btn:active:not(:disabled), .gl-root:not([data-gl-reduce-motion="false"]) .gl-tabbar__item:active .gl-tabbar__icon { transform: none !important; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__btn:active:not(:disabled), .gl-root:not([data-gl-reduce-motion="false"]) .gl-tabbar__item:active .gl-tabbar__icon, .gl-root:not([data-gl-reduce-motion="false"]) .gl-pagination__page:active, .gl-root:not([data-gl-reduce-motion="false"]) .gl-pagination__step:active { transform: none !important; }
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-glass::after { display: none; }
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-slider.is-active .gl-slider__thumb { --_s: 1; }
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-slider__bubble, .gl-root:not([data-gl-reduce-motion="false"]) .gl-slider.is-active .gl-slider__bubble { transform: none; }
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-spinner { animation: gl-spin 1.4s linear infinite; }
   .gl-root:not([data-gl-reduce-motion="false"]) .gl-progress--indeterminate .gl-progress__bar { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite; }
+  .gl-root:not([data-gl-reduce-motion="false"]) .gl-table__busy span::after { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite; }
 }
 @keyframes gl-fade-in-plain { from { opacity: 0; } }
 @keyframes gl-fade-out-plain { to { opacity: 0; } }

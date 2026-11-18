@@ -4,7 +4,7 @@ import {
   type CSSProperties, type ReactElement, type ReactNode, type Ref,
 } from 'react';
 import { animate, fade, place, prefersReducedMotion, pushLayer, type Placement } from '@glass-layer/core';
-import { cx, mergeRefs, useIsoLayoutEffect, useStableId } from './utils';
+import { cx, mergeRefs, useIsoLayoutEffect, usePresence, useStableId } from './utils';
 import { Portal } from './foundation';
 import { IconButton } from './controls';
 import { AlertIcon, CloseIcon, InfoIcon, SuccessIcon } from './icons';
@@ -29,6 +29,9 @@ export type TooltipProps = {
     stays open while the pointer moves onto it, closes on Escape, and never takes focus. Not for touch. */
 export function Tooltip({ content, children, placement = 'top', delay = 500, disabled }: TooltipProps) {
   const [open, setOpen] = useState(false);
+  /* it fades out (110 ms, as the other overlays' quick exits) — except when the next tooltip takes over */
+  const { mounted, closing, done } = usePresence(open);
+  const instant = useRef(false);
   const trigger = useRef<HTMLElement | null>(null), tip = useRef<HTMLDivElement>(null);
   const timer = useRef(0);
   const id = useStableId('gl-tip');
@@ -46,19 +49,28 @@ export function Tooltip({ content, children, placement = 'top', delay = 500, dis
   useEffect(() => () => clearTimeout(timer.current), []);
   useIsoLayoutEffect(() => {
     const t = tip.current, a = trigger.current;
-    if (!open || !t || !a) return;
+    if (!open || !mounted || !t || !a) return;   /* the tip mounts one render after open (it stays for its exit) */
     const r = a.getBoundingClientRect();
     const at = place({ width: t.offsetWidth, height: t.offsetHeight }, r, placement, 6, 8);
     t.style.left = `${at.x + scrollX}px`; t.style.top = `${at.y + scrollY}px`; t.dataset.side = at.side;
     const off = { top: [0, 4], bottom: [0, -4], left: [4, 0], right: [-4, 0] }[at.side];
-    if (prefersReducedMotion(t)) fade(t, 0, 1, 100);
+    t.getAnimations().forEach((x) => x.cancel());
+    if (prefersReducedMotion(t)) fade(t, 0, 1, 140);
     else animate(t, [{ opacity: 0, transform: `translate(${off[0]}px, ${off[1]}px)` }, { opacity: 1, transform: 'none' }], 'snappy');
     const pop = pushLayer(() => setOpen(false), false);
-    const close = () => { clearTimeout(timer.current); setOpen(false); };
+    const close = () => { clearTimeout(timer.current); instant.current = true; setOpen(false); };
     if (shown) shown();
     shown = close;
     return () => { pop(); if (shown === close) shown = null; warmUntil = performance.now() + 400; };
-  }, [open]);
+  }, [open && mounted]);
+  useEffect(() => {
+    if (!closing) return;
+    const t = tip.current;
+    if (!t || instant.current) { instant.current = false; done(); return; }
+    let alive = true;
+    fade(t, 1, 0, 110).then(() => { if (alive) done(); });
+    return () => { alive = false; };
+  }, [closing]);
   if (!isValidElement(children)) return children;
   const child = children as ReactElement<Record<string, unknown> & { ref?: Ref<HTMLElement> }>;
   const p = child.props;
@@ -74,7 +86,7 @@ export function Tooltip({ content, children, placement = 'top', delay = 500, dis
         onFocus: (e: FocusEvent) => { call('onFocus', e); const t = e.target as HTMLElement; if (t.matches?.(':focus-visible')) show(true); },
         onBlur: (e: FocusEvent) => { call('onBlur', e); hide(false); },
       })}
-      {open && (
+      {mounted && (
         <Portal className="gl-portal--passthrough gl-portal--anchored">
           <div ref={tip} id={id} role="tooltip" className="gl-tooltip" onPointerEnter={() => clearTimeout(timer.current)} onPointerLeave={() => hide()}>{content}</div>
         </Portal>
@@ -113,7 +125,7 @@ export function Banner({ tone = 'info', title, children, icon, actions, onDismis
     /* fade first, then close the gap (height is the one layout property animated here: one short-lived element) */
     const h = d.offsetHeight;
     d.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(0.98)' }], { duration: 140, easing: 'ease-in', fill: 'forwards' }).finished
-      .then(() => d.animate([{ height: `${h}px`, marginBottom: getComputedStyle(d).marginBottom }, { height: '0px', marginBottom: '0px' }], { duration: 180, easing: 'cubic-bezier(0.3, 0, 0.2, 1)', fill: 'forwards' }).finished)
+      .then(() => animate(d, [{ height: `${h}px`, marginBottom: getComputedStyle(d).marginBottom }, { height: '0px', marginBottom: '0px' }], { response: 0.26, damping: 1 }, { fill: 'forwards' }).finished)   /* the gap closes on a short critically-damped spring: a height must not overshoot */
       .then(done, done);
   };
   if (gone) return null;

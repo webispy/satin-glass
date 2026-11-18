@@ -2,9 +2,10 @@
 //
 // What it checks:
 //   render matrix: theme × contrast × reduce transparency × reduce motion, every page, desktop + phone
-//   interactions, selection, display, data components & dashboard, many-item strips: behaviour of every component
+//   interactions, selection, display, data components & dashboard, many-item strips, wheels / time / weekdays /
+//     navigation stack: behaviour of every component
 //   reduced motion: in-app toggle and system setting
-//   finger drags with real touch input: sheet, switch, slider, segmented control, tab bar (Chromium)
+//   finger drags with real touch input: sheet, switch, slider, segmented control, tab bar, wheel fling, swipe back (Chromium)
 //   edge cases: rapid repeats, mid-animation changes, bounds, disabled/refused, long text, touch, keyboard,
 //     320 px reflow, open/close leftovers, axe
 //   performance (CPU ×4), momentum across updates, arrival timing (informational)
@@ -57,6 +58,8 @@ perEngine(motion, 'display & media', 'display.mjs');
 variants(motion, 'display & media', 'display.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 perEngine(motion, 'selection components', 'selection.mjs');
 variants(motion, 'selection components', 'selection.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
+perEngine(motion, 'wheels, time & weekdays, navigation stack', 'pickers.mjs');
+variants(motion, 'wheels, time & weekdays, navigation stack', 'pickers.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 perEngine(motion, 'reduced motion', 'reduce-motion.mjs');
 /* finger drags with real touch input (CDP: Chromium only), in the motion phase — they follow the finger frame by frame */
 if (ENGINES.includes('chromium')) motion.push(['finger drags (touch) · chromium', 'touch.mjs', {}]);

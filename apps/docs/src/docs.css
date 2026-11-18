@@ -143,3 +143,7 @@ body { background: var(--gl-bg); }
 .dash__facts small { font-size: 12px; font-weight: 450; color: var(--gl-label-secondary); }
 @media (max-width: 900px) { .dash__charts { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 720px) { .dash .grid--2 { grid-template-columns: minmax(0, 1fr); } }
+/* the alarm demo's big time */
+.alarm-time { font-size: 30px; line-height: 36px; font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; transition: opacity var(--gl-duration-fast) ease; }
+/* the settings navigation stack demo */
+.settings-stack { width: 100%; height: 560px; border-radius: var(--gl-radius-lg); outline: 1px solid var(--gl-separator); outline-offset: -1px; }

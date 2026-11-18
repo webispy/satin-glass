@@ -6,7 +6,7 @@
 import { useDeferredValue, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { animate, fade, prefersReducedMotion, type MotionName } from '@glass-layer/core';
 import { cx, useControllable, useIsoLayoutEffect, useStableId } from './utils';
-import { useBridge } from './controls';
+import { Badge, useBridge } from './controls';
 
 export type TabItem<T extends string = string> = { value: T; label: ReactNode; icon?: ReactNode; badge?: ReactNode; disabled?: boolean; content?: ReactNode };
 export type TabsProps<T extends string = string> = {
@@ -38,7 +38,7 @@ export function Tabs<T extends string = string>({ items, value, defaultValue, on
     const p = panel.current, dir = Math.sign(shown - prev.current);
     prev.current = shown;
     if (!p || !dir) return;
-    if (prefersReducedMotion(p)) { fade(p, 0, 1, 120); return; }
+    if (prefersReducedMotion(p)) { fade(p, 0, 1, 140); return; }
     animate(p, [{ opacity: 0, transform: `translateX(${dir * 12}px)` }, { opacity: 1, transform: 'none' }], 'snappy');
   }, [shown]);
   const enabled = items.map((it, i) => (it.disabled ? -1 : i)).filter((i) => i >= 0);
@@ -65,7 +65,9 @@ export function Tabs<T extends string = string>({ items, value, defaultValue, on
           <button key={it.value} type="button" role="tab" id={`${id}-t${i}`} data-gl-item aria-selected={i === index}
             aria-controls={hasPanels ? `${id}-p` : undefined} tabIndex={i === index ? 0 : -1} disabled={it.disabled}
             className="gl-tabs__tab" onClick={() => setV(it.value)}>
-            {it.icon}<span className="gl-tabs__label">{it.label}</span>{it.badge !== undefined && <span className="gl-tabs__badge">{it.badge}</span>}
+            {it.icon}<span className="gl-tabs__label" data-label={typeof it.label === 'string' ? it.label : undefined}>{it.label}</span>
+            {/* a count or a word becomes the library's neutral Badge (it pops in and bumps on change, as in TabBar); any other node is used as given */}
+            {it.badge !== undefined && (typeof it.badge === 'number' || typeof it.badge === 'string' ? <Badge tone="neutral" className="gl-tabs__badge">{it.badge}</Badge> : it.badge)}
           </button>
         ))}
       </div>

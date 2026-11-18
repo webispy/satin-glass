@@ -1,13 +1,13 @@
 import { useRef, useState } from 'react';
 import {
   ActionSheet, AppBar, Avatar, Badge, BadgeAnchor, Button, ButtonGroup, Card, CardBody, Chip, ContextMenu, Dialog, Glass,
-  IconButton, List, ListItem, ListSection, Menu, MenuItem, MenuLabel, MenuSeparator, PageControl, Pagination, Popover, Progress, SearchField,
+  ChoiceList, IconButton, List, ListItem, ListSection, Menu, MenuItem, MenuLabel, MenuSeparator, NavigationPage, NavigationStack, PageControl, Pagination, Popover, Progress, SearchField,
   SegmentedControl, Sheet, Sidebar, SidebarItem, SidebarSection, Slider, Spinner, Stack, Stepper, Switch, Tab, TabBar, TabBarAction,
-  Tabs, Text, TextField, useToast,
+  Tabs, Text, TextField, useNavigation, useToast,
 } from '@glass-layer/react';
 import {
   Bell, Bike, Bookmark, Car, ChevronLeft, Copy, Download, Footprints, Heart, Home, Map, MoreHorizontal, Moon, Pencil, Plus, Search,
-  Settings, Share, Star, Trash2, User, Wifi, Plane, MapPin, Compass, Info, ShoppingBag, Package, MessageSquare, BarChart3,
+  Settings, Share, Star, Trash2, User, Wifi, Sun, Monitor, Lock, KeyRound, Smartphone, Laptop, ShieldCheck, Mail, Plane, MapPin, Compass, Info, ShoppingBag, Package, MessageSquare, BarChart3,
 } from 'lucide-react';
 import { Demo, Page, Photo, Section } from '../shared';
 
@@ -182,23 +182,106 @@ export function Navigation() {
 }
 
 /* ================================================================================================ Lists & display */
-export function Lists() {
+/* the settings stack: four pages deep (설정 › 프로필 › 계정 보안 › 비밀번호 변경 / 로그인한 기기). Each page is its own
+   component with its own state; a pushed page is an element, so values it shows come from its own state */
+const MODES = { light: '라이트', dark: '다크', system: '시스템' } as const;
+function SettingsRoot() {
+  const nav = useNavigation();
   const [notif, setNotif] = useState(true);
+  const [mode, setMode] = useState<keyof typeof MODES>('system');
+  return (
+    <NavigationPage title="설정" largeTitle>
+      <ListSection header="계정" footer="알림은 기기마다 따로 설정할 수 있어요.">
+        <List>
+          <ListItem leading={<User />} tileColor="var(--gl-iris-500)" title="프로필" subtitle="hello@example.com" chevron onClick={() => nav.push(<ProfilePage />)} />
+          <ListItem leading={<Bell />} tileColor="var(--gl-coral-500)" title="알림" trailing={<Switch checked={notif} onChange={setNotif} aria-label="알림" />} />
+          <ListItem leading={<Moon />} tileColor="var(--gl-orchid-600)" title="화면 모드" trailing={MODES[mode]} chevron onClick={() => nav.push(<AppearancePage initial={mode} onChange={setMode} />)} />
+          <ListItem leading={<Wifi />} tileColor="var(--gl-azure-500)" title="오프라인 지도" trailing={<Badge tone="accent">NEW</Badge>} chevron onClick={() => nav.push(<NavigationPage title="오프라인 지도"><ListSection footer="내려받은 지도는 연결이 없어도 볼 수 있어요."><List><ListItem title="서울" subtitle="312 MB" /><ListItem title="부산" subtitle="188 MB" /></List></ListSection></NavigationPage>)} />
+        </List>
+      </ListSection>
+      <ListSection>
+        <List><ListItem title="로그아웃" tone="danger" onClick={() => {}} /></List>
+      </ListSection>
+    </NavigationPage>
+  );
+}
+function ProfilePage() {
+  const nav = useNavigation();
+  return (
+    <NavigationPage title="프로필">
+      <div style={{ display: 'grid', justifyItems: 'center', gap: 6, paddingTop: 4 }}>
+        <Avatar name="Kim Minji" size={72} />
+        <Text variant="headline">김민지</Text>
+      </div>
+      <ListSection>
+        <List>
+          <ListItem leading={<Mail />} tileColor="var(--gl-azure-500)" title="이메일" trailing="hello@example.com" />
+          <ListItem leading={<ShieldCheck />} tileColor="var(--gl-jade-600)" title="계정 보안" chevron onClick={() => nav.push(<SecurityPage />)} />
+        </List>
+      </ListSection>
+    </NavigationPage>
+  );
+}
+function SecurityPage() {
+  const nav = useNavigation();
+  const [twoStep, setTwoStep] = useState(true);
+  return (
+    <NavigationPage title="계정 보안">
+      <ListSection footer="2단계 인증을 켜면 새 기기에서 로그인할 때 확인 코드를 한 번 더 받아요.">
+        <List>
+          <ListItem leading={<KeyRound />} tileColor="var(--gl-amber-500)" title="비밀번호 변경" chevron onClick={() => nav.push(<PasswordPage />)} />
+          <ListItem leading={<Lock />} tileColor="var(--gl-slate-500)" title="2단계 인증" trailing={<Switch checked={twoStep} onChange={setTwoStep} aria-label="2단계 인증" />} />
+          <ListItem leading={<Smartphone />} tileColor="var(--gl-iris-500)" title="로그인한 기기" trailing="2대" chevron onClick={() => nav.push(<DevicesPage />)} />
+        </List>
+      </ListSection>
+    </NavigationPage>
+  );
+}
+function PasswordPage() {
+  const nav = useNavigation();
+  return (
+    <NavigationPage title="비밀번호 변경" trailing={<Button size="sm" variant="plain" onClick={() => nav.popToRoot()}>완료</Button>}>
+      <Stack gap={4}>
+        <TextField label="지금 비밀번호" type="password" />
+        <TextField label="새 비밀번호" type="password" helperText="8자 이상, 숫자와 기호를 섞어서" />
+      </Stack>
+    </NavigationPage>
+  );
+}
+function DevicesPage() {
+  return (
+    <NavigationPage title="로그인한 기기">
+      <ListSection>
+        <List>
+          <ListItem leading={<Smartphone />} tileColor="var(--gl-iris-500)" title="이 휴대폰" subtitle="지금 사용 중" />
+          <ListItem leading={<Laptop />} tileColor="var(--gl-slate-500)" title="노트북" subtitle="3일 전" />
+        </List>
+      </ListSection>
+    </NavigationPage>
+  );
+}
+function AppearancePage({ initial, onChange }: { initial: keyof typeof MODES; onChange: (m: keyof typeof MODES) => void }) {
+  const [m, setM] = useState(initial);
+  return (
+    <NavigationPage title="화면 모드">
+      <ChoiceList aria-label="화면 모드" value={m} onChange={(v) => { setM(v); onChange(v); }} options={[
+        { value: 'light', label: '라이트', icon: <Sun />, tileColor: 'var(--gl-amber-500)' },
+        { value: 'dark', label: '다크', icon: <Moon />, tileColor: 'var(--gl-iris-700)' },
+        { value: 'system', label: '시스템 설정', description: '기기 설정을 따라요', icon: <Monitor />, tileColor: 'var(--gl-slate-500)' },
+      ]} />
+    </NavigationPage>
+  );
+}
+
+export function Lists() {
   return (
     <Page title="목록과 표시" intro="그룹 목록, 카드, 아바타, 배지, 진행 표시.">
       <div className="grid grid--2">
-        <Stack gap={6}>
-          <ListSection header="계정" footer="알림은 기기마다 따로 설정할 수 있어요.">
-            <List>
-              <ListItem leading={<User />} tileColor="var(--gl-iris-500)" title="프로필" subtitle="hello@example.com" chevron onClick={() => {}} />
-              <ListItem leading={<Bell />} tileColor="var(--gl-coral-500)" title="알림" trailing={<Switch checked={notif} onChange={setNotif} aria-label="알림" />} />
-              <ListItem leading={<Moon />} tileColor="var(--gl-orchid-600)" title="화면 모드" trailing="시스템" chevron onClick={() => {}} />
-              <ListItem leading={<Wifi />} tileColor="var(--gl-azure-500)" title="오프라인 지도" trailing={<Badge tone="accent">NEW</Badge>} chevron onClick={() => {}} />
-            </List>
-          </ListSection>
-          <ListSection>
-            <List><ListItem title="로그아웃" tone="danger" onClick={() => {}} /></List>
-          </ListSection>
+        <Stack gap={3}>
+          <div data-demo="nav-stack">
+            <NavigationStack labels={{ back: '뒤로' }} className="settings-stack"><SettingsRoot /></NavigationStack>
+          </div>
+          <Text variant="footnote" tone="secondary">줄을 누르면 다음 페이지가 오른쪽에서 들어옵니다(설정 › 프로필 › 계정 보안 › 비밀번호 변경, 깊이 제한 없음). 왼쪽 위 버튼은 바로 아래 페이지의 이름으로 돌아가고, 터치에서는 왼쪽 가장자리에서 밀어도 돌아갑니다. 아래 페이지는 스크롤 위치와 상태를 그대로 갖고 있어요.</Text>
         </Stack>
         <Stack gap={4}>
           <Card interactive>

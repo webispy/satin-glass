@@ -18,3 +18,6 @@ export * from './charts';
 export * from './tag';
 export * from './accordion';
 export * from './table';
+export * from './wheel';
+export * from './weekday';
+export * from './navstack';

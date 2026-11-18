@@ -2,6 +2,7 @@
 // with implicit pointer capture to the element under the finger — the case mouse-driven tests never reach).
 //   sheet: a short slow drag springs back, a long drag closes it, the header drags too
 //   switch, slider, segmented control, tab bar: the drag follows the finger and lands where it is released
+//   wheel: a flick runs on with momentum and lands on a row; navigation stack: swipe from the edge to go back
 // usage: node tests/e2e/touch.mjs   (Chromium only; PORT (default 4173); Q for settings)
 import * as pw from 'playwright';
 const PORT = process.env.PORT || '4173', Q = process.env.Q || '';
@@ -66,6 +67,36 @@ const tb = page.locator('.gl-tabbar__track').first(); await tb.scrollIntoViewIfN
 const a = await tb.locator('[aria-selected=true]').boundingBox(), last = tb.locator('.gl-tabbar__item').last(), z = await last.boundingBox();
 await swipe(a.x + a.width / 2, a.y + a.height / 2, z.x + z.width / 2, z.y + z.height / 2, 15, 25); await p.waitForTimeout(600);
 ok('tab bar: dragging the selection to the last tab selects it', (await last.getAttribute('aria-selected')) === 'true');
+
+/* wheel: a flick keeps going with the platform's momentum and lands on a row, in the band */
+await go('selection');
+{
+  const a = p.locator('[data-demo=alarm]'); await a.scrollIntoViewIfNeeded(); await p.waitForTimeout(300);
+  const col = a.locator('.gl-wheel').nth(2), sc = col.locator('.gl-wheel__scroller'), mb = await col.boundingBox();
+  const m0 = await sc.getAttribute('aria-valuetext');
+  /* CDP touch moves carry no fling: Chromium's synthetic scroll gesture does (preventFling: false) */
+  await cdp.send('Input.synthesizeScrollGesture', { x: Math.round(mb.x + mb.width / 2), y: Math.round(mb.y + mb.height / 2), yDistance: -120, speed: 2400, preventFling: false, gestureSourceType: 'touch' });
+  let last = '', same = 0; for (let i = 0; i < 60 && same < 5; i++) { await p.waitForTimeout(80); const v = await sc.evaluate((e) => `${e.scrollTop}`); same = v === last ? same + 1 : 0; last = v; }
+  await p.waitForTimeout(300);
+  const m1 = await sc.getAttribute('aria-valuetext'), at = await sc.evaluate((e) => { const h = e.firstElementChild.offsetHeight; return Math.abs(e.scrollTop / h - Math.round(e.scrollTop / h)) * h; });
+  const time = await a.locator('.alarm-time').textContent();
+  ok('wheel: a flick runs on past the finger (momentum) and lands on a row, which becomes the value', +m1 - +m0 >= 5 && at <= 1 && time.endsWith(`:${m1}`), `${m0} → ${m1}, ${at.toFixed(1)} px off, shows ${time}`);
+}
+
+/* navigation stack: a swipe from the leading edge goes back; a short one springs back */
+await go('lists');
+{
+  const n = p.locator('[data-demo=nav-stack]'), title = () => n.locator('.gl-nav__page:not([inert]) .gl-appbar__title').textContent();
+  await n.scrollIntoViewIfNeeded();
+  await n.getByRole('button', { name: /프로필/ }).tap(); await p.waitForTimeout(900);
+  const box = await n.boundingBox(), y = box.y + box.height / 2;
+  await swipe(box.x + 8, y, box.x + 70, y, 10, 40); await p.waitForTimeout(800);
+  ok('navigation stack: a short, slow edge swipe springs back (still on the page)', (await title()) === '프로필' && (await n.locator('.gl-nav__page').count()) === 2);
+  const follow = (async () => { await p.waitForTimeout(150); return n.locator('.gl-nav__page').nth(1).evaluate((e) => e.getBoundingClientRect().left - e.parentElement.getBoundingClientRect().left); })();
+  await swipe(box.x + 8, y, box.x + box.width * 0.7, y, 14, 25);
+  const mid = await follow; await p.waitForTimeout(900);
+  ok('navigation stack: the page follows the finger and a long edge swipe goes back', mid > 20 && (await title()) === '설정' && (await n.locator('.gl-nav__page').count()) === 1, `mid ${Math.round(mid)} px, now ${await title()}`);
+}
 
 ok('no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');
