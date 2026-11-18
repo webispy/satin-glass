@@ -215,8 +215,12 @@
 .gl-interval__dot { position: absolute; top: 2px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--_c); box-shadow: 0 0 0 2px var(--gl-surface); }
 
 /* ---------------------------------------------------------------- DataTable */
-.gl-table { position: relative; overflow: auto; min-width: 0; overscroll-behavior: contain; scroll-padding-top: calc(var(--_head-h, 0px) + var(--_pin-h, 0px)); scroll-padding-left: var(--_stick-w, 0px); --_head-bg: var(--gl-surface); --_row-bg: var(--gl-surface); }
-.gl-table:focus { outline: none; }   /* focusable only by script / click (tabIndex -1), never a visible stop */
+.gl-table { position: relative; overflow: auto; min-width: 0; overscroll-behavior-x: contain; scroll-padding-top: calc(var(--_head-h, 0px) + var(--_pin-h, 0px)); scroll-padding-left: var(--_stick-w, 0px); --_head-bg: var(--gl-surface); --_row-bg: var(--gl-surface); }
+.gl-table:focus { outline: none; }
+/* a table without a height scrolls sideways only: no vertical scroller (a horizontal scrollbar that takes room would
+   otherwise add a vertical one), and vertical swipes go to the page (iOS kept them inside, with its own indicator) */
+.gl-table:not(.gl-table--scroll-y) { overflow-y: hidden; }
+.gl-table--scroll-y { overscroll-behavior-y: contain; }   /* focusable only by script / click (tabIndex -1), never a visible stop */
 .gl-table table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; }
 .gl-table--compact table { font-size: 13px; }
 .gl-table th, .gl-table td { padding: 0 12px; text-align: start; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; outline: none;

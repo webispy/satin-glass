@@ -343,7 +343,7 @@ export function DataTable<T>({
   const total = (rowCount ?? N) + P + (groups ? 2 : 1);
   return (
     /* tabIndex -1: Firefox makes a scrolling box a tab stop of its own; here the grid's single tab stop scrolls it */
-    <div ref={box} tabIndex={-1} className={cx('gl-table', `gl-table--${density}`, loading && 'gl-table--loading', virtual && 'gl-table--virtual', className)} style={{ maxHeight, ...style, ['--_rh' as string]: `${rowH}px`, ['--_pin-h' as string]: `${P * rowH}px`, ['--_stick-w' as string]: `${stickyW}px` } as CSSProperties}
+    <div ref={box} tabIndex={-1} className={cx('gl-table', `gl-table--${density}`, loading && 'gl-table--loading', virtual && 'gl-table--virtual', maxHeight !== undefined && 'gl-table--scroll-y', className)} style={{ maxHeight, ...style, ['--_rh' as string]: `${rowH}px`, ['--_pin-h' as string]: `${P * rowH}px`, ['--_stick-w' as string]: `${stickyW}px` } as CSSProperties}
       onScroll={virtual ? measure : undefined} aria-busy={loading || undefined}>
       <table role="grid" aria-label={label} aria-rowcount={total} aria-colcount={C} aria-multiselectable={selectable || undefined} style={{ minWidth }} onKeyDown={onKey}
         onFocus={(e) => { const el = (e.target as HTMLElement).closest<HTMLElement>('[data-r]'); if (el) { const r = +el.dataset.r!, c = +el.dataset.c!; if (r !== cell.r || c !== cell.c) setCell({ r, c }); } }}>
