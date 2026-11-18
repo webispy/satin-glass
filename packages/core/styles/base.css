@@ -12,7 +12,9 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  font-feature-settings: "ss06", "tnum" 0;
+  /* (no "tnum" here: font-feature-settings beats font-variant-numeric, and a "tnum" 0 inherited everywhere turned
+     off the tabular figures that tables, stats, charts and pagination ask for) */
+  font-feature-settings: "ss06";
   --gl-ring: 0 0 0 2px var(--gl-bg), 0 0 0 4px var(--gl-focus-ring);
 }
 .gl-root *, .gl-root *::before, .gl-root *::after { box-sizing: border-box; }

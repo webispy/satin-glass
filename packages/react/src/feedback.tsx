@@ -10,8 +10,11 @@ import { IconButton } from './controls';
 import { AlertIcon, CloseIcon, InfoIcon, SuccessIcon } from './icons';
 
 /* ================================================================================================ Tooltip */
-/* one shared "warm" window: once a tooltip has shown, the next one within 400 ms shows at once (scanning a toolbar) */
+/* scanning a toolbar: while a tooltip is open, or within 400 ms of one closing, the next one shows at once — and
+   the one before closes at once, so two never overlap. (The open one counts too: it lingers 120 ms after the pointer
+   leaves, so moving straight onto a neighbour would otherwise find nothing "just closed" and wait the full delay.) */
 let warmUntil = 0;
+let shown: (() => void) | null = null;
 
 export type TooltipProps = {
   content: ReactNode;
@@ -32,7 +35,7 @@ export function Tooltip({ content, children, placement = 'top', delay = 500, dis
   const show = (now = false) => {
     if (disabled) return;
     clearTimeout(timer.current);
-    if (now || performance.now() < warmUntil) setOpen(true);
+    if (now || shown || performance.now() < warmUntil) setOpen(true);
     else timer.current = window.setTimeout(() => setOpen(true), delay);
   };
   const hide = (soon = true) => {
@@ -51,7 +54,10 @@ export function Tooltip({ content, children, placement = 'top', delay = 500, dis
     if (prefersReducedMotion(t)) fade(t, 0, 1, 100);
     else animate(t, [{ opacity: 0, transform: `translate(${off[0]}px, ${off[1]}px)` }, { opacity: 1, transform: 'none' }], 'snappy');
     const pop = pushLayer(() => setOpen(false), false);
-    return () => { pop(); warmUntil = performance.now() + 400; };
+    const close = () => { clearTimeout(timer.current); setOpen(false); };
+    if (shown) shown();
+    shown = close;
+    return () => { pop(); if (shown === close) shown = null; warmUntil = performance.now() + 400; };
   }, [open]);
   if (!isValidElement(children)) return children;
   const child = children as ReactElement<Record<string, unknown> & { ref?: Ref<HTMLElement> }>;

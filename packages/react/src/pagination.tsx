@@ -32,7 +32,8 @@ export function Pagination({ page, pageCount, onChange, siblings = 1, 'aria-labe
   const pageLabel = labels.page ?? ((n: number) => `Page ${n}`);
   const go = (n: number) => { if (n >= 1 && n <= count && n !== cur) onChange(n); };
   return (
-    <nav aria-label={label} className={cx('gl-pagination', className)} style={style}>
+    /* --_digits: every slot as wide as the widest page number, so nothing shifts while the window moves */
+    <nav aria-label={label} className={cx('gl-pagination', className)} data-wide={siblings > 1 || undefined} style={{ ['--_digits' as string]: String(count).length, ...style } as CSSProperties}>
       <button type="button" className="gl-pagination__step" aria-label={labels.previous ?? 'Previous page'} disabled={cur <= 1} onClick={() => go(cur - 1)}><ChevronLeftIcon /></button>
       <ol className="gl-pagination__pages">
         {pageWindow(cur, count, siblings).map((n, i) => (

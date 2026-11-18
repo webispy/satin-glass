@@ -87,8 +87,10 @@ await go('feedback');
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   ok('tooltip: Escape closes it', (await tip.count()) === 0);
   await bold.hover(); await p.waitForTimeout(700);
-  await t.getByRole('button', { name: '기울임' }).hover(); await p.waitForTimeout(120);
-  ok('tooltip: moving to a neighbour shows its tooltip at once (warm)', (await p.getByRole('tooltip').textContent().catch(() => '')).includes('기울임'));
+  await t.getByRole('button', { name: '기울임' }).hover();
+  /* well before the 500 ms delay (the previous tooltip may still be fading out meanwhile, so look for this one) */
+  const warm = await p.getByRole('tooltip').filter({ hasText: '기울임' }).waitFor({ timeout: 300 }).then(() => true, () => false);
+  ok('tooltip: moving to a neighbour shows its tooltip at once (warm)', warm);
   await p.mouse.move(5, 500); await p.waitForTimeout(400);
   await t.locator('.term').focus(); await p.keyboard.press(TAB); await p.keyboard.press('Shift+' + TAB); await p.waitForTimeout(150);
   ok('tooltip: keyboard focus shows it at once', (await p.getByRole('tooltip').textContent().catch(() => '')).includes('순매출') || (await p.getByRole('tooltip').count()) === 1);
@@ -134,6 +136,16 @@ await go('table');
   const soldBtn = grid.getByRole('button', { name: /판매량/ });
   await soldBtn.click(); await p.waitForTimeout(150);
   ok('table: a "more is better" column sorts high → low first (firstSort)', (await soldBtn.evaluate((e) => e.closest('th').getAttribute('aria-sort'))) === 'descending');
+  /* header text: every column on one line — inline-flex headers used to take their baseline from the sort icon */
+  const tops = await grid.evaluate((t) => [...new Set([...t.querySelectorAll('thead .gl-table__title')].map((e) => e.getBoundingClientRect().top.toFixed(1)))]);
+  ok('table: start- and end-aligned header titles sit on the same line', tops.length === 1, tops.join(' / '));
+  const edges = await grid.evaluate((t) => [...t.querySelectorAll('thead th[data-align=end]')].map((th) => { const c = th.dataset.c, cell = t.querySelector(`tbody tr td[data-c="${c}"]`), r = document.createRange(); r.selectNodeContents(cell); return Math.abs(th.querySelector('.gl-table__title').getBoundingClientRect().right - r.getBoundingClientRect().right); }));
+  ok('table: end-aligned header text ends where the numbers end', edges.every((d) => d < 1), edges.map((d) => d.toFixed(1)).join(','));
+  /* the sort direction is drawn by transform + opacity (the CSS d property, used before, does not exist in WebKit) */
+  const dir = await grid.evaluate((t) => { const th = t.querySelector('th[aria-sort=descending], th[aria-sort=ascending]'); const op = (s) => +getComputedStyle(th.querySelector(s)).opacity; return { sort: th.getAttribute('aria-sort'), up: op('.gl-table__sort-up'), down: op('.gl-table__sort-down') }; });
+  ok('table: the sort icon shows one chevron, pointing the sorted way', dir.sort === 'descending' ? dir.down === 1 && dir.up === 0 : dir.up === 1 && dir.down === 0, JSON.stringify(dir));
+  const digits = await grid.evaluate((t) => { const s = document.createElement('span'); s.style.position = 'absolute'; t.querySelector('tbody td').appendChild(s); const w = (x) => { s.textContent = x; return s.getBoundingClientRect().width; }; const r = [w('1111'), w('8888')]; s.remove(); return r; });
+  ok('table: numbers use tabular figures (every digit the same width)', Math.abs(digits[0] - digits[1]) < 0.1, digits.map((d) => d.toFixed(2)).join(' vs '));
   await demo('table-basic').getByRole('radio', { name: '촘촘하게' }).click(); await p.waitForTimeout(200);
   ok('table: density — compact rows are 36 px', Math.round((await bodyRows(grid).first().boundingBox()).height) === 36);
 
@@ -145,6 +157,10 @@ await go('table');
   const n = (xs) => xs.filter((v) => v !== '–').map((v) => parseInt(v, 10));
   ok('table: empty values go last in both directions', up[up.length - 1] === '–' && down[down.length - 1] === '–' && n(up).every((v, i, a) => i === 0 || a[i - 1] <= v) && n(down).every((v, i, a) => i === 0 || a[i - 1] >= v), `${up.slice(-2)} / ${down.slice(-2)}`);
   ok('table: a paused product is a muted row', (await cells.locator('tr[data-muted]').count()) === 1);
+  const bars = await cells.evaluate((t) => [...new Set([...t.querySelectorAll('.gl-barmeter')].map((b) => b.getBoundingClientRect().right.toFixed(1)))]);
+  ok('table: meter bars end at one edge (the value keeps a fixed slot, bold or not)', bars.length === 1, bars.join(' / '));
+  const mid = await cells.evaluate((t) => { const tr = t.querySelector('tbody tr'); const c = (el) => { const r = document.createRange(); r.selectNodeContents(el); const b = r.getBoundingClientRect(); return (b.top + b.bottom) / 2; }; return [c(tr.querySelector('.gl-cell-meter > :last-child')), c(tr.querySelector('th'))]; });
+  ok('table: a meter cell\'s number is on the row\'s text line', Math.abs(mid[0] - mid[1]) <= 1, mid.map((v) => v.toFixed(1)).join(' vs '));
 
   /* selection */
   const sg = p.getByRole('grid', { name: '고를 수 있는 상품 목록', exact: true });
@@ -157,8 +173,10 @@ await go('table');
   ok('table: the header box selects every row', (await sg.locator('tbody:last-of-type tr[aria-selected=true]').count()) === 8);
   await head.click(); await p.waitForTimeout(100);
   ok('table: …and clears them', (await sg.locator('tbody:last-of-type tr[aria-selected=true]').count()) === 0);
-  ok('table: the boxes look like the library checkbox (header: Checkbox; rows: the same box drawn on the input)', (await sg.locator('thead .gl-check__box').count()) === 1
-    && (await sg.locator('.gl-table__rowcheck').count()) === 8 && (await sg.locator('.gl-table__rowcheck').first().evaluate((e) => getComputedStyle(e).appearance)) === 'none');
+  ok('table: header and row boxes are the library checkbox (same box, drawn tick)', (await sg.locator('.gl-check__box').count()) === 9 && (await sg.locator('tbody .gl-check__tick').count()) === 8);
+  /* the header box sits on the header text's line, like the other header cells (it used to sit on the line below) */
+  const hb = await sg.evaluate((t) => { const box = t.querySelector('thead .gl-check__box').getBoundingClientRect(), title = t.querySelector('thead .gl-table__title').getBoundingClientRect(); return { box: (box.top + box.bottom) / 2, title: (title.top + title.bottom) / 2 }; });
+  ok('table: the select-all box is centred on the header text line', Math.abs(hb.box - hb.title) <= 1.5, JSON.stringify(hb));
   await sg.locator('tbody:last-of-type tr').nth(2).locator('th').click(); await p.keyboard.press(' '); await p.waitForTimeout(80);
   ok('table: Space on a row selects it', (await sg.locator('tbody:last-of-type tr[aria-selected=true]').count()) === 1);
   await p.keyboard.press(' ');
@@ -187,6 +205,11 @@ await go('table');
     return { headBottom: th.bottom - t.top, firstColLeft: td.left - t.left, headH: e.querySelector('thead').getBoundingClientRect().height };
   });
   ok('table: scrolled both ways, the header stays on top and the first column stays on the left', Math.abs(g.headBottom - g.headH) < 1 && Math.abs(g.firstColLeft) < 1, JSON.stringify(g));
+  /* summary rows stay under the header when the table scrolls, and keyboard focus is never left behind a frozen column */
+  const pinnedAt = await gbox.evaluate((e) => { const b = e.getBoundingClientRect(), h = e.querySelector('thead').getBoundingClientRect(), r = e.querySelector('.gl-table__pinned tr').getBoundingClientRect(); return { head: h.bottom - b.top, pinned: r.top - b.top }; });
+  ok('table: summary rows stick right under the header while the table scrolls', Math.abs(pinnedAt.head - pinnedAt.pinned) < 1, JSON.stringify(pinnedAt));
+  const titleTops = await gg.evaluate((t) => [...new Set([...t.querySelectorAll('thead .gl-table__title')].map((e) => e.getBoundingClientRect().top.toFixed(1)))]);
+  ok('table: with second header lines, every title still sits on one line', titleTops.length === 1, titleTops.join(' / '));
   ok('table: grouped columns share a group header (scope colgroup)', (await gg.locator('th[scope=colgroup]').count()) === 3);
   ok('table: summary rows are pinned above the data and blank where a value does not apply', (await gg.locator('.gl-table__pinned tr').count()) === 2 && (await gg.locator('.gl-table__pinned .gl-table__none').count()) === 0);
 
@@ -195,6 +218,9 @@ await go('table');
   await st.scrollIntoViewIfNeeded();
   await st.getByRole('button', { name: '다시 불러오기' }).click(); await p.waitForTimeout(100);
   ok('table: reloading dims the rows under a progress line', (await st.locator('.gl-table--loading').count()) === 1 && (await st.locator('.gl-table__busy').count()) === 1);
+  /* the line is really painted: on the header's bottom edge, above it (it used to be clipped / hidden behind the header) */
+  const busyLine = await st.evaluate((d) => { const s = d.querySelector('.gl-table__busy span').getBoundingClientRect(), h = d.querySelector('thead').getBoundingClientRect(); const hit = document.elementFromPoint(s.left + s.width / 2, s.top + s.height / 2); return { onEdge: Math.abs(s.bottom - h.bottom) < 1, h: s.height, top: !!hit?.closest('.gl-table__busy') }; });
+  ok('table: the progress line is visible on the header\'s bottom edge', busyLine.onEdge && busyLine.h >= 2 && busyLine.top, JSON.stringify(busyLine));
   await p.waitForTimeout(1700);
   await st.getByRole('switch', { name: '빈 결과 보기' }).click(); await p.waitForTimeout(200);
   ok('table: no rows shows the empty state', (await st.getByText('조건에 맞는 상품이 없어요').count()) === 1);
@@ -211,6 +237,12 @@ await go('table');
   ok('pagination + server: page 2 — the rows dim under a progress line, then the next 20', dim === 1 && line === 1 && (await sv.getByRole('button', { name: PAGER.name(2) }).getAttribute('aria-current')) === 'page' && (await sv.getByText('5,000건 중 21–40').count()) === 1);
   await srv.getByRole('button', { name: /금액/ }).click(); await p.waitForTimeout(700);
   const amounts = await srv.locator('tbody tr').evaluateAll((trs) => trs.map((tr) => +tr.querySelectorAll('td')[3].textContent.replace(/[₩,]/g, '')));
+  const arrowX = async () => (await sv.getByRole('button', { name: '이전 페이지' }).boundingBox()).x;
+  const xs = [await arrowX()];
+  for (const n of [3, 4, 5]) { await sv.getByRole('button', { name: PAGER.name(n), exact: true }).click(); await p.waitForTimeout(650); xs.push(await arrowX()); }
+  await sv.getByRole('button', { name: PAGER.name(250) }).click(); await p.waitForTimeout(650); xs.push(await arrowX());
+  ok('pagination: the arrows stay put while the window of pages moves (every slot the same width)', Math.max(...xs) - Math.min(...xs) < 0.5, xs.map((x) => x.toFixed(1)).join(' '));
+  await sv.getByRole('button', { name: PAGER.name(1), exact: true }).click(); await p.waitForTimeout(650);
   ok('server table: sorting goes to the "server" (back to page 1, highest first)', amounts.every((v, i) => i === 0 || amounts[i - 1] >= v) && (await sv.getByRole('button', { name: PAGER.name(1) }).getAttribute('aria-current')) === 'page', amounts.slice(0, 4).join(','));
 
   /* 5,000 rows */
@@ -227,6 +259,8 @@ await go('table');
   const lastCell = await active(), lastRow = await p.evaluate(() => document.activeElement.closest('tr')?.getAttribute('aria-rowindex'));
   ok('virtual table: Ctrl+End scrolls to the very last row and focuses its last cell', lastRow === '5001' && lastCell.c === 7, `row ${lastRow}, col ${lastCell.c}`);
   await p.keyboard.press('Control+Home'); await p.waitForTimeout(300);
+  const ring = await p.evaluate(() => { const a = document.activeElement; return { sticky: a.classList.contains('gl-table__sticky--last'), shadow: getComputedStyle(a).boxShadow }; });
+  ok('virtual table: a focused cell in the last frozen column shows its focus ring', ring.sticky ? ring.shadow !== 'none' && /inset/.test(ring.shadow) : true, JSON.stringify(ring));
   ok('virtual table: Ctrl+Home goes back to the first row', (await p.evaluate(() => document.activeElement.closest('tr')?.getAttribute('aria-rowindex'))) === '2');
   await p.keyboard.press('PageDown'); await p.waitForTimeout(200);
   const pd = +(await p.evaluate(() => document.activeElement.closest('tr')?.getAttribute('aria-rowindex')));
