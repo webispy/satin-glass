@@ -60,7 +60,8 @@
   display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px;
   border-radius: calc(var(--gl-radius-lg) - 6px); background: none; color: var(--gl-label); font-size: 15px; line-height: 20px; cursor: pointer;
 }
-.gl-menu__item:hover, .gl-menu__item[data-active], .gl-menu__item:focus-visible { background: var(--gl-fill-strong); outline: none; }
+.gl-menu__item[data-active], .gl-menu__item:focus-visible { background: var(--gl-fill-strong); outline: none; }
+@media (hover: hover) { .gl-menu__item:hover { background: var(--gl-fill-strong); outline: none; } }
 .gl-menu__item[aria-disabled="true"] { color: var(--gl-label-disabled); cursor: default; background: none; }
 .gl-menu__item[data-tone="danger"] { color: var(--gl-danger-text); }
 .gl-menu__item svg { width: 18px; height: 18px; flex: none; }
@@ -86,7 +87,8 @@
   font-size: 17px; font-weight: 560; cursor: pointer; position: relative;
 }
 .gl-actionsheet__action + .gl-actionsheet__action::before, .gl-actionsheet__head + .gl-actionsheet__action::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; transform: scaleY(0.5); background: var(--gl-separator-strong); }
-.gl-actionsheet__action:hover, .gl-actionsheet__action:focus-visible { background: var(--gl-fill); outline: none; }
+.gl-actionsheet__action:focus-visible { background: var(--gl-fill); outline: none; }
+@media (hover: hover) { .gl-actionsheet__action:hover { background: var(--gl-fill); outline: none; } }
 .gl-actionsheet__action:active { background: var(--gl-fill-strong); }
 .gl-actionsheet__action[data-tone="danger"] { color: var(--gl-danger-text); }
 .gl-actionsheet__action--cancel { font-weight: 700; border-radius: var(--gl-radius-xl); }

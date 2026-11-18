@@ -371,6 +371,34 @@ await go('dashboard');
   ok('axe: every dashboard tab — no serious or critical violations', found.length === 0, found.join(' | '));
 }
 
+/* ================================================================ phone (touch, no hover) */
+{
+  const mctx = await b.newContext(engine === 'firefox' ? { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: false } : { ...pw.devices['iPhone 13'] });
+  const m = await mctx.newPage();
+  m.on('pageerror', (e) => errs.push(e.message));
+  await m.goto(`http://localhost:${PORT}/${Q}#/charts`); await m.waitForTimeout(1200);
+  /* hover styles only where there is hover: every :hover rule sits under @media (hover: hover), so a tapped control
+     keeps no hover look once the finger lifts */
+  const loose = await m.evaluate(() => { const bad = []; const walk = (rules, inHover) => { for (const r of rules) { if (r instanceof CSSMediaRule) walk(r.cssRules, inHover || /hover:\s*hover/.test(r.conditionText ?? r.media.mediaText)); else if (r.selectorText?.includes(':hover') && !inHover) bad.push(r.selectorText); else if (r.cssRules) walk(r.cssRules, inHover); } }; for (const sh of document.styleSheets) { try { walk(sh.cssRules, false); } catch {} } return bad; });
+  ok('touch: no :hover rule outside @media (hover: hover)', loose.length === 0, loose.slice(0, 4).join(' | '));
+  const d = m.locator('[data-demo=donut]'); await d.scrollIntoViewIfNeeded(); await m.waitForTimeout(900);
+  const slice = (i) => d.locator('.gl-donut__slice').nth(i), center = () => d.locator('.gl-donut__label').textContent();
+  const tapSlice = async (i) => { const pt = await slice(i).evaluate((e) => { const r = e.getBoundingClientRect(); let best = null; for (let y = r.top + 2; y < r.bottom - 2; y += 3) for (let x = r.left + 2; x < r.right - 2; x += 3) if (document.elementFromPoint(x, y) === e) { const dd = Math.hypot(x - r.left - r.width / 2, y - r.top - r.height / 2); if (!best || dd < best.d) best = { x, y, d: dd }; } return best; }); await m.touchscreen.tap(pt.x, pt.y); await m.waitForTimeout(350); };
+  const rest = await center();
+  await tapSlice(1); const c1 = await center();
+  await tapSlice(3); const c2 = await center();
+  await tapSlice(3); const c3 = await center();
+  ok('donut (touch): a tap selects a slice and it stays after the finger lifts; another tap moves it; the same tap clears it', c1 === '생활' && c2 === '문구' && c3 === rest, `${c1} → ${c2} → ${c3}`);
+  await tapSlice(0); await m.touchscreen.tap(20, 200); await m.waitForTimeout(350);
+  ok('donut (touch): tapping outside the chart clears the selection', (await center()) === rest);
+  await m.goto(`http://localhost:${PORT}/${Q}#/table`); await m.waitForTimeout(1200);
+  const row = m.locator('[data-demo=table-basic] tbody tr').nth(1); await row.scrollIntoViewIfNeeded(); await row.locator('th').tap(); await m.waitForTimeout(300);
+  const rowBg = await row.locator('td').first().evaluate((e) => getComputedStyle(e).getPropertyValue('--_row-bg').trim());
+  const bodyBg = await row.locator('td').first().evaluate((e) => getComputedStyle(e.closest('.gl-table')).getPropertyValue('--_row-bg').trim());
+  ok('table (touch): a tapped row keeps no hover tint', rowBg === bodyBg, `${rowBg} vs ${bodyBg}`);
+  await mctx.close();
+}
+
 ok('no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');
 await b.close();

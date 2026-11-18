@@ -17,7 +17,7 @@
   border-radius: var(--gl-radius-sm) var(--gl-radius-sm) 0 0; transition: color var(--gl-duration-fast) ease, background-color var(--gl-duration-fast) ease;
 }
 .gl-tabs__tab svg { width: 18px; height: 18px; }
-.gl-tabs__tab:hover:not(:disabled) { color: var(--gl-label); }
+@media (hover: hover) { .gl-tabs__tab:hover:not(:disabled) { color: var(--gl-label); } }
 .gl-tabs__tab[aria-selected="true"] { color: var(--gl-label); font-weight: 650; }
 .gl-tabs__tab:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
 .gl-tabs__tab:disabled { opacity: 0.45; cursor: default; }
@@ -83,7 +83,8 @@
   display: inline-grid; place-items: center; transition: background-color var(--gl-duration-fast) ease, color var(--gl-duration-fast) ease;
 }
 .gl-pagination__step svg { width: 18px; height: 18px; }
-.gl-pagination__page:hover, .gl-pagination__step:hover:not(:disabled) { background: var(--gl-fill); }
+@media (hover: hover) { .gl-pagination__page:hover, .gl-pagination__step:hover:not(:disabled) { background: var(--gl-fill); } }
+.gl-pagination__page:active, .gl-pagination__step:active:not(:disabled) { background: var(--gl-fill-strong); }   /* touch: the press is the feedback */
 .gl-pagination__page[aria-current="page"] { background: var(--gl-accent); color: var(--gl-on-accent); font-weight: 650; }
 .gl-pagination__page:focus-visible, .gl-pagination__step:focus-visible { outline: none; box-shadow: var(--gl-ring); }
 .gl-pagination__step:disabled { color: var(--gl-label-disabled); cursor: default; }
@@ -152,7 +153,7 @@
 .gl-select--filter .gl-select__value { flex: none; font-weight: 600; }
 .gl-select--filter .gl-select__chevrons { width: 16px; height: 16px; }
 .gl-select__prefix { color: var(--gl-label-secondary); white-space: nowrap; }
-.gl-select--filter:hover:not(:disabled) { background: var(--gl-fill); }
+@media (hover: hover) { .gl-select--filter:hover:not(:disabled) { background: var(--gl-fill); } }
 
 /* ---------------------------------------------------------------- Charts */
 .gl-chart { margin: 0; min-width: 0; color: var(--gl-label); }
@@ -186,7 +187,9 @@
 .gl-donut { display: flex; flex-wrap: wrap; align-items: center; gap: 20px 28px; }
 .gl-donut__ring { position: relative; flex: none; outline: none; border-radius: 50%; }
 .gl-donut__ring:focus-visible { box-shadow: 0 0 0 2px var(--gl-focus-ring); }
-.gl-donut__slice { transition: opacity var(--gl-duration-fast) ease; }
+.gl-donut__slice { transition: opacity var(--gl-duration-fast) ease, transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
+.gl-donut__legend li { cursor: default; -webkit-tap-highlight-color: transparent; }
+.gl-donut__ring { -webkit-tap-highlight-color: transparent; }
 .gl-donut__center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
 .gl-donut__value { font-size: 24px; line-height: 30px; font-weight: 720; font-variant-numeric: tabular-nums; }
 .gl-donut__label { font-size: 12px; line-height: 16px; color: var(--gl-label-secondary); max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -245,11 +248,12 @@
 .gl-table__sortbtn { appearance: none; border: 0; margin: 0; padding: 2px 4px; margin: -2px -4px; max-width: calc(100% + 8px); background: none; font: inherit; color: inherit; text-align: inherit; cursor: pointer; display: inline-flex; align-items: flex-start; gap: 4px; border-radius: 6px; }
 [data-align="end"] .gl-table__sortbtn { flex-direction: row-reverse; }
 .gl-table thead .gl-table__sortbtn, .gl-table thead .gl-table__headtxt, .gl-table thead .gl-check { vertical-align: bottom; }
-.gl-table__sortbtn:hover .gl-table__title { color: var(--gl-accent-text); }
+@media (hover: hover) { .gl-table__sortbtn:hover .gl-table__title { color: var(--gl-accent-text); } }
 .gl-table__sortbtn:focus-visible, .gl-table__headtxt:focus-visible { outline: none; box-shadow: var(--gl-ring); }
 .gl-table__sort { flex: none; width: 12px; height: 12px; margin-top: 4px; fill: none; stroke: var(--gl-label-tertiary); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0; overflow: visible; transition: opacity var(--gl-duration-fast) ease; }
 .gl-table__sort path { transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy), opacity var(--gl-duration-fast) ease; }
-.gl-table__sortbtn:hover .gl-table__sort, .gl-table__sortbtn:focus-visible .gl-table__sort, .gl-table__sort[data-dir] { opacity: 1; }
+.gl-table__sortbtn:focus-visible .gl-table__sort, .gl-table__sort[data-dir] { opacity: 1; }
+@media (hover: hover) { .gl-table__sortbtn:hover .gl-table__sort { opacity: 1; } }
 .gl-table__sort[data-dir] { stroke: var(--gl-accent-text); }
 .gl-table__sort[data-dir="asc"] .gl-table__sort-up { transform: translateY(1.5px); }
 .gl-table__sort[data-dir="asc"] .gl-table__sort-down { opacity: 0; transform: translateY(-1.5px); }
@@ -258,7 +262,7 @@
 .gl-table tbody tr { height: var(--_rh); }
 .gl-table tbody th, .gl-table tbody td { --_bg: var(--_row-bg); --_hline: var(--gl-separator); font-weight: inherit; color: var(--gl-label); }
 .gl-table tbody th { font-weight: 500; }
-.gl-table tbody tr:hover > * { --_row-bg: color-mix(in srgb, var(--gl-surface), var(--gl-label) 3.5%); }
+@media (hover: hover) { .gl-table tbody tr:hover > * { --_row-bg: color-mix(in srgb, var(--gl-surface), var(--gl-label) 3.5%); } }
 .gl-table tbody tr[aria-selected="true"] > * { --_row-bg: color-mix(in srgb, var(--gl-surface), var(--gl-accent) 9%); }
 .gl-table tbody tr[data-muted] > * { color: var(--gl-label-tertiary); }
 .gl-table__row--action { cursor: pointer; }

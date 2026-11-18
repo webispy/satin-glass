@@ -4,7 +4,7 @@
    series, a crosshair tooltip that follows the pointer or the arrow keys (the plot is focusable and announces the
    point), and the full data as a hidden table for screen readers. Entrances draw in (transform / stroke offset);
    new data tweens from the old; with reduced motion everything simply appears. */
-import { startTransition, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { startTransition, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { prefersReducedMotion } from '@glass-layer/core';
 import { cx, useIsoLayoutEffect, useStableId, type Tone } from './utils';
 
@@ -377,6 +377,18 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
   const svg = useRef<SVGSVGElement>(null);
   const [active, setActive] = useState<Active>(null);
   const [kbd, setKbd] = useState(false);
+  /* a mouse shows a slice while it is over it; a touch has no hover — a tap selects a slice and it stays until the
+     same slice, or anything outside the chart, is tapped (otherwise the lift-off "leave" undid every tap at once) */
+  const touch = useRef(false);
+  const fig = useRef<HTMLElement>(null);
+  const hover = (i: number | null) => (e: ReactPointerEvent) => { touch.current = e.pointerType === 'touch'; if (!touch.current) { setKbd(false); setActive(i); } };
+  const tap = (i: number) => () => { if (touch.current) { setKbd(false); setActive((a) => (a === i ? null : i)); } };
+  useEffect(() => {
+    if (active === null || !touch.current) return;
+    const away = (e: PointerEvent) => { if (!fig.current?.contains(e.target as Node)) setActive(null); };
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [active]);
   /* tween the cumulative angles */
   const ends: number[] = [];
   data.reduce((a, d) => { const e = a + (Math.max(0, d.value) / total) * Math.PI * 2; ends.push(e); return e; }, 0);
@@ -387,25 +399,26 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
     el.animate([{ transform: 'rotate(-60deg) scale(0.86)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 640, easing: 'cubic-bezier(0.25, 1.15, 0.4, 1)', fill: 'backwards' });
   }, []);
   const r = size / 2 - 6, ri = r - thickness, c = size / 2, gap = data.length > 1 ? 0.012 : 0;
-  const arc = (a0: number, a1: number, lift: number) => {
+  const arc = (a0: number, a1: number) => {
     if (a1 - a0 <= gap * 2) return '';
-    const s = a0 + gap, e = a1 - gap, mid = (s + e) / 2;
-    const ox = Math.sin(mid) * lift, oy = -Math.cos(mid) * lift;
-    const p = (rad: number, a: number) => `${(c + ox + Math.sin(a) * rad).toFixed(2)},${(c + oy - Math.cos(a) * rad).toFixed(2)}`;
+    const s = a0 + gap, e = a1 - gap;
+    const p = (rad: number, a: number) => `${(c + Math.sin(a) * rad).toFixed(2)},${(c - Math.cos(a) * rad).toFixed(2)}`;
     const large = e - s > Math.PI ? 1 : 0;
     if (e - s >= Math.PI * 2 - 0.001) return `M${p(r, 0)}A${r},${r} 0 1 1 ${p(r, Math.PI)}A${r},${r} 0 1 1 ${p(r, 0)}M${p(ri, 0)}A${ri},${ri} 0 1 0 ${p(ri, Math.PI)}A${ri},${ri} 0 1 0 ${p(ri, 0)}Z`;
     return `M${p(r, s)}A${r},${r} 0 ${large} 1 ${p(r, e)}L${p(ri, e)}A${ri},${ri} 0 ${large} 0 ${p(ri, s)}Z`;
   };
   const say = (i: number) => `${data[i].label}: ${fmt(data[i].value)} (${pct.format(data[i].value / total)})`;
   return (
-    <figure className={cx('gl-chart', 'gl-donut', className)} style={style} aria-label={label}>
+    <figure ref={fig} className={cx('gl-chart', 'gl-donut', className)} style={style} aria-label={label}>
       <div className="gl-donut__ring" tabIndex={0} role="img" aria-label={label} style={{ width: size, height: size }}
         onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }} onBlur={() => setActive(null)}>
         <svg ref={svg} width={size} height={size} aria-hidden="true">
           <g data-rings style={{ transformOrigin: 'center' }}>
             {data.map((d, i) => (
-              <path key={d.label} className="gl-donut__slice" d={arc(i ? ang[i - 1] : 0, ang[i], active === i ? 4 : 0)} style={{ fill: d.color ?? COLOR(i), opacity: active !== null && active !== i ? 0.45 : 1 }}
-                onPointerEnter={() => { setKbd(false); setActive(i); }} onPointerLeave={() => setActive(null)} />
+              /* the active slice lifts outward along its middle — a transform, so it moves on a spring instead of jumping */
+              <path key={d.label} className="gl-donut__slice" d={arc(i ? ang[i - 1] : 0, ang[i])} data-active={active === i || undefined}
+                style={{ fill: d.color ?? COLOR(i), opacity: active !== null && active !== i ? 0.45 : 1, transform: active === i ? (() => { const m = ((i ? ang[i - 1] : 0) + ang[i]) / 2; return `translate(${(Math.sin(m) * 4).toFixed(2)}px, ${(-Math.cos(m) * 4).toFixed(2)}px)`; })() : undefined }}
+                onPointerEnter={hover(i)} onPointerLeave={hover(null)} onPointerDown={(e) => { touch.current = e.pointerType === 'touch'; }} onClick={tap(i)} />
             ))}
           </g>
         </svg>
@@ -416,7 +429,7 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
       </div>
       <ul className="gl-donut__legend">
         {data.map((d, i) => (
-          <li key={d.label} data-active={active === i || undefined} onPointerEnter={() => setActive(i)} onPointerLeave={() => setActive(null)}>
+          <li key={d.label} data-active={active === i || undefined} onPointerEnter={hover(i)} onPointerLeave={hover(null)} onPointerDown={(e) => { touch.current = e.pointerType === 'touch'; }} onClick={tap(i)}>
             <span className="gl-chart__swatch" style={{ background: d.color ?? COLOR(i) }} aria-hidden="true" />
             <span className="gl-donut__name">{d.label}</span><span className="gl-donut__num">{fmt(d.value)}</span><span className="gl-donut__pct">{pct.format(d.value / total)}</span>
           </li>
