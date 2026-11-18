@@ -61,8 +61,28 @@ await go('navigation');
   ok('pagination: in a narrow box it reads "40 / 40" instead of buttons', (await narrow.locator('.gl-pagination__compact').isVisible()) && !(await narrow.locator('.gl-pagination__pages').isVisible()));
 }
 
+/* badges sit true: a tab's count is centred in its pill (the tab's 24 px line used to sink the digits); a tab-bar
+   badge keeps the top of its ring (the scrolling track used to clip it) */
+{
+  const tb = p.locator('.docs__page .gl-tabs__badge').first(); await tb.scrollIntoViewIfNeeded();
+  const off = await tb.evaluate((e) => { const r = e.getBoundingClientRect(), g = document.createRange(); g.selectNodeContents(e); const q = g.getBoundingClientRect(); return (q.top + q.bottom) / 2 - (r.top + r.bottom) / 2; });
+  ok('tabs: the count sits in the middle of its pill', Math.abs(off) <= 0.75, `text centre ${off.toFixed(2)} px from the pill's`);
+  const bar = p.locator('.docs__page .gl-tabbar').first(); await bar.scrollIntoViewIfNeeded();
+  const g = await bar.evaluate((t) => { const tr = t.querySelector('.gl-tabbar__track').getBoundingClientRect(), bd = t.querySelector('.gl-tabbar__icon > .gl-badge:not(.gl-badge--dot)').getBoundingClientRect(), ind = t.querySelector('.gl-tabbar__indicator').getBoundingClientRect(), it = t.querySelector('.gl-tabbar__item').getBoundingClientRect(); return { ring: bd.top - 2 - tr.top, ind: [ind.top - it.top, ind.bottom - it.bottom] }; });
+  ok('tab bar: a badge keeps its whole ring (inside the scrolling track) and the drop still fits the tab', g.ring >= 0 && Math.abs(g.ind[0]) < 0.5 && Math.abs(g.ind[1]) < 0.5, JSON.stringify(g));
+}
+
 /* ================================================================ feedback: banner, tooltip */
 await go('feedback');
+{
+  /* a one-line banner with a button: icon, title and button share one centre line (the title used to sit high);
+     with a body, the button stays level with the title */
+  const mids = (ban) => ban.evaluate((e) => { const c = (s) => { const r = e.querySelector(s).getBoundingClientRect(); return (r.top + r.bottom) / 2; }; const r = e.getBoundingClientRect(); return { banner: (r.top + r.bottom) / 2, icon: c('.gl-banner__icon'), title: c('.gl-banner__title'), button: c('.gl-banner__actions .gl-button') }; });
+  const one = await mids(p.locator('.docs__page .gl-banner--warning')), two = await mids(p.locator('.docs__page .gl-banner--danger'));
+  const even = (o, keys) => Math.max(...keys.map((k) => o[k])) - Math.min(...keys.map((k) => o[k])) <= 1;
+  ok('banner: one line — icon, title and button centre on one line, in the middle of the banner', even(one, ['banner', 'icon', 'title', 'button']), JSON.stringify(one));
+  ok('banner: with a body — the button stays level with the title', even(two, ['icon', 'title', 'button']), JSON.stringify(two));
+}
 {
   const d = demo('banners'), next = d.locator('.gl-banner--success');
   await d.scrollIntoViewIfNeeded();
@@ -421,6 +441,11 @@ await go('dashboard');
   const rowBg = await row.locator('td').first().evaluate((e) => getComputedStyle(e).getPropertyValue('--_row-bg').trim());
   const bodyBg = await row.locator('td').first().evaluate((e) => getComputedStyle(e.closest('.gl-table')).getPropertyValue('--_row-bg').trim());
   ok('table (touch): a tapped row keeps no hover tint', rowBg === bodyBg, `${rowBg} vs ${bodyBg}`);
+  /* a phone-width banner puts its button below the text (the narrow rule used to have no container to measure, so the
+     button stayed beside the text and squeezed it into a column) */
+  await m.goto(`http://localhost:${PORT}/${Q}#/feedback`); await m.waitForTimeout(1200);
+  const nb = await m.locator('.docs__page .gl-banner--danger').evaluate((e) => { const t = e.querySelector('.gl-banner__text').getBoundingClientRect(), a = e.querySelector('.gl-banner__actions').getBoundingClientRect(); return { below: a.top - t.bottom, left: a.left - t.left, textW: t.width, mainW: e.querySelector('.gl-banner__main').getBoundingClientRect().width }; });
+  ok('banner (phone): the button goes below the text, which keeps the full width', nb.below >= 6 && Math.abs(nb.left) < 1 && nb.textW >= nb.mainW - 1, JSON.stringify(nb));
   await mctx.close();
 }
 

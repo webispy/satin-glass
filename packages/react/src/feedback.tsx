@@ -121,11 +121,14 @@ export function Banner({ tone = 'info', title, children, icon, actions, onDismis
   return (
     <div ref={el} role={role} className={cx('gl-banner', `gl-banner--${tone}`, className)} style={style}>
       {icon !== false && <span className="gl-banner__icon" aria-hidden="true">{icon ?? TONE_ICON[tone]}</span>}
-      <div className="gl-banner__text">
-        {title && <div className="gl-banner__title">{title}</div>}
-        {children && <div className="gl-banner__body">{children}</div>}
+      {/* text and actions share a box whose width decides when the actions drop below the text */}
+      <div className="gl-banner__main">
+        <div className="gl-banner__text">
+          {title && <div className="gl-banner__title">{title}</div>}
+          {children && <div className="gl-banner__body">{children}</div>}
+        </div>
+        {actions && <div className="gl-banner__actions">{actions}</div>}
       </div>
-      {actions && <div className="gl-banner__actions">{actions}</div>}
       {onDismiss && <IconButton className="gl-banner__close" size="sm" icon={<CloseIcon />} label={dismissLabel} onClick={dismiss} />}
     </div>
   );
