@@ -1,11 +1,11 @@
-import { StrictMode, useEffect, useMemo, useState } from 'react';
+import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@glass-layer/react/styles.css';
 import './docs.css';
 import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, IconButton, Popover, Toaster, type ThemeMode } from '@glass-layer/react';
 import { DisplaySettingsProvider, DisplaySettingsBar, DisplaySettingsList } from './settings';
 import type { MotionName } from '@glass-layer/tokens';
-import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical, ListChecks, GalleryVerticalEnd, LayoutDashboard, Table2, ChartLine, MessageSquareWarning } from 'lucide-react';
+import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical, ListChecks, GalleryVerticalEnd, LayoutDashboard, Table2, ChartLine, MessageSquareWarning, X } from 'lucide-react';
 import { Overview, Colors, Typography, Motion, Material } from './pages/foundations';
 import { Buttons, Inputs, Navigation, Lists, Overlays } from './pages/components';
 import { Showcase } from './pages/showcase';
@@ -45,6 +45,13 @@ function useHash() {
   return h;
 }
 
+/* narrow screens: the navigation is a drawer over the page */
+function useNarrow(query = '(max-width: 900px)') {
+  const [m, setM] = useState(() => typeof matchMedia !== 'undefined' && matchMedia(query).matches);
+  useEffect(() => { const q = matchMedia(query), on = () => setM(q.matches); q.addEventListener('change', on); return () => q.removeEventListener('change', on); }, [query]);
+  return m;
+}
+
 function App() {
   const page = useHash();
   /* initial display settings can come from the URL (?mode=dark&hc=1&rt=1&rm=1&motion=calm) — used by the test matrix */
@@ -62,29 +69,47 @@ function App() {
   const current = PAGES.find((p) => p.id === page) ?? PAGES[0];
   const Current = current.el;
   useEffect(() => { scrollTo(0, 0); setNavOpen(false); }, [page]);
+  /* the drawer closes from a tap outside it (scrim), its close button, Escape, or choosing a page — including the
+     page already shown; focus goes into it on open and back to the menu button on close */
+  const narrow = useNarrow();
+  const menuBtn = useRef<HTMLButtonElement>(null), closeBtn = useRef<HTMLButtonElement>(null), nav = useRef<HTMLDivElement>(null);
+  const closeNav = () => {
+    setNavOpen(false);
+    if (nav.current?.contains(document.activeElement)) menuBtn.current?.focus();
+  };
+  useEffect(() => {
+    if (!navOpen || !narrow) return;
+    closeBtn.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); closeNav(); } };
+    addEventListener('keydown', onKey);
+    return () => removeEventListener('keydown', onKey);
+  }, [navOpen, narrow]);
   let group = '';
   return (
     <DisplaySettingsProvider value={display}>
     <ThemeProvider theme={theme} style={{ minHeight: '100vh' }}>
       <Toaster>
         <div className="docs" data-nav-open={navOpen}>
-          <div className="docs__nav">
+          {/* a closed drawer is inert: its links are off screen and must not take Tab or a screen reader's cursor */}
+          <div ref={nav} id="docs-nav" className="docs__nav" inert={(narrow && !navOpen) || undefined}>
             <Sidebar aria-label="문서">
-              <div className="docs__brand"><span className="docs__logo" aria-hidden="true" /><div><b>Glass Layer</b><small>React UI · 0.3</small></div></div>
+              <div className="docs__brand"><span className="docs__logo" aria-hidden="true" /><div><b>Glass Layer</b><small>React UI · 0.3</small></div>
+                {narrow && <IconButton ref={closeBtn} className="docs__nav-close" icon={<X />} label="메뉴 닫기" onClick={closeNav} />}</div>
               {PAGES.map((p) => {
                 const head = p.group !== group ? (group = p.group) : null;
                 return (
                   <div key={p.id} style={{ display: 'contents' }}>
                     {head && <SidebarSection>{head}</SidebarSection>}
-                    <SidebarItem href={`#/${p.id}`} icon={<p.icon />} selected={p.id === current.id}>{p.label}</SidebarItem>
+                    <SidebarItem href={`#/${p.id}`} icon={<p.icon />} selected={p.id === current.id} onClick={closeNav}>{p.label}</SidebarItem>
                   </div>
                 );
               })}
             </Sidebar>
           </div>
+          <div className="docs__scrim" aria-hidden="true" onClick={closeNav} />
           <main className="docs__main">
             <div className="docs__top">
-              <IconButton className="docs__menu-btn" variant="glass" icon={<MenuIcon />} label="메뉴" onClick={() => setNavOpen((v) => !v)} />
+              <IconButton ref={menuBtn} className="docs__menu-btn" variant="glass" icon={<MenuIcon />} label="메뉴" aria-expanded={navOpen} aria-controls="docs-nav" onClick={() => setNavOpen((v) => !v)} />
               {/* wide: every display setting in one bar; narrow: one button opens them all (nothing is hidden) */}
               <Glass className="docs__settings docs__settings--bar" style={{ borderRadius: 'var(--gl-radius-lg)' }}>
                 <DisplaySettingsBar />

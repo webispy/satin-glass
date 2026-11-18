@@ -24,6 +24,8 @@ body { background: var(--gl-bg); }
 .docs__page > header { margin: 20px 0 28px; }
 .docs__page > header p { max-width: 640px; }
 .docs__menu-btn { display: none; }
+.docs__scrim { display: none; }
+@media (max-width: 900px) { .docs__scrim { display: block; } }
 
 .section { margin: 0 0 40px; }
 .section > h2 { margin: 0 0 4px; }
@@ -77,6 +79,10 @@ body { background: var(--gl-bg); }
   .docs { grid-template-columns: 1fr; }
   .docs__nav { position: fixed; z-index: 50; left: 0; top: 0; bottom: 0; width: 290px; transform: translateX(-110%); transition: transform var(--gl-spring-smooth-duration) var(--gl-spring-smooth); }
   .docs[data-nav-open="true"] .docs__nav { transform: none; }
+  /* the page behind an open drawer dims; a tap on it closes the drawer */
+  .docs__scrim { position: fixed; inset: 0; z-index: 49; background: rgb(0 0 0 / 0.32); opacity: 0; pointer-events: none; transition: opacity var(--gl-duration-base) ease; }
+  .docs[data-nav-open="true"] .docs__scrim { opacity: 1; pointer-events: auto; }
+  .docs__nav-close { margin-left: auto; }
   .docs__menu-btn { display: inline-flex; margin-right: auto; }
   .docs__top { justify-content: space-between; padding: 12px 12px 0; }
   .docs__page { padding: 8px 16px 96px; }
