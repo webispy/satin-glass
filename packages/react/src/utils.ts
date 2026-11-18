@@ -2,6 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Ref, ty
 
 export const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
+/** Meaning colours shared by tags, banners, meters, sparklines: one vocabulary across components. */
+export type Tone = 'neutral' | 'accent' | 'info' | 'success' | 'warning' | 'danger';
+
 export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(' ');
 }

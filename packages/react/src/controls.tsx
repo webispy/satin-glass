@@ -732,6 +732,24 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card({ varian
 });
 export const CardMedia = (p: React.ImgHTMLAttributes<HTMLImageElement>) => <img className="gl-card__media" alt="" {...p} />;
 export const CardBody = ({ className, ...p }: HTMLAttributes<HTMLDivElement>) => <div className={cx('gl-card__body', className)} {...p} />;
+export type CardHeaderProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'> & {
+  title: ReactNode;
+  description?: ReactNode;
+  /** trailing controls: a segmented control, a filter, a "more" button */
+  actions?: ReactNode;
+  /** heading level of the title (default 3) */
+  level?: 2 | 3 | 4 | 5 | 6;
+};
+/** A card's title row: what the card shows, and controls that change it. Put a CardBody below. */
+export function CardHeader({ title, description, actions, level = 3, className, ...rest }: CardHeaderProps) {
+  const H = `h${level}` as 'h3';
+  return (
+    <div className={cx('gl-card__header', className)} {...rest}>
+      <div className="gl-card__heading"><H className="gl-card__title">{title}</H>{description && <p className="gl-card__desc">{description}</p>}</div>
+      {actions && <div className="gl-card__actions">{actions}</div>}
+    </div>
+  );
+}
 
 /* ================================================================================================ Progress */
 export function Progress({ value, max = 100, size = 'md', label = 'Progress', motion, className }: { value?: number; max?: number; size?: 'sm' | 'md'; label?: string; motion?: MotionName; className?: string }) {

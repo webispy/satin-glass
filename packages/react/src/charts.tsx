@@ -6,7 +6,7 @@
    new data tweens from the old; with reduced motion everything simply appears. */
 import { startTransition, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { prefersReducedMotion } from '@glass-layer/core';
-import { cx, useIsoLayoutEffect, useStableId } from './utils';
+import { cx, useIsoLayoutEffect, useStableId, type Tone } from './utils';
 
 /* ------------------------------------------------------------------------------------------------ shared */
 export type ChartSeries = { key: string; label: string; color?: string };
@@ -430,7 +430,7 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
 /* ------------------------------------------------------------------------------------------------ Sparkline */
 export type SparklineProps = {
   values: number[];
-  tone?: 'accent' | 'success' | 'danger' | 'neutral';
+  tone?: Tone;
   area?: boolean;
   height?: number;
   /** decorative by default (the number next to it carries the meaning); give a label to expose it */
@@ -450,7 +450,7 @@ export function Sparkline({ values, tone = 'accent', area = true, height = 32, '
   const pts = ys.map((y, i) => [X(i), y] as [number, number]);
   const line = pathOf(pts, true);
   useDrawIn(g, [measured !== null]);
-  const color = tone === 'neutral' ? 'var(--gl-label-tertiary)' : tone === 'accent' ? 'var(--gl-accent)' : `var(--gl-${tone})`;
+  const color = tone === 'neutral' ? 'var(--gl-label-tertiary)' : tone === 'accent' ? 'var(--gl-accent)' : tone === 'info' ? 'var(--gl-info-text)' : `var(--gl-${tone})`;
   return (
     <div ref={box} className={cx('gl-sparkline', className)} style={{ height, color, ...style }} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
       {measured !== null && <svg width={width} height={height}>
@@ -468,7 +468,7 @@ export function Sparkline({ values, tone = 'accent', area = true, height = 32, '
 /* ------------------------------------------------------------------------------------------------ in-cell marks */
 export type BarMeterProps = {
   value: number; max?: number; min?: number;
-  tone?: 'accent' | 'neutral' | 'success' | 'warning' | 'danger';
+  tone?: Tone;
   width?: number;
   className?: string; style?: CSSProperties;
 };

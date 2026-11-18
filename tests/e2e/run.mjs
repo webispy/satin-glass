@@ -38,8 +38,8 @@ perEngine('selection components', 'selection.mjs');
 variants('selection components', 'selection.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 perEngine('display & media', 'display.mjs');
 variants('display & media', 'display.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
-perEngine('dashboard', 'dashboard.mjs');
-variants('dashboard', 'dashboard.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
+perEngine('data components & dashboard', 'data.mjs');
+variants('data components & dashboard', 'data.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 perEngine('reduced motion', 'reduce-motion.mjs');
 perEngine('many items (overflowing segmented / tab bar)', 'overflow.mjs');
 const solo = ONLY ? [] : [

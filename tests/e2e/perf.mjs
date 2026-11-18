@@ -73,21 +73,23 @@ await p.goto('http://localhost:4173/#/display'); await p.waitForTimeout(900);
   await p.keyboard.press('0'); await p.waitForTimeout(500);
   await measure('media viewer: swipe down to close (back into the thumbnail)', async () => { await p.mouse.move(640, 300); await p.mouse.down(); for (let i = 1; i <= 10; i++) await p.mouse.move(640, 300 + i * 30); await p.mouse.up(); }, 900);
 }
-await p.goto('http://localhost:4173/#/dashboard'); await p.waitForTimeout(1200);
+await p.goto('http://localhost:4173/#/dashboard'); await p.waitForTimeout(1500);
 {
-  const t = p.locator('.gl-table').first(), r = await t.boundingBox();
-  await t.scrollIntoViewIfNeeded();
-  await measure('data table (21 rows × 14 columns, sticky): scroll both ways', async () => { await p.mouse.move(r.x + r.width / 2, r.y + 300); for (let i = 0; i < 10; i++) { await p.mouse.wheel(i % 2 ? 60 : 0, 50); } }, 800);
-  /* the first time a page lays out this content it pays a one-off cost (text shaping, styles); measured apart */
-  await measure('tabs: first switch to charts (cold, first ever) — informational', () => p.getByRole('tab', { name: /측정 현황/ }).click({ noWaitAfter: true }), 1000);
-  await p.waitForTimeout(1200);
-  await p.getByRole('tab', { name: /프로필/ }).click(); await p.waitForTimeout(1200);
-  await measure('tabs: switch to charts (4 stats, line, bars, donut, table mount)', () => p.getByRole('tab', { name: /측정 현황/ }).click({ noWaitAfter: true }), 1000);
-  await p.waitForTimeout(1200);
+  /* the overview: 4 stats, line, bars, donut, sparklines, a table — then the products table and its tab switch */
   const plot = p.locator('.gl-chart__plot').first(), pr = await plot.boundingBox();
   await measure('line chart: crosshair following the pointer', async () => { for (let i = 0; i < 30; i++) await p.mouse.move(pr.x + 40 + i * (pr.width - 80) / 30, pr.y + pr.height / 2); }, 900);
-  await p.getByRole('tab', { name: /호출 기록/ }).click(); await p.waitForTimeout(1000);
-  const v = p.locator('.gl-table').nth(1); await v.scrollIntoViewIfNeeded(); const vr = await v.boundingBox();
+  /* the first time a page lays out this content it pays a one-off cost (text shaping, styles); measured apart */
+  await measure('tabs: first switch to products (cold, first ever) — informational', () => p.getByRole('tab', { name: '상품' }).click({ noWaitAfter: true }), 1000);
+  await p.waitForTimeout(1200);
+  const t = p.locator('[data-demo=dashboard] .gl-table').first(); await t.scrollIntoViewIfNeeded(); const r = await t.boundingBox();
+  await measure('data table (24 rows × 8 columns, groups, pinned, sticky): scroll both ways', async () => { await p.mouse.move(r.x + r.width / 2, r.y + 200); for (let i = 0; i < 10; i++) { await p.mouse.wheel(i % 2 ? 60 : 0, 50); } }, 800);
+  await p.getByRole('tab', { name: '개요' }).click(); await p.waitForTimeout(1200);
+  await measure('tabs: switch to products (warm)', () => p.getByRole('tab', { name: '상품' }).click({ noWaitAfter: true }), 1000);
+  await measure('tabs: back to the overview (4 stats, 3 charts, sparklines, a table mount)', () => p.getByRole('tab', { name: '개요' }).click({ noWaitAfter: true }), 1000);
+}
+await p.goto('http://localhost:4173/#/table'); await p.waitForTimeout(1200);
+{
+  const v = p.locator('[data-demo=table-virtual] .gl-table'); await v.scrollIntoViewIfNeeded(); const vr = await v.boundingBox();
   await measure('virtual table, 5,000 rows: fast wheel scrolling', async () => { await p.mouse.move(vr.x + vr.width / 2, vr.y + 200); for (let i = 0; i < 16; i++) await p.mouse.wheel(0, 400); }, 900);
 }
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');

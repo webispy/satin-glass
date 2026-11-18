@@ -15,6 +15,7 @@ import {
 import { cx, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { Tooltip } from './feedback';
 import { Skeleton } from './skeleton';
+import { Checkbox } from './selection';
 
 export type SortDir = 'asc' | 'desc';
 export type SortState = { key: string; dir: SortDir } | null;
@@ -288,8 +289,7 @@ export function DataTable<T>({
     return out;
   };
   const selectAllBox = (
-    <input type="checkbox" className="gl-table__checkbox" aria-label={labels.selectAll ?? 'Select all rows'} checked={allOn}
-      ref={(el) => { if (el) el.indeterminate = someOn; }} onChange={toggleAll} disabled={!N} />
+    <Checkbox className="gl-table__checkbox" aria-label={labels.selectAll ?? 'Select all rows'} checked={allOn} indeterminate={someOn} onChange={toggleAll} disabled={!N} />
   );
 
   /* ---- body */
@@ -297,7 +297,7 @@ export function DataTable<T>({
     <>
       {selectable && (
         <td className="gl-table__sticky gl-table__check" style={{ left: 0 }} data-r={gridRow} data-c={0} tabIndex={-1}>
-          {!pinned && <input type="checkbox" className="gl-table__checkbox" aria-label={labels.selectRow?.(row) ?? 'Select row'} checked={isSel}
+          {!pinned && <Checkbox className="gl-table__checkbox" aria-label={labels.selectRow?.(row) ?? 'Select row'} checked={isSel}
             onChange={() => {}} onClick={(e) => { e.stopPropagation(); toggleRow(ri, e.shiftKey); }} />}
         </td>
       )}
@@ -309,7 +309,8 @@ export function DataTable<T>({
           <Tag key={c.key} {...(Tag === 'th' ? { scope: 'row' } : {})} data-r={gridRow} data-c={colIdx} tabIndex={-1} data-align={c.align ?? 'start'}
             className={cx(stickyLeft[colIdx] !== undefined && 'gl-table__sticky', colIdx === lastSticky && 'gl-table__sticky--last')}
             style={stickyLeft[colIdx] !== undefined ? { left: stickyLeft[colIdx] } : undefined}>
-            {isEmpty(v) ? <span className="gl-table__none" aria-label="—">–</span> : (v as ReactNode)}
+            {/* a missing value reads "–"; in a summary row an empty cell is "not applicable" and stays blank */}
+            {isEmpty(v) ? (pinned ? null : <span className="gl-table__none" aria-label="—">–</span>) : (v as ReactNode)}
           </Tag>
         );
       })}
@@ -320,7 +321,8 @@ export function DataTable<T>({
   const showSkeleton = loading && N === 0;
   const total = (rowCount ?? N) + P + (groups ? 2 : 1);
   return (
-    <div ref={box} className={cx('gl-table', `gl-table--${density}`, loading && 'gl-table--loading', className)} style={{ maxHeight, ...style, ['--_rh' as string]: `${rowH}px` } as CSSProperties}
+    /* tabIndex -1: Firefox makes a scrolling box a tab stop of its own; here the grid's single tab stop scrolls it */
+    <div ref={box} tabIndex={-1} className={cx('gl-table', `gl-table--${density}`, loading && 'gl-table--loading', className)} style={{ maxHeight, ...style, ['--_rh' as string]: `${rowH}px` } as CSSProperties}
       onScroll={virtual ? measure : undefined} aria-busy={loading || undefined}>
       <table role="grid" aria-label={label} aria-rowcount={total} aria-colcount={C} aria-multiselectable={selectable || undefined} style={{ minWidth }} onKeyDown={onKey}
         onFocus={(e) => { const el = (e.target as HTMLElement).closest<HTMLElement>('[data-r]'); if (el) { const r = +el.dataset.r!, c = +el.dataset.c!; if (r !== cell.r || c !== cell.c) setCell({ r, c }); } }}>

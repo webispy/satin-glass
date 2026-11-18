@@ -1,13 +1,13 @@
 import { useRef, useState } from 'react';
 import {
   ActionSheet, AppBar, Avatar, Badge, BadgeAnchor, Button, ButtonGroup, Card, CardBody, Chip, ContextMenu, Dialog, Glass,
-  IconButton, List, ListItem, ListSection, Menu, MenuItem, MenuLabel, MenuSeparator, PageControl, Popover, Progress, SearchField,
+  IconButton, List, ListItem, ListSection, Menu, MenuItem, MenuLabel, MenuSeparator, PageControl, Pagination, Popover, Progress, SearchField,
   SegmentedControl, Sheet, Sidebar, SidebarItem, SidebarSection, Slider, Spinner, Stack, Stepper, Switch, Tab, TabBar, TabBarAction,
-  Text, TextField, useToast,
+  Tabs, Text, TextField, useToast,
 } from '@glass-layer/react';
 import {
   Bell, Bike, Bookmark, Car, ChevronLeft, Copy, Download, Footprints, Heart, Home, Map, MoreHorizontal, Moon, Pencil, Plus, Search,
-  Settings, Share, Star, Trash2, User, Wifi, Plane, MapPin, Compass, Info,
+  Settings, Share, Star, Trash2, User, Wifi, Plane, MapPin, Compass, Info, ShoppingBag, Package, MessageSquare, BarChart3,
 } from 'lucide-react';
 import { Demo, Page, Photo, Section } from '../shared';
 
@@ -105,8 +105,10 @@ export function Navigation() {
   const [tab, setTab] = useState('home');
   const [page, setPage] = useState(1);
   const [side, setSide] = useState('all');
+  const [section, setSection] = useState('orders');
+  const [pg, setPg] = useState(6);
   return (
-    <Page title="내비게이션" intro="떠 있는 유리 바. 화면 가장자리에서 12px 띄우고, 모서리는 고정 반경 22px입니다.">
+    <Page title="내비게이션" intro="떠 있는 유리 바. 화면 가장자리에서 12px 띄우고, 모서리는 고정 반경 22px입니다. 페이지 안의 구역은 탭으로, 긴 목록은 페이지 이동으로 나눕니다.">
       <Section title="탭 바" intro="탭하면 선택 표시가 물방울처럼 늘어나 이어졌다가 새 탭에서 모입니다. 바 위를 끌면 손가락을 따라가고, 놓으면 그 탭이 선택됩니다. 표시는 바 안에만 머뭅니다.">
         <Demo media style={{ padding: 0, minHeight: 220 }}>
           <Photo scene={0} style={{ position: 'absolute', inset: 0 }} />
@@ -150,6 +152,30 @@ export function Navigation() {
             </Stack>
           </Demo>
         </div>
+      </Section>
+      <Section title="탭" intro="한 페이지 안의 구역을 나눕니다. 밑줄은 탭 바·세그먼트와 같은 물방울이라 같은 방식으로 이동합니다. 방향키로 옮기면 바로 선택되고(수동으로 하려면 activation=&quot;manual&quot;), 새 패널은 이동한 쪽에서 들어옵니다. 무거운 패널은 탭을 누른 프레임을 막지 않게 늦게 그립니다.">
+        <Demo col data-demo="tabs">
+          <Tabs aria-label="스토어 관리" value={section} onChange={setSection} items={[
+            { value: 'orders', label: '주문', icon: <ShoppingBag />, badge: 12, content: <Text variant="subhead" tone="secondary">새 주문 12건이 확인을 기다려요.</Text> },
+            { value: 'products', label: '상품', icon: <Package />, content: <Text variant="subhead" tone="secondary">공개한 상품 22개, 숨긴 상품 2개.</Text> },
+            { value: 'reviews', label: '후기', icon: <MessageSquare />, content: <Text variant="subhead" tone="secondary">이번 주 후기 48개, 평균 4.6점.</Text> },
+            { value: 'stats', label: '통계', icon: <BarChart3 />, content: <Text variant="subhead" tone="secondary">방문과 매출 흐름은 차트와 지표 페이지에서 볼 수 있어요.</Text> },
+            { value: 'settle', label: '정산', disabled: true },
+          ]} />
+        </Demo>
+        <Demo col data-demo="tabs-many" style={{ marginTop: 16 }}>
+          <Text variant="subhead" tone="secondary">탭이 많으면 줄이 가로로 스크롤되고, 더 있는 쪽 끝이 흐려집니다. 선택한 탭은 늘 보이는 곳으로 옵니다.</Text>
+          <div style={{ maxWidth: 420 }}>
+            <Tabs aria-label="분류" activation="manual" defaultValue="digital" items={['전체', '의류', '생활', '주방', '문구', '디지털', '반려동물', '캠핑', '선물 포장', '할인 중'].map((l, i) => ({ value: ['all', 'wear', 'home', 'kitchen', 'paper', 'digital', 'pet', 'camp', 'gift', 'sale'][i], label: l }))} />
+          </div>
+        </Demo>
+      </Section>
+      <Section title="페이지 이동" intro="처음과 끝, 지금 페이지의 이웃을 보여 주고 사이는 …로 접습니다. 지금 페이지가 가운데에서 움직이는 동안 버튼 개수가 그대로라 포인터 밑에서 버튼이 밀리지 않습니다. 좁은 곳에서는 ‘6 / 40’으로 바뀝니다.">
+        <Demo col data-demo="pagination">
+          <Pagination page={pg} pageCount={40} onChange={setPg} aria-label="주문 목록 페이지" labels={{ previous: '이전 페이지', next: '다음 페이지', page: (n) => `${n} 페이지` }} style={{ justifyContent: 'flex-start' }} />
+          <Pagination page={pg} pageCount={40} siblings={2} onChange={setPg} aria-label="주문 목록 페이지 (이웃 2개)" labels={{ previous: '이전 페이지', next: '다음 페이지', page: (n) => `${n} 페이지` }} style={{ justifyContent: 'flex-start' }} />
+          <div style={{ width: 220 }}><Pagination page={pg} pageCount={40} onChange={setPg} aria-label="주문 목록 페이지 (좁게)" labels={{ previous: '이전 페이지', next: '다음 페이지', page: (n) => `${n} 페이지` }} /></div>
+        </Demo>
       </Section>
     </Page>
   );

@@ -17,6 +17,7 @@ export function Selection() {
   const [cal, setCal] = useState<Date | null>(new Date());
   const [notif, setNotif] = useState<string[]>(['sunset']);
   const [appearance, setAppearance] = useState('system');
+  const [fCat, setFCat] = useState('all'), [fSort, setFSort] = useState('new'), [fShip, setFShip] = useState('all');
   const toast = useToast();
   const all = am.length === AMENITIES.length, some = am.length > 0 && !all;
   const maxDate = new Date(); maxDate.setMonth(maxDate.getMonth() + 3);
@@ -99,6 +100,14 @@ export function Selection() {
             </List>
           </Demo>
         </div>
+      </Section>
+
+      <Section title="필터 셀렉트" intro="목록이나 표 위에 늘어놓는 작은 알약형 셀렉트입니다(variant=&quot;filter&quot;). ‘분류 전체’처럼 이름과 지금 값을 함께 보여 주고, 스크린 리더도 그렇게 읽습니다. 고르는 방식은 일반 셀렉트와 같습니다.">
+        <Demo data-demo="filter-select">
+          <Select variant="filter" label="분류" value={fCat} onChange={setFCat} options={[{ value: 'all', label: '전체' }, { value: 'wear', label: '의류' }, { value: 'home', label: '생활' }, { value: 'kitchen', label: '주방' }, { value: 'digital', label: '디지털' }]} />
+          <Select variant="filter" label="배송" value={fShip} onChange={setFShip} options={[{ value: 'all', label: '전체' }, { value: 'today', label: '오늘 출발' }, { value: 'free', label: '무료 배송' }]} />
+          <Select variant="filter" label="정렬" value={fSort} onChange={setFSort} options={[{ value: 'new', label: '최신순' }, { value: 'sold', label: '판매량순' }, { value: 'low', label: '낮은 가격순' }, { value: 'high', label: '높은 가격순' }]} />
+        </Demo>
       </Section>
 
       <Section title="날짜" intro="방향키로 하루·한 주, PageUp/PageDown으로 한 달(Shift는 1년)씩 움직입니다. 달이 바뀌면 그쪽에서 미끄러져 들어와요.">

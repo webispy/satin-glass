@@ -1,232 +1,254 @@
-/* A dashboard example in the shape of a server benchmark board: dense comparison tables with
-   column groups, pinned summaries and in-cell marks; filters; KPIs; charts. All names and numbers are made up. */
+/* A dashboard example: the store's operations screen, put together only from components shown on the other
+   pages (tabs, cards with headers, stats, charts, tables, filters, chips, tags, banners, empty states, a sheet,
+   an accordion). Nothing here is dashboard-specific code: it shows how the parts fit. All data is made up. */
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Accordion, Banner, BarChart, BarMeter, Button, Card, DataTable, DonutChart, EmptyState, IntervalPlot, Level, LineChart,
-  Pagination, SearchField, Select, Stack, Stat, Tabs, Tag, Text, Tooltip, useToast, type Column, type SortState,
+  Accordion, Banner, BarChart, BarMeter, Button, Card, CardBody, CardHeader, Chip, DataTable, DonutChart, EmptyState, IconButton,
+  LineChart, Pagination, SearchField, SegmentedControl, Select, Sheet, Sparkline, Stat, Tabs, Tag, Text, Tooltip, useToast,
+  type Column, type SortState,
 } from '@glass-layer/react';
-import { Activity, CheckCircle2, CircleDollarSign, FileSearch, Gauge, Timer } from 'lucide-react';
-import { Page, Section } from '../shared';
+import { CircleDollarSign, Download, MousePointerClick, PackageSearch, RotateCcw, ShoppingBag, X } from 'lucide-react';
+import { Page } from '../shared';
+import {
+  CATEGORIES, CATEGORY_SHARE, CHANNELS, DAYS, MONTHS, ORDERS, PRODUCTS, STATUS,
+  categoryLabel, num, won, wonShort, type CategoryKey, type Order, type OrderStatus, type Product,
+} from '../data';
 
-/* ---------------------------------------------------------------- made-up data (seeded, stable) */
-const rand = (seed: number) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
-const R = rand(7);
-const FAMILIES = ['Nova', 'Atlas', 'Lumen', 'Orbit', 'Quill', 'Vela', 'Cirrus', 'Tessera', 'Halo', 'Juniper', 'Kestrel', 'Mosaic'];
-const SIZES = ['Flash', 'Pro', 'Mini', '3.1', 'Large', '2 Turbo'];
-const SETS = [
-  { key: 'mix', label: '혼합 부하', sub: '서울, 120', group: '웹', desc: '여러 종류의 요청을 섞어 보내는 시험.' },
-  { key: 'sys', label: '정적 파일', sub: '여러 지역, 120', group: '웹', desc: '정적 파일을 내려받는 시험.' },
-  { key: 'biz', label: '동적 페이지', sub: '서울, 300', group: '웹', desc: '페이지를 그때그때 만들어 응답하는 시험.' },
-  { key: 'k1', label: '읽기 A', sub: '도쿄, 210', group: '저장소', desc: '작은 파일을 무작위로 읽는 시험.' },
-  { key: 'k2', label: '쓰기 B', sub: '서울, 200', group: '저장소', desc: '작은 파일을 무작위로 쓰는 시험.' },
-  { key: 'm1', label: '압축', sub: '도쿄, 30', group: '연산', desc: '큰 파일을 압축하는 시험.' },
-  { key: 'm2', label: '암호화', sub: '서울, 200', group: '연산', desc: '데이터를 암호화하는 시험.' },
-] as const;
-type SetKey = (typeof SETS)[number]['key'];
-type Boost = '끔' | '낮음' | '높음' | '없음';
-type Row = { id: string; model: string; vendor: string; boost: Boost; runs: number; cost: number; time: number; err: number } & Record<SetKey, number | null>;
-const LEVEL: Record<Boost, number> = { 없음: 0, 끔: 1, 낮음: 2, 높음: 3 };
+const STAT_LABELS = { up: '증가', down: '감소', flat: '변화 없음' };
+const TABLE_LABELS = { selectAll: '모두 선택', sortedAsc: '오름차순 정렬', sortedDesc: '내림차순 정렬' };
+const PAGER_LABELS = { previous: '이전 페이지', next: '다음 페이지', page: (n: number) => `${n} 페이지` };
+const LOW = PRODUCTS.filter((p) => p.daysLeft !== null && p.daysLeft <= 7);
 
-const ROWS: Row[] = FAMILIES.flatMap((f, fi) => {
-  const modes: Boost[] = fi % 4 === 3 ? ['없음'] : fi % 3 === 0 ? ['낮음', '높음'] : ['끔', '높음'];
-  return modes.map((m, mi) => {
-    const base = 62 + R() * 22 + (m === '높음' ? 8 : m === '낮음' ? 4 : 0);
-    const s = (spread: number, hard = 0) => Math.max(5, Math.min(100, Math.round(base - hard + (R() - 0.5) * spread)));
-    return {
-      id: `${f}-${mi}`, model: `${f} ${SIZES[fi % SIZES.length]}`, vendor: ['Northwind', 'Contoso', 'Fabrikam', 'Litware'][fi % 4], boost: m, runs: fi === 5 ? 1 : 3,
-      mix: s(14, -14), sys: s(20, -8), biz: s(40, 45), k1: s(10, -6), k2: s(12, -2), m1: fi === 7 && mi === 0 ? null : s(50, 0), m2: s(16, -4),
-      cost: +(0.08 + R() * (m === '높음' ? 20 : 3)).toFixed(2), time: +(2 + R() * (m === '높음' ? 30 : 8)).toFixed(1), err: +(R() * 3).toFixed(1),
-    } as Row;
-  });
-});
-const median = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
-const vals = (k: keyof Row) => ROWS.map((r) => r[k]).filter((v): v is number => typeof v === 'number');
-const LOWER_BETTER = new Set(['cost', 'time', 'err']);
-const summary = (kind: 'best' | 'median' | 'worst'): Row => {
-  const out = { id: kind, model: kind === 'best' ? '가장 좋음' : kind === 'median' ? '기준 중앙값' : '가장 나쁨', vendor: '', boost: '없음', runs: 0 } as Row;
-  for (const k of [...SETS.map((x) => x.key), 'cost', 'time', 'err'] as (keyof Row)[]) {
-    const v = vals(k), low = LOWER_BETTER.has(k as string);
-    (out as Record<string, unknown>)[k] = kind === 'median' ? +median(v).toFixed(2) : (kind === 'best') !== low ? Math.max(...v) : Math.min(...v);
-  }
-  return out;
-};
-const PINNED = [summary('best'), summary('median'), summary('worst')];
-const BEST = PINNED[0];
+type Section = 'overview' | 'orders' | 'products';
 
-const fmtCost = (v: number) => `$${v.toFixed(2)}`;
-const DAYS = Array.from({ length: 30 }, (_, i) => { const d = new Date(2026, 9, 19 + i); return `${d.getMonth() + 1}/${d.getDate()}`; });
-const TRAFFIC = DAYS.map((d, i) => ({ d, answers: Math.round(1800 + Math.sin(i / 3) * 400 + i * 40 + R() * 300), graded: Math.round(1500 + Math.sin(i / 3 + 0.4) * 360 + i * 38 + R() * 250) }));
-const COSTS = SETS.map((s) => ({ set: s.label, off: +(R() * 4 + 1).toFixed(1), high: +(R() * 18 + 4).toFixed(1) }));
-
-/* big log for the virtualised table */
-type Call = { id: string; time: string; model: string; set: string; ms: number; kb: number; ok: boolean };
-const CALLS: Call[] = Array.from({ length: 5000 }, (_, i) => {
-  const r = ROWS[i % ROWS.length];
-  return { id: `c${i}`, time: `11-17 ${String(9 + Math.floor(i / 600)).padStart(2, '0')}:${String(Math.floor(i / 10) % 60).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`, model: `${r.model} · ${r.boost}`, set: SETS[i % SETS.length].label, ms: Math.round(300 + R() * 9000), kb: Math.round(100 + R() * 3000), ok: R() > 0.03 };
-});
-
-/* ---------------------------------------------------------------- page */
 export function Dashboard() {
+  const [section, setSection] = useState<Section>('overview');
+  const [period, setPeriod] = useState<'7' | '30'>('7');
+  const [lowOnly, setLowOnly] = useState(false);
   const toast = useToast();
-  const [top, setTop] = useState('web');
-  const [view, setView] = useState('profile');
+  const showLow = () => { setLowOnly(true); setSection('products'); };
   return (
-    <Page title="대시보드 예제" intro="서버 성능 비교 화면 모양으로 꾸민 예제입니다. 열 그룹·요약 행·셀 안 막대가 있는 비교 표, 필터, 지표 카드, 차트, 수천 행 표. 이름과 숫자는 모두 지어낸 것입니다.">
+    <Page title="대시보드 예제" intro="다른 페이지의 컴포넌트만 조합해 만든 가상 스토어의 운영 화면입니다. 탭, 제목이 있는 카드, 지표, 차트, 표, 필터, 칩, 태그, 배너, 빈 상태, 시트가 한 화면에서 어떻게 어울리는지 보여 줍니다. 이름과 숫자는 모두 지어낸 것입니다.">
       <div className="dash" data-demo="dashboard">
-        <div className="dash__top">
-          <Text variant="headline" as="span">서버 성능</Text>
-          <Tabs aria-label="서버 종류" items={[{ value: 'web', label: '웹 서버' }, { value: 'db', label: '데이터베이스' }]} value={top} onChange={setTop} className="dash__toptabs" />
-          <Text variant="footnote" tone="secondary" as="span" className="dash__stamp">11-17 16:06 갱신</Text>
-        </div>
-        <Tabs aria-label="보기" value={view} onChange={setView} panelClassName="dash__panel" items={[
-          { value: 'profile', label: '프로필', content: <Profile onCompare={(n) => toast({ title: `${n}개 설정 비교` })} /> },
-          { value: 'status', label: '측정 현황', badge: 3, content: <Status /> },
-          { value: 'calls', label: '요청 기록', content: <Calls /> },
+        <header className="dash__head">
+          <div className="dash__title">
+            <Text variant="title-2" as="h2">오늘의 스토어</Text>
+            <Text variant="footnote" tone="secondary" as="span">11월 18일 18:00 기준</Text>
+          </div>
+          <div className="dash__tools">
+            <SegmentedControl size="sm" aria-label="기간" value={period} onChange={setPeriod} options={[{ value: '7', label: '7일' }, { value: '30', label: '30일' }]} />
+            <Tooltip content="보이는 데이터를 CSV로 내려받아요"><IconButton icon={<Download />} label="내려받기" variant="glass" onClick={() => toast({ title: 'CSV를 준비하고 있어요' })} /></Tooltip>
+          </div>
+        </header>
+        <Tabs aria-label="스토어 관리" value={section} onChange={setSection} panelClassName="dash__panel" items={[
+          { value: 'overview', label: '개요', content: <Overview period={period} onShowLow={showLow} onShowOrders={() => setSection('orders')} /> },
+          { value: 'orders', label: '주문', badge: ORDERS.filter((o) => o.status === 'paid').length, content: <Orders /> },
+          { value: 'products', label: '상품', content: <Products lowOnly={lowOnly} setLowOnly={setLowOnly} /> },
         ]} />
       </div>
     </Page>
   );
 }
 
-function Profile({ onCompare }: { onCompare: (n: number) => void }) {
-  const [level, setLevel] = useState('all'), [lang, setLang] = useState('all'), [round, setRound] = useState('all');
-  const [q, setQ] = useState('');
-  const [sel, setSel] = useState<string[]>([]);
-  const [sort, setSort] = useState<SortState>(null);
+/* ---------------------------------------------------------------- 개요 */
+function Overview({ period, onShowLow, onShowOrders }: { period: '7' | '30'; onShowLow: () => void; onShowOrders: () => void }) {
+  const n = Number(period);
   const [banner, setBanner] = useState(true);
-  const rows = useMemo(() => ROWS.filter((r) => !q || r.model.toLowerCase().includes(q.toLowerCase()) || r.vendor.toLowerCase().includes(q.toLowerCase())), [q]);
-  const score = (k: SetKey): Column<Row> => {
-    const s = SETS.find((x) => x.key === k)!;
-    return {
-      key: k, header: s.label, subheader: s.sub, group: s.group, description: s.desc, align: 'end', width: 112, sortable: true, firstSort: 'desc',
-      render: (r, { pinned }) => {
-        const v = r[k];
-        if (v === null) return null;
-        if (pinned) return v;
-        return <span className="gl-cell-bar"><BarMeter value={v} width={36} />{<span className={v === BEST[k] ? 'gl-cell-best' : undefined}>{v}</span>}</span>;
-      },
-    };
-  };
-  const cols: Column<Row>[] = [
-    {
-      key: 'model', header: '서버', width: 230, sticky: true, sortable: true,
-      render: (r, { pinned }) => pinned ? <span className="dash__summary">{r.model}</span> : (
-        <span className="dash__model"><span className="dash__logo" aria-hidden="true">{r.model[0]}</span><a href={`#/dashboard?model=${encodeURIComponent(r.id)}`} onClick={(e) => e.preventDefault()}>{r.model}</a>
-          {r.runs === 1 && <Tooltip content="1회차만 측정했어요. 값이 흔들릴 수 있어요."><Tag variant="text" tone="warning" tabIndex={0}>1회 측정</Tag></Tooltip>}</span>
-      ),
-    },
-    { key: 'boost', header: '부스트', width: 92, sortable: true, value: (r) => LEVEL[r.boost], render: (r, { pinned }) => pinned ? <span /> : <Tag icon={r.boost === '없음' ? undefined : <Level value={LEVEL[r.boost] - (r.boost === '끔' ? 1 : 0)} />}>{r.boost === '없음' ? '설정 없음' : r.boost}</Tag> },
-    ...SETS.map((s) => score(s.key)),
-    { key: 'cost', header: '비용', subheader: '1K 요청당', group: '비용과 속도', align: 'end', width: 92, sortable: true, description: '요청 1,000개를 처리할 때 드는 비용(달러).', render: (r) => <span className={r.cost === BEST.cost ? 'gl-cell-best' : undefined}>{fmtCost(r.cost)}</span> },
-    { key: 'time', header: '시간', subheader: '중앙값', group: '비용과 속도', align: 'end', width: 84, sortable: true, render: (r) => `${r.time.toFixed(1)} s` },
-    { key: 'err', header: '오류', subheader: '요청 대비', group: '비용과 속도', align: 'end', width: 84, sortable: true, description: '응답을 받지 못한 요청의 비율.', render: (r) => <span className={r.err >= 2.5 ? 'gl-cell-warn' : undefined}>{r.err.toFixed(1)}%</span> },
-  ];
-  return (
-    <Stack gap={4}>
-      {banner && <Banner tone="info" title="3회차 측정이 진행 중이에요" onDismiss={() => setBanner(false)} dismissLabel="알림 닫기">끝나면 값이 조금 바뀔 수 있어요. 회차 필터로 끝난 회차만 볼 수 있어요.</Banner>}
-      <Card style={{ padding: 20 }}>
-        <div className="dash__filters">
-          <Select variant="filter" label="부하" value={level} onChange={setLevel} options={[{ value: 'all', label: '전체' }, { value: 'easy', label: '가벼움' }, { value: 'mid', label: '보통' }, { value: 'hard', label: '무거움' }]} />
-          <Select variant="filter" label="지역" value={lang} onChange={setLang} options={[{ value: 'all', label: '전체' }, { value: 'en', label: '도쿄' }, { value: 'ko', label: '서울' }]} />
-          <Select variant="filter" label="회차" value={round} onChange={setRound} options={[{ value: 'all', label: '전체' }, { value: '1', label: '1회차' }, { value: '2', label: '2회차' }, { value: '3', label: '3회차' }]} />
-          <SearchField aria-label="서버 찾기" placeholder="서버 찾기" value={q} onChange={(e) => setQ(e.currentTarget.value)} style={{ width: 220 }} />
-          <span className="dash__spacer" />
-          {sel.length > 0 && <Button size="sm" onClick={() => onCompare(sel.length)}>{sel.length}개 비교</Button>}
-          <Text variant="footnote" tone="secondary" as="span">설정 {rows.length}개</Text>
-        </div>
-        <DataTable<Row> aria-label="서버 프로필" rows={rows} columns={cols} rowKey={(r) => r.id} pinnedRows={rows.length ? PINNED : []}
-          selectable selected={sel} onSelectedChange={setSel} sort={sort} onSortChange={setSort} maxHeight={560}
-          rowState={(r) => (r.runs === 1 ? { muted: false } : undefined)}
-          labels={{ selectAll: '모든 설정 선택', selectRow: (r) => `${r.model} ${r.boost} 선택`, sortedAsc: '오름차순 정렬', sortedDesc: '내림차순 정렬' }}
-          empty={<EmptyState compact icon={<FileSearch />} title="찾는 서버가 없어요" description={`"${q}"와 맞는 서버나 회사가 없어요.`} actions={<Button size="sm" variant="neutral" onClick={() => setQ('')}>검색 지우기</Button>} />} />
-        <Text variant="footnote" tone="secondary" as="p" style={{ marginTop: 10 }}><b>굵은 값</b> 가장 좋은 값 · <span className="gl-cell-warn">주황 값</span> 오류율 2.5% 이상</Text>
-      </Card>
-    </Stack>
-  );
-}
-
-function Status() {
+  const [metric, setMetric] = useState<'visits' | 'orders'>('visits');
   const [loading, setLoading] = useState(true);
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 900); return () => clearTimeout(t); }, []);
-  const ranked = useMemo(() => [...ROWS].sort((a, b) => (b.mix ?? 0) - (a.mix ?? 0)).slice(0, 8), []);
+  useEffect(() => { setLoading(true); const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, [period]);
+  const days = DAYS.slice(-n), prev = DAYS.slice(-2 * n, -n);
+  const sum = (xs: typeof DAYS, k: 'visits' | 'orders' | 'revenue') => xs.reduce((a, d) => a + d[k], 0);
+  /* the 30-day view compares with an estimate (the data holds 30 days) */
+  const before = (k: 'visits' | 'orders' | 'revenue') => (prev.length ? sum(prev, k) : sum(days, k) * 0.93);
+  const delta = (k: 'visits' | 'orders' | 'revenue') => { const v = (sum(days, k) / before(k) - 1) * 100; return `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`; };
+  const conv = (sum(days, 'orders') / sum(days, 'visits')) * 100;
+  const hint = n === 7 ? '지난 7일보다' : '지난 30일보다';
+  const top = useMemo(() => PRODUCTS.filter((p) => !p.paused).sort((a, b) => b.revenue - a.revenue).slice(0, 5), []);
+  const recent = ORDERS.slice(0, 6);
   return (
-    <Stack gap={4}>
+    <div className="dash__stack">
+      {banner && LOW.length > 0 && (
+        <Banner tone="warning" title={`재고가 1주 안에 바닥나는 상품이 ${LOW.length}개 있어요`} onDismiss={() => setBanner(false)} dismissLabel="알림 닫기"
+          actions={<Button size="sm" variant="tinted" onClick={onShowLow}>상품 보기</Button>}>
+          {LOW.slice(0, 3).map((p) => p.name).join(', ')}{LOW.length > 3 ? ' 외' : ''}
+        </Banner>
+      )}
       <div className="grid grid--4 dash__kpis">
-        <Stat label="측정한 설정·시험 쌍" icon={<Gauge />} value="161" delta="+14" hint="지난주보다" trend={[120, 128, 131, 140, 147, 152, 161]} loading={loading} words={{ up: '증가', down: '감소' }} />
-        <Stat label="빠진 응답" icon={<Activity />} value="0" delta="-12" hint="지난주보다" invert trend={[18, 15, 12, 9, 4, 2, 0]} loading={loading} words={{ up: '증가', down: '감소' }} />
-        <Stat label="1K 요청당 비용(중앙값)" icon={<CircleDollarSign />} value="$1.39" delta="+8.2%" hint="지난주보다" invert trend={[1.1, 1.2, 1.18, 1.25, 1.3, 1.36, 1.39]} loading={loading} words={{ up: '증가', down: '감소' }} />
-        <Stat label="끝난 실행" icon={<CheckCircle2 />} value="42 / 42" hint="모든 회차" loading={loading} />
+        <Stat label="방문" icon={<MousePointerClick />} value={num(sum(days, 'visits'))} delta={delta('visits')} hint={hint} trend={days.map((d) => d.visits)} loading={loading} labels={STAT_LABELS} />
+        <Stat label="주문" icon={<ShoppingBag />} value={num(sum(days, 'orders'))} delta={delta('orders')} hint={hint} trend={days.map((d) => d.orders)} loading={loading} labels={STAT_LABELS} />
+        <Stat label="매출" icon={<CircleDollarSign />} value={wonShort(sum(days, 'revenue'))} delta={delta('revenue')} hint={hint} trend={days.map((d) => d.revenue)} loading={loading} labels={STAT_LABELS} />
+        <Stat label="반품률" icon={<RotateCcw />} value="2.8%" delta="+0.4%p" hint={hint} invert trend={[2.1, 2.3, 2.2, 2.5, 2.4, 2.6, 2.8]} loading={loading} labels={STAT_LABELS} />
+      </div>
+      <div className="grid dash__charts">
+        <Card>
+          <CardHeader title={metric === 'visits' ? '하루 방문' : '하루 주문'} description={`구매 전환율 ${conv.toFixed(1)}%`}
+            actions={<SegmentedControl size="sm" aria-label="차트 지표" value={metric} onChange={setMetric} options={[{ value: 'visits', label: '방문' }, { value: 'orders', label: '주문' }]} />} />
+          <CardBody>
+            <LineChart aria-label={metric === 'visits' ? '하루 방문과 재방문' : '하루 주문'} data={days} x="day" area height={220} locale="ko-KR"
+              series={metric === 'visits' ? [{ key: 'visits', label: '방문' }, { key: 'returning', label: '재방문' }] : [{ key: 'orders', label: '주문' }]} />
+          </CardBody>
+        </Card>
+        <Card>
+          <CardHeader title="경로별 주문" description="최근 6개월" />
+          <CardBody>
+            <BarChart aria-label="경로별 월 주문" data={MONTHS} x="month" stacked height={220} locale="ko-KR" series={[{ key: 'app', label: '앱' }, { key: 'web', label: '웹' }, { key: 'store', label: '매장' }]} />
+          </CardBody>
+        </Card>
       </div>
       <div className="grid grid--2">
-        <Card style={{ padding: 20 }}>
-          <Text variant="headline" as="h3" style={{ marginBottom: 12 }}>하루 처리량</Text>
-          <LineChart aria-label="하루 처리량: 받은 요청과 처리한 요청" data={TRAFFIC} x="d" series={[{ key: 'answers', label: '받은 요청' }, { key: 'graded', label: '처리한 요청' }]} area height={220} locale="ko-KR" />
+        <Card>
+          <CardHeader title="분류별 매출" description="최근 30일" />
+          <CardBody><DonutChart aria-label="분류별 매출" locale="ko-KR" size={160} centerLabel="매출" format={(v) => wonShort(v)} data={CATEGORY_SHARE} /></CardBody>
         </Card>
-        <Card style={{ padding: 20 }}>
-          <Text variant="headline" as="h3" style={{ marginBottom: 12 }}>시험별 비용 (달러)</Text>
-          <BarChart aria-label="시험별 비용: 부스트 끔과 높음" data={COSTS} x="set" series={[{ key: 'off', label: '부스트 끔' }, { key: 'high', label: '부스트 높음' }]} stacked height={220} locale="ko-KR" />
-        </Card>
-      </div>
-      <div className="grid grid--2">
-        <Card style={{ padding: 20 }}>
-          <Text variant="headline" as="h3" style={{ marginBottom: 12 }}>응답의 구성</Text>
-          <DonutChart aria-label="응답의 구성" locale="ko-KR" centerLabel="전체 응답" data={[{ label: '성공', value: 7120 }, { label: '실패', value: 2210 }, { label: '느림', value: 280 }, { label: '응답 없음', value: 95 }]} />
-        </Card>
-        <Card style={{ padding: 20 }}>
-          <Text variant="headline" as="h3" style={{ marginBottom: 12 }}>혼합 부하 순위</Text>
-          <DataTable<Row> aria-label="혼합 부하 순위" density="compact" rows={ranked} rowKey={(r) => r.id} columns={[
-            { key: 'rank', header: '#', width: 36, render: (r) => ranked.indexOf(r) + 1 },
-            { key: 'model', header: '서버', width: 150 },
-            { key: 'mix', header: '처리율과 95% 구간', description: '점은 처리율, 막대는 95% 신뢰 구간, 세로선은 기준 중앙값.', width: 220, render: (r) => <span className="gl-cell-bar"><b style={{ width: 28 }}>{r.mix}</b><IntervalPlot value={r.mix ?? 0} low={(r.mix ?? 0) - 3 - (r.id.length % 3)} high={Math.min(100, (r.mix ?? 0) + 2 + (r.id.length % 2))} min={60} max={100} reference={PINNED[1].mix ?? 0} width={150} /></span> },
-          ]} />
+        <Card>
+          <CardHeader title="많이 팔린 상품" description="매출 순, 12주 흐름" />
+          <CardBody>
+            <ul className="mini-list">
+              {top.map((p) => (
+                <li key={p.id}>
+                  <span className="mini-list__name">{p.name}</span>
+                  <Sparkline values={p.trend} style={{ width: 72 }} tone={p.trend[11] >= p.trend[0] ? 'success' : 'danger'} />
+                  <BarMeter value={p.revenue} max={top[0].revenue} width={48} tone={p === top[0] ? 'accent' : 'neutral'} />
+                  <span className="mini-list__num">{wonShort(p.revenue)}</span>
+                </li>
+              ))}
+            </ul>
+          </CardBody>
         </Card>
       </div>
-      <Accordion items={[
-        { value: 'trace', title: '추적 정보', meta: '실행 42개', content: <Text variant="subhead" tone="secondary" as="p">측정 실행 9번, 설정 24개, 응답 9,705개. 집계는 2026-11-17 16:02에 끝났어요.</Text> },
-        { value: 'method', title: '측정 방법', content: <Text variant="subhead" tone="secondary" as="p">시험마다 같은 요청을 3번 보내고, 처리율은 세 회차의 평균이에요.</Text> },
-      ]} />
-    </Stack>
+      <Card>
+        <CardHeader title="최근 주문" actions={<Button size="sm" variant="plain" onClick={onShowOrders}>모두 보기</Button>} />
+        <CardBody>
+          <DataTable<Order> aria-label="최근 주문" rows={recent} rowKey={(o) => o.id} density="compact" columns={ORDER_COLUMNS.filter((c) => c.key !== 'channel' && c.key !== 'customer')} labels={TABLE_LABELS} />
+        </CardBody>
+      </Card>
+    </div>
   );
 }
 
-function Calls() {
-  const [page, setPage] = useState(1);
+/* ---------------------------------------------------------------- 주문 */
+const ORDER_COLUMNS: Column<Order>[] = [
+  { key: 'id', header: '주문 번호', width: 100, sortable: true },
+  { key: 'time', header: '시각', width: 104, sortable: true, firstSort: 'desc', value: (o) => o.at },
+  { key: 'customer', header: '주문자', width: 84, sortable: true },
+  { key: 'product', header: '상품', width: 190, sortable: true, render: (o) => (o.qty > 1 ? `${o.product} ×${o.qty}` : o.product) },
+  { key: 'amount', header: '금액', align: 'end', width: 104, sortable: true, firstSort: 'desc', render: (o) => won(o.amount) },
+  { key: 'channel', header: '경로', width: 68, sortable: true },
+  { key: 'status', header: '상태', width: 100, sortable: true, value: (o) => STATUS[o.status].label, render: (o) => <Tag tone={STATUS[o.status].tone}>{STATUS[o.status].label}</Tag> },
+];
+const PAGE = 15;
+
+function Orders() {
+  const toast = useToast();
+  const [q, setQ] = useState('');
+  const [status, setStatus] = useState<'all' | OrderStatus>('all');
+  const [channel, setChannel] = useState('all');
   const [sort, setSort] = useState<SortState>({ key: 'time', dir: 'desc' });
-  const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState<Call[]>([]);
-  const PAGE = 25;
-  /* "server": sorts and pages after a short delay */
-  useEffect(() => {
-    setLoading(true);
-    const t = setTimeout(() => {
-      const s = [...CALLS];
-      if (sort) s.sort((a, b) => { const x = a[sort.key as keyof Call], y = b[sort.key as keyof Call]; const c = typeof x === 'number' ? (x as number) - (y as number) : String(x).localeCompare(String(y)); return sort.dir === 'asc' ? c : -c; });
-      setRows(s.slice((page - 1) * PAGE, page * PAGE)); setLoading(false);
-    }, 450);
-    return () => clearTimeout(t);
-  }, [page, sort]);
-  const cols: Column<Call>[] = [
-    { key: 'time', header: '시각', width: 140, sortable: true, firstSort: 'desc' },
-    { key: 'model', header: '설정', width: 200, sortable: true },
-    { key: 'set', header: '시험', width: 120, sortable: true },
-    { key: 'ms', header: '응답', subheader: 'ms', align: 'end', width: 96, sortable: true, firstSort: 'desc', render: (r) => <span className={r.ms > 8000 ? 'gl-cell-warn' : undefined}>{r.ms.toLocaleString('ko-KR')}</span> },
-    { key: 'kb', header: '본문 크기', align: 'end', width: 100, sortable: true, render: (r) => r.kb.toLocaleString('ko-KR') },
-    { key: 'ok', header: '결과', width: 90, render: (r) => (r.ok ? <Tag tone="success">성공</Tag> : <Tag tone="danger">실패</Tag>) },
+  const [page, setPage] = useState(1);
+  const [sel, setSel] = useState<string[]>([]);
+  const found = useMemo(() => ORDERS.filter((o) => (status === 'all' || o.status === status) && (channel === 'all' || o.channel === channel)
+    && (!q.trim() || o.customer.includes(q.trim()) || o.product.includes(q.trim()) || o.id.includes(q.trim()))), [q, status, channel]);
+  useEffect(() => setPage(1), [q, status, channel]);
+  const pages = Math.max(1, Math.ceil(found.length / PAGE));
+  const sorted = useMemo(() => {
+    if (!sort) return found;
+    const col = ORDER_COLUMNS.find((c) => c.key === sort.key)!, get = col.value ?? ((o: Order) => o[sort.key as keyof Order]);
+    return [...found].sort((a, b) => { const x = get(a) as string | number, y = get(b) as string | number; const c = typeof x === 'number' ? x - (y as number) : String(x).localeCompare(String(y), 'ko'); return sort.dir === 'asc' ? c : -c; });
+  }, [found, sort]);
+  const rows = sorted.slice((page - 1) * PAGE, page * PAGE);
+  const filtered = q || status !== 'all' || channel !== 'all';
+  const reset = () => { setQ(''); setStatus('all'); setChannel('all'); };
+  return (
+    <Card>
+      <CardBody className="dash__table-card">
+        <div className="dash__filters">
+          <SearchField aria-label="주문 찾기" placeholder="주문자, 상품, 주문 번호" value={q} onChange={(e) => setQ(e.currentTarget.value)} style={{ width: 240 }} />
+          <Select variant="filter" label="상태" value={status} onChange={setStatus} options={[{ value: 'all', label: '전체' }, ...(Object.keys(STATUS) as OrderStatus[]).map((k) => ({ value: k, label: STATUS[k].label }))]} />
+          <Select variant="filter" label="경로" value={channel} onChange={setChannel} options={[{ value: 'all', label: '전체' }, ...CHANNELS.map((c) => ({ value: c, label: c }))]} />
+          {filtered && <Button size="sm" variant="plain" onClick={reset}>필터 지우기</Button>}
+          <span className="dash__spacer" />
+          {sel.length > 0 ? (
+            <span className="dash__bulk">
+              <Text variant="subhead" as="span">{sel.length}건 선택</Text>
+              <Button size="sm" variant="tinted" onClick={() => { toast({ title: `${sel.length}건을 배송 준비로 옮겼어요`, tone: 'success' }); setSel([]); }}>배송 준비</Button>
+              <IconButton size="sm" icon={<X />} label="선택 해제" onClick={() => setSel([])} />
+            </span>
+          ) : <Text variant="footnote" tone="secondary" as="span">{num(found.length)}건</Text>}
+        </div>
+        <DataTable<Order> aria-label="주문" rows={rows} rowKey={(o) => o.id} columns={ORDER_COLUMNS} manualSort sort={sort} onSortChange={(s) => { setSort(s); setPage(1); }}
+          selectable selected={sel} onSelectedChange={setSel} rowCount={found.length} density="compact" labels={{ ...TABLE_LABELS, selectRow: (o) => `주문 ${o.id} 선택` }}
+          empty={<EmptyState compact icon={<PackageSearch />} title="조건에 맞는 주문이 없어요" description={q ? `‘${q}’로 찾은 주문이 없어요.` : '다른 상태나 경로를 골라 보세요.'} actions={<Button size="sm" variant="neutral" onClick={reset}>필터 지우기</Button>} />} />
+        {found.length > PAGE && (
+          <div className="dash__pager">
+            <Text variant="footnote" tone="secondary" as="span">{num(found.length)}건 중 {num((page - 1) * PAGE + 1)}–{num(Math.min(page * PAGE, found.length))}</Text>
+            <Pagination page={page} pageCount={pages} onChange={setPage} aria-label="주문 페이지" labels={PAGER_LABELS} />
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
+/* ---------------------------------------------------------------- 상품 */
+function Products({ lowOnly, setLowOnly }: { lowOnly: boolean; setLowOnly: (v: boolean) => void }) {
+  const [cats, setCats] = useState<CategoryKey[]>([]);
+  const [open, setOpen] = useState<Product | null>(null);
+  const rows = PRODUCTS.filter((p) => (!cats.length || cats.includes(p.category)) && (!lowOnly || (p.daysLeft !== null && p.daysLeft <= 7)));
+  const best = Math.max(...PRODUCTS.map((p) => p.sold));
+  const live = rows.filter((p) => !p.paused);
+  const totals = { id: 'sum', name: '합계', category: 'wear', price: NaN, stock: live.reduce((a, p) => a + p.stock, 0), sold: live.reduce((a, p) => a + p.sold, 0), revenue: live.reduce((a, p) => a + p.revenue, 0), rating: NaN, reviews: 0, returnRate: NaN, daysLeft: null, trend: [], paused: false } as Product;
+  const cols: Column<Product>[] = [
+    { key: 'name', header: '상품', width: 190, sticky: true, sortable: true, render: (p, { pinned }) => (pinned ? <b>{p.name}</b> : <button type="button" className="dash__link" onClick={() => setOpen(p)}>{p.name}</button>) },
+    { key: 'category', header: '분류', width: 80, sortable: true, value: (p) => categoryLabel(p.category), render: (p, { pinned }) => (pinned ? '' : categoryLabel(p.category)) },
+    { key: 'price', header: '가격', align: 'end', width: 96, sortable: true, render: (p) => (Number.isNaN(p.price) ? '' : won(p.price)) },
+    { key: 'sold', header: '판매량', subheader: '30일', group: '판매', align: 'end', width: 136, sortable: true, firstSort: 'desc',
+      render: (p, { pinned }) => (pinned ? num(p.sold) : <span className="gl-cell-meter"><BarMeter value={p.sold} max={best} width={44} tone={p.sold === best ? 'accent' : 'neutral'} /><span className={p.sold === best ? 'gl-cell-strong' : undefined}>{num(p.sold)}</span></span>) },
+    { key: 'revenue', header: '매출', subheader: '30일', group: '판매', align: 'end', width: 92, sortable: true, firstSort: 'desc', render: (p) => wonShort(p.revenue) },
+    { key: 'stock', header: '재고', group: '재고', align: 'end', width: 76, sortable: true, render: (p) => num(p.stock) },
+    { key: 'daysLeft', header: '소진 예상', group: '재고', align: 'end', width: 92, sortable: true, description: '최근 30일 속도로 팔릴 때 재고가 바닥나기까지 남은 날이에요.',
+      render: (p) => (p.daysLeft === null ? null : <span className={p.daysLeft <= 7 ? 'gl-cell-danger' : p.daysLeft <= 14 ? 'gl-cell-warning' : undefined}>{p.daysLeft}일</span>) },
+    { key: 'state', header: '상태', width: 96, render: (p, { pinned }) => (pinned ? null : p.paused ? <Tag>판매 중지</Tag> : p.daysLeft !== null && p.daysLeft <= 7 ? <Tag tone="danger">재고 부족</Tag> : <Tag tone="success">판매 중</Tag>) },
   ];
   return (
-    <Stack gap={4}>
-      <Section title="서버 모드 (정렬·페이지는 서버가)" intro="정렬하거나 페이지를 넘기면 표는 알리기만 하고, 받은 행을 보여 줍니다. 받는 동안은 행이 흐려지고 위에 진행선이 지나갑니다.">
-        <Card style={{ padding: 20 }}>
-          <DataTable<Call> aria-label="요청 기록 (서버)" rows={rows} columns={cols} rowKey={(r) => r.id} manualSort sort={sort} onSortChange={(s) => { setSort(s); setPage(1); }} loading={loading} rowCount={CALLS.length} density="compact" />
-          <div className="dash__pager"><Text variant="footnote" tone="secondary" as="span">{CALLS.length.toLocaleString('ko-KR')}개 중 {((page - 1) * PAGE + 1).toLocaleString('ko-KR')}–{Math.min(page * PAGE, CALLS.length).toLocaleString('ko-KR')}</Text>
-            <Pagination page={page} pageCount={Math.ceil(CALLS.length / PAGE)} onChange={setPage} aria-label="요청 기록 페이지" labels={{ previous: '이전 페이지', next: '다음 페이지', page: (n) => `${n} 페이지` }} /></div>
-        </Card>
-      </Section>
-      <Section title="5,000행 한 번에 (가상 스크롤)" intro="화면에 보이는 행만 그립니다. 머리글과 첫 열이 고정되고, 키보드로 끝까지 이동해도 해당 행을 그려서 포커스를 옮깁니다.">
-        <Card style={{ padding: 20 }}>
-          <DataTable<Call> aria-label="요청 기록 5,000행" rows={CALLS} columns={cols.map((c, i) => (i === 0 ? { ...c, sticky: true } : c))} rowKey={(r) => r.id} defaultSort={{ key: 'time', dir: 'desc' }} density="compact" maxHeight={420} selectable labels={{ selectAll: '모든 요청 선택', selectRow: (r) => `${r.time} 요청 선택` }} />
-        </Card>
-      </Section>
-    </Stack>
+    <Card>
+      <CardBody className="dash__table-card">
+        <div className="dash__filters" role="group" aria-label="상품 필터">
+          {CATEGORIES.map((c) => <Chip key={c.key} selected={cats.includes(c.key)} onSelectedChange={(on) => setCats((x) => (on ? [...x, c.key] : x.filter((y) => y !== c.key)))}>{c.label}</Chip>)}
+          <Chip selected={lowOnly} onSelectedChange={setLowOnly}>재고 부족만</Chip>
+          <span className="dash__spacer" />
+          <Text variant="footnote" tone="secondary" as="span">상품 {rows.length}개</Text>
+        </div>
+        <DataTable<Product> aria-label="상품" rows={rows} rowKey={(p) => p.id} columns={cols} pinnedRows={live.length ? [totals] : []} defaultSort={{ key: 'sold', dir: 'desc' }} maxHeight={520}
+          rowState={(p) => (p.paused ? { muted: true } : undefined)} labels={TABLE_LABELS}
+          empty={<EmptyState compact icon={<PackageSearch />} title="조건에 맞는 상품이 없어요" actions={<Button size="sm" variant="neutral" onClick={() => { setCats([]); setLowOnly(false); }}>필터 지우기</Button>} />} />
+      </CardBody>
+      <Sheet open={open !== null} onClose={() => setOpen(null)} title={open?.name} aria-label="상품 정보">
+        {open && <ProductDetail p={open} />}
+      </Sheet>
+    </Card>
+  );
+}
+
+function ProductDetail({ p }: { p: Product }) {
+  return (
+    <div className="dash__detail">
+      <div className="dash__detail-tags">
+        <Tag>{categoryLabel(p.category)}</Tag>
+        {p.paused ? <Tag>판매 중지</Tag> : p.daysLeft !== null && p.daysLeft <= 7 ? <Tag tone="danger">재고 부족</Tag> : <Tag tone="success">판매 중</Tag>}
+      </div>
+      <dl className="dash__facts">
+        <div><dt>가격</dt><dd>{won(p.price)}</dd></div>
+        <div><dt>30일 판매</dt><dd>{num(p.sold)}개</dd></div>
+        <div><dt>재고</dt><dd>{num(p.stock)}개</dd></div>
+        <div><dt>평점</dt><dd>{p.rating.toFixed(1)} <small>({num(p.reviews)})</small></dd></div>
+      </dl>
+      <Text variant="subhead" tone="secondary" as="p">주간 판매 (12주)</Text>
+      <Sparkline values={p.trend} height={56} aria-label={`${p.name} 주간 판매 흐름`} />
+      <Accordion items={[
+        { value: 'ship', title: '배송', meta: '평일 오후 2시 마감', content: <Text variant="subhead" tone="secondary" as="p">오후 2시까지 결제한 주문은 그날 보내요.</Text> },
+        { value: 'return', title: '반품', meta: `반품률 ${p.returnRate.toFixed(1)}%`, content: <Text variant="subhead" tone="secondary" as="p">받은 날부터 7일 안에 신청할 수 있어요.</Text> },
+      ]} />
+    </div>
   );
 }

@@ -3,7 +3,7 @@ export * from './controls';
 export * from './layout';
 export * from './overlays';
 export * from './icons';
-export { useControllable, useImageTint, cx } from './utils';
+export { useControllable, useImageTint, cx, type Tone } from './utils';
 export * from './selection';
 export * from './select';
 export * from './date';

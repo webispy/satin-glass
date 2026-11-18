@@ -20,8 +20,8 @@ export type StatProps = {
   trend?: number[];
   icon?: ReactNode;
   loading?: boolean;
-  /** spoken words for the direction (default English) */
-  words?: { up?: string; down?: string; flat?: string };
+  /** spoken words for the direction (default English), as `labels` elsewhere */
+  labels?: { up?: string; down?: string; flat?: string };
   className?: string; style?: CSSProperties;
 };
 
@@ -29,7 +29,7 @@ const Arrow = ({ d }: { d: 'up' | 'down' | 'flat' }) => (
   <svg viewBox="0 0 16 16" aria-hidden="true" className="gl-stat__arrow">{d === 'flat' ? <path d="M3 8h10" /> : d === 'up' ? <path d="M8 13V3.5M4 7.5l4-4 4 4" /> : <path d="M8 3v9.5M4 8.5l4 4 4-4" />}</svg>
 );
 
-export function Stat({ label, value, delta, direction, invert, hint, trend, icon, loading, words = {}, className, style }: StatProps) {
+export function Stat({ label, value, delta, direction, invert, hint, trend, icon, loading, labels = {}, className, style }: StatProps) {
   const val = useRef<HTMLDivElement>(null);
   const first = useRef(true);
   const text = typeof delta === 'string' || typeof delta === 'number' ? String(delta) : '';
@@ -53,7 +53,7 @@ export function Stat({ label, value, delta, direction, invert, hint, trend, icon
             <div className="gl-stat__foot">
               {delta !== undefined && (
                 <span className="gl-stat__delta" data-good={good}>
-                  <Arrow d={dir} /><span className="gl-visually-hidden">{(dir === 'up' ? words.up ?? 'Up' : dir === 'down' ? words.down ?? 'Down' : words.flat ?? 'No change')} </span>{delta}
+                  <Arrow d={dir} /><span className="gl-visually-hidden">{(dir === 'up' ? labels.up ?? 'Up' : dir === 'down' ? labels.down ?? 'Down' : labels.flat ?? 'No change')} </span>{delta}
                 </span>
               )}
               {hint && <span className="gl-stat__hint">{hint}</span>}

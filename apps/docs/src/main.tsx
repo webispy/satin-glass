@@ -5,7 +5,7 @@ import './docs.css';
 import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, IconButton, Popover, Toaster, type ThemeMode } from '@glass-layer/react';
 import { DisplaySettingsProvider, DisplaySettingsBar, DisplaySettingsList } from './settings';
 import type { MotionName } from '@glass-layer/tokens';
-import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical, ListChecks, GalleryVerticalEnd, LayoutDashboard } from 'lucide-react';
+import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical, ListChecks, GalleryVerticalEnd, LayoutDashboard, Table2, ChartLine, MessageSquareWarning } from 'lucide-react';
 import { Overview, Colors, Typography, Motion, Material } from './pages/foundations';
 import { Buttons, Inputs, Navigation, Lists, Overlays } from './pages/components';
 import { Showcase } from './pages/showcase';
@@ -13,6 +13,9 @@ import { Lab } from './pages/lab';
 import { Selection } from './pages/selection';
 import { Display } from './pages/display';
 import { Dashboard } from './pages/dashboard';
+import { TablePage } from './pages/table';
+import { ChartsPage } from './pages/charts';
+import { FeedbackPage } from './pages/feedback';
 
 const PAGES = [
   { id: 'overview', label: '소개', icon: Layers, el: Overview, group: '기초' },
@@ -25,8 +28,11 @@ const PAGES = [
   { id: 'selection', label: '선택', icon: ListChecks, el: Selection, group: '컴포넌트' },
   { id: 'navigation', label: '내비게이션', icon: NavIcon, el: Navigation, group: '컴포넌트' },
   { id: 'lists', label: '목록과 표시', icon: ListIcon, el: Lists, group: '컴포넌트' },
+  { id: 'feedback', label: '상태와 피드백', icon: MessageSquareWarning, el: FeedbackPage, group: '컴포넌트' },
   { id: 'overlays', label: '오버레이', icon: PanelTop, el: Overlays, group: '컴포넌트' },
   { id: 'display', label: '구성과 미디어', icon: GalleryVerticalEnd, el: Display, group: '컴포넌트' },
+  { id: 'table', label: '표', icon: Table2, el: TablePage, group: '데이터' },
+  { id: 'charts', label: '차트와 지표', icon: ChartLine, el: ChartsPage, group: '데이터' },
   { id: 'showcase', label: '쇼케이스', icon: Smartphone, el: Showcase, group: '예제' },
   { id: 'dashboard', label: '대시보드', icon: LayoutDashboard, el: Dashboard, group: '예제' },
   { id: 'lab', label: '예외 상황 랩', icon: FlaskConical, el: Lab, group: '예제' },
@@ -64,7 +70,7 @@ function App() {
         <div className="docs" data-nav-open={navOpen}>
           <div className="docs__nav">
             <Sidebar aria-label="문서">
-              <div className="docs__brand"><span className="docs__logo" aria-hidden="true" /><div><b>Glass Layer</b><small>React UI · 0.2</small></div></div>
+              <div className="docs__brand"><span className="docs__logo" aria-hidden="true" /><div><b>Glass Layer</b><small>React UI · 0.3</small></div></div>
               {PAGES.map((p) => {
                 const head = p.group !== group ? (group = p.group) : null;
                 return (

@@ -294,6 +294,14 @@ textarea.gl-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 .gl-card--interactive:focus-visible { outline: none; box-shadow: var(--gl-ring); }
 .gl-card__media { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--gl-fill); }
 .gl-card__body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
+/* a card's title row: title (+ description) on the leading side, actions on the trailing side — for cards that frame
+   a chart, a table or a list (dashboards, settings). The body below keeps its own padding. */
+.gl-card__header { display: flex; align-items: flex-start; gap: 12px; padding: 16px 16px 0; }
+.gl-card__header + .gl-card__body { padding-top: 12px; }
+.gl-card__heading { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.gl-card__title { margin: 0; font-size: 17px; line-height: 22px; font-weight: 650; letter-spacing: -0.01em; color: var(--gl-label); }
+.gl-card__desc { margin: 0; font-size: 13px; line-height: 18px; color: var(--gl-label-secondary); }
+.gl-card__actions { flex: none; display: flex; align-items: center; gap: 6px; margin: -4px -4px -4px 0; }
 
 /* ============================================================================================
    Progress, spinner, page control

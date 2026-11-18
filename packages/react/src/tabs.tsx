@@ -1,6 +1,8 @@
-/* Tabs (0.3): page-level tabs. The underline is the droplet bridge of the tab bar and segmented control (core
-   bridge), so selection travels the same way everywhere. WAI-ARIA tabs: arrow keys move (and select, unless
-   activation="manual"), Home/End; each tab controls its panel. Panels slide in from the side you moved toward. */
+/* Tabs (0.3): sections of one page. The underline is the droplet bridge of the tab bar and segmented control (core
+   bridge), so selection travels the same way everywhere, and too many tabs scroll sideways like those do (core
+   overflow strip: faded ends, the selected tab kept in view). WAI-ARIA tabs: arrow keys move (and select, unless
+   activation="manual"), Home/End; each tab controls its panel. Panels slide in from the side you moved toward.
+   A row of filter choices is not tabs: use chips (or a segmented control for two to five options). */
 import { useDeferredValue, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { animate, fade, prefersReducedMotion, type MotionName } from '@glass-layer/core';
 import { cx, useControllable, useIsoLayoutEffect, useStableId } from './utils';
@@ -17,11 +19,9 @@ export type TabsProps<T extends string = string> = {
   className?: string; style?: CSSProperties;
   /** class for the panel (when items carry content) */
   panelClassName?: string;
-  /** underline (default: page sections) or pill (a filter-like row of choices; wraps onto more lines) */
-  variant?: 'underline' | 'pill';
 };
 
-export function Tabs<T extends string = string>({ items, value, defaultValue, onChange, activation = 'auto', 'aria-label': label, motion, className, style, panelClassName, variant = 'underline' }: TabsProps<T>) {
+export function Tabs<T extends string = string>({ items, value, defaultValue, onChange, activation = 'auto', 'aria-label': label, motion, className, style, panelClassName }: TabsProps<T>) {
   const [v, setV] = useControllable<T>(value, defaultValue ?? items.find((i) => !i.disabled)?.value ?? items[0]?.value, onChange);
   const index = Math.max(0, items.findIndex((i) => i.value === v));
   const list = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null), panel = useRef<HTMLDivElement>(null);
@@ -31,19 +31,8 @@ export function Tabs<T extends string = string>({ items, value, defaultValue, on
   const shown = useDeferredValue(index);
   const prev = useRef(shown);
   const hasPanels = items.some((i) => i.content !== undefined);
-  /* the underline travels as a droplet; pills wrap onto several lines, where a travelling indicator would have to
-     jump between rows — they simply light up (CSS transition) */
-  useBridge(variant === 'underline' ? list : { current: null }, ind, index, () => {}, false);
-  /* keep the selected tab in view when the list scrolls sideways (many tabs, narrow screen) */
-  useIsoLayoutEffect(() => {
-    const t = list.current?.querySelectorAll<HTMLElement>(':scope > [data-gl-item]')[index];
-    const l = list.current;
-    if (t && l && l.scrollWidth > l.clientWidth) {
-      const left = t.offsetLeft - 16, right = t.offsetLeft + t.offsetWidth + 16;
-      if (left < l.scrollLeft) l.scrollTo({ left, behavior: prefersReducedMotion(l) ? 'auto' : 'smooth' });
-      else if (right > l.scrollLeft + l.clientWidth) l.scrollTo({ left: right - l.clientWidth, behavior: prefersReducedMotion(l) ? 'auto' : 'smooth' });
-    }
-  }, [index]);
+  /* the underline travels as a droplet (not draggable: tabs are pressed, not slid) */
+  useBridge(list, ind, index, () => {}, false);
   /* the new panel comes in from the side of travel */
   useIsoLayoutEffect(() => {
     const p = panel.current, dir = Math.sign(shown - prev.current);
@@ -69,9 +58,9 @@ export function Tabs<T extends string = string>({ items, value, defaultValue, on
   };
   const cur = items[shown] ?? items[index];
   return (
-    <div className={cx('gl-tabs', variant === 'pill' && 'gl-tabs--pill', className)} style={style} data-gl-motion={motion}>
+    <div className={cx('gl-tabs', className)} style={style} data-gl-motion={motion}>
       <div ref={list} role="tablist" aria-label={label} className="gl-tabs__list" onKeyDown={onKey}>
-        {variant === 'underline' && <span ref={ind} className="gl-tabs__indicator" aria-hidden="true" />}
+        <span ref={ind} className="gl-tabs__indicator" aria-hidden="true" />
         {items.map((it, i) => (
           <button key={it.value} type="button" role="tab" id={`${id}-t${i}`} data-gl-item aria-selected={i === index}
             aria-controls={hasPanels ? `${id}-p` : undefined} tabIndex={i === index ? 0 : -1} disabled={it.disabled}

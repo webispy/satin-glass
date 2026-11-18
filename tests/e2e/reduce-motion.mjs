@@ -182,14 +182,16 @@ async function check(label, setup) {
   ok(`${label}: skeleton — breathes instead of a moving band`, !skAnim || (skAnim[0].includes('breathe') && skAnim[1] === 'none'), JSON.stringify(skAnim));
 
   await go('dashboard');
-  const tp = await watch(`() => [...document.querySelectorAll('[role=tab]')].find((t) => t.textContent.includes('측정 현황')).click()`, '.gl-tabs__panel', 300);
+  const tp = await watch(`() => [...document.querySelectorAll('[data-demo=dashboard] [role=tab]')].find((t) => t.textContent.includes('상품')).click()`, '.gl-tabs__panel', 300);
   ok(`${label}: tabs — the new panel fades in place (no slide)`, still(tp), JSON.stringify(tp));
+  await go('charts');
   const draw = await trace(p, `() => {}`, `() => [...document.querySelectorAll('.gl-chart__line[data-draw]')].map((l) => parseFloat(getComputedStyle(l).strokeDashoffset) || 0).reduce((a, b) => Math.max(a, b), 0)`, 200);
   const bars = await watch(`() => {}`, '.gl-chart__bar', 200);
   const ring = await watch(`() => {}`, '.gl-donut g[data-rings]', 200);
   ok(`${label}: charts — lines are simply there (no drawing in), bars do not rise, the donut does not turn`, draw.every(([, v]) => v === 0) && still(bars) && still(ring), JSON.stringify({ draw: Math.max(...draw.map(([, v]) => v)), bars, ring }));
-  await p.waitForTimeout(1000);
-  const acc = await trace(p, `() => [...document.querySelectorAll('.gl-accordion__trigger')][0].click()`, `() => Math.round(document.querySelector('.gl-accordion__region').getBoundingClientRect().height)`, 300);
+  await go('display');
+  await p.locator('[data-demo=accordion]').scrollIntoViewIfNeeded();
+  const acc = await trace(p, `() => document.querySelectorAll('[data-demo=accordion] .gl-accordion__trigger')[1].click()`, `() => Math.round(document.querySelectorAll('[data-demo=accordion] .gl-accordion__region')[1].getBoundingClientRect().height)`, 300);
   const hs = [...new Set(acc.map(([, h]) => h))];
   ok(`${label}: accordion — the section opens at once (no unfolding)`, hs.length <= 2, `heights ${hs.join(' → ')}`);
 

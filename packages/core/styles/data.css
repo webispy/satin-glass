@@ -1,5 +1,5 @@
 /* ============================================================================================
-   0.3 — dashboards: tabs, tooltip, banner, empty state, pagination, stat, tag, accordion, charts, data table.
+   0.3 — data: tabs, tooltip, banner, empty state, pagination, stat, tag, accordion, charts, data table.
    Dense but calm: hairlines instead of boxes, tabular figures, colour only where it means something.
    ============================================================================================ */
 
@@ -24,12 +24,14 @@
 .gl-tabs__badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--gl-fill-strong); color: var(--gl-label-secondary); font-size: 11px; font-weight: 650; display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
 .gl-tabs__panel { padding-top: 16px; outline: none; }
 .gl-tabs__panel:focus-visible { box-shadow: 0 0 0 2px var(--gl-focus-ring); border-radius: var(--gl-radius-sm); }
-/* pills: a wrapping row of choices on a soft track */
-.gl-tabs--pill .gl-tabs__list { flex-wrap: wrap; gap: 2px; padding: 4px; overflow: visible; border-radius: var(--gl-radius-md); background: var(--gl-fill); box-shadow: none; }
-.gl-tabs--pill .gl-tabs__tab { height: 32px; padding: 0 12px; font-size: 14px; border-radius: calc(var(--gl-radius-md) - 4px); }
-.gl-tabs--pill .gl-tabs__tab[aria-selected="true"] { background: var(--gl-surface); box-shadow: 0 1px 3px rgba(var(--gl-shadow-color), calc(0.12 * var(--gl-shadow-strength))); }
-[data-gl-theme^="dark"] .gl-tabs--pill .gl-tabs__tab[aria-selected="true"] { background: var(--gl-fill-strong); }
-[data-gl-theme$="-hc"] .gl-tabs--pill .gl-tabs__tab[aria-selected="true"] { box-shadow: inset 0 0 0 1.5px var(--gl-label); }
+/* too many tabs: the list scrolls sideways (core overflow strip); the ends fade where more tabs wait */
+.gl-tabs__list[data-gl-more-start], .gl-tabs__list[data-gl-more-end] {
+  --_fade-s: 0px; --_fade-e: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent);
+          mask-image: linear-gradient(to right, transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent);
+}
+.gl-tabs__list[data-gl-more-start] { --_fade-s: 24px; }
+.gl-tabs__list[data-gl-more-end] { --_fade-e: 24px; }
 [data-gl-theme$="-hc"] .gl-tabs__tab, [data-gl-theme$="-hc"] .gl-tabs__badge { color: var(--gl-label); }
 
 /* ---------------------------------------------------------------- Tooltip */
@@ -103,7 +105,7 @@
 .gl-stat__arrow { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .gl-stat__spark { margin: 8px -4px -6px; }
 
-/* ---------------------------------------------------------------- Tag, Level */
+/* ---------------------------------------------------------------- Tag */
 .gl-tag { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 6px; font-size: 12px; line-height: 1; font-weight: 600; white-space: nowrap; vertical-align: middle;
   --_fg: var(--gl-label-secondary); --_bg: var(--gl-fill); color: var(--_fg); background: var(--_bg); }
 .gl-tag[data-tone="accent"] { --_fg: var(--gl-accent-on-soft); --_bg: var(--gl-accent-soft); }
@@ -112,12 +114,8 @@
 .gl-tag[data-tone="danger"] { --_fg: var(--gl-danger-on-soft); --_bg: var(--gl-danger-soft); }
 .gl-tag[data-tone="info"] { --_fg: var(--gl-info-text); --_bg: var(--gl-info-soft); }
 .gl-tag--outline { background: none; box-shadow: inset 0 0 0 1px var(--gl-separator-strong); }
-.gl-tag--text { background: none; height: auto; padding: 0; border-radius: 2px; text-decoration: underline dotted 1.5px; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); }
 .gl-tag svg { width: 12px; height: 12px; flex: none; }
 [data-gl-theme$="-hc"] .gl-tag--soft { box-shadow: inset 0 0 0 1px currentColor; }
-.gl-level { width: 12px; height: 12px; flex: none; }
-.gl-level rect { fill: currentColor; opacity: 0.28; }
-.gl-level rect[data-on] { opacity: 1; }
 
 /* ---------------------------------------------------------------- Accordion */
 .gl-accordion { border-top: 1px solid var(--gl-separator); }
@@ -216,6 +214,7 @@
 
 /* ---------------------------------------------------------------- DataTable */
 .gl-table { position: relative; overflow: auto; min-width: 0; overscroll-behavior: contain; border-radius: var(--gl-radius-sm); --_head-bg: var(--gl-surface); --_row-bg: var(--gl-surface); }
+.gl-table:focus { outline: none; }   /* focusable only by script / click (tabIndex -1), never a visible stop */
 .gl-table table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; }
 .gl-table--compact table { font-size: 13px; }
 .gl-table th, .gl-table td { padding: 0 12px; text-align: start; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; outline: none; background-clip: padding-box; }
@@ -256,7 +255,9 @@
 .gl-table__sticky--last { box-shadow: inset -1px 0 0 var(--gl-separator), inset 0 -1px 0 var(--gl-separator) !important; }
 .gl-table thead .gl-table__sticky--last { box-shadow: inset -1px 0 0 var(--gl-separator), inset 0 -1px 0 var(--gl-separator-strong) !important; }
 .gl-table__check { padding: 0 !important; text-align: center !important; }
-.gl-table__checkbox { width: 16px; height: 16px; margin: 0; accent-color: var(--gl-accent); cursor: pointer; vertical-align: middle; }
+.gl-table__checkbox { vertical-align: middle; }
+.gl-table__checkbox .gl-check__input { top: 0; }
+.gl-table__checkbox .gl-check__box { margin-top: 0; }
 .gl-table__none { color: var(--gl-label-tertiary); }
 .gl-table__empty { height: auto !important; padding: 0 !important; white-space: normal !important; }
 .gl-table__busy td { position: sticky; top: 0; height: 0; padding: 0 !important; box-shadow: none !important; }
@@ -264,10 +265,11 @@
 .gl-table__busy span::after { content: ""; position: absolute; inset: 0; width: 30%; background: var(--gl-accent); animation: gl-indeterminate 1.3s cubic-bezier(0.45, 0, 0.2, 1) infinite; }
 .gl-table--loading tbody tr:not([aria-hidden]) { opacity: 0.55; transition: opacity var(--gl-duration-base) ease; }
 .gl-table .gl-skeleton { max-width: 100%; }
-/* cell helpers: a number with its bar, a value that wins, a value that needs attention */
-.gl-cell-bar { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; width: 100%; }
-.gl-cell-best { font-weight: 700; color: var(--gl-label); }
-.gl-cell-warn { color: var(--gl-warning-text); font-weight: 600; }
-.gl-cell-alert { color: var(--gl-danger-text); font-weight: 650; }
+/* cell helpers (named after the shared tones): a number with its meter, a value that stands out, values that need
+   attention, a value that matters less. Weight changes with colour, so the meaning survives without colour. */
+.gl-cell-meter { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; width: 100%; }
+.gl-cell-strong { font-weight: 700; color: var(--gl-label); }
+.gl-cell-warning { color: var(--gl-warning-text); font-weight: 600; }
+.gl-cell-danger { color: var(--gl-danger-text); font-weight: 650; }
 .gl-cell-muted { color: var(--gl-label-tertiary); }
 [data-gl-theme$="-hc"] .gl-table tbody th, [data-gl-theme$="-hc"] .gl-table tbody td { box-shadow: inset 0 -1px 0 var(--gl-separator-strong); }

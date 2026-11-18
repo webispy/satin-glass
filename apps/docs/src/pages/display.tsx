@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import {
-  AppBar, Avatar, Breadcrumbs, Button, IconButton, List, ListItem, MediaViewer, SearchField, Skeleton, Stack, Text, useToast,
+  Accordion, AppBar, Avatar, Breadcrumbs, Button, IconButton, List, ListItem, MediaViewer, SearchField, Skeleton, Stack, Text, useToast,
 } from '@glass-layer/react';
 import { ChevronLeft, Folder, Home, Plus, Share, Star } from 'lucide-react';
 import { Demo, Page, Photo, Section } from '../shared';
@@ -24,7 +24,7 @@ export function Display() {
   const toast = useToast();
   const load = () => { setLoading(true); setTimeout(() => setLoading(false), 1800); };
   return (
-    <Page title="구성과 미디어" intro="큰 제목이 바 안으로 접히는 내비게이션, 경로 표시, 불러오는 동안의 자리 표시, 전체 화면 사진 보기입니다.">
+    <Page title="구성과 미디어" intro="큰 제목이 바 안으로 접히는 내비게이션, 경로 표시, 펼치는 구역, 불러오는 동안의 자리 표시, 전체 화면 사진 보기입니다.">
       <Section title="큰 제목" intro="스크롤하면 큰 제목이 유리 바 밑으로 들어가면서, 바의 작은 제목이 그만큼 떠오릅니다. 정해진 지점에서 바뀌지 않고 손가락 위치를 그대로 따라갑니다.">
         <Demo center data-demo="largetitle" style={{ padding: 24 }}>
           <div className="phone" style={{ height: 600 }}>
@@ -52,6 +52,26 @@ export function Display() {
             <Breadcrumbs aria-label="좁은 경로" items={[{ label: '아주 긴 이름의 상위 폴더', href: '#/display' }, { label: '또 하나의 긴 하위 폴더 이름', href: '#/display' }, { label: '마지막 문서의 아주 긴 제목' }]} />
           </div>
         </Demo>
+      </Section>
+
+      <Section title="펼치는 구역 (Accordion)" intro="자주 보지 않는 내용을 접어 둡니다. 제목 버튼이 구역을 열고 닫고(aria-expanded), 구역은 높이를 펼치며 내용이 살짝 내려앉습니다. 하나만 열리게 하려면 multiple={false}.">
+        <div className="grid grid--2">
+          <Demo col data-demo="accordion">
+            <Accordion defaultValue={['ship']} items={[
+              { value: 'ship', title: '배송', meta: '평일 오후 2시 마감', content: <Text variant="subhead" tone="secondary" as="p">오후 2시까지 결제한 주문은 그날 보내요. 제주와 섬 지역은 하루 이틀 더 걸려요.</Text> },
+              { value: 'return', title: '교환과 반품', content: <Text variant="subhead" tone="secondary" as="p">받은 날부터 7일 안에 신청할 수 있어요. 단순 변심이면 왕복 배송비가 들어요.</Text> },
+              { value: 'gift', title: '선물 포장', meta: '2,000원', content: <Text variant="subhead" tone="secondary" as="p">주문서에서 고를 수 있어요. 메시지 카드는 무료예요.</Text> },
+              { value: 'bulk', title: '대량 주문', disabled: true, content: null },
+            ]} />
+          </Demo>
+          <Demo col data-demo="accordion-single">
+            <Accordion multiple={false} level={4} items={[
+              { value: 'a', title: '주문을 취소하고 싶어요', content: <Text variant="subhead" tone="secondary" as="p">배송 준비 전이면 주문 내역에서 바로 취소할 수 있어요.</Text> },
+              { value: 'b', title: '영수증은 어디서 받나요', content: <Text variant="subhead" tone="secondary" as="p">주문 상세의 ‘영수증’에서 내려받을 수 있어요.</Text> },
+              { value: 'c', title: '배송지를 바꿀 수 있나요', content: <Text variant="subhead" tone="secondary" as="p">배송 중으로 바뀌기 전까지 바꿀 수 있어요.</Text> },
+            ]} />
+          </Demo>
+        </div>
       </Section>
 
       <Section title="스켈레톤" intro="불러오는 동안 내용의 모양을 미리 보여 줍니다. 빛 한 줄기가 모든 자리 표시를 함께 지나갑니다. 동작 줄이기에서는 천천히 숨 쉬듯 밝아졌다 어두워집니다.">

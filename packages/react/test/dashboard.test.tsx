@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { useState } from 'react';
 import {
-  Tabs, Tooltip, Banner, EmptyState, Pagination, pageWindow, Stat, Tag, Level, Accordion, DataTable, niceTicks,
+  Tabs, Tooltip, Banner, EmptyState, Pagination, pageWindow, Stat, Tag, Accordion, Card, CardHeader, CardBody, DataTable, niceTicks,
   LineChart, BarChart, DonutChart, BarMeter, IntervalPlot, type Column,
 } from '../src';
 
@@ -78,9 +78,9 @@ describe('Pagination', () => {
   });
 });
 
-describe('Stat / Tag / Level', () => {
+describe('Stat / Tag / CardHeader', () => {
   it('says the direction in words; colour follows whether up is good', () => {
-    const { container, rerender } = render(<Stat label="방문" value="1,204" delta="+12%" words={{ up: '증가', down: '감소' }} />);
+    const { container, rerender } = render(<Stat label="방문" value="1,204" delta="+12%" labels={{ up: '증가', down: '감소' }} />);
     expect(container.textContent).toContain('증가');
     expect(container.querySelector('.gl-stat__delta')!.getAttribute('data-good')).toBe('good');
     rerender(<Stat label="오류" value="3" delta="+2%" invert />);
@@ -93,10 +93,18 @@ describe('Stat / Tag / Level', () => {
     expect(container.firstElementChild!.getAttribute('aria-busy')).toBe('true');
     expect(container.querySelector('.gl-skeleton')).toBeTruthy();
   });
-  it('tag tone and level bars', () => {
-    const { container } = render(<><Tag tone="warning">1회 측정</Tag><Level value={2} /></>);
-    expect(container.querySelector('.gl-tag')!.getAttribute('data-tone')).toBe('warning');
-    expect(container.querySelectorAll('.gl-level rect[data-on]')).toHaveLength(2);
+  it('tag: tone, outline, and span attributes pass through', () => {
+    const { container } = render(<Tag tone="warning" variant="outline" id="t1" aria-label="재고 부족 상품">재고 부족</Tag>);
+    const t = container.querySelector('.gl-tag')!;
+    expect(t.getAttribute('data-tone')).toBe('warning');
+    expect(t.classList.contains('gl-tag--outline')).toBe(true);
+    expect(t.id).toBe('t1');
+  });
+  it('card header: a heading of the given level, a description, trailing actions', () => {
+    render(<Card><CardHeader title="하루 방문" description="최근 30일" level={2} actions={<button type="button">더 보기</button>} /><CardBody>…</CardBody></Card>);
+    expect(screen.getByRole('heading', { level: 2, name: '하루 방문' })).toBeTruthy();
+    expect(screen.getByText('최근 30일')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '더 보기' })).toBeTruthy();
   });
 });
 
