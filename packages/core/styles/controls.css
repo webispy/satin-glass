@@ -138,12 +138,17 @@
 
 /* ============================================================================================
    Segmented control (selection indicator = droplet bridge, core/bridge.ts)
+   Segments share the width equally while their labels fit; a segment never gets narrower than its label
+   (capped at 12em, then it truncates), so when there are more segments than fit the track scrolls sideways
+   instead of squeezing every label to "…" (core/overflow.ts keeps the selection in view and fades the ends).
    ============================================================================================ */
 .gl-segmented {
-  position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(max-content, 1fr);
   height: 36px; padding: 3px; gap: 0; border-radius: var(--gl-radius-md);
   background: var(--gl-fill); contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none;
 }
+.gl-segmented::-webkit-scrollbar { display: none; }
 .gl-segmented__indicator {
   position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; z-index: 0;
   border-radius: calc(var(--gl-radius-md) - 3px);
@@ -156,15 +161,29 @@
   position: relative; z-index: 1; appearance: none; border: 0; background: none; margin: 0; padding: 0 12px;
   font: inherit; font-size: 14px; font-weight: 560; color: var(--gl-label-secondary); border-radius: calc(var(--gl-radius-md) - 3px);
   cursor: pointer; white-space: nowrap; transition: color var(--gl-duration-fast) ease;
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 36px;   /* never narrower than it is tall */
 }
-.gl-segmented__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.gl-segmented__label { min-width: 0; max-width: 12em; overflow: hidden; text-overflow: ellipsis; }
+/* a segment is as wide as its label in both weights (resting and selected), so selecting or dragging over one
+   never nudges its neighbours when the segments are sized to their labels */
+.gl-segmented__label[data-label]::before, .gl-segmented__label[data-label]::after { content: attr(data-label); display: block; height: 0; overflow: hidden; visibility: hidden; font-weight: 560; }
+.gl-segmented__label[data-label]::after { font-weight: 650; }
 [data-gl-theme$="-hc"] .gl-segmented__item { color: var(--gl-label); }
 .gl-segmented__item[aria-checked="true"], .gl-segmented__item[aria-selected="true"], .gl-segmented__item[data-hover] { color: var(--gl-label); font-weight: 650; }
 .gl-segmented__item:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
-.gl-segmented__item svg { width: 16px; height: 16px; }
+.gl-segmented__item svg { width: 16px; height: 16px; flex: none; }
 .gl-segmented[data-gl-pressing] .gl-segmented__indicator { transform-origin: center; }
 .gl-segmented--sm { height: 30px; }
+/* more segments than fit: the ends fade where more wait. A swipe scrolls the strip; a drag that starts on the
+   selected segment still moves the drop (touch-action is decided where the finger lands). */
+.gl-segmented[data-gl-more-start], .gl-segmented[data-gl-more-end], .gl-tabbar__track[data-gl-more-start], .gl-tabbar__track[data-gl-more-end] {
+  --_fade-s: 0px; --_fade-e: 0px; touch-action: pan-x pan-y;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent);
+}
+.gl-segmented[data-gl-more-start], .gl-tabbar__track[data-gl-more-start] { --_fade-s: 24px; }
+.gl-segmented[data-gl-more-end], .gl-tabbar__track[data-gl-more-end] { --_fade-e: 24px; }
+:is(.gl-segmented, .gl-tabbar__track):is([data-gl-more-start], [data-gl-more-end]) > [data-gl-item]:is([aria-checked="true"], [aria-selected="true"]) { touch-action: pan-y; }
 .gl-segmented--sm .gl-segmented__item { font-size: 13px; }
 
 /* ============================================================================================

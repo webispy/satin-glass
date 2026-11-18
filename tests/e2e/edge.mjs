@@ -145,12 +145,15 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   const pr = await bnd.locator('.gl-progress__bar').evaluateAll((bars) => bars.map((x) => +new DOMMatrix(getComputedStyle(x).transform).a.toFixed(3)));
   ok('progress: out-of-range values are clamped (150 → full, −20 → empty)', pr[0] === 1 && pr[1] === 0, JSON.stringify(pr));
 
-  /* long text: everything stays inside its box and truncates with an ellipsis */
+  /* long text: everything stays inside its box (or inside a track that scrolls) and truncates with an ellipsis */
   const spill = await p.evaluate(() => {
     const out = [];
     for (const box of document.querySelectorAll('[data-lab^="long-"]')) {
       const br = box.getBoundingClientRect();
-      for (const e of box.querySelectorAll('*')) { const r = e.getBoundingClientRect(); if (r.width && (r.right > br.right + 1 || r.left < br.left - 1)) out.push(`${box.dataset.lab}: ${e.tagName}.${(e.className?.baseVal ?? e.className ?? '').toString().split(' ')[0]}`); }
+      /* content of a strip that scrolls sideways (many / long segments) is clipped by its track: the track itself
+         must fit, what lies beyond it is scrolled to, not spilled */
+      const clipped = (e) => { for (let a = e.parentElement; a && a !== box; a = a.parentElement) if (/auto|scroll/.test(getComputedStyle(a).overflowX)) return true; return false; };
+      for (const e of box.querySelectorAll('*')) { const r = e.getBoundingClientRect(); if (r.width && (r.right > br.right + 1 || r.left < br.left - 1) && !clipped(e)) out.push(`${box.dataset.lab}: ${e.tagName}.${(e.className?.baseVal ?? e.className ?? '').toString().split(' ')[0]}`); }
     }
     const ell = ['.gl-button > span', '.gl-tabbar__label', '.gl-segmented__label', '.gl-chip__label', '.gl-list-item__title'].map((sel) => {
       const e = document.querySelector(`[data-lab^="long-"] ${sel}`); if (!e) return `${sel}: missing`;

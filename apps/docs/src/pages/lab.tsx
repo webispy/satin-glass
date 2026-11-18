@@ -3,12 +3,31 @@
 import { useRef, useState } from 'react';
 import {
   Button, ButtonGroup, Checkbox, Chip, DatePicker, Dialog, Select, IconButton, List, ListItem, ListSection, Menu, MenuItem, PageControl, Progress, SearchField,
-  SegmentedControl, Slider, Stack, Stepper, Switch, Tab, TabBar, Text, TextField, Badge,
+  SegmentedControl, Slider, Stack, Stepper, Switch, Tab, TabBar, TabBarAction, Text, TextField, Badge,
 } from '@glass-layer/react';
-import { Home, Map, Bookmark, User, Settings, Bell, Heart, Share, Trash2 } from 'lucide-react';
+import { Home, Map, Bookmark, User, Settings, Bell, Heart, Share, Trash2, Search, Image as ImageIcon, Film, FileText, Music, Download } from 'lucide-react';
 import { Demo, Page, Section } from '../shared';
 
 const LONG = '아주 긴 이름을 가진 장소 — Very long place name that keeps going past any sensible width';
+
+/* many items: more segments / tabs than fit on one line (long Korean labels, some with icons) */
+const MANY_SEG = [
+  { value: 'all', label: '전체' }, { value: 'fav', label: '즐겨찾기', icon: <Heart /> }, { value: 'recent', label: '최근 본 항목' },
+  { value: 'shared', label: '공유됨', icon: <Share /> }, { value: 'local', label: '내 기기에만 있는 파일' }, { value: 'photo', label: '사진', icon: <ImageIcon /> },
+  { value: 'video', label: '동영상', icon: <Film /> }, { value: 'doc', label: '문서', icon: <FileText /> }, { value: 'music', label: '음악', icon: <Music /> },
+  { value: 'down', label: '다운로드', icon: <Download /> }, { value: 'trash', label: '휴지통', icon: <Trash2 /> }, { value: 'etc', label: '분류되지 않은 나머지 항목 전부' },
+];
+const manyTabs = () => [
+  <Tab key="home" value="home" label="홈" icon={<Home />} />,
+  <Tab key="map" value="map" label="지도" icon={<Map />} />,
+  <Tab key="saved" value="saved" label="저장한 장소 목록" icon={<Bookmark />} badge={<Badge>{3}</Badge>} />,
+  <Tab key="bell" value="bell" label="알림" icon={<Bell />} badge={<Badge>{1234}</Badge>} />,
+  <Tab key="fav" value="fav" label="좋아요" icon={<Heart />} badge={<Badge dot />} />,
+  <Tab key="share" value="share" label="공유" icon={<Share />} />,
+  <Tab key="settings" value="settings" label="설정" icon={<Settings />} />,
+  <Tab key="me" value="me" label="내 정보와 계정 관리" icon={<User />} />,
+  <Tab key="trash" value="trash" label="휴지통" icon={<Trash2 />} />,
+];
 
 export function Lab() {
   const [refused] = useState(false);
@@ -47,6 +66,35 @@ export function Lab() {
           <div data-lab="long-chips" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxWidth: 360 }}>
             <Chip selected onSelectedChange={() => {}}>{LONG}</Chip><Chip onRemove={() => {}}>{LONG.slice(0, 10)}</Chip>
           </div>
+        </Demo>
+      </Section>
+
+      <Section title="항목이 너무 많을 때" intro="한 줄에 다 들어가지 않는 세그먼트·탭. 항목마다 최소 폭을 지키고, 넘치면 옆으로 밀어 볼 수 있으며 선택한 항목은 늘 보이는 곳으로 옵니다.">
+        <Demo col data-lab="many-seg">
+          <Text variant="footnote" tone="secondary">세그먼트 12개 · 전체 폭</Text>
+          <div data-lab="many-seg-full"><SegmentedControl aria-label="많은 세그먼트 전체 폭" defaultValue="all" options={MANY_SEG} /></div>
+          <Text variant="footnote" tone="secondary">세그먼트 12개 · 360px</Text>
+          <div data-lab="many-seg-360" style={{ maxWidth: 360 }}><SegmentedControl aria-label="많은 세그먼트 360" defaultValue="video" options={MANY_SEG} /></div>
+          <Text variant="footnote" tone="secondary">세그먼트 8개 · 240px · 작은 크기</Text>
+          <div data-lab="many-seg-240" style={{ maxWidth: 240 }}><SegmentedControl aria-label="많은 세그먼트 240" size="sm" defaultValue="all" options={MANY_SEG.slice(0, 8)} /></div>
+          <Text variant="footnote" tone="secondary">일부 비활성 · 360px</Text>
+          <div data-lab="many-seg-disabled" style={{ maxWidth: 360 }}><SegmentedControl aria-label="많은 세그먼트 일부 비활성" defaultValue="all" options={MANY_SEG.map((o, i) => (i % 4 === 1 ? { ...o, disabled: true } : o))} /></div>
+          <Text variant="footnote" tone="secondary">거부되는 제어 값 · 360px (부모가 바꾸지 않음)</Text>
+          <div data-lab="many-seg-refused" style={{ maxWidth: 360 }}><SegmentedControl aria-label="많은 세그먼트 거부" value="doc" onChange={() => setTries((t) => t + 1)} options={MANY_SEG} /></div>
+        </Demo>
+        <Demo col data-lab="many-tabs">
+          <Text variant="footnote" tone="secondary">탭 9개 · 360px · 검색 버튼 함께</Text>
+          <div data-lab="many-tabs-360-action" style={{ maxWidth: 360 }}>
+            <TabBar defaultValue="home" aria-label="많은 탭 360 검색" action={<TabBarAction icon={<Search />} label="검색" />}>{manyTabs()}</TabBar>
+          </div>
+          <Text variant="footnote" tone="secondary">탭 9개 · 360px</Text>
+          <div data-lab="many-tabs-360" style={{ maxWidth: 360 }}><TabBar defaultValue="settings" aria-label="많은 탭 360">{manyTabs()}</TabBar></div>
+          <Text variant="footnote" tone="secondary">탭 7개 · 300px · 검색 버튼 함께</Text>
+          <div data-lab="many-tabs-300-action" style={{ maxWidth: 300 }}>
+            <TabBar defaultValue="home" aria-label="많은 탭 300 검색" action={<TabBarAction icon={<Search />} label="검색" />}>{manyTabs().slice(0, 7)}</TabBar>
+          </div>
+          <Text variant="footnote" tone="secondary">탭 9개 · 300px · 아이콘만(compact)</Text>
+          <div data-lab="many-tabs-300-compact" style={{ maxWidth: 300 }}><TabBar compact defaultValue="home" aria-label="많은 탭 300 아이콘만">{manyTabs()}</TabBar></div>
         </Demo>
       </Section>
 

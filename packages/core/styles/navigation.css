@@ -48,6 +48,8 @@
 /* ============================================================================================
    Tab bar: a floating glass bar with fixed corner radius; the selection is a soft accent fill that travels
    as a droplet bridge (core/bridge.ts). An optional separate action (search) sits beside it.
+   Tabs share the width but never get narrower than 64 px (48 px compact): with more tabs than fit, the track
+   inside the glass scrolls sideways, its ends fade and the selected tab is kept in view (core/overflow.ts).
    ============================================================================================ */
 .gl-tabbar { position: relative; display: flex; align-items: flex-end; gap: 8px; padding: 0 var(--gl-size-bar-inset); pointer-events: none; }
 .gl-tabbar > * { pointer-events: auto; }
@@ -55,17 +57,24 @@
   flex: 1; min-width: 0; position: relative; display: flex; height: var(--gl-size-tab-bar); padding: 5px; gap: 0;   /* min-width 0: long labels truncate instead of widening the page */
   --_radius: var(--gl-radius-xl); contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
 }
+/* the glass clips, the track scrolls (its corners are concentric with the bar's) */
+.gl-tabbar__track {
+  --_tab-min: 64px;
+  position: relative; flex: 1; min-width: 0; display: flex; gap: 0; border-radius: calc(var(--gl-radius-xl) - 5px);
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; contain: layout; touch-action: pan-y;
+}
+.gl-tabbar__track::-webkit-scrollbar { display: none; }
 .gl-tabbar__indicator {
-  position: absolute; top: 5px; bottom: 5px; left: 0; width: 0; z-index: 0;
+  position: absolute; top: 0; bottom: 0; left: 0; width: 0; z-index: 0;
   border-radius: calc(var(--gl-radius-xl) - 5px);
   background: var(--gl-glass-selection);
   will-change: transform, width;
   transition: background-color var(--gl-duration-fast) ease;
 }
 /* while held, the drop is a little denser */
-.gl-tabbar__bar[data-gl-pressing] .gl-tabbar__indicator { background: color-mix(in oklab, var(--gl-glass-selection), var(--gl-accent) 10%); }
+.gl-tabbar__track[data-gl-pressing] .gl-tabbar__indicator { background: color-mix(in oklab, var(--gl-glass-selection), var(--gl-accent) 10%); }
 .gl-tabbar__item {
-  position: relative; z-index: 1; flex: 1; min-width: 0; appearance: none; border: 0; margin: 0; padding: 0; background: none; font: inherit;
+  position: relative; z-index: 1; flex: 1 0 0; min-width: var(--_tab-min); appearance: none; border: 0; margin: 0; padding: 0; background: none; font: inherit;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   color: var(--gl-label-secondary); border-radius: calc(var(--gl-radius-xl) - 5px); cursor: pointer;
   font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.01em;
@@ -85,8 +94,10 @@
 .gl-tabbar__action { flex: none; width: var(--gl-size-tab-bar); height: var(--gl-size-tab-bar); --_radius: var(--gl-radius-xl); border-radius: var(--gl-radius-xl); }   /* same corner as the bar (.gl-button would make it 12) */
 .gl-tabbar__action svg { width: 24px; height: 24px; }
 /* compact: icons only */
-.gl-tabbar--compact .gl-tabbar__label { display: none; }
+/* the label stays in the accessibility tree (visually hidden), so a tab's name is its label (+ badge) as in the full bar */
+.gl-tabbar--compact .gl-tabbar__label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .gl-tabbar--compact .gl-tabbar__bar { height: 52px; }
+.gl-tabbar--compact .gl-tabbar__track { --_tab-min: 48px; }
 .gl-tabbar--compact .gl-tabbar__action { width: 52px; height: 52px; }
 
 /* ============================================================================================

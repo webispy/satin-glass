@@ -82,15 +82,18 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
     run();
   }
 
+  /* the item under x (distance to its span, 0 inside): right for items of unequal width too, where the nearest
+     centre can belong to a neighbour */
   const indexAt = (x: number) => {
     let best = -1, d = Infinity;
     opts.items().forEach((el, i) => {
-      const c = el.offsetLeft + el.offsetWidth / 2, dd = Math.abs(x - c);
+      const l = el.offsetLeft, r = l + el.offsetWidth, dd = x < l ? l - x : x > r ? x - r : 0;
       if (dd < d) { d = dd; best = i; }
     });
     return best;
   };
-  const localX = (ev: PointerEvent) => ev.clientX - container.getBoundingClientRect().left - container.clientLeft;
+  /* in the items' (content) coordinates: + scrollLeft, for a track that scrolls sideways (core/overflow.ts) */
+  const localX = (ev: PointerEvent) => ev.clientX - container.getBoundingClientRect().left - container.clientLeft + container.scrollLeft;
 
   const onDown = (ev: PointerEvent) => {
     if (!opts.draggable || ev.button !== 0) return;

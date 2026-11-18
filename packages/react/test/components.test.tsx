@@ -58,6 +58,14 @@ describe('SegmentedControl', () => {
     fireEvent.keyDown(screen.getByRole('radiogroup'), { key: 'ArrowLeft' });
     expect(screen.getAllByRole('radio')[2].getAttribute('aria-checked')).toBe('true');
   });
+  it('arrow keys, Home and End skip disabled segments', () => {
+    render(<SegmentedControl aria-label="보기" options={[{ value: 'a', label: 'A', disabled: true }, { value: 'b', label: 'B' }, { value: 'c', label: 'C', disabled: true }, { value: 'd', label: 'D' }]} defaultValue="b" />);
+    const group = screen.getByRole('radiogroup'), checked = () => screen.getAllByRole('radio').findIndex((r) => r.getAttribute('aria-checked') === 'true');
+    fireEvent.keyDown(group, { key: 'ArrowRight' }); expect(checked()).toBe(3);
+    fireEvent.keyDown(group, { key: 'ArrowRight' }); expect(checked()).toBe(1);
+    fireEvent.keyDown(group, { key: 'End' }); expect(checked()).toBe(3);
+    fireEvent.keyDown(group, { key: 'Home' }); expect(checked()).toBe(1);
+  });
 });
 
 describe('TabBar', () => {
@@ -67,6 +75,13 @@ describe('TabBar', () => {
     fireEvent.click(screen.getByRole('tab', { name: '지도' }));
     expect(on).toHaveBeenCalledWith('map');
     expect(screen.getByRole('tab', { name: '지도' }).getAttribute('aria-selected')).toBe('true');
+  });
+  it('keeps the tabs (and arrow keys) inside one tablist when the track scrolls', () => {
+    render(<TabBar aria-label="메인"><Tab value="home" label="홈" /><Tab value="map" label="지도" disabled /><Tab value="me" label="나" /></TabBar>);
+    const list = screen.getByRole('tablist');
+    expect(list.querySelectorAll(':scope > [role=tab]').length).toBe(3);
+    fireEvent.keyDown(list, { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: '나' }).getAttribute('aria-selected')).toBe('true');
   });
 });
 
