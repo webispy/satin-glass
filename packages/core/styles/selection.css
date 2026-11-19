@@ -166,18 +166,54 @@
 .sg-time-value { font-variant-numeric: tabular-nums; }
 [data-sg-theme$="-hc"] .sg-wheels::before, [data-sg-theme$="-hc"] .sg-wheel:not(.sg-wheels > .sg-wheel)::before { box-shadow: inset 0 0 0 1.5px var(--sg-label); }
 
-/* calendar: the title opens month / year wheels in place of the days (same size: the panel does not jump) */
-.sg-calendar__title-btn {
-  appearance: none; border: 0; margin: 0 0 0 -6px; padding: 4px 6px; background: none; font: inherit; color: inherit; cursor: pointer;
-  display: inline-flex; align-items: center; gap: 4px; border-radius: var(--sg-radius-sm);
-  transition: background-color var(--sg-duration-instant) ease, color var(--sg-duration-fast) ease;
+/* calendar head: the month and the year as chips, in the locale's order. An open chip wears the selection glass
+   (like a selected tab) and its chevron turns over; a press sinks it like any control */
+.sg-calendar__chips { display: flex; gap: 6px; min-width: 0; }
+.sg-calendar__chip {
+  appearance: none; border: 0; margin: 0; font: inherit; display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 0 8px 0 10px;
+  border-radius: var(--sg-radius-sm); background: var(--sg-fill); color: var(--sg-label); cursor: pointer;
+  font-size: 15px; line-height: 20px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap;
+  transition: background-color var(--sg-duration-instant) ease, color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
-@media (hover: hover) { .sg-calendar__title-btn:hover { background: var(--sg-fill); } }
-.sg-calendar__title-btn:active { background: var(--sg-fill-strong); }
-.sg-calendar__title-btn:focus-visible { outline: none; box-shadow: var(--sg-ring); }
-.sg-calendar__title-btn[aria-expanded="true"] { color: var(--sg-accent-text); }
-.sg-calendar__title-chevron { width: 16px; height: 16px; color: var(--sg-accent-text); transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
-.sg-calendar__title-btn[aria-expanded="true"] .sg-calendar__title-chevron { transform: rotate(90deg); }
+@media (hover: hover) { .sg-calendar__chip:hover:not([aria-expanded="true"]) { background: var(--sg-fill-hover); } }
+.sg-calendar__chip:active { transform: scale(0.965); }
+.sg-calendar__chip:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-calendar__chip[aria-expanded="true"] { background: var(--sg-glass-selection); color: var(--sg-accent-on-soft); box-shadow: inset 0 0 0 0.5px color-mix(in oklab, var(--sg-accent) 34%, transparent); }
+.sg-calendar__chip-chevron { width: 15px; height: 15px; color: var(--sg-label-secondary); transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), color var(--sg-duration-fast) ease; }
+.sg-calendar__chip[aria-expanded="true"] .sg-calendar__chip-chevron { transform: rotate(180deg); color: currentColor; }
+[data-sg-theme$="-hc"] .sg-calendar__chip { box-shadow: inset 0 0 0 1.5px var(--sg-label); }
+
+/* month / year grids, in place of the days and the same size (the panel does not jump). The chosen cell fills from
+   its middle on the pop spring, like a weekday; the current month or year is ringed in the accent */
+.sg-calendar__picker { height: calc(28px + 6 * var(--_cell)); display: flex; flex-direction: column; will-change: transform, opacity; }
+.sg-calendar__caption { height: 28px; flex: none; display: flex; align-items: center; padding: 0 6px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--sg-label-tertiary); font-variant-numeric: tabular-nums; }
+.sg-calendar__cells { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 6px; padding: 2px; outline: none; }
+.sg-calendar__cells--scroll {
+  position: relative; grid-auto-rows: 52px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scroll-padding-block: 12px;
+  -webkit-mask-image: linear-gradient(transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(transparent, #000 8%, #000 92%, transparent);
+}
+.sg-calendar__cell {
+  position: relative; isolation: isolate; display: grid; place-items: center; min-width: 0; border-radius: var(--sg-radius-md);
+  background: var(--sg-fill); color: var(--sg-label); font-size: 15px; font-weight: 560; font-variant-numeric: tabular-nums; cursor: pointer; outline: none;
+  transition: color var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
+}
+.sg-calendar__cell > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; padding: 0 4px; }
+.sg-calendar__cell::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--sg-accent);
+  opacity: 0; transform: scale(0.4); transition: transform var(--sg-spring-pop-duration) var(--sg-spring-pop), opacity var(--sg-duration-fast) ease;
+}
+@media (hover: hover) { .sg-calendar__cell:hover:not([aria-disabled="true"]):not([aria-selected="true"]) { background: var(--sg-fill-hover); } }
+.sg-calendar__cell:active:not([aria-disabled="true"]) { transform: scale(0.965); }
+.sg-calendar__cell:focus-visible { box-shadow: var(--sg-ring); }
+.sg-calendar__cell[data-current] { color: var(--sg-accent-text); box-shadow: inset 0 0 0 1.5px var(--sg-accent-text); }
+.sg-calendar__cell[aria-selected="true"] { color: var(--sg-on-accent); font-weight: 700; }
+.sg-calendar__cell[aria-selected="true"]::before { opacity: 1; transform: none; }
+.sg-calendar__cell[aria-disabled="true"] { color: var(--sg-label-disabled); cursor: default; }
+[data-sg-theme$="-hc"] .sg-calendar__cell { box-shadow: inset 0 0 0 1px var(--sg-label-secondary); }
+[data-sg-reduce-motion="true"] .sg-calendar__cell, [data-sg-reduce-motion="true"] .sg-calendar__cell::before, [data-sg-reduce-motion="true"] .sg-calendar__chip { transform: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-calendar__cell, .sg-root:not([data-sg-reduce-motion="false"]) .sg-calendar__cell::before, .sg-root:not([data-sg-reduce-motion="false"]) .sg-calendar__chip { transform: none !important; }
+}
 .sg-calendar__wheels { height: calc(28px + 6 * var(--_cell)); display: flex; align-items: center; }
 .sg-calendar__wheels > .sg-wheels { flex: 1; --_rows: 7; }
 .sg-calendar__nav[hidden] { display: flex !important; visibility: hidden; }

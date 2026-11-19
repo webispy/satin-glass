@@ -94,39 +94,58 @@ await go('selection');
   ok('time picker: 24-hour and English formats', (await t.getByRole('button', { name: /24시간제/ }).textContent()).trim() === '18:45' && (await t.getByRole('button', { name: /영어 표기/ }).textContent()).trim() === '9:15 PM');
 }
 
-/* ================================================================ calendar: month / year wheels */
+/* ================================================================ calendar: month / year chips and grids (and the wheel option) */
 {
-  const d = demo('date'), field = d.getByRole('button', { name: /생년월일/ });
-  await field.scrollIntoViewIfNeeded(); await field.click(); await p.waitForTimeout(600);
-  const panel = p.locator('.sg-datepicker-panel'), title = panel.locator('.sg-calendar__title-btn');
-  const year = panel.getByRole('spinbutton', { name: '연도' });
-  ok('birth date: opens on the month / year wheels (defaultMonth 1990), the year wheel focused', (await year.getAttribute('aria-valuetext')) === '1990년' && (await year.evaluate((e) => e === document.activeElement)) && (await title.getAttribute('aria-expanded')) === 'true');
+  const d = demo('date'), field = d.getByRole('button', { name: /^생년월일(?! \()/ });
+  await field.scrollIntoViewIfNeeded(); await field.click(); await p.waitForTimeout(700);
+  const panel = p.locator('.sg-datepicker-panel'), chips = panel.locator('.sg-calendar__chip');
+  const chipText = async () => (await chips.allTextContents()).join(' ');
+  const active = () => p.evaluate(() => document.activeElement?.textContent?.trim());
+  ok('birth date: opens on the year grid (defaultMonth 1990), the year chip open, 1990 chosen and focused, Korean order (year, month)',
+    (await panel.locator('.sg-calendar__cells--scroll').count()) === 1 && (await chips.first().getAttribute('aria-expanded')) === 'true' && (await active()) === '1990년' && (await chipText()) === '1990년 1월',
+    `${await chipText()} / focus ${await active()}`);
+  const mid = await panel.locator('.sg-calendar__cells--scroll').evaluate((g) => { const c = g.querySelector('[aria-selected="true"]'); return Math.round(c.offsetTop + c.offsetHeight / 2 - g.scrollTop - g.clientHeight / 2); });
+  ok('birth date: the chosen year opens in the middle of the grid', Math.abs(mid) <= 2, `${mid}px off`);
   await p.keyboard.type('1980'); await p.waitForTimeout(700);
-  ok('birth date: typing 1980 on the year wheel goes there', (await title.textContent()).startsWith('1980년'), await title.textContent());
-  await p.keyboard.press('Tab'); await p.keyboard.press('ArrowDown'); await p.keyboard.press('ArrowDown'); await p.waitForTimeout(500);
-  ok('birth date: the month wheel next to it (1월 → 3월)', (await title.textContent()) === '1980년 3월', await title.textContent());
-  await p.keyboard.press('Enter'); await p.waitForTimeout(600);
+  ok('birth date: typing 1980 in the year grid goes there', (await active()) === '1980년', await active());
+  await p.keyboard.press('Enter'); await p.waitForTimeout(700);
+  ok('birth date: choosing a year goes on to the months of that year (month chip open, focus on the month)', (await chipText()) === '1980년 1월' && (await chips.nth(1).getAttribute('aria-expanded')) === 'true' && (await active()) === '1월', `${await chipText()} / ${await active()}`);
+  await p.keyboard.press('ArrowRight'); await p.keyboard.press('ArrowRight'); await p.keyboard.press('Enter'); await p.waitForTimeout(700);
   const focusDay = await p.evaluate(() => document.activeElement?.getAttribute('data-date'));
-  ok('birth date: Enter returns to the days of that month, focus on a day', (await panel.locator('.sg-calendar__grid').count()) === 1 && /^1980-03-/.test(focusDay ?? ''), focusDay);
+  ok('birth date: choosing a month returns to its days, focus on a day', (await panel.locator('.sg-calendar__grid').count()) === 1 && /^1980-03-/.test(focusDay ?? '') && (await chipText()) === '1980년 3월', `${focusDay} / ${await chipText()}`);
   await panel.locator('[data-date="1980-03-15"]').click(); await p.waitForTimeout(500);
   ok('birth date: picking a day fills the field', (await field.textContent()).includes('1980'), await field.textContent());
-  /* max = today: later months of this year are passed over */
-  await field.click(); await p.waitForTimeout(500);   /* opens on the wheels again (openTo) */
-  await panel.getByRole('spinbutton', { name: '연도' }).focus(); await p.keyboard.press('End'); await p.waitForTimeout(500);
-  const now = new Date(), dis = await panel.locator('.sg-wheel').nth(1).locator('.sg-wheel__item[data-disabled]').count();
-  ok('birth date: with max = today, months after this one cannot be chosen', dis === 11 - now.getMonth(), `${dis} disabled`);
+  /* max = today: in this year, the months after this one cannot be chosen */
+  await field.click(); await p.waitForTimeout(600);   /* opens on the years again (openTo) */
+  await p.keyboard.type(String(new Date().getFullYear())); await p.waitForTimeout(500); await p.keyboard.press('Enter'); await p.waitForTimeout(700);
+  const now = new Date(), dis = await panel.locator('.sg-calendar__cell[aria-disabled="true"]').count();
+  ok('birth date: with max = today, months after this one cannot be chosen', dis === 11 - now.getMonth() && (await chipText()).startsWith(`${now.getFullYear()}년`), `${dis} disabled, ${await chipText()}`);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+
+  /* the wheel option: both chips open month and year wheels */
+  const wf = d.getByRole('button', { name: /휠로/ });
+  await wf.scrollIntoViewIfNeeded(); await wf.click(); await p.waitForTimeout(700);
+  const year = panel.getByRole('spinbutton', { name: '연도' });
+  ok('wheel option: opens on the wheels (1990), the year wheel focused', (await year.getAttribute('aria-valuetext')) === '1990년' && (await year.evaluate((e) => e === document.activeElement)), await year.getAttribute('aria-valuetext'));
+  await p.keyboard.type('1980'); await p.waitForTimeout(700);
+  await p.keyboard.press('Tab'); await p.keyboard.press('ArrowDown'); await p.keyboard.press('ArrowDown'); await p.waitForTimeout(600);
+  ok('wheel option: typing a year, then the month wheel beside it (1월 → 3월)', (await chipText()) === '1980년 3월', await chipText());
+  await p.keyboard.press('Enter'); await p.waitForTimeout(600);
+  ok('wheel option: Enter returns to the days of that month', (await panel.locator('.sg-calendar__grid').count()) === 1 && /^1980-03-/.test(await p.evaluate(() => document.activeElement?.getAttribute('data-date') ?? '')));
   await p.keyboard.press('Escape'); await p.waitForTimeout(400);
 
   const cal = demo('calendar').locator('.sg-calendar');
   const box = () => cal.evaluate((e) => Math.round(e.getBoundingClientRect().height));
-  const h0 = await box(), t2 = cal.locator('.sg-calendar__title-btn'), m0 = await t2.textContent();
-  await t2.click(); await p.waitForTimeout(500);
-  const h1 = await box();
-  const yw = cal.getByRole('spinbutton', { name: '연도' }); await yw.focus(); await pageKey(yw, 'PageUp'); await p.waitForTimeout(600);
-  const m1 = await t2.textContent();
-  ok('calendar: the title opens the wheels in place (same size); PageUp on the year goes back 10 years', h1 === h0 && parseInt(m1) === parseInt(m0) - 10, `${h0}/${h1} px, ${m0} → ${m1}`);
-  await t2.click(); await p.waitForTimeout(500);
-  ok('calendar: the title again shows the days of the chosen month', (await cal.locator('.sg-calendar__grid').count()) === 1 && (await t2.getAttribute('aria-expanded')) === 'false');
+  const cchips = cal.locator('.sg-calendar__chip'), h0 = await box(), y0 = parseInt(await cchips.first().textContent());
+  await cchips.nth(1).click(); await p.waitForTimeout(600);
+  const h1 = await box(), months = await cal.locator('.sg-calendar__cell').count();
+  await cchips.first().click(); await p.waitForTimeout(600);
+  const h2 = await box();
+  const range = () => cal.locator('.sg-calendar__caption').textContent();
+  const r0 = await range(); await cal.getByRole('button', { name: '이전 연도들' }).click(); await p.waitForTimeout(800); const r1 = await range();
+  ok('calendar: the month chip opens 12 months and the year chip the years, in place (same size); ‹ pages the years back', h1 === h0 && h2 === h0 && months === 12 && parseInt(r1) < parseInt(r0), `${h0}/${h1}/${h2} px, ${months} months, ${r0} → ${r1}`);
+  await cchips.first().click(); await p.waitForTimeout(500);
+  ok('calendar: the open chip again shows the days', (await cal.locator('.sg-calendar__grid').count()) === 1 && (await cchips.first().getAttribute('aria-expanded')) === 'false' && parseInt(await cchips.first().textContent()) === y0);
 }
 
 /* ================================================================ navigation stack */

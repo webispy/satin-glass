@@ -139,7 +139,8 @@ await go('selection');
   const en = p.getByRole('button', { name: /English/ });
   await en.click(); await p.waitForTimeout(400);
   const head = await p.locator('.sg-datepicker-panel th').allTextContents();
-  ok('date picker: locale en-US, Monday first', head[0] === 'M' && (await p.locator('.sg-datepicker-panel .sg-calendar__title').textContent()).match(/[A-Z][a-z]+ \d{4}/) !== null, head.join(''));
+  const chipsEn = await p.locator('.sg-datepicker-panel .sg-calendar__chip').allTextContents();
+  ok('date picker: locale en-US, Monday first, the month chip before the year', head[0] === 'M' && /^[A-Z][a-z]+$/.test(chipsEn[0]) && /^\d{4}$/.test(chipsEn[1]), `${head.join('')} / ${chipsEn.join(' · ')}`);
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
 }
 

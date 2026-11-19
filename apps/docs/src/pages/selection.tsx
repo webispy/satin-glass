@@ -115,10 +115,11 @@ export function Selection() {
         </Demo>
       </Section>
 
-      <Section title="날짜" intro="방향키로 하루·한 주, PageUp/PageDown으로 한 달(Shift는 1년)씩 움직입니다. 달이 바뀌면 그쪽에서 미끄러져 들어와요. 위쪽의 ‘2026년 11월’을 누르면 그 자리에 연도와 월 휠이 열려, 수십 년 전으로도 한 번에 갑니다(휠에서 1·9·8·0을 차례로 치면 1980년으로). 생년월일처럼 먼 과거가 보통인 칸은 처음부터 휠로 열고(openTo=&quot;month&quot;), 처음 보여 줄 달(defaultMonth)을 정할 수 있어요.">
+      <Section title="날짜" intro="방향키로 하루·한 주, PageUp/PageDown으로 한 달(Shift는 1년)씩 움직입니다. 위쪽의 연도·월 칩은 언어가 쓰는 순서대로 놓여요(한국어는 ‘2026년 11월’, 영어는 ‘November 2026’). 칩을 누르면 그 자리에 열두 달, 또는 모든 연도를 담은 스크롤 격자가 피어나고, 연도 격자에서 1·9·8·0을 차례로 치면 1980년으로 갑니다. 연도를 고르면 달로, 달을 고르면 날짜로 이어집니다. 생년월일처럼 먼 과거가 보통인 칸은 연도부터 열고(openTo=&quot;year&quot;), 처음 보여 줄 달(defaultMonth)을 정할 수 있어요. 휠이 편한 화면에서는 monthPicker=&quot;wheel&quot;로 연도·월 휠을 엽니다.">
         <div className="grid grid--2">
           <Demo col data-demo="date">
-            <DatePicker label="생년월일" value={birth} onChange={setBirth} openTo="month" defaultMonth={new Date(1990, 0, 1)} min={new Date(1920, 0, 1)} max={new Date()} name="birth" helperText="연도와 월을 먼저 고르고, 제목을 눌러 날짜로" />
+            <DatePicker label="생년월일" value={birth} onChange={setBirth} openTo="year" defaultMonth={new Date(1990, 0, 1)} min={new Date(1920, 0, 1)} max={new Date()} name="birth" helperText="연도 → 월 → 날짜 순서로" />
+            <DatePicker label="생년월일 (휠로 고르기)" monthPicker="wheel" openTo="month" defaultMonth={new Date(1990, 0, 1)} min={new Date(1920, 0, 1)} max={new Date()} helperText="monthPicker=&quot;wheel&quot;" />
             <DatePicker label="방문 날짜" value={date} onChange={setDate} min={new Date()} max={maxDate} helperText="오늘부터 3개월 안" name="visit" />
             <DatePicker label="주말만 (평일 선택 불가)" isDateDisabled={(d) => d.getDay() !== 0 && d.getDay() !== 6} />
             <DatePicker label="English, Monday first" locale="en-US" weekStartsOn={1} />
