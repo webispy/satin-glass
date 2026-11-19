@@ -131,10 +131,11 @@
    ============================================================================================ */
 .sg-wheels { --_row: 36px; --_rows: 5; }   /* a lone wheel falls back to the same (the group's own values reach its wheels) */
 .sg-wheels { position: relative; display: flex; justify-content: center; align-items: stretch; height: calc(var(--_row) * var(--_rows)); user-select: none; -webkit-user-select: none; }
-/* depth: the rows turn in a recessed well, and the lens is a still raised bar over it — the same raised surface as the
-   segmented control's chosen segment (opaque surface, sheen, lit top edge, shaded bottom edge, short shadow). Text
-   stays above both; the row in the lens is drawn in full strength, the others recede */
-.sg-wheels, .sg-wheel:not(.sg-wheels > .sg-wheel) { border-radius: var(--sg-radius-lg); background: var(--sg-fill); box-shadow: var(--sg-depth-well); }
+/* depth: a wheel reads as a segmented control stood on end — the rows turn in a groove (the same as the segmented
+   control's track) and the lens is a still raised chip over it (the same as its chosen segment: opaque surface, sheen,
+   lit top edge, shaded bottom edge, short shadow). Text stays above both; the row in the lens is drawn in full
+   strength, the others recede */
+.sg-wheels, .sg-wheel:not(.sg-wheels > .sg-wheel) { border-radius: var(--sg-radius-lg); background: var(--sg-fill); box-shadow: var(--sg-depth-inset); }
 .sg-wheels__lens {
   position: absolute; z-index: 0; left: 4px; right: 4px; top: calc(50% - var(--_row, 36px) / 2); height: var(--_row, 36px);
   border-radius: calc(var(--sg-radius-lg) - 4px); pointer-events: none;
@@ -166,10 +167,10 @@
   border-radius: calc(var(--sg-radius-lg) - 4px); outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); pointer-events: none;
 }
 .sg-wheels__sep { position: relative; z-index: 1; align-self: center; padding-bottom: 2px; font-size: 20px; line-height: 24px; font-weight: 600; color: var(--sg-label); }
-.sg-timewheel { min-width: 200px; }
+.sg-timewheel { width: fit-content; min-width: 216px; max-width: 100%; margin-inline: auto; padding-inline: 14px; }   /* as wide as its columns: no empty groove on either side */
 .sg-timewheel .sg-wheel { flex: 0 0 auto; min-width: 3.6em; }
 .sg-timewheel .sg-wheel--period { min-width: 4.4em; }
-.sg-timepicker-panel { position: absolute; left: 0; top: 0; padding: 12px; --_radius: var(--sg-radius-xl); outline: none; }
+.sg-timepicker-panel { position: absolute; left: 0; top: 0; padding: 6px; --_radius: var(--sg-radius-xl); outline: none; }   /* 6: the groove inside (16) is concentric with the panel (22 − 6) */
 .sg-time-value { font-variant-numeric: tabular-nums; }
 
 /* calendar head: the month and the year as chips, in the locale's order. An open chip wears the selection glass

@@ -30,6 +30,7 @@ body { background: var(--sg-bg); }
 .section { margin: 0 0 40px; }
 .section > h2 { margin: 0 0 4px; }
 .section > p { margin: 0 0 16px; max-width: 680px; }
+.section > .demo + .demo, .section > .demo + .rules, .section > .rules + .demo { margin-top: 16px; }   /* panels never touch */
 .demo { position: relative; border-radius: var(--sg-radius-xl); background: var(--sg-surface); box-shadow: inset 0 0 0 1px var(--sg-separator); padding: 28px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
 .demo--col { flex-direction: column; align-items: stretch; flex-wrap: nowrap; }   /* wrap would size the column to its widest child */
 .demo--center { justify-content: center; }
@@ -148,14 +149,31 @@ body { background: var(--sg-bg); }
 /* the settings navigation stack demo */
 .settings-stack { width: 100%; height: 560px; border-radius: var(--sg-radius-lg); outline: 1px solid var(--sg-separator); outline-offset: -1px; }
 
-/* foundations: depth and layers */
-.depth-table { display: grid; gap: 10px; }
-.depth-row { display: grid; grid-template-columns: 32px 140px minmax(0, 1fr); align-items: center; gap: 14px; }
+/* foundations: depth and layers — each sample tile is the base its level sits on */
+.depth-table { display: grid; gap: 14px; }
+.depth-row { display: grid; grid-template-columns: 28px 208px minmax(0, 1fr); align-items: center; gap: 16px; }
 .depth-n { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--sg-label-tertiary); text-align: right; }
-.depth-sample { display: block; height: 44px; }
 .depth-text { font-size: 14px; line-height: 20px; color: var(--sg-label); min-width: 0; }
 .depth-where { color: var(--sg-label-secondary); font-size: 13px; }
-@media (max-width: 560px) { .depth-row { grid-template-columns: 24px 88px minmax(0, 1fr); gap: 10px; } }
+.depth-tile { position: relative; display: flex; align-items: center; justify-content: center; height: 72px; border-radius: var(--sg-radius-lg); overflow: hidden; isolation: isolate; }
+.depth-tile--card { background: var(--sg-surface); box-shadow: var(--sg-shadow-sm), inset 0 0 0 1px var(--sg-separator); }
+.depth-tile--page { background: var(--sg-bg); box-shadow: inset 0 0 0 1px var(--sg-separator); }
+.depth-groove { display: flex; align-items: center; width: 132px; height: 30px; padding: 3px; border-radius: var(--sg-radius-full); background: var(--sg-fill-strong); box-shadow: var(--sg-depth-inset); }
+.depth-knob { width: 24px; height: 24px; margin-left: auto; border-radius: 50%; background: var(--sg-depth-raised-bg); background-image: var(--sg-depth-sheen); box-shadow: var(--sg-depth-raised); }
+.depth-chip { width: 58px; height: 24px; margin-left: 34px; border-radius: var(--sg-radius-full); background: var(--sg-depth-raised-bg); background-image: var(--sg-depth-sheen); box-shadow: var(--sg-depth-raised); }
+.depth-card { width: 132px; height: 38px; border-radius: var(--sg-radius-md); background: var(--sg-surface); box-shadow: var(--sg-shadow-sm), inset 0 0 0 0.5px var(--sg-separator); }
+.depth-photo { position: absolute; inset: 0; z-index: -1; }
+.depth-tile--screen { height: 112px; align-items: flex-end; }
+.depth-bar { position: absolute; left: 22px; right: 22px; top: 10px; height: 30px; --_radius: var(--sg-radius-lg); }
+.depth-scrim { position: absolute; inset: 0; background: var(--sg-scrim); }
+.depth-sheet { position: absolute; left: 6px; right: 6px; bottom: 6px; height: 64px; --_radius: var(--sg-radius-xl); box-shadow: var(--sg-shadow-lg); display: flex; justify-content: center; }
+.depth-handle { width: 28px; height: 4px; margin-top: 7px; border-radius: 2px; background: var(--sg-fill-strong); }
+@media (max-width: 560px) { .depth-row { grid-template-columns: 22px 132px minmax(0, 1fr); gap: 10px; } .depth-groove, .depth-card { width: 96px; } }
+
+/* rules under a section: plain text, not a panel */
+.rules { margin: 4px 0 0; padding: 0 0 0 18px; display: grid; gap: 8px; max-width: 760px; font-size: 14px; line-height: 21px; color: var(--sg-label-secondary); }
+.rules b { color: var(--sg-label); font-weight: 650; }
+.rules__tokens { list-style: none; margin-left: -18px; margin-top: 4px; font-size: 13px; }
 
 /* foundations: corners */
 .corner-demo { display: flex; flex-direction: column; align-items: center; gap: 8px; }

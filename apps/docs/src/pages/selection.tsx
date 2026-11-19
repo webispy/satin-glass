@@ -146,7 +146,7 @@ export function Selection() {
               </List>
             </ListSection>
             <TimeWheel aria-label="알람 시간" value={al.time} onChange={(time) => putAlarm({ time })} />
-            <WeekdayPicker aria-label="반복 요일" value={al.days} onChange={(days) => putAlarm({ days })} />
+            <WeekdayPicker aria-label="반복 요일" value={al.days} onChange={(days) => putAlarm({ days })} style={{ marginInline: 'auto' }} />
           </Demo>
         </div>
       </Section>

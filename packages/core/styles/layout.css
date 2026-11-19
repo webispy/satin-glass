@@ -4,7 +4,7 @@
 /* ============================================================================================
    Cards
    ============================================================================================ */
-.sg-card { position: relative; overflow: hidden; border-radius: var(--sg-radius-xl); background: var(--sg-surface); box-shadow: var(--sg-shadow-sm); }
+.sg-card { position: relative; overflow: hidden; border-radius: var(--sg-radius-lg);   /* the card role: 16 */ background: var(--sg-surface); box-shadow: var(--sg-shadow-sm); }
 .sg-card--outlined { box-shadow: inset 0 0 0 1px var(--sg-separator); }
 .sg-card--interactive { appearance: none; border: 0; margin: 0; padding: 0; width: 100%; font: inherit; color: inherit; text-align: inherit; display: block; cursor: pointer; transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), box-shadow var(--sg-duration-base) ease; }
 @media (hover: hover) { .sg-card--interactive:hover { box-shadow: var(--sg-shadow-md); } }
@@ -19,7 +19,7 @@
 .sg-card__heading { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .sg-card__title { margin: 0; font-size: 17px; line-height: 22px; font-weight: 650; letter-spacing: -0.01em; color: var(--sg-label); }
 .sg-card__desc { margin: 0; font-size: 13px; line-height: 18px; color: var(--sg-label-secondary); }
-.sg-card__actions { flex: none; display: flex; align-items: center; gap: 6px; margin: -4px -4px -4px 0; }
+.sg-card__actions { flex: none; display: flex; align-items: center; gap: 6px; margin: -4px 0; }   /* 16 from the corner = the card's radius: controls keep their own (g ≥ R) */
 
 /* ============================================================================================
    Grouped list

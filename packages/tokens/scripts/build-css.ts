@@ -34,8 +34,8 @@ out.push(':root {', ...root, '}');
    shaded on its bottom edge and casts a soft shadow; what is recessed is shaded inside its top edge. Declared on every
    theme element so they take that theme's shadow colour and glass values. High contrast flattens them (outlines
    carry the shapes there).
-     inset   a shallow groove: tracks and rails a value moves along (switch, slider, progress, segmented, stepper)
-     well    a deep recess: a wheel's column
+     inset   a groove: tracks, rails and columns a value moves along (switch, slider, progress, segmented, stepper,
+             a wheel's column) and fields a value goes into
      raised  something lifted off its surface that you hold or that marks the choice (knobs, thumbs, the segmented
              chip, the wheel lens); raised-accent and sheen-accent for a chosen accent bead (a day, a month, a weekday) */
 /* shadows read the theme's shadow colour and strength, so they are declared with the depth tokens on every theme
@@ -45,9 +45,8 @@ const depth = [
   decl('shadow-md', '0 1px 3px rgba(var(--sg-shadow-color), calc(0.07 * var(--sg-shadow-strength))), 0 8px 24px rgba(var(--sg-shadow-color), calc(0.1 * var(--sg-shadow-strength)))'),
   decl('shadow-lg', '0 2px 6px rgba(var(--sg-shadow-color), calc(0.08 * var(--sg-shadow-strength))), 0 20px 48px rgba(var(--sg-shadow-color), calc(0.16 * var(--sg-shadow-strength)))'),
   decl('depth-inset', 'inset 0 1px 2px rgba(var(--sg-shadow-color), calc(0.14 * var(--sg-shadow-strength))), inset 0 0 0 0.5px rgba(var(--sg-shadow-color), calc(0.05 * var(--sg-shadow-strength)))'),
-  decl('depth-well', 'inset 0 10px 12px -12px rgba(var(--sg-shadow-color), calc(0.32 * var(--sg-shadow-strength))), inset 0 -10px 12px -12px rgba(var(--sg-shadow-color), calc(0.24 * var(--sg-shadow-strength))), inset 0 0 0 0.5px var(--sg-separator)'),
   decl('depth-raised', '0 1px 2px rgba(var(--sg-shadow-color), calc(0.12 * var(--sg-shadow-strength))), 0 3px 8px -2px rgba(var(--sg-shadow-color), calc(0.14 * var(--sg-shadow-strength))), inset 0 1px 0 var(--sg-glass-rim-lit), inset 0 -1px 0 var(--sg-glass-rim-shade)'),
-  decl('depth-raised-accent', '0 1px 2px color-mix(in oklab, var(--sg-accent) 40%, transparent), 0 6px 14px -6px color-mix(in oklab, var(--sg-accent) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14)'),
+  decl('depth-raised-accent', '0 1px 2px color-mix(in oklab, var(--sg-accent) 45%, transparent), 0 3px 8px -4px color-mix(in oklab, var(--sg-accent) 55%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(0, 0, 0, 0.12)'),   /* a short shadow, not a glow: beads come in rows (weekdays) */
   decl('depth-sheen', 'linear-gradient(180deg, var(--sg-glass-depth), rgba(255, 255, 255, 0) 62%)'),
   decl('depth-sheen-accent', 'linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 58%)'),
 ];
@@ -60,7 +59,7 @@ out.push('@media (prefers-color-scheme: dark) {', '  :root:not([data-sg-theme]) 
 /* high contrast: depth turns into outlines, so every groove, knob and chosen thing keeps a visible edge (3:1 for
    non-text) through the same tokens — no component needs its own high-contrast rule */
 const hcDepth = [
-  decl('depth-inset', 'inset 0 0 0 1px var(--sg-separator-strong)'), decl('depth-well', 'inset 0 0 0 1px var(--sg-separator-strong)'),
+  decl('depth-inset', 'inset 0 0 0 1px var(--sg-separator-strong)'),
   decl('depth-raised', 'inset 0 0 0 1.5px var(--sg-label)'), decl('depth-raised-accent', 'inset 0 0 0 1.5px var(--sg-label)'),
   decl('depth-sheen', 'none'), decl('depth-sheen-accent', 'none'),
 ];

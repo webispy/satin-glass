@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { palette, STEPS, motions, springAt, springDuration, typography, SPRING_NAMES, type Hue, type MotionName, type SpringName } from '@satin-glass/tokens';
 import { Button, Card, CardBody, Glass, Stack, Text, SegmentedControl, Switch, Slider, Stepper, Progress, PageControl, TabBar, Tab, MotionScope, Menu, MenuItem, Badge, useTheme } from '@satin-glass/react';
 import { Home, Map, Bookmark, User, Footprints, Bike, Car } from 'lucide-react';
@@ -167,34 +167,49 @@ export function Motion() {
   );
 }
 
-/* depth and layers: one cross-section from the deepest groove to the overlay, then the components on each level */
-const LEVELS: { n: string; name: string; what: string; where: string; sample: CSSProperties }[] = [
-  { n: '−2', name: '홈 (깊음)', what: '값이 돌아가는 우묵한 자리. 안쪽 윗변·아랫변이 그늘짐', where: '휠의 열', sample: { background: 'var(--sg-fill)', boxShadow: 'var(--sg-depth-well)', borderRadius: 'var(--sg-radius-lg)' } },
-  { n: '−1', name: '홈 (얕음)', what: '값이 움직이는 길. 안쪽 윗변이 살짝 그늘짐', where: '스위치·슬라이더·진행 막대의 레일, 세그먼트·스테퍼의 바탕', sample: { background: 'var(--sg-fill-strong)', boxShadow: 'var(--sg-depth-inset)', borderRadius: 999, height: 14, alignSelf: 'center' } },
-  { n: '0', name: '바탕', what: '페이지 자체', where: '배경, 목록 사이 여백', sample: { background: 'var(--sg-bg)', boxShadow: 'inset 0 0 0 1px var(--sg-separator)', borderRadius: 'var(--sg-radius-lg)' } },
-  { n: '1', name: '표면', what: '바탕 위에 놓인 판. 아주 옅은 그림자 또는 머리카락 선', where: '카드, 목록 묶음, 표', sample: { background: 'var(--sg-surface)', boxShadow: 'var(--sg-shadow-sm)', borderRadius: 'var(--sg-radius-lg)' } },
-  { n: '2', name: '볼록', what: '잡는 것과 고른 것. 윗변이 밝고 아랫변이 그늘지며 짧은 그림자', where: '스위치 손잡이, 슬라이더 손잡이, 세그먼트의 고른 칸, 휠 렌즈, 고른 날짜·월·연도·요일(강조색 구슬)', sample: { background: 'var(--sg-bg-elevated)', backgroundImage: 'var(--sg-depth-sheen)', boxShadow: 'var(--sg-depth-raised)', borderRadius: 'var(--sg-radius-md)' } },
-  { n: '3', name: '떠 있는 유리', what: '내용 위에 뜬 유리. 빛을 따르는 테두리와 넓은 그림자', where: '앱 바, 탭 바, 사이드바, 메뉴, 팝오버, 셀렉트 목록, 날짜·시간 패널, 토스트', sample: {} },
-  { n: '4', name: '덮개', what: '화면을 덮는 유리. 배경은 어둡게만, 가장 넓은 그림자', where: '시트, 대화상자, 액션 시트, 미디어 뷰어', sample: {} },
+/* depth and layers: one cross-section, each level drawn on what it actually sits on (a groove in a card, a card on the
+   page, glass over content), so colour means something: a groove is a tinted fill, a raised thing is opaque, glass
+   shows what is behind it */
+function DepthTile({ level }: { level: string }) {
+  switch (level) {
+    case '−1': return <span className="depth-tile depth-tile--card"><span className="depth-groove"><span className="depth-knob" /></span></span>;
+    case '0': return <span className="depth-tile depth-tile--page" />;
+    case '1': return <span className="depth-tile depth-tile--page"><span className="depth-card" /></span>;
+    case '2': return <span className="depth-tile depth-tile--card"><span className="depth-groove"><span className="depth-chip" /></span></span>;
+    /* 3 and 4 are the same small screen: content with a floating bar; 4 dims all of it and a sheet rises above */
+    case '3': return <span className="depth-tile depth-tile--screen"><Photo scene={0} className="depth-photo" /><Glass variant="regular" className="depth-bar" /></span>;
+    default: return (
+      <span className="depth-tile depth-tile--screen">
+        <Photo scene={0} className="depth-photo" /><Glass variant="regular" className="depth-bar" /><span className="depth-scrim" />
+        <Glass variant="strong" className="depth-sheet"><span className="depth-handle" /></Glass>
+      </span>
+    );
+  }
+}
+const LEVELS: { n: string; name: string; what: string; where: string }[] = [
+  { n: '−1', name: '홈', what: '값이 움직이는 길이나 값이 들어가는 자리. 채움 틴트에 안쪽 윗변이 살짝 그늘짐', where: '스위치·슬라이더·진행 막대의 레일, 세그먼트·스테퍼의 바탕, 휠의 열, 입력란' },
+  { n: '0', name: '바탕', what: '페이지 자체', where: '배경, 목록 사이 여백' },
+  { n: '1', name: '표면', what: '바탕 위의 불투명한 판. 아주 옅은 그림자 또는 머리카락 선', where: '카드, 목록 묶음, 표' },
+  { n: '2', name: '볼록', what: '잡는 것과 고른 것. 불투명하고, 윗변이 밝고 아랫변이 그늘지며 짧은 그림자', where: '스위치·슬라이더 손잡이, 세그먼트의 고른 칸, 휠 렌즈, 고른 날짜·월·연도·요일(강조색 구슬)' },
+  { n: '3', name: '떠 있는 유리', what: '내용 위에 뜬 새틴 유리. 뒤가 부드럽게 비치고 넓은 그림자', where: '앱 바, 탭 바, 사이드바, 메뉴, 팝오버, 셀렉트 목록, 날짜·시간 패널, 토스트' },
+  { n: '4', name: '덮개', what: '화면 전체(떠 있는 유리까지)를 어둡게 덮고 그 위에 올라오는 진한 유리. 가장 넓은 그림자', where: '시트, 대화상자, 액션 시트, 미디어 뷰어' },
 ];
 function DepthSection() {
   return (
-    <Section title="깊이와 레이어" intro="모든 컴포넌트는 아래 일곱 층 중 하나에 놓입니다. 빛은 위에서 옵니다: 볼록한 것은 윗변이 밝고 아랫변이 그늘지며 아래로 짧은 그림자가 지고, 오목한 것은 안쪽 윗변이 그늘집니다. 층이 높을수록 그림자는 넓고 옅어집니다.">
+    <Section title="깊이와 레이어" intro="모든 컴포넌트는 아래 여섯 층 중 하나에 놓입니다. 빛은 위에서 옵니다: 볼록한 것은 윗변이 밝고 아랫변이 그늘지며 아래로 짧은 그림자가 지고, 오목한 것은 안쪽 윗변이 그늘집니다. 층이 높을수록 그림자는 넓고 옅어집니다. 아래 예시는 각 층을 실제로 놓이는 자리 위에 그렸습니다.">
       <Demo col>
         <div className="depth-table">
           {LEVELS.map((l) => (
             <div key={l.n} className="depth-row">
               <span className="depth-n">{l.n}</span>
-              {l.n === '3' ? <Glass variant="regular" style={{ height: 44, borderRadius: 'var(--sg-radius-lg)' }} />
-                : l.n === '4' ? <Glass variant="strong" style={{ height: 44, borderRadius: 'var(--sg-radius-xl)', boxShadow: 'var(--sg-shadow-lg)' }} />
-                : <span className="depth-sample" style={l.sample} />}
+              <DepthTile level={l.n} />
               <span className="depth-text"><b>{l.name}</b> — {l.what}<br /><span className="depth-where">{l.where}</span></span>
             </div>
           ))}
         </div>
       </Demo>
-      <Demo center caption="레일은 홈(−1), 손잡이와 고른 칸은 볼록(2). 누르면 볼록한 것이 표면 쪽으로 살짝 들어갑니다(0.965배).">
-        <Stack direction="row" gap={6} align="center" wrap>
+      <Demo center caption="실제 컴포넌트: 레일은 홈(−1), 손잡이와 고른 칸은 볼록(2). 누르면 볼록한 것이 표면 쪽으로 살짝 들어갑니다(0.965배).">
+        <Stack direction="row" gap={6} align="center" wrap justify="center">
           <Switch defaultChecked aria-label="깊이 예시 스위치" />
           <div style={{ width: 160 }}><Slider defaultValue={40} aria-label="깊이 예시 슬라이더" /></div>
           <SegmentedControl aria-label="깊이 예시 세그먼트" defaultValue="b" options={[{ value: 'a', label: '일' }, { value: 'b', label: '주' }, { value: 'c', label: '월' }]} />
@@ -202,13 +217,14 @@ function DepthSection() {
           <div style={{ width: 120 }}><Progress value={60} aria-label="깊이 예시 진행" /></div>
         </Stack>
       </Demo>
-      <Demo col>
-        <Text variant="subhead">· <b>한 층에 하나씩</b>: 유리 위에 유리를 겹치지 않습니다(버튼 묶음은 유리 하나에 평평한 버튼들). 볼록한 것은 홈이나 표면 위에만 놓입니다.</Text>
-        <Text variant="subhead">· <b>고른 것은 볼록</b>: 선택을 표시하는 것은 그 길(홈)보다 한 층 위에 있습니다. 강조색으로 고른 것은 강조색 구슬(윗부분의 광택, 강조색 그림자)입니다.</Text>
-        <Text variant="subhead">· <b>움직임은 층을 바꾸지 않음</b>: 늘어나고 모이는 물방울, 피어남은 같은 층 안에서 일어납니다. 층이 바뀌는 것은 덮개가 열릴 때뿐입니다.</Text>
-        <Text variant="subhead">· <b>고대비</b>: 깊이 대신 윤곽선으로 모양을 보여 줍니다(깊이 토큰이 모두 none).</Text>
-        <Text variant="subhead" tone="secondary">토큰: <code className="code">--sg-depth-inset</code> <code className="code">--sg-depth-well</code> <code className="code">--sg-depth-raised</code> <code className="code">--sg-depth-raised-accent</code> <code className="code">--sg-depth-sheen</code> <code className="code">--sg-depth-sheen-accent</code> · 그림자 <code className="code">--sg-shadow-sm / md / lg</code> · 유리 <code className="code">Glass variant</code></Text>
-      </Demo>
+      <ul className="rules">
+        <li><b>한 층에 하나씩</b> — 유리 위에 유리를 겹치지 않습니다(버튼 묶음은 유리 하나에 평평한 버튼들). 볼록한 것은 홈이나 표면 위에만 놓입니다.</li>
+        <li><b>고른 것은 볼록</b> — 선택을 표시하는 것은 그 길(홈)보다 위에 있습니다. 강조색으로 고른 것은 강조색 구슬(윗부분의 광택, 강조색 그림자)입니다.</li>
+        <li><b>색이 아니라 빛으로</b> — 층은 밝은 윗변, 그늘, 그림자로 구분합니다. 홈만 채움 틴트(회색 기운)를 갖고, 볼록과 표면은 불투명, 유리는 뒤를 비춥니다.</li>
+        <li><b>움직임은 층을 바꾸지 않음</b> — 늘어나고 달라붙는 물방울, 피어남은 같은 층 안에서 일어납니다. 층이 바뀌는 것은 덮개가 열릴 때뿐입니다.</li>
+        <li><b>고대비</b> — 깊이 토큰이 윤곽선이 됩니다: 홈과 입력란 1px, 손잡이와 고른 것 1.5px.</li>
+        <li className="rules__tokens">토큰: <code className="code">--sg-depth-inset</code> <code className="code">--sg-depth-raised</code> <code className="code">--sg-depth-raised-bg</code> <code className="code">--sg-depth-raised-accent</code> <code className="code">--sg-depth-sheen</code> <code className="code">--sg-depth-sheen-accent</code> · 그림자 <code className="code">--sg-shadow-sm / md / lg</code> · 유리 <code className="code">Glass variant</code></li>
+      </ul>
     </Section>
   );
 }
