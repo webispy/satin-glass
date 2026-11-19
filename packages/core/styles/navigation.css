@@ -166,7 +166,7 @@ a.sg-crumb__item:active, button.sg-crumb__item:active { background: var(--sg-fil
 .sg-nav__page { position: absolute; inset: 0; background: var(--sg-bg-grouped); }
 .sg-nav__page[data-hidden] { visibility: hidden; }
 /* the page coming in casts a soft edge on the one it covers (clipped away when it rests at 0) */
-.sg-nav__page:not([data-depth="0"]) { box-shadow: -1px 0 0 var(--sg-separator), -16px 0 32px rgba(0, 0, 0, 0.08); }
+.sg-nav__page:not([data-depth="0"]) { box-shadow: var(--sg-shadow-edge); }
 .sg-nav[data-moving] .sg-nav__page { will-change: transform; }
 .sg-nav__scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }   /* a sideways finger is the stack's (swipe back), not the browser's */
 .sg-nav__shade { position: absolute; inset: 0; z-index: calc(var(--sg-z-bar) + 1); background: var(--sg-scrim); opacity: 0; pointer-events: none; }
@@ -174,7 +174,7 @@ a.sg-crumb__item:active, button.sg-crumb__item:active { background: var(--sg-fil
 .sg-nav__back { max-width: 100%; min-width: 0; padding-left: 2px; padding-right: 8px; }
 .sg-nav__back > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sg-nav__back svg { flex: none; }
-[data-sg-nav-title] { outline: none; border-radius: 4px; }
+[data-sg-nav-title] { outline: none; border-radius: var(--sg-radius-xs); }
 [data-sg-nav-title]:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 
 /* ---------------------------------------------------------------- Tabs */
@@ -184,7 +184,7 @@ a.sg-crumb__item:active, button.sg-crumb__item:active { background: var(--sg-fil
   box-shadow: inset 0 -1px 0 var(--sg-separator);
 }
 .sg-tabs__list::-webkit-scrollbar { display: none; }
-.sg-tabs__indicator { position: absolute; left: 0; bottom: 0; height: 2.5px; width: 0; border-radius: 2px; background: var(--sg-accent); will-change: transform, width; }
+.sg-tabs__indicator { position: absolute; left: 0; bottom: 0; height: 2.5px; width: 0; border-radius: var(--sg-radius-full); background: var(--sg-accent); will-change: transform, width; }
 .sg-tabs__tab {
   position: relative; flex: none; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 12px; margin: 0;
   border: 0; background: none; font: inherit; font-size: 15px; font-weight: 560; color: var(--sg-label-secondary); white-space: nowrap; cursor: pointer;

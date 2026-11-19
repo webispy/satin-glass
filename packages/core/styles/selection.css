@@ -8,7 +8,7 @@
 .sg-check__input { position: absolute; z-index: 1; top: 1px; left: 0; opacity: 0; width: 22px; height: 22px; margin: 0; cursor: inherit; }   /* on top of the drawn box: the real input takes the click */
 .sg-check__box {
   position: relative; flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px;
-  border-radius: 7px; background: var(--sg-surface); box-shadow: inset 0 0 0 1.5px var(--sg-label-tertiary);
+  border-radius: var(--sg-radius-xs); background: var(--sg-surface); box-shadow: inset 0 0 0 1.5px var(--sg-label-tertiary);
   transition: background-color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
 .sg-check--radio .sg-check__box { border-radius: 50%; }
@@ -67,7 +67,7 @@
 .sg-listbox > [data-sg-content] { position: relative; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: var(--_nest); }
 .sg-option {
   display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px; border-radius: calc(var(--_radius) - var(--_nest));
-  color: var(--sg-label); font-size: 15px; line-height: 20px; cursor: pointer; scroll-margin: var(--_nest);
+  color: var(--sg-label); font-size: var(--sg-text-item-size); line-height: var(--sg-text-item-line); font-weight: var(--sg-text-item-weight); letter-spacing: var(--sg-text-item-tracking); cursor: pointer; scroll-margin: var(--_nest);
 }
 .sg-option[data-active] { background: var(--sg-fill-strong); }
 .sg-option[aria-disabled="true"] { color: var(--sg-label-disabled); cursor: default; }
@@ -114,7 +114,7 @@
    While the end is chosen it reaches from the start to the pointer, fainter */
 .sg-calendar__view { position: relative; }
 .sg-calendar__bands { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-.sg-calendar__seg { position: absolute; left: 0; top: 0; display: none; height: 36px; border-radius: 18px; will-change: transform, width;
+.sg-calendar__seg { position: absolute; left: 0; top: 0; display: none; height: 36px; border-radius: var(--sg-radius-full); will-change: transform, width;
   background: var(--sg-accent-soft); box-shadow: var(--sg-depth-inset); }
 .sg-calendar__seg[data-kind="faint"] { background: color-mix(in oklab, var(--sg-accent-soft) 50%, transparent); }
 /* in a range the chosen days' accent is a face behind the number (the number never moves; the face opens from its
@@ -165,7 +165,7 @@
   position: absolute; z-index: 0; left: var(--_nest); right: var(--_nest); top: calc(50% - var(--_row, 36px) / 2); height: var(--_row, 36px);
   border-radius: calc(var(--_radius) - var(--_nest)); pointer-events: none; will-change: transform;
   background-color: var(--sg-depth-raised-bg); background-image: var(--sg-depth-sheen);
-  box-shadow: var(--sg-depth-raised), 0 0 0 0.5px rgba(var(--sg-shadow-color), 0.06);
+  box-shadow: var(--sg-depth-raised), var(--sg-depth-raised-edge);
 }
 .sg-wheel { position: relative; flex: 1 1 auto; min-width: 3.2em; height: calc(var(--_row, 36px) * var(--_rows, 5)); }
 /* overscroll none: an elastic bounce past the list end would stretch the whole drum (macOS trackpad flings) */

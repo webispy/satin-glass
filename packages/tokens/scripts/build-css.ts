@@ -1,7 +1,7 @@
 /* Generates dist/tokens.css from src/index.ts and checks contrast. Run: tsx scripts/build-css.ts */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
-  palette, themes, space, radius, font, typography, size, material, z, motions, defaultMotion, reducedMotion, SPRING_NAMES, springEasing, springDuration,
+  palette, themes, space, radius, font, typography, controlText, size, material, z, motions, defaultMotion, reducedMotion, SPRING_NAMES, springEasing, springDuration,
   duration, easing, contrast, type ThemeName,
 } from '../src/index';
 
@@ -26,7 +26,7 @@ const motionDecls = (m: (typeof motions)[keyof typeof motions]) => [
   decl('motion-squash', m.squash), decl('motion-gel', m.gel), decl('motion-lag', m.lag),
 ];
 root.push(...motionDecls(motions[defaultMotion]));
-for (const [name, [fs, lh, fw, tr]] of Object.entries(typography)) {
+for (const [name, [fs, lh, fw, tr]] of [...Object.entries(typography), ...Object.entries(controlText)]) {
   root.push(decl(`text-${name}-size`, `${fs}px`), decl(`text-${name}-line`, `${lh}px`), decl(`text-${name}-weight`, fw), decl(`text-${name}-tracking`, `${tr}em`));
 }
 out.push(':root {', ...root, '}');
@@ -57,7 +57,10 @@ depth.push(decl('depth-raised-bg', 'var(--sg-surface)'));
    the empty rail and the accent fill under it (see design-language.md 8. 깊이와 레이어, 손잡이); high contrast
    outlines it through --sg-depth-raised */
 depth.push(decl('depth-handle-bg', 'linear-gradient(180deg, #ffffff, #f3f4f8)'));
-depth.push(decl('depth-handle-edge', '0 0 0 0.5px rgba(0, 0, 0, 0.06)'));
+/* a hairline round anything raised, so a light chip keeps its edge on a light rail (none in high contrast: the outline does it) */
+depth.push(decl('depth-raised-edge', '0 0 0 0.5px rgba(var(--sg-shadow-color), calc(0.06 * var(--sg-shadow-strength)))'));
+/* a page pushed over another (navigation stack): a hairline and a soft shadow on its leading edge */
+depth.push(decl('shadow-edge', '-1px 0 0 var(--sg-separator), -16px 0 32px rgba(var(--sg-shadow-color), calc(0.08 * var(--sg-shadow-strength)))'));
 /* a flat selection on glass (tab bar, sidebar): no outline normally; in high contrast its tint gives way to one */
 depth.push(decl('selection-outline', '0 0 0 0 transparent'));
 out.push(':root, [data-sg-theme] {', ...depth, '}');
@@ -70,6 +73,7 @@ const hcDepth = [
   decl('depth-raised', 'inset 0 0 0 1.5px var(--sg-label)'), decl('depth-raised-accent', 'inset 0 0 0 1.5px var(--sg-label)'),
   decl('depth-sheen', 'none'), decl('depth-sheen-accent', 'none'),
   decl('selection-outline', 'inset 0 0 0 1.5px var(--sg-label)'),
+  decl('depth-raised-edge', '0 0 0 0 transparent'),
 ];
 out.push('[data-sg-theme$="-hc"] {', ...hcDepth, '}');
 out.push('@media (prefers-contrast: more) {', '  :root:not([data-sg-theme]) {', ...hcDepth.map((l) => '  ' + l), '  }', '}');

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { palette, STEPS, motions, springAt, springDuration, typography, SPRING_NAMES, type Hue, type MotionName, type SpringName } from '@satin-glass/tokens';
+import { contrast, palette, STEPS, motions, springAt, springDuration, typography, SPRING_NAMES, type Hue, type MotionName, type SpringName } from '@satin-glass/tokens';
 import { Button, Card, CardBody, Glass, Stack, Text, SegmentedControl, Switch, Slider, Stepper, Progress, PageControl, TabBar, Tab, MotionScope, Menu, MenuItem, Badge, useTheme } from '@satin-glass/react';
 import { Home, Map, Bookmark, User, Footprints, Bike, Car } from 'lucide-react';
 import { Sun, Sparkles, MousePointer2 } from 'lucide-react';
@@ -39,14 +39,23 @@ export function Overview() {
 export function Colors() {
   const sem = ['bg', 'bg-grouped', 'surface', 'label', 'label-secondary', 'label-tertiary', 'separator', 'fill', 'accent', 'accent-soft', 'success', 'warning', 'danger', 'info', 'glass-fill', 'glass-selection'];
   return (
-    <Page title="색" intro="OKLCH로 만든 자체 팔레트. 같은 단계(예: 500)는 어떤 색이든 같은 밝기로 보여서 대비를 예측할 수 있습니다. 강조색은 보라 쪽으로 기운 파랑 ‘iris’.">
-      <Section title="팔레트" intro="11가지 색 × 11단계. 빌드할 때 sRGB 색역 안으로 채도를 맞춥니다.">
+    <Page title="색" intro="OKLCH로 만든 자체 팔레트. 같은 단계(예: 500)는 어떤 색이든 비슷한 밝기에서 출발해 단계마다 밝기 순서가 같습니다. 다만 최종 sRGB 색의 대비는 색마다 다르므로, 글자와 상태 표시에는 단계 번호가 아니라 검사를 통과한 의미 색을 씁니다. 강조색은 보라 쪽으로 기운 파랑 ‘iris’.">
+      <Section title="팔레트" intro="11가지 색 × 11단계. 빌드할 때 sRGB 색역 안으로 채도를 맞춥니다. 칸 안의 숫자는 그 색 위에서 더 잘 읽히는 쪽(흰 글자 또는 검은 글자)의 대비입니다(칸에 마우스를 올리면 둘 다). 같은 500 단계라도 jade와 ruby의 흰 글자 대비가 다릅니다.">
         <Demo col>
           <div className="swatches">
             <span />{STEPS.map((s) => <span key={s} style={{ textAlign: 'center' }}>{s}</span>)}
             {(Object.keys(palette) as Hue[]).map((h) => [
               <b key={h} style={{ fontWeight: 600, color: 'var(--sg-label-secondary)' }}>{h}</b>,
-              ...STEPS.map((s) => <i key={h + s} className="swatch" style={{ background: palette[h][s] }} title={`${h}-${s} ${palette[h][s]}`} />),
+              ...STEPS.map((s) => {
+                const c = palette[h][s], w = contrast('#ffffff', c), k = contrast('#000000', c), onWhite = w >= k;
+                const r = onWhite ? w : k;
+                /* the digits are a sample of the swatch itself (the better of white or black text on it); the full
+                   figures are in the title and for screen readers */
+                return <i key={h + s} className="swatch" style={{ background: c, color: onWhite ? '#fff' : '#000' }} title={`${h}-${s} ${c} · 흰 글자 ${w.toFixed(2)}:1 · 검은 글자 ${k.toFixed(2)}:1`}>
+                  <span className="swatch__ratio" aria-hidden="true">{r.toFixed(1)}</span>
+                  <span className="sg-visually-hidden">{`${h}-${s}: 흰 글자 ${w.toFixed(1)} 대 1, 검은 글자 ${k.toFixed(1)} 대 1`}</span>
+                </i>;
+              }),
             ])}
           </div>
         </Demo>

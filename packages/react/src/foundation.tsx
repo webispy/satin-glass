@@ -174,7 +174,11 @@ export const Text = forwardRef(function Text<E extends ElementType = 'p'>(
   return <Comp ref={ref} className={cx('sg-text', `sg-text--${variant}`, tone !== 'default' && `sg-text--${tone}`, truncate && 'sg-text--truncate', tabular && 'sg-text--tabular', className)} {...rest} />;
 }) as <E extends ElementType = 'p'>(p: TextProps<E> & { ref?: React.Ref<HTMLElement> }) => React.ReactElement | null;
 
-const space = (v: number | string | undefined) => (v === undefined ? undefined : typeof v === 'number' ? `${v * 4}px` : v);
+/* a step of the spacing scale reads its token (so a theme that changes --sg-space-3 changes gap={3}); other numbers
+   are 4 px units */
+const SPACE_STEPS = new Set([0, 0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16]);
+const space = (v: number | string | undefined) => (v === undefined ? undefined : typeof v === 'number'
+  ? (SPACE_STEPS.has(v) ? `var(--sg-space-${String(v).replace('.', '_')}, ${v * 4}px)` : `${v * 4}px`) : v);
 
 export type StackProps = HTMLAttributes<HTMLDivElement> & {
   direction?: 'row' | 'column';

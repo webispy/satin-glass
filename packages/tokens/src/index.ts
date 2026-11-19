@@ -165,7 +165,8 @@ export type SemanticToken = keyof Semantic;
 export const space = { 0: '0px', 0.5: '2px', 1: '4px', 1.5: '6px', 2: '8px', 2.5: '10px', 3: '12px', 4: '16px', 5: '20px', 6: '24px', 8: '32px', 10: '40px', 12: '48px', 16: '64px' } as const;
 
 /* Fixed radii (not capsules everywhere): controls 12, bars/panels 22, sheets 28; "full" only for chips, toggles, badges. */
-export const radius = { xs: '6px', sm: '9px', md: '12px', lg: '16px', xl: '22px', '2xl': '28px', full: '9999px' } as const;
+/* mark: legend swatches and other marks under 12 px */
+export const radius = { mark: '3px', xs: '6px', sm: '9px', md: '12px', lg: '16px', xl: '22px', '2xl': '28px', full: '9999px' } as const;
 
 export const font = {
   sans: '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Noto Sans KR", "Helvetica Neue", Arial, sans-serif',
@@ -187,6 +188,17 @@ export const typography = {
   'caption-2': [11, 14, 550, 0.01],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 export type TextStyle = keyof typeof typography;
+/** What the controls write their text with (not Text variants): the label on a button, a chip or a segment, a
+    field's label, an item in a menu or a list box. Same shape as typography: [size, line height, weight, tracking].
+    Emitted as --sg-text-<role>-size / -line / -weight / -tracking; theme overrides reach every control. */
+export const controlText = {
+  'control-lg': [16, 22, 620, -0.005],
+  'control': [15, 20, 620, -0.005],
+  'control-sm': [14, 18, 560, 0],
+  'label': [13, 18, 620, 0],
+  'item': [15, 20, 450, 0],
+} as const satisfies Record<string, readonly [number, number, number, number]>;
+export type ControlTextRole = keyof typeof controlText;
 
 export const size = {
   'control-sm': '32px', 'control-md': '40px', 'control-lg': '48px', 'touch': '44px',

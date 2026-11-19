@@ -24,7 +24,7 @@
 .sg-chart__key[aria-pressed="false"] { color: var(--sg-label-tertiary); text-decoration: line-through; }
 .sg-chart__key[aria-pressed="false"] .sg-chart__swatch { opacity: 0.3; }
 .sg-chart__key:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
-.sg-chart__swatch { flex: none; width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.sg-chart__swatch { flex: none; width: 10px; height: 10px; border-radius: var(--sg-radius-mark); display: inline-block; }
 .sg-chart__plot { position: relative; outline: none; border-radius: var(--sg-radius-sm); touch-action: pan-y; }
 .sg-chart__plot:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-chart__plot svg { display: block; overflow: visible; }
@@ -62,7 +62,7 @@
 .sg-sparkline svg { display: block; overflow: visible; }
 .sg-sparkline__line { fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1; }
 /* in-cell marks */
-.sg-barmeter { position: relative; display: inline-block; height: 4px; border-radius: 2px; background: var(--sg-fill-strong); overflow: hidden; vertical-align: middle; flex: none; --_c: var(--sg-label-secondary); }
+.sg-barmeter { position: relative; display: inline-block; height: 4px; border-radius: var(--sg-radius-full); background: var(--sg-fill-strong); overflow: hidden; vertical-align: middle; flex: none; --_c: var(--sg-label-secondary); }
 .sg-barmeter[data-tone="accent"] { --_c: var(--sg-accent); }
 .sg-barmeter[data-tone="success"] { --_c: var(--sg-success); }
 .sg-barmeter[data-tone="warning"] { --_c: var(--sg-warning); }
@@ -73,8 +73,8 @@
 .sg-interval { position: relative; display: inline-block; height: 14px; vertical-align: middle; flex: none; --_c: var(--sg-label-secondary); }
 .sg-interval[data-tone="accent"] { --_c: var(--sg-accent); }
 .sg-interval__track { position: absolute; left: 0; right: 0; top: 6.5px; height: 1px; background: var(--sg-separator-strong); }
-.sg-interval__ref { position: absolute; top: 1px; width: 1.5px; height: 12px; margin-left: -0.75px; background: var(--sg-label-tertiary); border-radius: 1px; }
-.sg-interval__range { position: absolute; top: 4px; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--_c) 35%, transparent); }
+.sg-interval__ref { position: absolute; top: 1px; width: 1.5px; height: 12px; margin-left: -0.75px; background: var(--sg-label-tertiary); border-radius: var(--sg-radius-full); }
+.sg-interval__range { position: absolute; top: 4px; height: 6px; border-radius: var(--sg-radius-full); background: color-mix(in srgb, var(--_c) 35%, transparent); }
 .sg-interval__dot { position: absolute; top: 2px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--_c); box-shadow: 0 0 0 2px var(--sg-surface); }
 
 /* ---------------------------------------------------------------- DataTable */
@@ -126,8 +126,8 @@
 .sg-table tbody tr[aria-selected="true"] > * { --_row-bg: color-mix(in srgb, var(--sg-surface), var(--sg-accent) 9%); }
 .sg-table tbody tr[data-muted] > * { color: var(--sg-label-tertiary); }
 .sg-table__row--action { cursor: pointer; }
-.sg-table [data-r]:focus-visible, .sg-table [data-r]:focus { outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); border-radius: 4px; }
-.sg-table [data-r] a:focus-visible, .sg-table [data-r] button:focus-visible, .sg-table [data-r] input:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); border-radius: 4px; }
+.sg-table [data-r]:focus-visible, .sg-table [data-r]:focus { outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); border-radius: var(--sg-radius-xs); }
+.sg-table [data-r] a:focus-visible, .sg-table [data-r] button:focus-visible, .sg-table [data-r] input:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); border-radius: var(--sg-radius-xs); }
 .sg-table__pinned th, .sg-table__pinned td { --_row-bg: color-mix(in srgb, var(--sg-surface), var(--sg-label) 2.5%); color: var(--sg-label-secondary); }
 .sg-table__pinned tr:last-child > * { --_hline: var(--sg-separator-strong); }
 .sg-table__pinned th, .sg-table__pinned td { position: sticky; top: calc(var(--_head-h, 0px) + var(--_pi, 0) * var(--_rh)); z-index: 2; }

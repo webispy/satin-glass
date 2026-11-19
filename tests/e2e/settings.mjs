@@ -6,6 +6,7 @@
 //     "true"), sibling areas do not affect each other, and the JS springs agree
 //   · reduce transparency reaches portals: a menu opened with it on is solid, with no backdrop blur
 //   · depth by role: floating dense glass vs an overlay, a light handle in every theme, a selection outline in high contrast
+//   · tokens reach the controls: a control text role and a spacing step changed by a theme change buttons, labels, Stack
 // usage: node tests/e2e/settings.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
@@ -86,6 +87,22 @@ ok('JS: the nearest setting decides (inner false, outer true, none → system)',
   ok('depth: dense glass that floats (a menu) casts the floating shadow, an overlay (a sheet) the larger one', r.menu !== r.sheet && /48px/.test(r.sheet) && !/48px/.test(r.menu), `${r.menu.slice(0, 50)}… / ${r.sheet.slice(0, 50)}…`);
   ok('depth: a handle (switch knob) stays light in dark themes too', r.knobL === r.knobD && /255, 255, 255/.test(r.knobD), r.knobD.slice(0, 60));
   ok('depth: a flat selection on glass (tab bar) gets an outline in high contrast only', /1\.5px/.test(r.ind) && !/1\.5px/.test(r.ind0), `${r.ind} / ${r.ind0}`);
+}
+
+/* ---------------------------------------------------------------- spacing and control text follow their tokens */
+{
+  await p.goto('http://localhost:4173/?mode=light#/material'); await p.waitForTimeout(500);
+  const r = await p.evaluate(() => {
+    const host = document.createElement('div');
+    host.style.cssText = '--sg-text-control-size: 19px; --sg-text-label-size: 11px; --sg-space-3: 30px';
+    host.innerHTML = '<button class="sg-button sg-button--filled" id="tb">Go</button><span class="sg-field__label" id="tl">L</span>';
+    document.querySelector('.sg-root')?.appendChild(host);
+    const out = { button: getComputedStyle(document.getElementById('tb')).fontSize, label: getComputedStyle(document.getElementById('tl')).fontSize };
+    host.remove(); return out;
+  });
+  ok('type: a theme that changes a control text role changes the controls (button, field label)', r.button === '19px' && r.label === '11px', JSON.stringify(r));
+  const gap = await p.evaluate(() => { const st = [...document.querySelectorAll('.sg-stack')].find((e) => e.style.gap.includes('--sg-space-')); return st ? st.style.gap : 'none'; });
+  ok('space: Stack gaps on the scale read the spacing tokens', gap.startsWith('var(--sg-space-'), gap);
 }
 
 /* ---------------------------------------------------------------- reduce transparency reaches portals */

@@ -39,7 +39,7 @@
 @media (hover: hover) { .sg-list-item--action:hover { background: var(--sg-fill); } }
 .sg-list-item--action:active { background: var(--sg-fill-strong); }
 .sg-list-item--action:focus-visible { outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); }
-.sg-list-item__leading { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: #fff; background: var(--_tile, var(--sg-accent)); }
+.sg-list-item__leading { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--sg-radius-sm); color: #fff; background: var(--_tile, var(--sg-accent)); }
 .sg-list-item__leading svg { width: 18px; height: 18px; }
 .sg-list-item__leading--plain { background: none; color: var(--sg-accent-text); }
 .sg-list-item__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -55,9 +55,9 @@
    Reduced motion: a slow breath of opacity instead of the moving band.
    ============================================================================================ */
 .sg-skeleton {
-  position: relative; display: block; overflow: hidden; background: var(--sg-fill); border-radius: 6px; isolation: isolate;
+  position: relative; display: block; overflow: hidden; background: var(--sg-fill); border-radius: var(--sg-radius-xs); isolation: isolate;
 }
-.sg-skeleton--text { height: 0.8em; margin: 0.3em 0; border-radius: 4px; width: 100%; }
+.sg-skeleton--text { height: 0.8em; margin: 0.3em 0; border-radius: var(--sg-radius-mark); width: 100%; }
 .sg-skeleton--circle { border-radius: 50%; flex: none; }
 .sg-skeleton--rect { border-radius: var(--sg-radius-md); width: 100%; height: 120px; }
 .sg-skeleton-lines { display: block; width: 100%; }
@@ -99,7 +99,7 @@
 }
 .sg-media__bar > * { pointer-events: auto; }
 .sg-media__bar > :first-child { justify-self: start; }
-.sg-media__count { font-size: var(--sg-text-subhead-size); font-weight: 600; font-variant-numeric: tabular-nums; padding: 4px 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.35); }
+.sg-media__count { font-size: var(--sg-text-subhead-size); font-weight: 600; font-variant-numeric: tabular-nums; padding: 4px 12px; border-radius: var(--sg-radius-full); background: rgba(0, 0, 0, 0.35); }
 .sg-media__actions { justify-self: end; display: flex; gap: 8px; }
 .sg-media__caption {
   position: absolute; left: 0; right: 0; bottom: 0; padding: 32px 20px max(20px, env(safe-area-inset-bottom)); text-align: center;

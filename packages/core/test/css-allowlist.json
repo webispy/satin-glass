@@ -1,0 +1,16 @@
+{
+  "about": "The one place for CSS that the foundation rules would otherwise reject (design-language.md 3. 성능 규칙). css-rules.test.ts fails on anything new that is not listed here with a reason.",
+  "animate": [
+    { "selector": ".sg-search__cancel", "property": "max-width", "reason": "the field narrows as Cancel slides in; once per focus, one small element" },
+    { "selector": ".sg-search__cancel", "property": "padding", "reason": "as max-width: Cancel takes its space as it arrives" },
+    { "selector": ".sg-search__cancel", "property": "margin", "reason": "as max-width" },
+    { "selector": ".sg-pagecontrol__dot", "property": "width", "reason": "the current dot widens; a few 8 px dots, once per page turn" },
+    { "selector": ".sg-accordion__region", "property": "grid-template-rows", "reason": "a region opens to its own height (the content height is not known to a transform); once per toggle" },
+    { "selector": ".sg-appbar__bar", "property": "--sg-bar-depth", "reason": "the bar's depth gradient fades in as content scrolls under it; a registered colour, paint only" },
+    { "selector": ".sg-appbar__bar", "property": "-webkit-backdrop-filter", "reason": "the bar turns to glass once as the page leaves its top (320 ms); perf.mjs scrolls under glass bars at CPU x4" },
+    { "selector": ".sg-appbar__bar", "property": "backdrop-filter", "reason": "as -webkit-backdrop-filter" }
+  ],
+  "radius": [],
+  "shadow": [],
+  "time": []
+}

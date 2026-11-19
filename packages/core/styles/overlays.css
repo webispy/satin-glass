@@ -21,7 +21,7 @@
 }
 /* scrolls inside the glass (see .sg-sidebar__scroll) */
 .sg-dialog__scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 24px 20px 18px; display: flex; flex-direction: column; gap: 8px; }
-.sg-dialog__icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: var(--sg-accent-soft); color: var(--sg-accent-text); margin-bottom: 6px; }
+.sg-dialog__icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: var(--sg-radius-md); background: var(--sg-accent-soft); color: var(--sg-accent-text); margin-bottom: 6px; }
 .sg-dialog__icon[data-tone="danger"] { background: var(--sg-danger-soft); color: var(--sg-danger-text); }
 .sg-dialog__icon svg { width: 22px; height: 22px; }
 .sg-dialog__title { margin: 0; font-size: 18px; line-height: 24px; font-weight: 700; letter-spacing: -0.012em; }
@@ -58,7 +58,7 @@
 .sg-menu__item {
   appearance: none; border: 0; margin: 0; font: inherit; width: 100%; text-align: left;
   display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px;
-  border-radius: calc(var(--_radius) - var(--_nest)); background: none; color: var(--sg-label); font-size: 15px; line-height: 20px; cursor: pointer;
+  border-radius: calc(var(--_radius) - var(--_nest)); background: none; color: var(--sg-label); font-size: var(--sg-text-item-size); line-height: var(--sg-text-item-line); font-weight: var(--sg-text-item-weight); letter-spacing: var(--sg-text-item-tracking); cursor: pointer;
 }
 .sg-menu__item[data-active], .sg-menu__item:focus-visible { background: var(--sg-fill-strong); outline: var(--sg-focus-width) solid transparent; outline-offset: calc(-1 * var(--sg-focus-width)); }   /* the fill marks it; forced colours draw the outline */
 @media (hover: hover) { .sg-menu__item:hover { background: var(--sg-fill-strong); outline: none; } }

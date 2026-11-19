@@ -154,7 +154,7 @@
   transform: translate3d(var(--sg-hx, 25%), var(--sg-hy, 0px), 0);
   opacity: var(--sg-hk, 0);
   will-change: transform, opacity;
-  transition: opacity 260ms var(--sg-ease-out);
+  transition: opacity var(--sg-duration-slow) var(--sg-ease-out);
 }
 .sg-glass > * { position: relative; z-index: 1; }
 /* one layer at a time: glass inside glass shares its parent's glass and draws flat — no blur, fill, rim, sheen or

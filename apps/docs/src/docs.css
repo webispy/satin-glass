@@ -47,7 +47,10 @@ body { background: var(--sg-bg); }
 
 /* palette */
 .swatches { display: grid; grid-template-columns: 80px repeat(11, 1fr); gap: 4px; align-items: center; font-size: 11px; color: var(--sg-label-tertiary); }
-.swatch { height: 34px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); }
+.swatch { height: 34px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); display: grid; place-items: center; font-style: normal; }
+.swatch__ratio { font-size: 10px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.swatch { min-width: 0; overflow: hidden; }
+@media (max-width: 640px) { .swatch__ratio { display: none; } }
 .token-chip { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
 .token-chip i { display: block; height: 52px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--sg-separator); }
 .radius-demo { display: grid; place-items: center; width: 96px; height: 72px; background: var(--sg-accent-soft); color: var(--sg-accent-text); font-size: 12px; font-weight: 650; }
