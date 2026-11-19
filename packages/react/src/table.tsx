@@ -89,7 +89,7 @@ export function DataTable<T>({
   const [sel, setSel] = useControllable<string[]>(selected, defaultSelected, onSelectedChange);
   const selSet = useMemo(() => new Set(sel), [sel]);
   const box = useRef<HTMLDivElement>(null), head = useRef<HTMLTableSectionElement>(null), pin = useRef<HTMLTableSectionElement>(null);
-  const id = useStableId('gl-table');
+  const id = useStableId('sg-table');
   const rowH = ROW_H[density];
 
   /* ---- sorting (stable; empty values last whichever the direction) */
@@ -192,7 +192,7 @@ export function DataTable<T>({
   const stickHead = () => {
     const h = head.current, b = box.current;
     if (!h) return;
-    h.querySelectorAll<HTMLTableRowElement>(':scope > tr:not(.gl-table__busy)').forEach((tr) => {
+    h.querySelectorAll<HTMLTableRowElement>(':scope > tr:not(.sg-table__busy)').forEach((tr) => {
       const top = `${tr.offsetTop}px`;
       tr.querySelectorAll<HTMLElement>(':scope > th, :scope > td').forEach((c) => { if (c.style.top !== top) c.style.top = top; });
     });
@@ -261,8 +261,8 @@ export function DataTable<T>({
     /* two chevrons: unsorted shows both; a direction keeps its chevron and slides it to the middle (transform and
        opacity only — the CSS \`d\` property, which could morph the path, does not exist in WebKit) */
     return (
-      <svg className="gl-table__sort" data-dir={on ?? undefined} viewBox="0 0 12 12" aria-hidden="true">
-        <path className="gl-table__sort-up" d="M3.5 5L6 2.5 8.5 5" /><path className="gl-table__sort-down" d="M3.5 7L6 9.5 8.5 7" />
+      <svg className="sg-table__sort" data-dir={on ?? undefined} viewBox="0 0 12 12" aria-hidden="true">
+        <path className="sg-table__sort-up" d="M3.5 5L6 2.5 8.5 5" /><path className="sg-table__sort-down" d="M3.5 7L6 9.5 8.5 7" />
       </svg>
     );
   };
@@ -270,18 +270,18 @@ export function DataTable<T>({
     const colIdx = ci + (selectable ? 1 : 0);
     const aria = sortState?.key === c.key ? (sortState.dir === 'asc' ? 'ascending' : 'descending') : c.sortable ? 'none' : undefined;
     const inner = (
-      <span className="gl-table__head">
-        <span className={cx('gl-table__title', !!c.description && 'gl-table__title--term')}>{c.header}</span>
+      <span className="sg-table__head">
+        <span className={cx('sg-table__title', !!c.description && 'sg-table__title--term')}>{c.header}</span>
         {/* when any column has a second line, the others keep an empty one, so every title sits on the same line */}
-        {c.subheader ? <span className="gl-table__sub">{c.subheader}</span> : anySub && <span className="gl-table__sub" aria-hidden="true">{'\u00a0'}</span>}
+        {c.subheader ? <span className="sg-table__sub">{c.subheader}</span> : anySub && <span className="sg-table__sub" aria-hidden="true">{'\u00a0'}</span>}
       </span>
     );
     const body = c.sortable ? (
-      <button type="button" className="gl-table__sortbtn" onClick={() => nextSort(c)}>{inner}{sortIcon(c)}</button>
-    ) : c.description ? <span tabIndex={-1} className="gl-table__headtxt">{inner}</span> : inner;
+      <button type="button" className="sg-table__sortbtn" onClick={() => nextSort(c)}>{inner}{sortIcon(c)}</button>
+    ) : c.description ? <span tabIndex={-1} className="sg-table__headtxt">{inner}</span> : inner;
     return (
       <th key={c.key} scope="col" rowSpan={rowSpan} aria-sort={aria} data-r={-1} data-c={colIdx} tabIndex={-1} data-align={c.align ?? 'start'}
-        className={cx(stickyLeft[colIdx] !== undefined && 'gl-table__sticky', colIdx === lastSticky && 'gl-table__sticky--last')}
+        className={cx(stickyLeft[colIdx] !== undefined && 'sg-table__sticky', colIdx === lastSticky && 'sg-table__sticky--last')}
         style={stickyLeft[colIdx] !== undefined ? { left: stickyLeft[colIdx] } : undefined}>
         {c.description ? <Tooltip content={c.description} placement="top">{body}</Tooltip> : body}
       </th>
@@ -289,7 +289,7 @@ export function DataTable<T>({
   };
   const groupRow = () => {
     const out: ReactNode[] = [];
-    if (selectable) out.push(<th key="sel" rowSpan={2} className="gl-table__sticky gl-table__check" style={{ left: 0 }} data-r={-1} data-c={0} tabIndex={-1}>{selectAllBox}</th>);
+    if (selectable) out.push(<th key="sel" rowSpan={2} className="sg-table__sticky sg-table__check" style={{ left: 0 }} data-r={-1} data-c={0} tabIndex={-1}>{selectAllBox}</th>);
     let i = 0;
     while (i < cols.length) {
       const g = cols[i].group;
@@ -297,27 +297,27 @@ export function DataTable<T>({
       let j = i; while (j < cols.length && cols[j].group === g) j++;
       /* a group made only of frozen columns stays with them */
       const first = i + (selectable ? 1 : 0), frozen = cols.slice(i, j).every((_, k) => stickyLeft[first + k] !== undefined);
-      out.push(<th key={`g-${g}-${i}`} scope="colgroup" colSpan={j - i} className={cx('gl-table__group', frozen && 'gl-table__sticky', frozen && first + (j - i) - 1 === lastSticky && 'gl-table__sticky--last')} style={frozen ? { left: stickyLeft[first] } : undefined}><span>{g}</span></th>);
+      out.push(<th key={`g-${g}-${i}`} scope="colgroup" colSpan={j - i} className={cx('sg-table__group', frozen && 'sg-table__sticky', frozen && first + (j - i) - 1 === lastSticky && 'sg-table__sticky--last')} style={frozen ? { left: stickyLeft[first] } : undefined}><span>{g}</span></th>);
       i = j;
     }
     return out;
   };
   const selectAllBox = (
-    <Checkbox className="gl-table__checkbox" aria-label={labels.selectAll ?? 'Select all rows'} checked={allOn} indeterminate={someOn} onChange={toggleAll} disabled={!N} />
+    <Checkbox className="sg-table__checkbox" aria-label={labels.selectAll ?? 'Select all rows'} checked={allOn} indeterminate={someOn} onChange={toggleAll} disabled={!N} />
   );
 
   /* ---- body */
   const renderCells = (row: T, ri: number, gridRow: number, pinned: boolean, isSel: boolean) => (
     <>
       {selectable && (
-        <td className="gl-table__sticky gl-table__check" style={{ left: 0 }} data-r={gridRow} data-c={0} tabIndex={-1}>
+        <td className="sg-table__sticky sg-table__check" style={{ left: 0 }} data-r={gridRow} data-c={0} tabIndex={-1}>
           {/* rows: the library checkbox's markup, look and motion (the tick draws in), written out here instead of a
               <Checkbox> per row — no hooks per row while a virtualised table mounts rows by the dozen */}
           {!pinned && (
-            <label className="gl-check gl-table__checkbox">
-              <input type="checkbox" className="gl-check__input" aria-label={labels.selectRow?.(row) ?? 'Select row'} checked={isSel}
+            <label className="sg-check sg-table__checkbox">
+              <input type="checkbox" className="sg-check__input" aria-label={labels.selectRow?.(row) ?? 'Select row'} checked={isSel}
                 onChange={() => {}} onClick={(e) => { e.stopPropagation(); toggleRow(ri, e.shiftKey); }} />
-              <span className="gl-check__box" aria-hidden="true"><svg className="gl-check__mark" viewBox="0 0 16 16"><path className="gl-check__tick" d="M3.5 8.4l3 3 6-6.6" /></svg></span>
+              <span className="sg-check__box" aria-hidden="true"><svg className="sg-check__mark" viewBox="0 0 16 16"><path className="sg-check__tick" d="M3.5 8.4l3 3 6-6.6" /></svg></span>
             </label>
           )}
         </td>
@@ -328,10 +328,10 @@ export function DataTable<T>({
         const Tag = colIdx === (selectable ? 1 : 0) ? 'th' : 'td';
         return (
           <Tag key={c.key} {...(Tag === 'th' ? { scope: 'row' } : {})} data-r={gridRow} data-c={colIdx} tabIndex={-1} data-align={c.align ?? 'start'}
-            className={cx(stickyLeft[colIdx] !== undefined && 'gl-table__sticky', colIdx === lastSticky && 'gl-table__sticky--last')}
+            className={cx(stickyLeft[colIdx] !== undefined && 'sg-table__sticky', colIdx === lastSticky && 'sg-table__sticky--last')}
             style={stickyLeft[colIdx] !== undefined ? { left: stickyLeft[colIdx] } : undefined}>
             {/* a missing value reads "–"; in a summary row an empty cell is "not applicable" and stays blank */}
-            {isEmpty(v) ? (pinned ? null : <span className="gl-table__none" aria-label="—">–</span>) : (v as ReactNode)}
+            {isEmpty(v) ? (pinned ? null : <span className="sg-table__none" aria-label="—">–</span>) : (v as ReactNode)}
           </Tag>
         );
       })}
@@ -343,7 +343,7 @@ export function DataTable<T>({
   const total = (rowCount ?? N) + P + (groups ? 2 : 1);
   return (
     /* tabIndex -1: Firefox makes a scrolling box a tab stop of its own; here the grid's single tab stop scrolls it */
-    <div ref={box} tabIndex={-1} className={cx('gl-table', `gl-table--${density}`, loading && 'gl-table--loading', virtual && 'gl-table--virtual', maxHeight !== undefined && 'gl-table--scroll-y', className)} style={{ maxHeight, ...style, ['--_rh' as string]: `${rowH}px`, ['--_pin-h' as string]: `${P * rowH}px`, ['--_stick-w' as string]: `${stickyW}px` } as CSSProperties}
+    <div ref={box} tabIndex={-1} className={cx('sg-table', `sg-table--${density}`, loading && 'sg-table--loading', virtual && 'sg-table--virtual', maxHeight !== undefined && 'sg-table--scroll-y', className)} style={{ maxHeight, ...style, ['--_rh' as string]: `${rowH}px`, ['--_pin-h' as string]: `${P * rowH}px`, ['--_stick-w' as string]: `${stickyW}px` } as CSSProperties}
       onScroll={virtual ? measure : undefined} aria-busy={loading || undefined}>
       <table role="grid" aria-label={label} aria-rowcount={total} aria-colcount={C} aria-multiselectable={selectable || undefined} style={{ minWidth }} onKeyDown={onKey}
         onFocus={(e) => { const el = (e.target as HTMLElement).closest<HTMLElement>('[data-r]'); if (el) { const r = +el.dataset.r!, c = +el.dataset.c!; if (r !== cell.r || c !== cell.c) setCell({ r, c }); } }}>
@@ -356,14 +356,14 @@ export function DataTable<T>({
             </>
           ) : (
             <tr aria-rowindex={1}>
-              {selectable && <th className="gl-table__sticky gl-table__check" style={{ left: 0 }} data-r={-1} data-c={0} tabIndex={-1}>{selectAllBox}</th>}
+              {selectable && <th className="sg-table__sticky sg-table__check" style={{ left: 0 }} data-r={-1} data-c={0} tabIndex={-1}>{selectAllBox}</th>}
               {cols.map((c, ci) => th(c, ci))}
             </tr>
           )}
-          {loading && N > 0 && <tr className="gl-table__busy" aria-hidden="true"><td colSpan={C}><span /></td></tr>}
+          {loading && N > 0 && <tr className="sg-table__busy" aria-hidden="true"><td colSpan={C}><span /></td></tr>}
         </thead>
         {P > 0 && (
-          <tbody ref={pin} className="gl-table__pinned">
+          <tbody ref={pin} className="sg-table__pinned">
             {pinnedRows.map((row, i) => <tr key={rowKey(row)} aria-rowindex={(groups ? 3 : 2) + i} style={{ ['--_pi' as string]: i } as CSSProperties}>{renderCells(row, i, i, true, false)}</tr>)}
           </tbody>
         )}
@@ -373,7 +373,7 @@ export function DataTable<T>({
               /* placed like the cells they stand in for: same alignment, same frozen columns */
               const col = selectable ? (j === 0 ? null : cols[j - 1]) : cols[j];
               return (
-                <td key={j} data-align={col?.align ?? (col ? 'start' : 'center')} className={cx(stickyLeft[j] !== undefined && 'gl-table__sticky', j === lastSticky && 'gl-table__sticky--last', !col && 'gl-table__check')}
+                <td key={j} data-align={col?.align ?? (col ? 'start' : 'center')} className={cx(stickyLeft[j] !== undefined && 'sg-table__sticky', j === lastSticky && 'sg-table__sticky--last', !col && 'sg-table__check')}
                   style={stickyLeft[j] !== undefined ? { left: stickyLeft[j] } : undefined}>
                   <Skeleton width={col ? `${50 + ((i * 7 + j * 13) % 40)}%` : 22} height={col ? undefined : 22} radius={col ? undefined : 7} />
                 </td>
@@ -381,7 +381,7 @@ export function DataTable<T>({
             })}</tr>
           ))}
           {!loading && N === 0 && (
-            <tr><td colSpan={C} className="gl-table__empty">{empty ?? labels.empty ?? 'No data'}</td></tr>
+            <tr><td colSpan={C} className="sg-table__empty">{empty ?? labels.empty ?? 'No data'}</td></tr>
           )}
           {virtual && range.start > 0 && <tr aria-hidden="true" style={{ height: range.start * rowH }} />}
           {sorted.slice(range.start, range.end).map((row, k) => {
@@ -389,7 +389,7 @@ export function DataTable<T>({
             return (
               <Fragment key={key}>
                 <tr aria-rowindex={(groups ? 3 : 2) + P + ri} aria-selected={selectable ? isSel : undefined} data-muted={st?.muted || undefined}
-                  className={cx(onRowClick && 'gl-table__row--action')} onClick={onRowClickCapture(row)}>
+                  className={cx(onRowClick && 'sg-table__row--action')} onClick={onRowClickCapture(row)}>
                   {renderCells(row, ri, P + ri, false, isSel)}
                 </tr>
               </Fragment>
@@ -398,7 +398,7 @@ export function DataTable<T>({
           {virtual && range.end < N && <tr aria-hidden="true" style={{ height: (N - range.end) * rowH }} />}
         </tbody>
       </table>
-      <span className="gl-visually-hidden" aria-live="polite">{sortState ? `${((h) => (typeof h === 'string' || typeof h === 'number' ? String(h) : sortState.key))(columns.find((c) => c.key === sortState.key)?.header)} ${sortState.dir === 'asc' ? labels.sortedAsc ?? 'sorted ascending' : labels.sortedDesc ?? 'sorted descending'}` : ''}</span>
+      <span className="sg-visually-hidden" aria-live="polite">{sortState ? `${((h) => (typeof h === 'string' || typeof h === 'number' ? String(h) : sortState.key))(columns.find((c) => c.key === sortState.key)?.header)} ${sortState.dir === 'asc' ? labels.sortedAsc ?? 'sorted ascending' : labels.sortedDesc ?? 'sorted descending'}` : ''}</span>
     </div>
   );
 }

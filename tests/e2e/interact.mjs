@@ -19,8 +19,8 @@ const center = async (loc) => { const r = await loc.boundingBox(); return [r.x +
 
 /* ---------- tab bar: tap travels as a stretching drop, drag follows the finger, release selects ---------- */
 await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(600);
-const bar = p.locator('.gl-tabbar__bar').first(), tabs = bar.locator('.gl-tabbar__item');
-const ind = bar.locator('.gl-tabbar__indicator');
+const bar = p.locator('.sg-tabbar__bar').first(), tabs = bar.locator('.sg-tabbar__item');
+const ind = bar.locator('.sg-tabbar__indicator');
 const w0 = (await ind.boundingBox()).width;
 await tabs.nth(2).click();
 const widths = [];
@@ -42,17 +42,17 @@ await tabs.nth(1).focus(); await p.keyboard.press('ArrowRight'); await p.waitFor
 ok('tab keyboard: arrow keys move the selection', (await tabs.nth(1).getAttribute('aria-selected')) === 'true' || (await tabs.nth(2).getAttribute('aria-selected')) === 'true');
 
 const rad = async (sel) => parseFloat(await p.locator(sel).first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius));
-ok('tab bar: the search button has the same corner radius as the bar', (await rad('.gl-tabbar__action')) === (await rad('.gl-tabbar__bar')), `${await rad('.gl-tabbar__action')} / ${await rad('.gl-tabbar__bar')}`);
+ok('tab bar: the search button has the same corner radius as the bar', (await rad('.sg-tabbar__action')) === (await rad('.sg-tabbar__bar')), `${await rad('.sg-tabbar__action')} / ${await rad('.sg-tabbar__bar')}`);
 
 await p.goto('http://localhost:4173/#/buttons'); await p.waitForTimeout(500);
-const gh = (await p.locator('.gl-button-group').first().boundingBox()).height, ih = (await p.locator('.demo--media .gl-button--glass.gl-button--icon').first().boundingBox()).height;
-const gr = await p.locator('.gl-button-group').first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius), ir = await p.locator('.demo--media .gl-button--glass.gl-button--icon').first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius);
+const gh = (await p.locator('.sg-button-group').first().boundingBox()).height, ih = (await p.locator('.demo--media .sg-button--glass.sg-button--icon').first().boundingBox()).height;
+const gr = await p.locator('.sg-button-group').first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius), ir = await p.locator('.demo--media .sg-button--glass.sg-button--icon').first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius);
 ok('button group: same height and corner as the buttons beside it', gh === ih && gr === ir, `group ${gh}px/${gr}, button ${ih}px/${ir}`);
 
 await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(1000); /* badges pop in on mount */
 {
-  const geo = await p.locator('.gl-tabbar__icon:has(.gl-badge)').first().evaluate((ic) => {
-    const g = ic.querySelector('svg').getBoundingClientRect(), b = ic.querySelector('.gl-badge').getBoundingClientRect(), bar = ic.closest('.gl-tabbar__bar').getBoundingClientRect();
+  const geo = await p.locator('.sg-tabbar__icon:has(.sg-badge)').first().evaluate((ic) => {
+    const g = ic.querySelector('svg').getBoundingClientRect(), b = ic.querySelector('.sg-badge').getBoundingClientRect(), bar = ic.closest('.sg-tabbar__bar').getBoundingClientRect();
     return { overlapX: g.right - b.left, overlapY: b.bottom - g.top, insideBar: b.top >= bar.top && b.right <= bar.right, h: b.height };
   });
   ok('tab badge: on the glyph corner (small overlap), inside the bar, 16 px', geo.overlapX > 0 && geo.overlapX <= 8 && geo.overlapY > 0 && geo.overlapY <= 12 && geo.insideBar && Math.abs(geo.h - 16) < 0.5, JSON.stringify(geo));
@@ -60,7 +60,7 @@ await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(1000)
 
 /* ---------- inputs ---------- */
 await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(600);
-const sw = p.locator('.docs__page .gl-switch').first();
+const sw = p.locator('.docs__page .sg-switch').first();
 const before = await sw.getAttribute('aria-checked');
 await sw.click(); await p.waitForTimeout(350);
 ok('switch: click toggles', (await sw.getAttribute('aria-checked')) !== before);
@@ -69,10 +69,10 @@ await p.mouse.move(sb.x + 10, sb.y + sb.height / 2); await p.mouse.down();
 await p.mouse.move(sb.x + sb.width - 6, sb.y + sb.height / 2, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(350);
 ok('switch: drag to the on side turns it on', (await sw.getAttribute('aria-checked')) === 'true');
 /* both directions: the thumb stretches toward travel and never leaves the rail */
-const sw2 = p.locator('.docs__page .gl-switch').nth(1);
+const sw2 = p.locator('.docs__page .sg-switch').nth(1);
 const travel = async () => {
   const frames = await sw2.evaluate((e) => new Promise((res) => {
-    const out = [], t0 = performance.now(), tr = e.getBoundingClientRect(), th = e.querySelector('.gl-switch__thumb');
+    const out = [], t0 = performance.now(), tr = e.getBoundingClientRect(), th = e.querySelector('.sg-switch__thumb');
     e.click();
     const f = () => { const r = th.getBoundingClientRect(); out.push([r.left - tr.left, tr.right - r.right, r.width]); if (performance.now() - t0 < 700) requestAnimationFrame(f); else res(out); };
     requestAnimationFrame(f);
@@ -83,48 +83,48 @@ const tOn = await travel(), tOff = await travel();
 ok('switch: on and off travel alike — stretch toward travel, stay inside the rail (a lively bounce may use some of the 2 px gap)', tOn.minL >= 0.5 && tOn.minR >= 0.5 && tOff.minL >= 0.5 && tOff.minR >= 0.5 && Math.abs(tOn.minR - tOff.minL) < 0.3 && tOn.maxW > tOn.endW + 2 && tOff.maxW > tOff.endW + 2 && Math.abs((tOn.maxW - tOn.endW) - (tOff.maxW - tOff.endW)) < 1,
   `on: gap L ${tOn.minL.toFixed(1)} R ${tOn.minR.toFixed(1)} stretch ${(tOn.maxW - tOn.endW).toFixed(1)} · off: gap L ${tOff.minL.toFixed(1)} R ${tOff.minR.toFixed(1)} stretch ${(tOff.maxW - tOff.endW).toFixed(1)}`);
 
-const sl = p.locator('.gl-slider').first(), slb = await sl.boundingBox();
+const sl = p.locator('.sg-slider').first(), slb = await sl.boundingBox();
 await p.mouse.move(slb.x + slb.width * 0.2, slb.y + slb.height / 2); await p.mouse.down();
 await p.mouse.move(slb.x + slb.width * 0.8, slb.y + slb.height / 2, { steps: 8 });
 await p.waitForTimeout(220); /* the bubble fades in over 140 ms */
 await shot('slider-drag');
-const bubbleOp = await p.locator('.gl-slider__bubble').first().evaluate((e) => getComputedStyle(e).opacity);
+const bubbleOp = await p.locator('.sg-slider__bubble').first().evaluate((e) => getComputedStyle(e).opacity);
 await p.mouse.up();
 const sv = +(await sl.getAttribute('aria-valuenow'));
 ok('slider: drag sets the value, bubble shows while held', sv >= 75 && sv <= 85 && +bubbleOp > 0.5, `value ${sv}, bubble ${bubbleOp}`);
 await sl.focus(); await p.keyboard.press('End');
 ok('slider: End key → max', (await sl.getAttribute('aria-valuenow')) === '100');
-const seg = p.locator('.docs__page .gl-segmented').first();
-await seg.locator('.gl-segmented__item').nth(3).click(); await p.waitForTimeout(900);
-const si = await seg.locator('.gl-segmented__indicator').boundingBox(), s3 = await seg.locator('.gl-segmented__item').nth(3).boundingBox();
+const seg = p.locator('.docs__page .sg-segmented').first();
+await seg.locator('.sg-segmented__item').nth(3).click(); await p.waitForTimeout(900);
+const si = await seg.locator('.sg-segmented__indicator').boundingBox(), s3 = await seg.locator('.sg-segmented__item').nth(3).boundingBox();
 ok('segmented: indicator lands on the chosen segment', Math.abs(si.x - s3.x) < 1.5 && Math.abs(si.width - s3.width) < 1.5);
-const field = p.locator('input.gl-field__input').first();
-await field.fill('헤론'); await p.locator('.gl-field__clear').first().click();
+const field = p.locator('input.sg-field__input').first();
+await field.fill('헤론'); await p.locator('.sg-field__clear').first().click();
 ok('text field: clear button empties the field and keeps focus', (await field.inputValue()) === '' && (await field.evaluate((e) => e === document.activeElement)));
 
 /* ---------- overlays ---------- */
 await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(600);
 const dirBtn = p.getByRole('button', { name: '길찾기' });
 await dirBtn.click(); await p.waitForTimeout(80);
-const early = await p.locator('.gl-menu').evaluate((e) => new DOMMatrix(getComputedStyle(e).transform).a);
+const early = await p.locator('.sg-menu').evaluate((e) => new DOMMatrix(getComputedStyle(e).transform).a);
 await p.waitForTimeout(600); await shot('menu');
-const menuBox = await p.locator('.gl-menu').boundingBox(), btnBox = await dirBtn.boundingBox();
+const menuBox = await p.locator('.sg-menu').boundingBox(), btnBox = await dirBtn.boundingBox();
 ok('menu: blooms from the anchor (scaled < 1 early, placed below it)', early < 0.98 && menuBox.y >= btnBox.y + btnBox.height, `early scale ${early.toFixed(2)}`);
 /* snappy enough: sampled every frame, how long until the menu is ≥ 90 % of its size */
 await p.keyboard.press('Escape'); await p.waitForTimeout(400);
 const t90 = await p.evaluate(() => new Promise((res) => {
   const btn = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === '길찾기');
   const t0 = performance.now(); btn.click();
-  const f = () => { const m = document.querySelector('.gl-menu'); const k = m ? new DOMMatrix(getComputedStyle(m).transform).d : 0;
+  const f = () => { const m = document.querySelector('.sg-menu'); const k = m ? new DOMMatrix(getComputedStyle(m).transform).d : 0;
     if (m && k >= 0.9 && +getComputedStyle(m).opacity > 0.95) res(performance.now() - t0); else if (performance.now() - t0 > 1000) res(9999); else requestAnimationFrame(f); };
   requestAnimationFrame(f);
 }));
 ok('menu: reaches 90 % size (and full opacity) within ~150 ms', t90 <= 170, `${t90.toFixed(0)} ms`);
-ok('menu: focus moves into the menu', await p.evaluate(() => document.activeElement?.classList.contains('gl-menu__item')));
+ok('menu: focus moves into the menu', await p.evaluate(() => document.activeElement?.classList.contains('sg-menu__item')));
 await p.keyboard.press('ArrowDown'); await p.keyboard.press('Enter'); await p.waitForTimeout(400);
-ok('menu: Enter selects and closes; focus returns to the button', (await p.locator('.gl-menu').count()) === 0 && (await dirBtn.evaluate((e) => e === document.activeElement)));
+ok('menu: Enter selects and closes; focus returns to the button', (await p.locator('.sg-menu').count()) === 0 && (await dirBtn.evaluate((e) => e === document.activeElement)));
 await dirBtn.click(); await p.waitForTimeout(400); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
-ok('menu: Esc closes', (await p.locator('.gl-menu').count()) === 0);
+ok('menu: Esc closes', (await p.locator('.sg-menu').count()) === 0);
 
 await p.getByRole('button', { name: '장소 삭제…' }).click(); await p.waitForTimeout(600); await shot('dialog');
 ok('dialog: opens modal with focus inside', (await p.locator('[role=alertdialog]').count()) === 1 && await p.evaluate(() => !!document.activeElement?.closest('[role=alertdialog]')));
@@ -137,7 +137,7 @@ await p.waitForFunction(() => !document.querySelector('[role=alertdialog]') && d
 ok('dialog: Esc closes and unlocks scroll', (await p.locator('[role=alertdialog]').count()) === 0 && await p.evaluate(() => document.body.style.overflow !== 'hidden'));
 
 await p.getByRole('button', { name: '장소 편집' }).click(); await p.waitForTimeout(800); await shot('sheet');
-const sheet = p.locator('.gl-sheet');
+const sheet = p.locator('.sg-sheet');
 ok('sheet: opens', (await sheet.count()) === 1);
 /* a switch dragged inside the sheet, out to the right, then down past the sheet: it lets go and nothing sticks */
 {
@@ -148,66 +148,66 @@ ok('sheet: opens', (await sheet.count()) === 1);
   await p.mouse.move(sb.x + sb.width + 80, sb.y + sb.height + 50, { steps: 8 });
   await p.mouse.move(r.x + 6, sb.y + sb.height + 50, { steps: 10 });
   /* where the thumb rests for a state: off → left edge at 2 px, on → right edge 2 px from the end */
-  const thumbGap = (e) => { const t = e.querySelector('.gl-switch__thumb').getBoundingClientRect(), r = e.getBoundingClientRect(); return { left: +(t.left - r.left).toFixed(1), right: +(r.right - t.right).toFixed(1) }; };
+  const thumbGap = (e) => { const t = e.querySelector('.sg-switch__thumb').getBoundingClientRect(), r = e.getBoundingClientRect(); return { left: +(t.left - r.left).toFixed(1), right: +(r.right - t.right).toFixed(1) }; };
   await p.waitForTimeout(300);
   const midDrag = await s1.evaluate((e, g) => ({ dragging: e.classList.contains('is-dragging'), drag: e.dataset.drag ?? null, gap: new Function(`return (${g})`)()(e) }), thumbGap.toString());
   await p.mouse.up(); await p.waitForTimeout(700);
   const after1 = await s1.evaluate((e, g) => ({ checked: e.getAttribute('aria-checked'), cls: e.className, drag: e.dataset.drag ?? null, gap: new Function(`return (${g})`)()(e) }), thumbGap.toString());
   const home = (st, gap) => (st === 'true' ? Math.abs(gap.right - 2) < 0.6 : Math.abs(gap.left - 2) < 0.6);
   ok('switch in a sheet: far from the switch it lets go (thumb goes home, no tracking) and release changes nothing',
-    !midDrag.dragging && midDrag.drag === null && home(before1, midDrag.gap) && after1.checked === before1 && after1.cls === 'gl-switch' && after1.drag === null && home(before1, after1.gap), JSON.stringify({ midDrag, after1 }));
+    !midDrag.dragging && midDrag.drag === null && home(before1, midDrag.gap) && after1.checked === before1 && after1.cls === 'sg-switch' && after1.drag === null && home(before1, after1.gap), JSON.stringify({ midDrag, after1 }));
   await p.mouse.move(r.x + r.width - 8, r.y + r.height / 2); await p.mouse.down();
   await p.mouse.move(r.x + 4, r.y + r.height / 2, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(600);
   ok('switch in a sheet: still works after that', (await s1.getAttribute('aria-checked')) !== before1);
 }
-const grab = await p.locator('.gl-sheet__grabber').boundingBox();
+const grab = await p.locator('.sg-sheet__grabber').boundingBox();
 await p.mouse.move(grab.x + grab.width / 2, grab.y + 8); await p.mouse.down();
 await p.mouse.move(grab.x + grab.width / 2, grab.y + 60, { steps: 6 }); await p.waitForTimeout(150); await p.mouse.up(); await p.waitForTimeout(700);
 ok('sheet: a short, slow drag springs back', (await sheet.count()) === 1 && Math.abs((await sheet.boundingBox()).y - grab.y + 0) < 30);
-const g2 = await p.locator('.gl-sheet__grabber').boundingBox();
+const g2 = await p.locator('.sg-sheet__grabber').boundingBox();
 await p.mouse.move(g2.x + g2.width / 2, g2.y + 8); await p.mouse.down();
 await p.mouse.move(g2.x + g2.width / 2, g2.y + 420, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(700);
 ok('sheet: a long drag (or a quick flick) dismisses', (await sheet.count()) === 0);
 await p.getByRole('button', { name: '장소 편집' }).click(); await p.waitForTimeout(700);
-await p.locator('.gl-sheet__header').getByRole('button', { name: '취소' }).click(); await p.waitForTimeout(600);
+await p.locator('.sg-sheet__header').getByRole('button', { name: '취소' }).click(); await p.waitForTimeout(600);
 ok('sheet: header Cancel closes it', (await sheet.count()) === 0);
 await p.getByRole('button', { name: '장소 편집' }).click(); await p.waitForTimeout(700);
-await p.locator('.gl-sheet__header').getByRole('button', { name: '완료' }).click(); await p.waitForTimeout(600);
-ok('sheet: header Done closes it (and toasts)', (await sheet.count()) === 0 && (await p.locator('.gl-toast').count()) >= 1);
+await p.locator('.sg-sheet__header').getByRole('button', { name: '완료' }).click(); await p.waitForTimeout(600);
+ok('sheet: header Done closes it (and toasts)', (await sheet.count()) === 0 && (await p.locator('.sg-toast').count()) >= 1);
 
 await p.getByRole('button', { name: '공유 옵션…' }).click(); await p.waitForTimeout(600); await shot('actionsheet');
 ok('action sheet: opens with focus on Cancel', await p.evaluate(() => document.activeElement?.hasAttribute('data-cancel')));
 await p.keyboard.press('Enter'); await p.waitForTimeout(500);
-ok('action sheet: Cancel closes', (await p.locator('.gl-actionsheet').count()) === 0);
+ok('action sheet: Cancel closes', (await p.locator('.sg-actionsheet').count()) === 0);
 
 const photo = p.getByRole('button', { name: '노을 사진' });
 const [px, py] = await center(photo);
 await p.mouse.move(px, py); await p.mouse.down(); await p.waitForTimeout(650); await p.mouse.up(); await p.waitForTimeout(500); await shot('context');
-ok('context menu: long press lifts the item and opens the menu', (await p.locator('.gl-lift').count()) === 1 && (await p.locator('.gl-menu').count()) === 1);
+ok('context menu: long press lifts the item and opens the menu', (await p.locator('.sg-lift').count()) === 1 && (await p.locator('.sg-menu').count()) === 1);
 await p.keyboard.press('Escape'); await p.waitForTimeout(500);
-ok('context menu: Esc closes and the lift goes away', (await p.locator('.gl-menu').count()) === 0 && (await p.locator('.gl-lift').count()) === 0);
+ok('context menu: Esc closes and the lift goes away', (await p.locator('.sg-menu').count()) === 0 && (await p.locator('.sg-lift').count()) === 0);
 
 await p.getByRole('button', { name: '토스트', exact: true }).click(); await p.waitForTimeout(500); await shot('toast');
-ok('toast: appears as a status message', (await p.locator('.gl-toast[role=status]').count()) >= 1);
+ok('toast: appears as a status message', (await p.locator('.sg-toast[role=status]').count()) >= 1);
 await p.getByRole('button', { name: '오류 토스트' }).click(); await p.waitForTimeout(500);
-const n0 = await p.locator('.gl-toast').count();
-await p.locator('.gl-toast').getByRole('button', { name: '다시 시도' }).click(); await p.waitForTimeout(500);
-ok('toast: its action button works (and dismisses it)', (await p.locator('.gl-toast').count()) < n0);
+const n0 = await p.locator('.sg-toast').count();
+await p.locator('.sg-toast').getByRole('button', { name: '다시 시도' }).click(); await p.waitForTimeout(500);
+ok('toast: its action button works (and dismisses it)', (await p.locator('.sg-toast').count()) < n0);
 
 /* ---------- showcase: an open popover, then another ⓘ — the new one must open (it used to get stuck) ---------- */
 await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(700);
-const infos = p.locator('.phone .gl-list-item .gl-button--icon');
+const infos = p.locator('.phone .sg-list-item .sg-button--icon');
 await infos.nth(0).scrollIntoViewIfNeeded(); await infos.nth(0).click(); await p.waitForTimeout(500);
-const first = await p.locator('.gl-popover').textContent();
+const first = await p.locator('.sg-popover').textContent();
 await infos.nth(2).click(); await p.waitForTimeout(600);
-const second = (await p.locator('.gl-popover').count()) === 1 ? await p.locator('.gl-popover').textContent() : '';
-const vis = (await p.locator('.gl-popover').count()) === 1 ? await p.locator('.gl-popover').evaluate((e) => +getComputedStyle(e).opacity) : 0;
+const second = (await p.locator('.sg-popover').count()) === 1 ? await p.locator('.sg-popover').textContent() : '';
+const vis = (await p.locator('.sg-popover').count()) === 1 ? await p.locator('.sg-popover').evaluate((e) => +getComputedStyle(e).opacity) : 0;
 await shot('popover-switch');
 ok('popover: tapping another ⓘ while one is open opens the new one', second && second !== first && vis > 0.95, `${first?.slice(0, 6)} → ${second?.slice(0, 6)}, opacity ${vis}`);
 await infos.nth(3).click(); await p.waitForTimeout(600);
-ok('popover: …and again', (await p.locator('.gl-popover').count()) === 1 && (await p.locator('.gl-popover').textContent()).includes('별빛'));
+ok('popover: …and again', (await p.locator('.sg-popover').count()) === 1 && (await p.locator('.sg-popover').textContent()).includes('별빛'));
 await p.keyboard.press('Escape'); await p.waitForTimeout(400);
-ok('popover: Esc still closes after switching', (await p.locator('.gl-popover').count()) === 0);
+ok('popover: Esc still closes after switching', (await p.locator('.sg-popover').count()) === 0);
 
 /* ---------- motion audit: every state change moves, nothing jumps ---------- */
 /* sample a numeric reading every frame for `ms` after running `act` in the page; returns distinct rounded values */
@@ -221,8 +221,8 @@ const distinct = (a) => new Set(a.map((v) => Math.round(v))).size;
 
 await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(600);
 {
-  const sl2 = p.locator('.docs__page .gl-slider').first(), b2 = await sl2.boundingBox();
-  const thumbX = () => p.locator('.docs__page .gl-slider__thumb').first().evaluate((e) => e.getBoundingClientRect().left);
+  const sl2 = p.locator('.docs__page .sg-slider').first(), b2 = await sl2.boundingBox();
+  const thumbX = () => p.locator('.docs__page .sg-slider__thumb').first().evaluate((e) => e.getBoundingClientRect().left);
   const before = await thumbX();
   await p.mouse.move(b2.x + b2.width * 0.1, b2.y + b2.height / 2);
   const xs = [];
@@ -237,19 +237,19 @@ await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(600);
   const plus = p.getByRole('button', { name: 'Increase 인원' });
   await plus.click();
   await p.waitForTimeout(30);
-  const roll = await p.locator('.docs__page .gl-stepper__value').first().evaluate((box) => {
+  const roll = await p.locator('.docs__page .sg-stepper__value').first().evaluate((box) => {
     const inn = box.querySelector('[data-roll]'), out = box.querySelector('[data-leave]');
     return { dir: inn?.dataset.roll, inAnim: inn?.getAnimations().length, out: out?.dataset.leave, outText: out?.textContent, inText: inn?.textContent };
   });
   await p.waitForTimeout(500);
-  const leftover = await p.locator('.docs__page .gl-stepper__value').first().evaluate((box) => box.querySelectorAll('[data-leave]').length);
+  const leftover = await p.locator('.docs__page .sg-stepper__value').first().evaluate((box) => box.querySelectorAll('[data-leave]').length);
   ok('stepper: odometer — the old number rolls out up while the new one rolls in from below, then the old one is gone', roll.dir === 'up' && roll.inAnim > 0 && roll.out === 'up' && roll.outText !== roll.inText && leftover === 0, JSON.stringify({ ...roll, leftover }));
 }
 {
-  const ws = await sampleAfter(`({ act: () => document.querySelector('.docs__page .gl-search input').focus(), read: () => document.querySelector('.docs__page .gl-search__cancel').getBoundingClientRect().width })`);
+  const ws = await sampleAfter(`({ act: () => document.querySelector('.docs__page .sg-search input').focus(), read: () => document.querySelector('.docs__page .sg-search__cancel').getBoundingClientRect().width })`);
   const end = ws[ws.length - 1];
   ok('search field: Cancel slides in (width grows over several frames)', ws.filter((w) => w > 1 && w < end - 1).length >= 3 && end > 40, `frames between ${ws.filter((w) => w > 1 && w < end - 1).length}, end ${end.toFixed(0)}`);
-  await p.locator('.docs__page .gl-search input').blur();
+  await p.locator('.docs__page .sg-search input').blur();
 }
 await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(600);
 {
@@ -257,7 +257,7 @@ await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(600);
   await p.getByRole('button', { name: '오류 토스트' }).click(); await p.waitForTimeout(120);
   await p.getByRole('button', { name: '토스트', exact: true }).click(); await p.waitForTimeout(600);
   const flip = await p.evaluate(() => new Promise((res) => {
-    const list = [...document.querySelectorAll('.gl-toast')], lower = list[list.length - 1], y0 = lower.getBoundingClientRect().top;
+    const list = [...document.querySelectorAll('.sg-toast')], lower = list[list.length - 1], y0 = lower.getBoundingClientRect().top;
     list[0].querySelector('button').click();
     const ys = []; const t0 = performance.now();
     const f = () => { ys.push(lower.getBoundingClientRect().top); if (performance.now() - t0 < 700) requestAnimationFrame(f); else res({ y0, end: ys[ys.length - 1], between: ys.filter((y) => y < y0 - 2 && y > ys[ys.length - 1] + 2).length }); };
@@ -267,7 +267,7 @@ await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(600);
 }
 await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(700);
 {
-  const bgs = await sampleAfter(`({ act: () => document.querySelector('.phone__screen').scrollTo(0, 400), read: () => parseFloat(getComputedStyle(document.querySelector('.phone .gl-appbar__bar')).backgroundColor.split(',')[3] || '1') })`, 500);
+  const bgs = await sampleAfter(`({ act: () => document.querySelector('.phone__screen').scrollTo(0, 400), read: () => parseFloat(getComputedStyle(document.querySelector('.phone .sg-appbar__bar')).backgroundColor.split(',')[3] || '1') })`, 500);
   const mid = bgs.filter((a) => a > 0.02 && a < 0.98).length;
   if (/rt=1/.test(Q)) ok('app bar (reduce transparency): solid from the start — nothing to see through', bgs.every((a) => a > 0.98), `alphas ${[...new Set(bgs.map((a) => a.toFixed(2)))].join(',')}`);
   else ok('app bar: the glass fades in when content scrolls under it', mid >= 3, `frames in between ${mid}`);
@@ -277,8 +277,8 @@ await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(700);
 await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
 {
   const cols = p.locator('.grid--3 > *');
-  const squash = async (i) => cols.nth(i).locator('.gl-segmented').evaluate((seg) => new Promise((res) => {
-    const ind = seg.querySelector('.gl-segmented__indicator'); const items = seg.querySelectorAll('.gl-segmented__item');
+  const squash = async (i) => cols.nth(i).locator('.sg-segmented').evaluate((seg) => new Promise((res) => {
+    const ind = seg.querySelector('.sg-segmented__indicator'); const items = seg.querySelectorAll('.sg-segmented__item');
     let minSy = 1; const t0 = performance.now(); items[items.length - 1].click();
     const f = () => { const m = new DOMMatrix(getComputedStyle(ind).transform); minSy = Math.min(minSy, m.d); if (performance.now() - t0 < 600) requestAnimationFrame(f); else { items[0].click(); res(minSy); } };
     requestAnimationFrame(f);
@@ -287,22 +287,22 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
   ok('personalities: the segmented drop squashes — none when calm, more when playful', sq[0] > 0.999 && sq[1] < 0.97 && sq[2] < sq[1] - 0.02, sq.map((v) => v.toFixed(3)).join(' / '));
 
   const gel = async (i) => {
-    const sl = cols.nth(i).locator('.gl-slider'), b = await sl.boundingBox();
+    const sl = cols.nth(i).locator('.sg-slider'), b = await sl.boundingBox();
     /* record the stretch every frame in the page while the drag happens (sampling from the test misses peaks) */
-    await sl.locator('.gl-slider__thumb').evaluate((t) => { window.__peak = 1; window.__rec = true; const f = () => { window.__peak = Math.max(window.__peak, new DOMMatrix(getComputedStyle(t).transform).a); if (window.__rec) requestAnimationFrame(f); }; requestAnimationFrame(f); });
+    await sl.locator('.sg-slider__thumb').evaluate((t) => { window.__peak = 1; window.__rec = true; const f = () => { window.__peak = Math.max(window.__peak, new DOMMatrix(getComputedStyle(t).transform).a); if (window.__rec) requestAnimationFrame(f); }; requestAnimationFrame(f); });
     await p.mouse.move(b.x + 8, b.y + b.height / 2); await p.mouse.down();
     for (let k = 1; k <= 8; k++) { await p.mouse.move(b.x + 8 + (b.width - 16) * k / 8, b.y + b.height / 2); await p.waitForTimeout(8); }
     await p.mouse.up(); await p.waitForTimeout(700);
     const peak = await p.evaluate(() => { window.__rec = false; return window.__peak; });
-    const rest = await sl.locator('.gl-slider__thumb').evaluate((t) => new DOMMatrix(getComputedStyle(t).transform).a);
+    const rest = await sl.locator('.sg-slider__thumb').evaluate((t) => new DOMMatrix(getComputedStyle(t).transform).a);
     return [peak, rest];
   };
   const g = [await gel(0), await gel(1), await gel(2)];
   ok('personalities: a fast-dragged slider thumb stretches — not when calm, more when playful, and relaxes after', g[0][0] < 1.005 && g[1][0] > 1.03 && g[2][0] > g[1][0] && g.every(([, r]) => Math.abs(r - 1) < 0.01), g.map(([a, r]) => `${a.toFixed(3)}→${r.toFixed(3)}`).join(' / '));
 
   /* switch: the knob squashes against the end on arrival (calm: no squash) */
-  const knob = async (i) => cols.nth(i).locator('.gl-switch').evaluate((sw) => new Promise((res) => {
-    const k = sw.querySelector('.gl-switch__knob'); let min = 1; const t0 = performance.now(); sw.click();
+  const knob = async (i) => cols.nth(i).locator('.sg-switch').evaluate((sw) => new Promise((res) => {
+    const k = sw.querySelector('.sg-switch__knob'); let min = 1; const t0 = performance.now(); sw.click();
     const f = () => { min = Math.min(min, new DOMMatrix(getComputedStyle(k).transform).a); if (performance.now() - t0 < 700) requestAnimationFrame(f); else res(min); };
     requestAnimationFrame(f);
   }));
@@ -311,9 +311,9 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
 
   /* lively switch: as quick for its 20 px as the segmented drop is for its 90 — leading edge home ~100 ms after release */
   {
-    const sw = cols.nth(1).locator('.gl-switch'), r = await sw.boundingBox();
+    const sw = cols.nth(1).locator('.sg-switch'), r = await sw.boundingBox();
     if ((await sw.getAttribute('aria-checked')) === 'true') { await sw.click(); await p.waitForTimeout(500); }
-    await sw.evaluate((s) => { window.__t = []; const th = s.querySelector('.gl-switch__thumb'), tr = s.getBoundingClientRect(); window.__rec = true;
+    await sw.evaluate((s) => { window.__t = []; const th = s.querySelector('.sg-switch__thumb'), tr = s.getBoundingClientRect(); window.__rec = true;
       s.addEventListener('pointerup', () => { window.__up = performance.now(); }, { once: true });
       const f = () => { const q = th.getBoundingClientRect(); window.__t.push([performance.now(), tr.right - q.right, q.left - tr.left, q.width]); if (window.__rec) requestAnimationFrame(f); }; requestAnimationFrame(f); });
     await p.mouse.move(r.x + 12, r.y + r.height / 2); await p.mouse.down(); await p.waitForTimeout(60); await p.mouse.up(); await p.waitForTimeout(600);
@@ -325,8 +325,8 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
   }
 
   /* playful segmented: the drop never leaves the track, even with the bigger overshoot */
-  const out = await cols.nth(2).locator('.gl-segmented').evaluate((seg) => new Promise((res) => {
-    const ind = seg.querySelector('.gl-segmented__indicator'), items = seg.querySelectorAll('.gl-segmented__item');
+  const out = await cols.nth(2).locator('.sg-segmented').evaluate((seg) => new Promise((res) => {
+    const ind = seg.querySelector('.sg-segmented__indicator'), items = seg.querySelectorAll('.sg-segmented__item');
     const lo = items[0].getBoundingClientRect().left, hi = items[items.length - 1].getBoundingClientRect().right;
     let worst = 0; const t0 = performance.now(); items[items.length - 1].click();
     const f = () => { const r = ind.getBoundingClientRect(); worst = Math.max(worst, r.right - hi, lo - r.left); if (performance.now() - t0 < 900) requestAnimationFrame(f); else res(worst); };
@@ -335,7 +335,7 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
   ok('personalities: even playful, the segmented drop stays inside the track', out <= 0.5, `max outside ${out.toFixed(2)}px`);
 
   await cols.nth(2).getByRole('button', { name: '메뉴' }).click(); await p.waitForTimeout(100);
-  const pm = await p.evaluate(() => document.querySelector('.gl-menu')?.closest('.gl-portal')?.getAttribute('data-gl-motion'));
+  const pm = await p.evaluate(() => document.querySelector('.sg-menu')?.closest('.sg-portal')?.getAttribute('data-sg-motion'));
   ok('personalities: a menu opened inside a playful scope blooms with the playful springs (portal carries it)', pm === 'playful', String(pm));
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
 }
@@ -345,22 +345,22 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
   const offenders = [];
   for (const id of ['overview', 'material', 'buttons', 'inputs', 'navigation', 'lists', 'overlays', 'motion', 'showcase']) {
     await p.goto(`http://localhost:4173/#/${id}`); await p.waitForTimeout(400);
-    offenders.push(...await p.evaluate((id) => [...document.querySelectorAll('.gl-glass')].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowX + getComputedStyle(e).overflowY)).map((e) => `${id}: ${e.className}`), id));
+    offenders.push(...await p.evaluate((id) => [...document.querySelectorAll('.sg-glass')].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowX + getComputedStyle(e).overflowY)).map((e) => `${id}: ${e.className}`), id));
   }
   /* open a menu and a dialog too (they are rendered on demand) */
   await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(400);
   await p.getByRole('button', { name: '길찾기' }).click(); await p.waitForTimeout(400);
-  offenders.push(...await p.evaluate(() => [...document.querySelectorAll('.gl-menu')].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowY)).map((e) => 'menu: ' + e.className)));
+  offenders.push(...await p.evaluate(() => [...document.querySelectorAll('.sg-menu')].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowY)).map((e) => 'menu: ' + e.className)));
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   await p.getByRole('button', { name: '장소 삭제…' }).click(); await p.waitForTimeout(500);
-  offenders.push(...await p.evaluate(() => [...document.querySelectorAll('.gl-dialog')].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowY)).map((e) => 'dialog: ' + e.className)));
+  offenders.push(...await p.evaluate(() => [...document.querySelectorAll('.sg-dialog')].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowY)).map((e) => 'dialog: ' + e.className)));
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   ok('glass surfaces clip and never scroll themselves (so the light cannot add scrollbars)', offenders.length === 0, offenders.slice(0, 4).join(' | '));
 
   /* sweep the pointer along the docs sidebar's bottom and right edges: its scroll area must not change */
-  const sc = p.locator('.docs__nav .gl-sidebar__scroll');
+  const sc = p.locator('.docs__nav .sg-sidebar__scroll');
   const size = () => sc.evaluate((e) => [e.scrollWidth - e.clientWidth, e.scrollHeight]);
-  const before = await size(), box = await p.locator('.docs__nav .gl-sidebar').boundingBox();
+  const before = await size(), box = await p.locator('.docs__nav .sg-sidebar').boundingBox();
   for (let i = 0; i <= 12; i++) { await p.mouse.move(box.x + box.width - 3, box.y + (box.height * i) / 12); await p.waitForTimeout(16); }
   for (let i = 0; i <= 12; i++) { await p.mouse.move(box.x + (box.width * i) / 12, box.y + box.height - 3); await p.waitForTimeout(16); }
   const after = await size();
@@ -369,12 +369,12 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
 
 /* ---------- display settings are reachable at every width, and from inside the showcase app ---------- */
 {
-  const rootAttr = () => p.evaluate(() => document.querySelector('.gl-root')?.getAttribute('data-gl-reduce-motion'));
+  const rootAttr = () => p.evaluate(() => document.querySelector('.sg-root')?.getAttribute('data-sg-reduce-motion'));
   await p.setViewportSize({ width: 820, height: 900 });
   await p.goto('http://localhost:4173/#/overview'); await p.waitForTimeout(500);
   const barHidden = await p.locator('.docs__settings--bar').evaluate((e) => getComputedStyle(e).display === 'none');
   await p.getByRole('button', { name: '표시 설정' }).click(); await p.waitForTimeout(500);
-  const inPop = p.locator('.gl-popover').getByRole('switch', { name: '동작 줄이기' });
+  const inPop = p.locator('.sg-popover').getByRole('switch', { name: '동작 줄이기' });
   await inPop.click(); await p.waitForTimeout(200);
   ok('narrow window: settings move into a button + popover (nothing hidden), and its toggle works', barHidden && (await rootAttr()) === 'true', `bar hidden ${barHidden}, reduce-motion ${await rootAttr()}`);
   await inPop.click(); await p.keyboard.press('Escape'); await p.waitForTimeout(300);
@@ -382,10 +382,10 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
 
   await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(600);
   await p.getByRole('button', { name: '설정', exact: true }).click(); await p.waitForTimeout(700);
-  await p.locator('.gl-sheet').getByRole('switch', { name: '동작 줄이기' }).click(); await p.waitForTimeout(200);
+  await p.locator('.sg-sheet').getByRole('switch', { name: '동작 줄이기' }).click(); await p.waitForTimeout(200);
   const barSwitch = await p.locator('.docs__settings--bar').getByRole('switch', { name: '동작 줄이기' }).getAttribute('aria-checked');
   ok('showcase settings sheet: 동작 줄이기 applies to the whole app (and the top bar reflects it)', (await rootAttr()) === 'true' && barSwitch === 'true', `root ${await rootAttr()}, top bar ${barSwitch}`);
-  await p.locator('.gl-sheet').getByRole('switch', { name: '동작 줄이기' }).click(); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+  await p.locator('.sg-sheet').getByRole('switch', { name: '동작 줄이기' }).click(); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
 }
 
 console.log('page errors:', errs.length ? errs : 'none');

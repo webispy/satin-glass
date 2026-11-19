@@ -33,7 +33,7 @@ export function mergeRefs<T>(...refs: (Ref<T> | undefined)[]): RefCallback<T> {
 }
 
 let counter = 0;
-export function useStableId(prefix = 'gl'): string {
+export function useStableId(prefix = 'sg'): string {
   const [id] = useState(() => `${prefix}-${++counter}`);
   return id;
 }

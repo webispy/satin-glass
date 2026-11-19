@@ -16,7 +16,7 @@ export const SearchIcon = (p: P) => <svg {...base(p)}><circle cx="11" cy="11" r=
 export const ClearIcon = (p: P) => (
   <svg {...base({ ...p, stroke: 'none' })}>
     <circle cx="12" cy="12" r="9" fill="currentColor" />
-    <path d="M9.2 9.2l5.6 5.6M14.8 9.2l-5.6 5.6" stroke="var(--gl-surface, #fff)" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M9.2 9.2l5.6 5.6M14.8 9.2l-5.6 5.6" stroke="var(--sg-surface, #fff)" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 );
 export const InfoIcon = (p: P) => <svg {...base(p)}><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5M12 8h.01" /></svg>;

@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview", "typecheck": "tsc --noEmit -p ." },
   "dependencies": {
-    "@glass-layer/react": "workspace:*",
-    "@glass-layer/tokens": "workspace:*",
+    "@satin-glass/react": "workspace:*",
+    "@satin-glass/tokens": "workspace:*",
     "lucide-react": "1.73.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"

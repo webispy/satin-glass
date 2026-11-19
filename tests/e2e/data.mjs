@@ -26,7 +26,7 @@ await go('navigation');
 {
   const d = demo('tabs');
   await d.scrollIntoViewIfNeeded();
-  const tabs = d.getByRole('tab'), ind = d.locator('.gl-tabs__indicator');
+  const tabs = d.getByRole('tab'), ind = d.locator('.sg-tabs__indicator');
   const x0 = await ind.evaluate((e) => e.getBoundingClientRect().left);
   await tabs.nth(0).focus(); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(700);
   const x1 = await ind.evaluate((e) => e.getBoundingClientRect().left), t1 = await tabs.nth(1).boundingBox();
@@ -37,8 +37,8 @@ await go('navigation');
   await p.keyboard.press('Home'); await p.waitForTimeout(300);
   ok('tabs: Home goes back to the first', (await tabs.nth(0).getAttribute('aria-selected')) === 'true');
 
-  const m = demo('tabs-many'), list = m.locator('.gl-tabs__list'), mt = m.getByRole('tab');
-  const fade = await list.evaluate((e) => ({ end: e.hasAttribute('data-gl-more-end'), scrolls: e.scrollWidth > e.clientWidth }));
+  const m = demo('tabs-many'), list = m.locator('.sg-tabs__list'), mt = m.getByRole('tab');
+  const fade = await list.evaluate((e) => ({ end: e.hasAttribute('data-sg-more-end'), scrolls: e.scrollWidth > e.clientWidth }));
   ok('tabs: too many for the width — the list scrolls sideways and fades where more tabs wait', fade.scrolls && fade.end, JSON.stringify(fade));
   await m.getByRole('tab', { name: '디지털' }).focus();
   for (let i = 0; i < 4; i++) await p.keyboard.press('ArrowRight');
@@ -46,7 +46,7 @@ await go('navigation');
   const focusedTab = await p.evaluate(() => document.activeElement?.textContent?.trim());
   ok('tabs (manual): arrows move focus only; the selection stays', focusedTab === '할인 중' && (await m.getByRole('tab', { name: '디지털' }).getAttribute('aria-selected')) === 'true', focusedTab);
   await p.keyboard.press('Enter'); await p.waitForTimeout(700);
-  const seen = await m.evaluate((e) => { const l = e.querySelector('.gl-tabs__list').getBoundingClientRect(), t = e.querySelector('[aria-selected=true]').getBoundingClientRect(); return { inView: t.left >= l.left - 1 && t.right <= l.right + 1, start: e.querySelector('.gl-tabs__list').hasAttribute('data-gl-more-start') }; });
+  const seen = await m.evaluate((e) => { const l = e.querySelector('.sg-tabs__list').getBoundingClientRect(), t = e.querySelector('[aria-selected=true]').getBoundingClientRect(); return { inView: t.left >= l.left - 1 && t.right <= l.right + 1, start: e.querySelector('.sg-tabs__list').hasAttribute('data-sg-more-start') }; });
   ok('tabs (manual): Enter selects; the far tab is scrolled into view and the start now fades', (await mt.last().getAttribute('aria-selected')) === 'true' && seen.inView && seen.start, JSON.stringify(seen));
 
   const pg = demo('pagination').locator('nav').first();
@@ -58,17 +58,17 @@ await go('navigation');
   await pg.getByRole('button', { name: PAGER.name(40) }).click(); await p.waitForTimeout(100);
   ok('pagination: on the last page Next is disabled', await pg.getByRole('button', { name: '다음 페이지' }).isDisabled());
   const narrow = demo('pagination').locator('nav').last();
-  ok('pagination: in a narrow box it reads "40 / 40" instead of buttons', (await narrow.locator('.gl-pagination__compact').isVisible()) && !(await narrow.locator('.gl-pagination__pages').isVisible()));
+  ok('pagination: in a narrow box it reads "40 / 40" instead of buttons', (await narrow.locator('.sg-pagination__compact').isVisible()) && !(await narrow.locator('.sg-pagination__pages').isVisible()));
 }
 
 /* badges sit true: a tab's count is centred in its pill (the tab's 24 px line used to sink the digits); a tab-bar
    badge keeps the top of its ring (the scrolling track used to clip it) */
 {
-  const tb = p.locator('.docs__page .gl-tabs__badge').first(); await tb.scrollIntoViewIfNeeded();
+  const tb = p.locator('.docs__page .sg-tabs__badge').first(); await tb.scrollIntoViewIfNeeded();
   const off = await tb.evaluate((e) => { const r = e.getBoundingClientRect(), g = document.createRange(); g.selectNodeContents(e); const q = g.getBoundingClientRect(); return (q.top + q.bottom) / 2 - (r.top + r.bottom) / 2; });
   ok('tabs: the count sits in the middle of its pill', Math.abs(off) <= 0.75, `text centre ${off.toFixed(2)} px from the pill's`);
-  const bar = p.locator('.docs__page .gl-tabbar').first(); await bar.scrollIntoViewIfNeeded();
-  const g = await bar.evaluate((t) => { const tr = t.querySelector('.gl-tabbar__track').getBoundingClientRect(), bd = t.querySelector('.gl-tabbar__icon > .gl-badge:not(.gl-badge--dot)').getBoundingClientRect(), ind = t.querySelector('.gl-tabbar__indicator').getBoundingClientRect(), it = t.querySelector('.gl-tabbar__item').getBoundingClientRect(); return { ring: bd.top - 2 - tr.top, ind: [ind.top - it.top, ind.bottom - it.bottom] }; });
+  const bar = p.locator('.docs__page .sg-tabbar').first(); await bar.scrollIntoViewIfNeeded();
+  const g = await bar.evaluate((t) => { const tr = t.querySelector('.sg-tabbar__track').getBoundingClientRect(), bd = t.querySelector('.sg-tabbar__icon > .sg-badge:not(.sg-badge--dot)').getBoundingClientRect(), ind = t.querySelector('.sg-tabbar__indicator').getBoundingClientRect(), it = t.querySelector('.sg-tabbar__item').getBoundingClientRect(); return { ring: bd.top - 2 - tr.top, ind: [ind.top - it.top, ind.bottom - it.bottom] }; });
   ok('tab bar: a badge keeps its whole ring (inside the scrolling track) and the drop still fits the tab', g.ring >= 0 && Math.abs(g.ind[0]) < 0.5 && Math.abs(g.ind[1]) < 0.5, JSON.stringify(g));
 }
 
@@ -77,14 +77,14 @@ await go('feedback');
 {
   /* a one-line banner with a button: icon, title and button share one centre line (the title used to sit high);
      with a body, the button stays level with the title */
-  const mids = (ban) => ban.evaluate((e) => { const c = (s) => { const r = e.querySelector(s).getBoundingClientRect(); return (r.top + r.bottom) / 2; }; const r = e.getBoundingClientRect(); return { banner: (r.top + r.bottom) / 2, icon: c('.gl-banner__icon'), title: c('.gl-banner__title'), button: c('.gl-banner__actions .gl-button') }; });
-  const one = await mids(p.locator('.docs__page .gl-banner--warning')), two = await mids(p.locator('.docs__page .gl-banner--danger'));
+  const mids = (ban) => ban.evaluate((e) => { const c = (s) => { const r = e.querySelector(s).getBoundingClientRect(); return (r.top + r.bottom) / 2; }; const r = e.getBoundingClientRect(); return { banner: (r.top + r.bottom) / 2, icon: c('.sg-banner__icon'), title: c('.sg-banner__title'), button: c('.sg-banner__actions .sg-button') }; });
+  const one = await mids(p.locator('.docs__page .sg-banner--warning')), two = await mids(p.locator('.docs__page .sg-banner--danger'));
   const even = (o, keys) => Math.max(...keys.map((k) => o[k])) - Math.min(...keys.map((k) => o[k])) <= 1;
   ok('banner: one line — icon, title and button centre on one line, in the middle of the banner', even(one, ['banner', 'icon', 'title', 'button']), JSON.stringify(one));
   ok('banner: with a body — the button stays level with the title', even(two, ['icon', 'title', 'button']), JSON.stringify(two));
 }
 {
-  const d = demo('banners'), next = d.locator('.gl-banner--success');
+  const d = demo('banners'), next = d.locator('.sg-banner--success');
   await d.scrollIntoViewIfNeeded();
   /* in the demo's own coordinates (the click may scroll the page); the banner gives way to a 32 px "show again" button */
   const rel = () => next.evaluate((e) => e.getBoundingClientRect().top - e.closest('[data-demo]').getBoundingClientRect().top);
@@ -92,7 +92,7 @@ await go('feedback');
   await d.getByRole('button', { name: '알림 닫기' }).click(); await p.waitForTimeout(600);
   const y1 = await rel();
   ok('banner: dismissing folds it away and the content below closes the gap', (await d.getByText('11월 정기 점검').count()) === 0 && y1 < y0 - 25, `${y0.toFixed(0)} → ${y1.toFixed(0)}`);
-  ok('banner: a live danger banner is an alert; quiet ones have no role', (await d.locator('.gl-banner--danger').getAttribute('role')) === 'alert' && (await d.locator('.gl-banner--success').getAttribute('role')) === null);
+  ok('banner: a live danger banner is an alert; quiet ones have no role', (await d.locator('.sg-banner--danger').getAttribute('role')) === 'alert' && (await d.locator('.sg-banner--success').getAttribute('role')) === null);
 
   const t = demo('tooltips'), bold = t.getByRole('button', { name: '굵게' });
   await bold.scrollIntoViewIfNeeded();
@@ -157,12 +157,12 @@ await go('table');
   await soldBtn.click(); await p.waitForTimeout(150);
   ok('table: a "more is better" column sorts high → low first (firstSort)', (await soldBtn.evaluate((e) => e.closest('th').getAttribute('aria-sort'))) === 'descending');
   /* header text: every column on one line — inline-flex headers used to take their baseline from the sort icon */
-  const tops = await grid.evaluate((t) => [...new Set([...t.querySelectorAll('thead .gl-table__title')].map((e) => e.getBoundingClientRect().top.toFixed(1)))]);
+  const tops = await grid.evaluate((t) => [...new Set([...t.querySelectorAll('thead .sg-table__title')].map((e) => e.getBoundingClientRect().top.toFixed(1)))]);
   ok('table: start- and end-aligned header titles sit on the same line', tops.length === 1, tops.join(' / '));
-  const edges = await grid.evaluate((t) => [...t.querySelectorAll('thead th[data-align=end]')].map((th) => { const c = th.dataset.c, cell = t.querySelector(`tbody tr td[data-c="${c}"]`), r = document.createRange(); r.selectNodeContents(cell); return Math.abs(th.querySelector('.gl-table__title').getBoundingClientRect().right - r.getBoundingClientRect().right); }));
+  const edges = await grid.evaluate((t) => [...t.querySelectorAll('thead th[data-align=end]')].map((th) => { const c = th.dataset.c, cell = t.querySelector(`tbody tr td[data-c="${c}"]`), r = document.createRange(); r.selectNodeContents(cell); return Math.abs(th.querySelector('.sg-table__title').getBoundingClientRect().right - r.getBoundingClientRect().right); }));
   ok('table: end-aligned header text ends where the numbers end', edges.every((d) => d < 1), edges.map((d) => d.toFixed(1)).join(','));
   /* the sort direction is drawn by transform + opacity (the CSS d property, used before, does not exist in WebKit) */
-  const dir = await grid.evaluate((t) => { const th = t.querySelector('th[aria-sort=descending], th[aria-sort=ascending]'); const op = (s) => +getComputedStyle(th.querySelector(s)).opacity; return { sort: th.getAttribute('aria-sort'), up: op('.gl-table__sort-up'), down: op('.gl-table__sort-down') }; });
+  const dir = await grid.evaluate((t) => { const th = t.querySelector('th[aria-sort=descending], th[aria-sort=ascending]'); const op = (s) => +getComputedStyle(th.querySelector(s)).opacity; return { sort: th.getAttribute('aria-sort'), up: op('.sg-table__sort-up'), down: op('.sg-table__sort-down') }; });
   ok('table: the sort icon shows one chevron, pointing the sorted way', dir.sort === 'descending' ? dir.down === 1 && dir.up === 0 : dir.up === 1 && dir.down === 0, JSON.stringify(dir));
   const digits = await grid.evaluate((t) => { const s = document.createElement('span'); s.style.position = 'absolute'; t.querySelector('tbody td').appendChild(s); const w = (x) => { s.textContent = x; return s.getBoundingClientRect().width; }; const r = [w('1111'), w('8888')]; s.remove(); return r; });
   ok('table: numbers use tabular figures (every digit the same width)', Math.abs(digits[0] - digits[1]) < 0.1, digits.map((d) => d.toFixed(2)).join(' vs '));
@@ -177,9 +177,9 @@ await go('table');
   const n = (xs) => xs.filter((v) => v !== '–').map((v) => parseInt(v, 10));
   ok('table: empty values go last in both directions', up[up.length - 1] === '–' && down[down.length - 1] === '–' && n(up).every((v, i, a) => i === 0 || a[i - 1] <= v) && n(down).every((v, i, a) => i === 0 || a[i - 1] >= v), `${up.slice(-2)} / ${down.slice(-2)}`);
   ok('table: a paused product is a muted row', (await cells.locator('tr[data-muted]').count()) === 1);
-  const bars = await cells.evaluate((t) => [...new Set([...t.querySelectorAll('.gl-barmeter')].map((b) => b.getBoundingClientRect().right.toFixed(1)))]);
+  const bars = await cells.evaluate((t) => [...new Set([...t.querySelectorAll('.sg-barmeter')].map((b) => b.getBoundingClientRect().right.toFixed(1)))]);
   ok('table: meter bars end at one edge (the value keeps a fixed slot, bold or not)', bars.length === 1, bars.join(' / '));
-  const mid = await cells.evaluate((t) => { const tr = t.querySelector('tbody tr'); const c = (el) => { const r = document.createRange(); r.selectNodeContents(el); const b = r.getBoundingClientRect(); return (b.top + b.bottom) / 2; }; return [c(tr.querySelector('.gl-cell-meter > :last-child')), c(tr.querySelector('th'))]; });
+  const mid = await cells.evaluate((t) => { const tr = t.querySelector('tbody tr'); const c = (el) => { const r = document.createRange(); r.selectNodeContents(el); const b = r.getBoundingClientRect(); return (b.top + b.bottom) / 2; }; return [c(tr.querySelector('.sg-cell-meter > :last-child')), c(tr.querySelector('th'))]; });
   ok('table: a meter cell\'s number is on the row\'s text line', Math.abs(mid[0] - mid[1]) <= 1, mid.map((v) => v.toFixed(1)).join(' vs '));
 
   /* selection */
@@ -193,9 +193,9 @@ await go('table');
   ok('table: the header box selects every row', (await sg.locator('tbody:last-of-type tr[aria-selected=true]').count()) === 8);
   await head.click(); await p.waitForTimeout(100);
   ok('table: …and clears them', (await sg.locator('tbody:last-of-type tr[aria-selected=true]').count()) === 0);
-  ok('table: header and row boxes are the library checkbox (same box, drawn tick)', (await sg.locator('.gl-check__box').count()) === 9 && (await sg.locator('tbody .gl-check__tick').count()) === 8);
+  ok('table: header and row boxes are the library checkbox (same box, drawn tick)', (await sg.locator('.sg-check__box').count()) === 9 && (await sg.locator('tbody .sg-check__tick').count()) === 8);
   /* the header box sits on the header text's line, like the other header cells (it used to sit on the line below) */
-  const hb = await sg.evaluate((t) => { const box = t.querySelector('thead .gl-check__box').getBoundingClientRect(), title = t.querySelector('thead .gl-table__title').getBoundingClientRect(); return { box: (box.top + box.bottom) / 2, title: (title.top + title.bottom) / 2 }; });
+  const hb = await sg.evaluate((t) => { const box = t.querySelector('thead .sg-check__box').getBoundingClientRect(), title = t.querySelector('thead .sg-table__title').getBoundingClientRect(); return { box: (box.top + box.bottom) / 2, title: (title.top + title.bottom) / 2 }; });
   ok('table: the select-all box is centred on the header text line', Math.abs(hb.box - hb.title) <= 1.5, JSON.stringify(hb));
   await sg.locator('tbody:last-of-type tr').nth(2).locator('th').click(); await p.keyboard.press(' '); await p.waitForTimeout(80);
   ok('table: Space on a row selects it', (await sg.locator('tbody:last-of-type tr[aria-selected=true]').count()) === 1);
@@ -218,7 +218,7 @@ await go('table');
   const gLastRow = await p.evaluate(() => document.activeElement.closest('tr')?.getAttribute('aria-rowindex'));
   ok('table: Ctrl+End jumps to the last cell', a5.r === lastR && a5.c === 9 && gLastRow === (await gg.getAttribute('aria-rowcount')), `${JSON.stringify(a5)}, row ${gLastRow}`);
   ok('table: still exactly one tab stop', (await demo('table-groups').locator('[tabindex="0"]').count()) === 1);
-  const gbox = demo('table-groups').locator('.gl-table');
+  const gbox = demo('table-groups').locator('.sg-table');
   await gbox.evaluate((e) => { e.scrollTop = 200; e.scrollLeft = 400; }); await p.waitForTimeout(200);
   const g = await gbox.evaluate((e) => {
     const t = e.getBoundingClientRect(), th = e.querySelector('thead tr:last-child th').getBoundingClientRect(), td = e.querySelector('tbody:last-of-type tr th').getBoundingClientRect();
@@ -226,20 +226,20 @@ await go('table');
   });
   ok('table: scrolled both ways, the header stays on top and the first column stays on the left', Math.abs(g.headBottom - g.headH) < 1 && Math.abs(g.firstColLeft) < 1, JSON.stringify(g));
   /* summary rows stay under the header when the table scrolls, and keyboard focus is never left behind a frozen column */
-  const pinnedAt = await gbox.evaluate((e) => { const b = e.getBoundingClientRect(), h = e.querySelector('thead').getBoundingClientRect(), r = e.querySelector('.gl-table__pinned tr').getBoundingClientRect(); return { head: h.bottom - b.top, pinned: r.top - b.top }; });
+  const pinnedAt = await gbox.evaluate((e) => { const b = e.getBoundingClientRect(), h = e.querySelector('thead').getBoundingClientRect(), r = e.querySelector('.sg-table__pinned tr').getBoundingClientRect(); return { head: h.bottom - b.top, pinned: r.top - b.top }; });
   ok('table: summary rows stick right under the header while the table scrolls', Math.abs(pinnedAt.head - pinnedAt.pinned) < 1, JSON.stringify(pinnedAt));
-  const titleTops = await gg.evaluate((t) => [...new Set([...t.querySelectorAll('thead .gl-table__title')].map((e) => e.getBoundingClientRect().top.toFixed(1)))]);
+  const titleTops = await gg.evaluate((t) => [...new Set([...t.querySelectorAll('thead .sg-table__title')].map((e) => e.getBoundingClientRect().top.toFixed(1)))]);
   ok('table: with second header lines, every title still sits on one line', titleTops.length === 1, titleTops.join(' / '));
   ok('table: grouped columns share a group header (scope colgroup)', (await gg.locator('th[scope=colgroup]').count()) === 3);
-  ok('table: summary rows are pinned above the data and blank where a value does not apply', (await gg.locator('.gl-table__pinned tr').count()) === 2 && (await gg.locator('.gl-table__pinned .gl-table__none').count()) === 0);
+  ok('table: summary rows are pinned above the data and blank where a value does not apply', (await gg.locator('.sg-table__pinned tr').count()) === 2 && (await gg.locator('.sg-table__pinned .sg-table__none').count()) === 0);
 
   /* states */
   const st = demo('table-states');
   await st.scrollIntoViewIfNeeded();
   await st.getByRole('button', { name: '다시 불러오기' }).click(); await p.waitForTimeout(100);
-  ok('table: reloading dims the rows under a progress line', (await st.locator('.gl-table--loading').count()) === 1 && (await st.locator('.gl-table__busy').count()) === 1);
+  ok('table: reloading dims the rows under a progress line', (await st.locator('.sg-table--loading').count()) === 1 && (await st.locator('.sg-table__busy').count()) === 1);
   /* the line is really painted: on the header's bottom edge, above it (it used to be clipped / hidden behind the header) */
-  const busyLine = await st.evaluate((d) => { const s = d.querySelector('.gl-table__busy span').getBoundingClientRect(), h = d.querySelector('thead').getBoundingClientRect(); const hit = document.elementFromPoint(s.left + s.width / 2, s.top + s.height / 2); return { onEdge: Math.abs(s.bottom - h.bottom) < 1, h: s.height, top: !!hit?.closest('.gl-table__busy') }; });
+  const busyLine = await st.evaluate((d) => { const s = d.querySelector('.sg-table__busy span').getBoundingClientRect(), h = d.querySelector('thead').getBoundingClientRect(); const hit = document.elementFromPoint(s.left + s.width / 2, s.top + s.height / 2); return { onEdge: Math.abs(s.bottom - h.bottom) < 1, h: s.height, top: !!hit?.closest('.sg-table__busy') }; });
   ok('table: the progress line is visible on the header\'s bottom edge', busyLine.onEdge && busyLine.h >= 2 && busyLine.top, JSON.stringify(busyLine));
   await p.waitForTimeout(1700);
   await st.getByRole('switch', { name: '빈 결과 보기' }).click(); await p.waitForTimeout(200);
@@ -252,7 +252,7 @@ await go('table');
   await sv.scrollIntoViewIfNeeded(); await p.waitForTimeout(700);
   ok('server table: 20 rows; aria-rowcount tells the real total', (await srv.locator('tbody tr').count()) === 20 && (await srv.getAttribute('aria-rowcount')) === '5001');
   await sv.getByRole('button', { name: PAGER.name(2) }).click(); await p.waitForTimeout(80);
-  const dim = await sv.locator('.gl-table--loading').count(), line = await sv.locator('.gl-table__busy').count();
+  const dim = await sv.locator('.sg-table--loading').count(), line = await sv.locator('.sg-table__busy').count();
   await p.waitForTimeout(600);
   ok('pagination + server: page 2 — the rows dim under a progress line, then the next 20', dim === 1 && line === 1 && (await sv.getByRole('button', { name: PAGER.name(2) }).getAttribute('aria-current')) === 'page' && (await sv.getByText('5,000건 중 21–40').count()) === 1);
   await srv.getByRole('button', { name: /금액/ }).click(); await p.waitForTimeout(700);
@@ -266,7 +266,7 @@ await go('table');
   ok('server table: sorting goes to the "server" (back to page 1, highest first)', amounts.every((v, i) => i === 0 || amounts[i - 1] >= v) && (await sv.getByRole('button', { name: PAGER.name(1) }).getAttribute('aria-current')) === 'page', amounts.slice(0, 4).join(','));
 
   /* 5,000 rows */
-  const vd = demo('table-virtual'), big = vd.getByRole('grid'), vbox = vd.locator('.gl-table');
+  const vd = demo('table-virtual'), big = vd.getByRole('grid'), vbox = vd.locator('.sg-table');
   await vbox.scrollIntoViewIfNeeded();
   const rendered = await big.locator('tbody tr:not([aria-hidden])').count();
   ok('virtual table: 5,000 rows, only a window of them in the DOM', rendered < 80 && (await big.getAttribute('aria-rowcount')) === '5001', `${rendered} rows rendered`);
@@ -279,7 +279,7 @@ await go('table');
   const lastCell = await active(), lastRow = await p.evaluate(() => document.activeElement.closest('tr')?.getAttribute('aria-rowindex'));
   ok('virtual table: Ctrl+End scrolls to the very last row and focuses its last cell', lastRow === '5001' && lastCell.c === 7, `row ${lastRow}, col ${lastCell.c}`);
   await p.keyboard.press('Control+Home'); await p.waitForTimeout(300);
-  const ring = await p.evaluate(() => { const a = document.activeElement; return { sticky: a.classList.contains('gl-table__sticky--last'), shadow: getComputedStyle(a).boxShadow }; });
+  const ring = await p.evaluate(() => { const a = document.activeElement; return { sticky: a.classList.contains('sg-table__sticky--last'), shadow: getComputedStyle(a).boxShadow }; });
   ok('virtual table: a focused cell in the last frozen column shows its focus ring', ring.sticky ? ring.shadow !== 'none' && /inset/.test(ring.shadow) : true, JSON.stringify(ring));
   ok('virtual table: Ctrl+Home goes back to the first row', (await p.evaluate(() => document.activeElement.closest('tr')?.getAttribute('aria-rowindex'))) === '2');
   await p.keyboard.press('PageDown'); await p.waitForTimeout(200);
@@ -292,26 +292,26 @@ await go('charts');
 {
   const s = demo('stats');
   await s.getByRole('button', { name: '다시 불러오기' }).click(); await p.waitForTimeout(100);
-  const busy = await s.locator('.gl-stat[aria-busy=true]').count();
+  const busy = await s.locator('.sg-stat[aria-busy=true]').count();
   await p.waitForTimeout(1400);
-  ok('stat: skeletons while loading, then the numbers', busy === 4 && (await s.locator('.gl-stat[aria-busy=true]').count()) === 0 && /\d/.test(await s.locator('.gl-stat__value').first().textContent()));
-  const deltas = await s.locator('.gl-stat__delta').evaluateAll((ds) => ds.map((d) => ({ good: d.dataset.good, text: d.textContent })));
+  ok('stat: skeletons while loading, then the numbers', busy === 4 && (await s.locator('.sg-stat[aria-busy=true]').count()) === 0 && /\d/.test(await s.locator('.sg-stat__value').first().textContent()));
+  const deltas = await s.locator('.sg-stat__delta').evaluateAll((ds) => ds.map((d) => ({ good: d.dataset.good, text: d.textContent })));
   const consistent = deltas.every((d, i) => { const up = /증가/.test(d.text), down = /감소/.test(d.text), invert = i === 3; return (up && d.text.includes('+') && d.good === (invert ? 'bad' : 'good')) || (down && /[-−]/.test(d.text) && d.good === (invert ? 'good' : 'bad')); });
   ok('stat: the change is said in words; colour follows whether it is good (returns up = bad)', consistent && deltas[3].good === 'bad', deltas.map((d) => `${d.good}:${d.text}`).join(' | '));
 
-  const l = demo('line'), plot = l.locator('.gl-chart__plot');
+  const l = demo('line'), plot = l.locator('.sg-chart__plot');
   await plot.scrollIntoViewIfNeeded(); await p.waitForTimeout(400);
   const pr = await plot.boundingBox();
   await p.mouse.move(pr.x + pr.width * 0.5, pr.y + pr.height * 0.5); await p.waitForTimeout(200);
-  const tipTitle = await l.locator('.gl-chart__tip-title').textContent().catch(() => '');
-  ok('line chart: hovering shows a crosshair and a tooltip with every series', !!tipTitle && (await l.locator('.gl-chart__tip-row').count()) === 2 && (await l.locator('.gl-chart__cross circle').count()) === 2, tipTitle);
+  const tipTitle = await l.locator('.sg-chart__tip-title').textContent().catch(() => '');
+  ok('line chart: hovering shows a crosshair and a tooltip with every series', !!tipTitle && (await l.locator('.sg-chart__tip-row').count()) === 2 && (await l.locator('.sg-chart__cross circle').count()) === 2, tipTitle);
   await p.mouse.move(5, 5); await p.waitForTimeout(100);
   await plot.focus(); await p.keyboard.press('End'); await p.waitForTimeout(100);
   const said = await l.locator('[aria-live]').first().textContent();
   ok('line chart: focusable; End moves to the last point and announces it', said.startsWith('11/18') && said.includes('방문'), said);
   const key = l.getByRole('button', { name: '재방문' });
   await key.click(); await p.waitForTimeout(500);
-  ok('line chart: a legend key hides its series (aria-pressed false)', (await key.getAttribute('aria-pressed')) === 'false' && (await l.locator('.gl-chart__line').count()) === 1);
+  ok('line chart: a legend key hides its series (aria-pressed false)', (await key.getAttribute('aria-pressed')) === 'false' && (await l.locator('.sg-chart__line').count()) === 1);
   const other = l.getByRole('button', { name: '방문', exact: true });
   await other.click(); await p.waitForTimeout(200);
   ok('line chart: the last visible series cannot be hidden', (await other.getAttribute('aria-pressed')) === 'true');
@@ -320,32 +320,32 @@ await go('charts');
 
   const bar = demo('bar');
   await bar.scrollIntoViewIfNeeded(); await p.waitForTimeout(300);
-  const grouped = await bar.locator('.gl-chart__bar').count();
+  const grouped = await bar.locator('.sg-chart__bar').count();
   await bar.getByRole('radio', { name: '누적' }).click(); await p.waitForTimeout(600);
-  const stacked = await bar.locator('.gl-chart__bar').count();
+  const stacked = await bar.locator('.sg-chart__bar').count();
   ok('bar chart: one bar per series and month, grouped and stacked', grouped === 18 && stacked === 18, `${grouped} / ${stacked}`);
 
-  const ring = demo('donut').locator('.gl-donut__ring');
+  const ring = demo('donut').locator('.sg-donut__ring');
   await ring.focus(); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(150);
-  ok('donut: arrow keys pick a slice; the centre and the announcement say its share', (await demo('donut').locator('.gl-donut__label').textContent()) === '의류' && (await demo('donut').locator('[aria-live]').textContent()).includes('의류'));
+  ok('donut: arrow keys pick a slice; the centre and the announcement say its share', (await demo('donut').locator('.sg-donut__label').textContent()) === '의류' && (await demo('donut').locator('[aria-live]').textContent()).includes('의류'));
   await ring.blur();
 
   /* a mouse resting on a slice — at its middle and right at its inner edge, where the lift moves the slice away from
      the pointer — picks that slice and keeps it (it used to drop and catch it again, bouncing for as long as it rested) */
   {
-    const dn = demo('donut'), label = () => dn.locator('.gl-donut__label').textContent();
+    const dn = demo('donut'), label = () => dn.locator('.sg-donut__label').textContent();
     await ring.scrollIntoViewIfNeeded();
     const g = await ring.evaluate((e) => { const b = e.getBoundingClientRect(), c = b.width / 2, r = c - 6;
-      return { x: b.left, y: b.top, c, r, ri: r - 22, names: [...e.closest('.gl-donut').querySelectorAll('.gl-donut__name')].map((n) => n.textContent) }; });
+      return { x: b.left, y: b.top, c, r, ri: r - 22, names: [...e.closest('.sg-donut').querySelectorAll('.sg-donut__name')].map((n) => n.textContent) }; });
     /* each slice's middle angle, from the legend's shares (the default ring: 22 px thick, 6 px in from the edge) */
-    const shares = await dn.locator('.gl-donut__pct').evaluateAll((ns) => ns.map((n) => parseFloat(n.textContent)));
+    const shares = await dn.locator('.sg-donut__pct').evaluateAll((ns) => ns.map((n) => parseFloat(n.textContent)));
     const tot = shares.reduce((a, v) => a + v, 0);
     let acc = 0, wrong = [], bounce = 0;
     for (let i = 0; i < shares.length; i++) {
       const mid = ((acc + shares[i] / 2) / tot) * Math.PI * 2; acc += shares[i];
       for (const rad of [(g.r + g.ri) / 2, g.ri + 1.5]) {
         await p.mouse.move(g.x + g.c + Math.sin(mid) * rad, g.y + g.c - Math.cos(mid) * rad); await p.waitForTimeout(80);
-        const changes = await dn.evaluate((el) => new Promise((res) => { const lab = el.querySelector('.gl-donut__label'); let n = 0; const o = new MutationObserver(() => n++); o.observe(lab, { childList: true, characterData: true, subtree: true }); setTimeout(() => { o.disconnect(); res(n); }, 500); }));
+        const changes = await dn.evaluate((el) => new Promise((res) => { const lab = el.querySelector('.sg-donut__label'); let n = 0; const o = new MutationObserver(() => n++); o.observe(lab, { childList: true, characterData: true, subtree: true }); setTimeout(() => { o.disconnect(); res(n); }, 500); }));
         bounce = Math.max(bounce, changes);
         const now = await label(); if (now !== g.names[i]) wrong.push(`${g.names[i]}@${rad.toFixed(0)}→${now}`);
       }
@@ -359,14 +359,14 @@ await go('charts');
 await go('dashboard');
 {
   const d = demo('dashboard');
-  const before = await d.locator('.gl-stat__value').first().textContent();
+  const before = await d.locator('.sg-stat__value').first().textContent();
   await d.getByRole('radio', { name: '30일' }).click(); await p.waitForTimeout(100);
-  const busy = await d.locator('.gl-stat[aria-busy=true]').count();
+  const busy = await d.locator('.sg-stat[aria-busy=true]').count();
   await p.waitForTimeout(1000);
-  ok('dashboard: the period switch reloads the stats (skeletons, then the 30-day numbers)', busy === 4 && (await d.locator('.gl-stat[aria-busy=true]').count()) === 0 && (await d.locator('.gl-stat__value').first().textContent()) !== before);
-  ok('dashboard: …and redraws the chart with 30 days', (await d.locator('.gl-chart').first().locator('table tbody tr').count()) === 30);
+  ok('dashboard: the period switch reloads the stats (skeletons, then the 30-day numbers)', busy === 4 && (await d.locator('.sg-stat[aria-busy=true]').count()) === 0 && (await d.locator('.sg-stat__value').first().textContent()) !== before);
+  ok('dashboard: …and redraws the chart with 30 days', (await d.locator('.sg-chart').first().locator('table tbody tr').count()) === 30);
   await d.getByRole('radio', { name: '주문', exact: true }).click(); await p.waitForTimeout(600);
-  ok('dashboard: the card\'s segmented control swaps the chart (one series)', (await d.locator('.gl-chart').first().locator('.gl-chart__line').count()) === 1 && (await d.getByRole('heading', { name: '하루 주문' }).count()) === 1);
+  ok('dashboard: the card\'s segmented control swaps the chart (one series)', (await d.locator('.sg-chart').first().locator('.sg-chart__line').count()) === 1 && (await d.getByRole('heading', { name: '하루 주문' }).count()) === 1);
 
   await d.getByRole('button', { name: '상품 보기' }).click(); await p.waitForTimeout(700);
   const lowChip = d.getByRole('button', { name: '재고 부족만' });
@@ -385,7 +385,7 @@ await go('dashboard');
   const product = (await p.evaluate(() => document.activeElement?.textContent?.trim())) ?? '';
   await p.keyboard.press('Enter'); await p.waitForTimeout(700);
   const sheet = p.getByRole('dialog');
-  ok('dashboard: the product sheet opens, titled with the product, with its details', (await sheet.count()) === 1 && (await p.getByRole('dialog', { name: product }).count()) === 1 && (await sheet.locator('.gl-sparkline').count()) === 1 && (await sheet.getByRole('button', { name: /배송/ }).count()) === 1);
+  ok('dashboard: the product sheet opens, titled with the product, with its details', (await sheet.count()) === 1 && (await p.getByRole('dialog', { name: product }).count()) === 1 && (await sheet.locator('.sg-sparkline').count()) === 1 && (await sheet.getByRole('button', { name: /배송/ }).count()) === 1);
   await p.keyboard.press('Escape'); await p.waitForTimeout(700);
   ok('dashboard: Escape closes it and focus returns to the product', (await sheet.count()) === 0 && (await p.evaluate(() => document.activeElement?.className)) === 'dash__link');
 
@@ -398,11 +398,11 @@ await go('dashboard');
   await d.getByRole('button', { name: '선택 해제' }).click(); await p.waitForTimeout(100);
   const status = d.getByRole('combobox', { name: /상태/ });
   await status.click(); await p.waitForTimeout(400); await p.getByRole('option', { name: '환불' }).click(); await p.waitForTimeout(300);
-  const st = await og.locator('tbody tr').evaluateAll((trs) => trs.map((tr) => tr.querySelector('.gl-tag')?.textContent));
+  const st = await og.locator('tbody tr').evaluateAll((trs) => trs.map((tr) => tr.querySelector('.sg-tag')?.textContent));
   ok('dashboard: the status filter narrows the orders', st.length > 0 && st.every((s) => s === '환불'), `${st.length} rows`);
   await d.getByRole('searchbox', { name: '주문 찾기' }).or(d.getByRole('textbox', { name: '주문 찾기' })).first().fill('없는주문'); await p.waitForTimeout(300);
   ok('dashboard: no match shows the empty state, with a way out', (await d.getByText('조건에 맞는 주문이 없어요').count()) === 1);
-  await d.locator('.gl-empty').getByRole('button', { name: '필터 지우기' }).click(); await p.waitForTimeout(300);
+  await d.locator('.sg-empty').getByRole('button', { name: '필터 지우기' }).click(); await p.waitForTimeout(300);
   ok('dashboard: …which clears every filter', (await og.locator('tbody tr').count()) === 15 && (await status.textContent()).includes('전체'));
 
   const axe = readFileSync(new URL('../../node_modules/axe-core/axe.min.js', import.meta.url), 'utf8');
@@ -427,7 +427,7 @@ await go('dashboard');
   const loose = await m.evaluate(() => { const bad = []; const walk = (rules, inHover) => { for (const r of rules) { if (r instanceof CSSMediaRule) walk(r.cssRules, inHover || /hover:\s*hover/.test(r.conditionText ?? r.media.mediaText)); else if (r.selectorText?.includes(':hover') && !inHover) bad.push(r.selectorText); else if (r.cssRules) walk(r.cssRules, inHover); } }; for (const sh of document.styleSheets) { try { walk(sh.cssRules, false); } catch {} } return bad; });
   ok('touch: no :hover rule outside @media (hover: hover)', loose.length === 0, loose.slice(0, 4).join(' | '));
   const d = m.locator('[data-demo=donut]'); await d.scrollIntoViewIfNeeded(); await m.waitForTimeout(900);
-  const slice = (i) => d.locator('.gl-donut__slice').nth(i), center = () => d.locator('.gl-donut__label').textContent();
+  const slice = (i) => d.locator('.sg-donut__slice').nth(i), center = () => d.locator('.sg-donut__label').textContent();
   const tapSlice = async (i) => { const pt = await slice(i).evaluate((e) => { const r = e.getBoundingClientRect(); let best = null; for (let y = r.top + 2; y < r.bottom - 2; y += 3) for (let x = r.left + 2; x < r.right - 2; x += 3) if (document.elementFromPoint(x, y) === e) { const dd = Math.hypot(x - r.left - r.width / 2, y - r.top - r.height / 2); if (!best || dd < best.d) best = { x, y, d: dd }; } return best; }); await m.touchscreen.tap(pt.x, pt.y); await m.waitForTimeout(350); };
   const rest = await center();
   await tapSlice(1); const c1 = await center();
@@ -439,12 +439,12 @@ await go('dashboard');
   await m.goto(`http://localhost:${PORT}/${Q}#/table`); await m.waitForTimeout(1200);
   const row = m.locator('[data-demo=table-basic] tbody tr').nth(1); await row.scrollIntoViewIfNeeded(); await row.locator('th').tap(); await m.waitForTimeout(300);
   const rowBg = await row.locator('td').first().evaluate((e) => getComputedStyle(e).getPropertyValue('--_row-bg').trim());
-  const bodyBg = await row.locator('td').first().evaluate((e) => getComputedStyle(e.closest('.gl-table')).getPropertyValue('--_row-bg').trim());
+  const bodyBg = await row.locator('td').first().evaluate((e) => getComputedStyle(e.closest('.sg-table')).getPropertyValue('--_row-bg').trim());
   ok('table (touch): a tapped row keeps no hover tint', rowBg === bodyBg, `${rowBg} vs ${bodyBg}`);
   /* a phone-width banner puts its button below the text (the narrow rule used to have no container to measure, so the
      button stayed beside the text and squeezed it into a column) */
   await m.goto(`http://localhost:${PORT}/${Q}#/feedback`); await m.waitForTimeout(1200);
-  const nb = await m.locator('.docs__page .gl-banner--danger').evaluate((e) => { const t = e.querySelector('.gl-banner__text').getBoundingClientRect(), a = e.querySelector('.gl-banner__actions').getBoundingClientRect(); return { below: a.top - t.bottom, left: a.left - t.left, textW: t.width, mainW: e.querySelector('.gl-banner__main').getBoundingClientRect().width }; });
+  const nb = await m.locator('.docs__page .sg-banner--danger').evaluate((e) => { const t = e.querySelector('.sg-banner__text').getBoundingClientRect(), a = e.querySelector('.sg-banner__actions').getBoundingClientRect(); return { below: a.top - t.bottom, left: a.left - t.left, textW: t.width, mainW: e.querySelector('.sg-banner__main').getBoundingClientRect().width }; });
   ok('banner (phone): the button goes below the text, which keeps the full width', nb.below >= 6 && Math.abs(nb.left) < 1 && nb.textW >= nb.mainW - 1, JSON.stringify(nb));
   await mctx.close();
 }

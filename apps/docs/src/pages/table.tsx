@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   BarMeter, Button, DataTable, EmptyState, Pagination, SegmentedControl, Stack, Switch, Tag, Text, type Column, type SortState,
-} from '@glass-layer/react';
+} from '@satin-glass/react';
 import { PackageSearch } from 'lucide-react';
 import { Demo, Page, Section } from '../shared';
 import { CATEGORIES, ORDERS, PRODUCTS, STATUS, categoryLabel, num, won, wonShort, type Order, type Product } from '../data';
@@ -97,16 +97,16 @@ function Cells() {
   const cols: Column<Product>[] = [
     name,
     { key: 'sold', header: '판매량', align: 'end', width: 150, sortable: true, firstSort: 'desc',
-      render: (p) => <span className="gl-cell-meter"><BarMeter value={p.sold} max={BEST_SOLD} width={56} tone={p.sold === BEST_SOLD ? 'accent' : 'neutral'} /><span className={p.sold === BEST_SOLD ? 'gl-cell-strong' : undefined}>{num(p.sold)}</span></span> },
+      render: (p) => <span className="sg-cell-meter"><BarMeter value={p.sold} max={BEST_SOLD} width={56} tone={p.sold === BEST_SOLD ? 'accent' : 'neutral'} /><span className={p.sold === BEST_SOLD ? 'sg-cell-strong' : undefined}>{num(p.sold)}</span></span> },
     { key: 'daysLeft', header: '소진 예상', align: 'end', width: 110, sortable: true,
-      render: (p) => (p.daysLeft === null ? null : <span className={p.daysLeft <= 7 ? 'gl-cell-danger' : p.daysLeft <= 14 ? 'gl-cell-warning' : undefined}>{p.daysLeft}일</span>) },
+      render: (p) => (p.daysLeft === null ? null : <span className={p.daysLeft <= 7 ? 'sg-cell-danger' : p.daysLeft <= 14 ? 'sg-cell-warning' : undefined}>{p.daysLeft}일</span>) },
     { key: 'status', header: '상태', width: 110, render: (p) => (p.paused ? <Tag>판매 중지</Tag> : p.daysLeft !== null && p.daysLeft <= 7 ? <Tag tone="danger">재고 부족</Tag> : <Tag tone="success">판매 중</Tag>) },
   ];
   return (
-    <Section title="셀 안의 표시" intro="숫자 옆 짧은 막대로 크기를 비교하고, 셀 클래스로 의미를 더합니다. gl-cell-strong(가장 좋은 값), gl-cell-warning·gl-cell-danger(살펴볼 값), gl-cell-muted(덜 중요한 값). 색만으로 전하지 않도록 굵기나 태그 글자가 함께 바뀝니다. 판매를 멈춘 행은 흐리게(rowState) 둡니다.">
+    <Section title="셀 안의 표시" intro="숫자 옆 짧은 막대로 크기를 비교하고, 셀 클래스로 의미를 더합니다. sg-cell-strong(가장 좋은 값), sg-cell-warning·sg-cell-danger(살펴볼 값), sg-cell-muted(덜 중요한 값). 색만으로 전하지 않도록 굵기나 태그 글자가 함께 바뀝니다. 판매를 멈춘 행은 흐리게(rowState) 둡니다.">
       <Demo col data-demo="table-cells">
         <DataTable<Product> aria-label="판매량과 재고 상태" rows={rows} rowKey={(p) => p.id} columns={cols} rowState={(p) => (p.paused ? { muted: true } : undefined)} defaultSort={{ key: 'sold', dir: 'desc' }} labels={TABLE_LABELS} />
-        <Text variant="footnote" tone="secondary"><span className="gl-cell-strong">굵은 값</span> 가장 많이 팔림 · <span className="gl-cell-warning">주황</span> 2주 안에 소진 · <span className="gl-cell-danger">빨강</span> 1주 안에 소진</Text>
+        <Text variant="footnote" tone="secondary"><span className="sg-cell-strong">굵은 값</span> 가장 많이 팔림 · <span className="sg-cell-warning">주황</span> 2주 안에 소진 · <span className="sg-cell-danger">빨강</span> 1주 안에 소진</Text>
       </Demo>
     </Section>
   );

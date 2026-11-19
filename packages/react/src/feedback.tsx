@@ -3,7 +3,7 @@ import {
   cloneElement, isValidElement, useEffect, useRef, useState,
   type CSSProperties, type ReactElement, type ReactNode, type Ref,
 } from 'react';
-import { animate, fade, place, prefersReducedMotion, pushLayer, type Placement } from '@glass-layer/core';
+import { animate, fade, place, prefersReducedMotion, pushLayer, type Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useIsoLayoutEffect, usePresence, useStableId } from './utils';
 import { Portal } from './foundation';
 import { IconButton } from './controls';
@@ -34,7 +34,7 @@ export function Tooltip({ content, children, placement = 'top', delay = 500, dis
   const instant = useRef(false);
   const trigger = useRef<HTMLElement | null>(null), tip = useRef<HTMLDivElement>(null);
   const timer = useRef(0);
-  const id = useStableId('gl-tip');
+  const id = useStableId('sg-tip');
   const show = (now = false) => {
     if (disabled) return;
     clearTimeout(timer.current);
@@ -87,8 +87,8 @@ export function Tooltip({ content, children, placement = 'top', delay = 500, dis
         onBlur: (e: FocusEvent) => { call('onBlur', e); hide(false); },
       })}
       {mounted && (
-        <Portal className="gl-portal--passthrough gl-portal--anchored">
-          <div ref={tip} id={id} role="tooltip" className="gl-tooltip" onPointerEnter={() => clearTimeout(timer.current)} onPointerLeave={() => hide()}>{content}</div>
+        <Portal className="sg-portal--passthrough sg-portal--anchored">
+          <div ref={tip} id={id} role="tooltip" className="sg-tooltip" onPointerEnter={() => clearTimeout(timer.current)} onPointerLeave={() => hide()}>{content}</div>
         </Portal>
       )}
     </>
@@ -131,17 +131,17 @@ export function Banner({ tone = 'info', title, children, icon, actions, onDismis
   if (gone) return null;
   const role = live ? (tone === 'danger' || tone === 'warning' ? 'alert' : 'status') : undefined;
   return (
-    <div ref={el} role={role} className={cx('gl-banner', `gl-banner--${tone}`, className)} style={style}>
-      {icon !== false && <span className="gl-banner__icon" aria-hidden="true">{icon ?? TONE_ICON[tone]}</span>}
+    <div ref={el} role={role} className={cx('sg-banner', `sg-banner--${tone}`, className)} style={style}>
+      {icon !== false && <span className="sg-banner__icon" aria-hidden="true">{icon ?? TONE_ICON[tone]}</span>}
       {/* text and actions share a box whose width decides when the actions drop below the text */}
-      <div className="gl-banner__main">
-        <div className="gl-banner__text">
-          {title && <div className="gl-banner__title">{title}</div>}
-          {children && <div className="gl-banner__body">{children}</div>}
+      <div className="sg-banner__main">
+        <div className="sg-banner__text">
+          {title && <div className="sg-banner__title">{title}</div>}
+          {children && <div className="sg-banner__body">{children}</div>}
         </div>
-        {actions && <div className="gl-banner__actions">{actions}</div>}
+        {actions && <div className="sg-banner__actions">{actions}</div>}
       </div>
-      {onDismiss && <IconButton className="gl-banner__close" size="sm" icon={<CloseIcon />} label={dismissLabel} onClick={dismiss} />}
+      {onDismiss && <IconButton className="sg-banner__close" size="sm" icon={<CloseIcon />} label={dismissLabel} onClick={dismiss} />}
     </div>
   );
 }
@@ -159,11 +159,11 @@ export type EmptyStateProps = {
 /** What to show where content would be: what is missing and what to do about it. */
 export function EmptyState({ icon, title, description, actions, compact, className, style }: EmptyStateProps) {
   return (
-    <div className={cx('gl-empty', compact && 'gl-empty--compact', className)} style={style}>
-      {icon && <div className="gl-empty__icon" aria-hidden="true">{icon}</div>}
-      <div className="gl-empty__title">{title}</div>
-      {description && <div className="gl-empty__desc">{description}</div>}
-      {actions && <div className="gl-empty__actions">{actions}</div>}
+    <div className={cx('sg-empty', compact && 'sg-empty--compact', className)} style={style}>
+      {icon && <div className="sg-empty__icon" aria-hidden="true">{icon}</div>}
+      <div className="sg-empty__title">{title}</div>
+      {description && <div className="sg-empty__desc">{description}</div>}
+      {actions && <div className="sg-empty__actions">{actions}</div>}
     </div>
   );
 }

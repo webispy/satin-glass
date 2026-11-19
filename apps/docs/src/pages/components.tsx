@@ -4,7 +4,7 @@ import {
   ChoiceList, IconButton, List, ListItem, ListSection, Menu, MenuItem, MenuLabel, MenuSeparator, NavigationPage, NavigationStack, PageControl, Pagination, Popover, Progress, SearchField,
   SegmentedControl, Sheet, Sidebar, SidebarItem, SidebarSection, Slider, Spinner, Stack, Stepper, Switch, Tab, TabBar, TabBarAction,
   Tabs, Text, TextField, useNavigation, useToast,
-} from '@glass-layer/react';
+} from '@satin-glass/react';
 import {
   Bell, Bike, Bookmark, Car, ChevronLeft, Copy, Download, Footprints, Heart, Home, Map, MoreHorizontal, Moon, Pencil, Plus, Search,
   Settings, Share, Star, Trash2, User, Wifi, Sun, Monitor, Lock, KeyRound, Smartphone, Laptop, ShieldCheck, Mail, Plane, MapPin, Compass, Info, ShoppingBag, Package, MessageSquare, BarChart3,
@@ -126,7 +126,7 @@ export function Navigation() {
       <Section title="앱 바">
         <Demo media style={{ padding: 0, minHeight: 160, alignItems: 'flex-start' }}>
           <Photo scene={4} style={{ position: 'absolute', inset: 0 }} />
-          <div style={{ position: 'relative', width: '100%', color: 'var(--gl-label)' }}>
+          <div style={{ position: 'relative', width: '100%', color: 'var(--sg-label)' }}>
             <AppBar title="즐겨찾기" leading={<IconButton icon={<ChevronLeft />} label="뒤로" />} trailing={<><IconButton icon={<Share />} label="공유" /><IconButton icon={<Plus />} label="추가" /></>} style={{ position: 'relative' }} />
           </div>
         </Demo>
@@ -135,7 +135,7 @@ export function Navigation() {
         <div className="grid grid--2">
           <Demo media style={{ padding: 12, minHeight: 300 }}>
             <Photo scene={2} style={{ position: 'absolute', inset: 0 }} />
-            <Sidebar style={{ position: 'relative', height: 276, width: 240, color: 'var(--gl-label)' }}>
+            <Sidebar style={{ position: 'relative', height: 276, width: 240, color: 'var(--sg-label)' }}>
               <SidebarSection>라이브러리</SidebarSection>
               <SidebarItem icon={<Compass />} selected={side === 'all'} count={24} onClick={() => setSide('all')}>모든 장소</SidebarItem>
               <SidebarItem icon={<Star />} selected={side === 'fav'} count={7} onClick={() => setSide('fav')}>즐겨찾기</SidebarItem>
@@ -193,10 +193,10 @@ function SettingsRoot() {
     <NavigationPage title="설정" largeTitle>
       <ListSection header="계정" footer="알림은 기기마다 따로 설정할 수 있어요.">
         <List>
-          <ListItem leading={<User />} tileColor="var(--gl-iris-500)" title="프로필" subtitle="hello@example.com" chevron onClick={() => nav.push(<ProfilePage />)} />
-          <ListItem leading={<Bell />} tileColor="var(--gl-coral-500)" title="알림" trailing={<Switch checked={notif} onChange={setNotif} aria-label="알림" />} />
-          <ListItem leading={<Moon />} tileColor="var(--gl-orchid-600)" title="화면 모드" trailing={MODES[mode]} chevron onClick={() => nav.push(<AppearancePage initial={mode} onChange={setMode} />)} />
-          <ListItem leading={<Wifi />} tileColor="var(--gl-azure-500)" title="오프라인 지도" trailing={<Badge tone="accent">NEW</Badge>} chevron onClick={() => nav.push(<NavigationPage title="오프라인 지도"><ListSection footer="내려받은 지도는 연결이 없어도 볼 수 있어요."><List><ListItem title="서울" subtitle="312 MB" /><ListItem title="부산" subtitle="188 MB" /></List></ListSection></NavigationPage>)} />
+          <ListItem leading={<User />} tileColor="var(--sg-iris-500)" title="프로필" subtitle="hello@example.com" chevron onClick={() => nav.push(<ProfilePage />)} />
+          <ListItem leading={<Bell />} tileColor="var(--sg-coral-500)" title="알림" trailing={<Switch checked={notif} onChange={setNotif} aria-label="알림" />} />
+          <ListItem leading={<Moon />} tileColor="var(--sg-orchid-600)" title="화면 모드" trailing={MODES[mode]} chevron onClick={() => nav.push(<AppearancePage initial={mode} onChange={setMode} />)} />
+          <ListItem leading={<Wifi />} tileColor="var(--sg-azure-500)" title="오프라인 지도" trailing={<Badge tone="accent">NEW</Badge>} chevron onClick={() => nav.push(<NavigationPage title="오프라인 지도"><ListSection footer="내려받은 지도는 연결이 없어도 볼 수 있어요."><List><ListItem title="서울" subtitle="312 MB" /><ListItem title="부산" subtitle="188 MB" /></List></ListSection></NavigationPage>)} />
         </List>
       </ListSection>
       <ListSection>
@@ -215,8 +215,8 @@ function ProfilePage() {
       </div>
       <ListSection>
         <List>
-          <ListItem leading={<Mail />} tileColor="var(--gl-azure-500)" title="이메일" trailing="hello@example.com" />
-          <ListItem leading={<ShieldCheck />} tileColor="var(--gl-jade-600)" title="계정 보안" chevron onClick={() => nav.push(<SecurityPage />)} />
+          <ListItem leading={<Mail />} tileColor="var(--sg-azure-500)" title="이메일" trailing="hello@example.com" />
+          <ListItem leading={<ShieldCheck />} tileColor="var(--sg-jade-600)" title="계정 보안" chevron onClick={() => nav.push(<SecurityPage />)} />
         </List>
       </ListSection>
     </NavigationPage>
@@ -229,9 +229,9 @@ function SecurityPage() {
     <NavigationPage title="계정 보안">
       <ListSection footer="2단계 인증을 켜면 새 기기에서 로그인할 때 확인 코드를 한 번 더 받아요.">
         <List>
-          <ListItem leading={<KeyRound />} tileColor="var(--gl-amber-500)" title="비밀번호 변경" chevron onClick={() => nav.push(<PasswordPage />)} />
-          <ListItem leading={<Lock />} tileColor="var(--gl-slate-500)" title="2단계 인증" trailing={<Switch checked={twoStep} onChange={setTwoStep} aria-label="2단계 인증" />} />
-          <ListItem leading={<Smartphone />} tileColor="var(--gl-iris-500)" title="로그인한 기기" trailing="2대" chevron onClick={() => nav.push(<DevicesPage />)} />
+          <ListItem leading={<KeyRound />} tileColor="var(--sg-amber-500)" title="비밀번호 변경" chevron onClick={() => nav.push(<PasswordPage />)} />
+          <ListItem leading={<Lock />} tileColor="var(--sg-slate-500)" title="2단계 인증" trailing={<Switch checked={twoStep} onChange={setTwoStep} aria-label="2단계 인증" />} />
+          <ListItem leading={<Smartphone />} tileColor="var(--sg-iris-500)" title="로그인한 기기" trailing="2대" chevron onClick={() => nav.push(<DevicesPage />)} />
         </List>
       </ListSection>
     </NavigationPage>
@@ -253,8 +253,8 @@ function DevicesPage() {
     <NavigationPage title="로그인한 기기">
       <ListSection>
         <List>
-          <ListItem leading={<Smartphone />} tileColor="var(--gl-iris-500)" title="이 휴대폰" subtitle="지금 사용 중" />
-          <ListItem leading={<Laptop />} tileColor="var(--gl-slate-500)" title="노트북" subtitle="3일 전" />
+          <ListItem leading={<Smartphone />} tileColor="var(--sg-iris-500)" title="이 휴대폰" subtitle="지금 사용 중" />
+          <ListItem leading={<Laptop />} tileColor="var(--sg-slate-500)" title="노트북" subtitle="3일 전" />
         </List>
       </ListSection>
     </NavigationPage>
@@ -265,9 +265,9 @@ function AppearancePage({ initial, onChange }: { initial: keyof typeof MODES; on
   return (
     <NavigationPage title="화면 모드">
       <ChoiceList aria-label="화면 모드" value={m} onChange={(v) => { setM(v); onChange(v); }} options={[
-        { value: 'light', label: '라이트', icon: <Sun />, tileColor: 'var(--gl-amber-500)' },
-        { value: 'dark', label: '다크', icon: <Moon />, tileColor: 'var(--gl-iris-700)' },
-        { value: 'system', label: '시스템 설정', description: '기기 설정을 따라요', icon: <Monitor />, tileColor: 'var(--gl-slate-500)' },
+        { value: 'light', label: '라이트', icon: <Sun />, tileColor: 'var(--sg-amber-500)' },
+        { value: 'dark', label: '다크', icon: <Moon />, tileColor: 'var(--sg-iris-700)' },
+        { value: 'system', label: '시스템 설정', description: '기기 설정을 따라요', icon: <Monitor />, tileColor: 'var(--sg-slate-500)' },
       ]} />
     </NavigationPage>
   );

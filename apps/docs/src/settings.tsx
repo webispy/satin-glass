@@ -1,7 +1,7 @@
 /* Display settings shared by the docs chrome and the showcase's own settings sheet. */
 import { createContext, useContext, type ReactNode } from 'react';
-import { List, ListItem, ListSection, SegmentedControl, Stack, Switch, type ThemeMode } from '@glass-layer/react';
-import type { MotionName } from '@glass-layer/tokens';
+import { List, ListItem, ListSection, SegmentedControl, Stack, Switch, type ThemeMode } from '@satin-glass/react';
+import type { MotionName } from '@satin-glass/tokens';
 
 export type DisplaySettings = {
   mode: ThemeMode; setMode: (v: ThemeMode) => void;

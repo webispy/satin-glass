@@ -11,5 +11,5 @@ export type TagProps = Omit<HTMLAttributes<HTMLSpanElement>, 'children'> & {
   icon?: ReactNode;
 };
 export function Tag({ children, tone = 'neutral', variant = 'soft', icon, className, ...rest }: TagProps) {
-  return <span className={cx('gl-tag', variant === 'outline' && 'gl-tag--outline', className)} data-tone={tone} {...rest}>{icon}{children}</span>;
+  return <span className={cx('sg-tag', variant === 'outline' && 'sg-tag--outline', className)} data-tone={tone} {...rest}>{icon}{children}</span>;
 }

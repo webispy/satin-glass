@@ -2,7 +2,7 @@
    aria-activedescendant. Opens with ↓ ↑ Enter Space or by typing; ↑↓ Home End PageUp PageDown move; Enter, Space,
    Tab or Alt+↑ choose; Esc or a click outside closes without change. The panel blooms from the button. */
 import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import type { MotionName, Placement } from '@glass-layer/core';
+import type { MotionName, Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useStableId } from './utils';
 import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
 import { useAnchored } from './overlay-hooks';
@@ -49,7 +49,7 @@ export const Select = forwardRef(function Select<T extends string = string>(
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const trigger = useRef<HTMLButtonElement>(null);
-  const auto = useStableId('gl-select');
+  const auto = useStableId('sg-select');
   const fid = id ?? auto, listId = `${fid}-list`, optId = (i: number) => `${fid}-o${i}`;
   const lightRef = useGlassLight();
   const typed = useRef({ buf: '', t: 0 });
@@ -115,7 +115,7 @@ export const Select = forwardRef(function Select<T extends string = string>(
        overflow: hidden, which makes it a scroll container) while the bloom's 4 px content offset overhangs it — the
        rim and the items then stepped back down as the offset settled. Layout offsets, not rects: the panel is still
        scaled while it blooms. */
-    const o = document.getElementById(optId(active)), list = o?.closest<HTMLElement>('[data-gl-content]');
+    const o = document.getElementById(optId(active)), list = o?.closest<HTMLElement>('[data-sg-content]');
     if (!o || !list) return;
     const m = parseFloat(getComputedStyle(o).scrollMarginTop) || 0;
     const top = o.offsetTop, bottom = top + o.offsetHeight;
@@ -131,13 +131,13 @@ export const Select = forwardRef(function Select<T extends string = string>(
     const i = ++n;
     return (
       <div key={o.value} id={optId(i)} role="option" aria-selected={o.value === v} aria-disabled={o.disabled || undefined}
-        data-active={i === active ? '' : undefined} className="gl-option"
+        data-active={i === active ? '' : undefined} className="sg-option"
         onPointerMove={() => { if (!o.disabled && active !== i) setActive(i); }}
         onMouseDown={(e) => e.preventDefault() /* focus stays on the button */}
         onClick={() => choose(i)}>
         {o.icon}
-        <span className="gl-option__text"><span className="gl-option__label">{o.label}</span>{o.description && <span className="gl-option__desc">{o.description}</span>}</span>
-        <CheckIcon className="gl-option__check" />
+        <span className="sg-option__text"><span className="sg-option__label">{o.label}</span>{o.description && <span className="sg-option__desc">{o.description}</span>}</span>
+        <CheckIcon className="sg-option__check" />
       </div>
     );
   };
@@ -157,39 +157,39 @@ export const Select = forwardRef(function Select<T extends string = string>(
       aria-invalid={invalid || undefined}
       aria-describedby={help ? `${fid}-help` : undefined}
       disabled={disabled}
-      data-gl-motion={motion}
-      className={cx('gl-select', variant === 'inline' && 'gl-select--inline', variant === 'filter' && 'gl-select--filter', variant !== 'inline' ? className : undefined)}
+      data-sg-motion={motion}
+      className={cx('sg-select', variant === 'inline' && 'sg-select--inline', variant === 'filter' && 'sg-select--filter', variant !== 'inline' ? className : undefined)}
       style={variant !== 'inline' ? style : undefined}
       onClick={() => (open ? setOpen(false) : openAt(selectedIndex >= 0 ? selectedIndex : enabled[0]))}
       onKeyDown={onKey}
     >
-      {variant === 'filter' && label && <span id={labelId} className="gl-select__prefix">{label}</span>}
-      <span className="gl-select__value">
+      {variant === 'filter' && label && <span id={labelId} className="sg-select__prefix">{label}</span>}
+      <span className="sg-select__value">
         {selected?.icon}
-        {selected ? <span>{selected.label}</span> : <span className="gl-select__placeholder">{placeholder}</span>}
+        {selected ? <span>{selected.label}</span> : <span className="sg-select__placeholder">{placeholder}</span>}
       </span>
-      {variant === 'filter' ? <ChevronDownIcon className="gl-select__chevrons" /> : <ChevronsIcon className="gl-select__chevrons" />}
+      {variant === 'filter' ? <ChevronDownIcon className="sg-select__chevrons" /> : <ChevronsIcon className="sg-select__chevrons" />}
     </button>
   );
 
   return (
     <>
       {variant === 'filter' || (variant === 'inline' && !label && !help) ? button : (
-        <div className={cx('gl-field', variant === 'inline' ? className : undefined)} style={variant === 'inline' ? style : undefined} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
-          {label && <span id={labelId} className="gl-field__label">{label}</span>}
+        <div className={cx('sg-field', variant === 'inline' ? className : undefined)} style={variant === 'inline' ? style : undefined} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
+          {label && <span id={labelId} className="sg-field__label">{label}</span>}
           {button}
-          {help && <span id={`${fid}-help`} className="gl-field__help">{help}</span>}
+          {help && <span id={`${fid}-help`} className="sg-field__help">{help}</span>}
         </div>
       )}
       {name && <input type="hidden" name={name} value={v ?? ''} />}
       {mounted && (
-        <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough gl-portal--anchored">
+        <MotionScope motion={motion} bare><Portal className="sg-portal--passthrough sg-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} id={listId} role="listbox" aria-labelledby={labelId} aria-label={labelId ? undefined : ariaLabel} tabIndex={-1}
-            className={cx('gl-listbox', glassClass('strong'))}>
-            <div data-gl-content>
+            className={cx('sg-listbox', glassClass('strong'))}>
+            <div data-sg-content>
               {options.map((x, gi) => (isGroup(x) ? (
                 <div key={`g${gi}`} role="group" aria-labelledby={`${fid}-g${gi}`}>
-                  <div id={`${fid}-g${gi}`} className="gl-listbox__group" role="presentation">{x.label}</div>
+                  <div id={`${fid}-g${gi}`} className="sg-listbox__group" role="presentation">{x.label}</div>
                   {x.options.map(renderOption)}
                 </div>
               ) : renderOption(x)))}

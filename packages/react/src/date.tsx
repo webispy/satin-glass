@@ -2,7 +2,7 @@
    the start / end of the week, PageUp / PageDown a month (with Shift, a year), Enter / Space choose. Changing the
    month slides the grid on the smooth spring (reduced motion: a short fade). Dates are local calendar days. */
 import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { animate, fade, prefersReducedMotion, type MotionName, type Placement } from '@glass-layer/core';
+import { animate, fade, prefersReducedMotion, type MotionName, type Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
 import { IconButton } from './controls';
@@ -58,7 +58,7 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   const [view, setView] = useState<'day' | 'month'>(openTo);
   const root = useRef<HTMLDivElement>(null), body = useRef<HTMLTableSectionElement>(null);
   const t = strings(locale);
-  const id = useStableId('gl-cal');
+  const id = useStableId('sg-cal');
   const fmt = useMemo(() => ({
     title: new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long' }),
     full: new Intl.DateTimeFormat(locale, { dateStyle: 'full' }),
@@ -158,22 +158,22 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   const titleId = `${id}-title`;
 
   return (
-    <div ref={mergeRefs(ref, root)} className={cx('gl-calendar', className)} style={style} data-gl-motion={motion}>
-      <div className="gl-calendar__head">
-        <h2 id={titleId} className="gl-calendar__title" aria-live="polite">
-          <button type="button" className="gl-calendar__title-btn" aria-expanded={view === 'month'} aria-label={`${fmt.title.format(month)}, ${t.pick}`}
+    <div ref={mergeRefs(ref, root)} className={cx('sg-calendar', className)} style={style} data-sg-motion={motion}>
+      <div className="sg-calendar__head">
+        <h2 id={titleId} className="sg-calendar__title" aria-live="polite">
+          <button type="button" className="sg-calendar__title-btn" aria-expanded={view === 'month'} aria-label={`${fmt.title.format(month)}, ${t.pick}`}
             onClick={() => (view === 'month' ? backToDays() : setView('month'))}>
-            {fmt.title.format(month)}<ChevronRightIcon className="gl-calendar__title-chevron" />
+            {fmt.title.format(month)}<ChevronRightIcon className="sg-calendar__title-chevron" />
           </button>
         </h2>
-        <div className="gl-calendar__nav" hidden={view === 'month'}>
+        <div className="sg-calendar__nav" hidden={view === 'month'}>
           <IconButton size="sm" icon={<ChevronLeftIcon />} label={t.prev} onClick={() => goMonth(-1)} disabled={min ? ymd(addDays(month, -1)) < ymd(min) : false} />
           <IconButton size="sm" icon={<ChevronRightIcon />} label={t.next} onClick={() => goMonth(1)} disabled={max ? ymd(addMonths(month, 1)) > ymd(max) : false} />
         </div>
       </div>
       <div ref={viewBox}>
       {view === 'month' ? (
-        <div className="gl-calendar__wheels">
+        <div className="sg-calendar__wheels">
           <WheelGroup rows={7} aria-label={t.pick}>
             {[
               <Wheel key="y" aria-label={t.year} options={years} value={month.getFullYear()} pageStep={10} onChange={(y) => toMonth(y, month.getMonth())} onCommit={backToDays} />,
@@ -182,24 +182,24 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
           </WheelGroup>
         </div>
       ) : (
-      <table role="grid" aria-labelledby={ariaLabel ? undefined : titleId} aria-label={ariaLabel} className="gl-calendar__grid" onKeyDown={onKey}>
+      <table role="grid" aria-labelledby={ariaLabel ? undefined : titleId} aria-label={ariaLabel} className="sg-calendar__grid" onKeyDown={onKey}>
         <thead>
           <tr>{weeks[0].map((d) => <th key={d.getDay()} scope="col" abbr={fmt.wdLong.format(d)}>{fmt.wdShort.format(d)}</th>)}</tr>
         </thead>
-        <tbody ref={body} className="gl-calendar__body">
+        <tbody ref={body} className="sg-calendar__body">
           {weeks.map((wk, wi) => (
             <tr key={wi}>
               {wk.map((d) => {
                 const sel = v ? ymd(d) === ymd(v) : false, isToday = ymd(d) === ymd(today), off = disabled(d), out = !sameMonth(d, month);
                 return (
                   <td key={ymd(d)} role="gridcell" aria-selected={sel}>
-                    <button type="button" className="gl-day" data-date={toISODate(d)} tabIndex={ymd(d) === ymd(focused) ? 0 : -1}
+                    <button type="button" className="sg-day" data-date={toISODate(d)} tabIndex={ymd(d) === ymd(focused) ? 0 : -1}
                       aria-pressed={sel} aria-current={isToday ? 'date' : undefined} aria-disabled={off || undefined}
                       data-today={isToday ? '' : undefined} data-outside={out ? '' : undefined}
                       onClick={() => { if (off) return; setFocused(d); if (out) setMonth(startOfMonth(d)); setV(d); }}>
                       {/* the number is what you see; the full date is what a screen reader hears */}
                       <span aria-hidden="true">{d.getDate()}</span>
-                      <span className="gl-visually-hidden">{`${fmt.full.format(d)}${isToday ? `, ${t.today}` : ''}`}</span>
+                      <span className="sg-visually-hidden">{`${fmt.full.format(d)}${isToday ? `, ${t.today}` : ''}`}</span>
                     </button>
                   </td>
                 );
@@ -228,7 +228,7 @@ export type DatePickerProps = Omit<CalendarProps, 'autoFocus' | 'className' | 's
 };
 
 const CalendarIcon = () => (
-  <svg className="gl-select__chevrons" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3" /><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" /></svg>
+  <svg className="sg-select__chevrons" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3" /><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" /></svg>
 );
 
 /** A field that opens a Calendar in an anchored panel; choosing a day closes it and returns focus to the field. */
@@ -238,35 +238,35 @@ export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(functio
   const [v, setV] = useControllable<Date | null>(value, defaultValue, onChange as (d: Date | null) => void);
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
-  const auto = useStableId('gl-date');
+  const auto = useStableId('sg-date');
   const fid = id ?? auto;
   const t = strings(locale);
   const lightRef = useGlassLight();
   const fmt = useMemo(() => format ?? ((d: Date) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(d)), [format, locale]);
   const { panel, mounted } = useAnchored(open, trigger.current, placement, () => setOpen(false), (p) => {
-    (p.querySelector<HTMLElement>('.gl-day[tabindex="0"], .gl-wheel__scroller') ?? p).focus({ preventScroll: true });
+    (p.querySelector<HTMLElement>('.sg-day[tabindex="0"], .sg-wheel__scroller') ?? p).focus({ preventScroll: true });
   });
   const invalid = Boolean(error);
   const help = typeof error === 'string' || (error && typeof error !== 'boolean') ? error : helperText;
   const labelId = label ? `${fid}-label` : undefined;
   return (
     <>
-      <div className={cx('gl-field', className)} style={style} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
-        {label && <span id={labelId} className="gl-field__label">{label}</span>}
-        <button ref={mergeRefs(ref, trigger)} id={fid} type="button" className="gl-select" disabled={disabled}
+      <div className={cx('sg-field', className)} style={style} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
+        {label && <span id={labelId} className="sg-field__label">{label}</span>}
+        <button ref={mergeRefs(ref, trigger)} id={fid} type="button" className="sg-select" disabled={disabled}
           aria-haspopup="dialog" aria-expanded={open} aria-labelledby={labelId ? `${labelId} ${fid}` : undefined} aria-label={labelId ? undefined : ariaLabel ?? t.choose}
-          aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined} data-gl-motion={motion}
+          aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined} data-sg-motion={motion}
           onClick={() => setOpen((o) => !o)}>
-          <span className="gl-select__value">{v ? <span>{fmt(v)}</span> : <span className="gl-select__placeholder">{placeholder ?? t.placeholder}</span>}</span>
+          <span className="sg-select__value">{v ? <span>{fmt(v)}</span> : <span className="sg-select__placeholder">{placeholder ?? t.placeholder}</span>}</span>
           <CalendarIcon />
         </button>
-        {help && <span id={`${fid}-help`} className="gl-field__help">{help}</span>}
+        {help && <span id={`${fid}-help`} className="sg-field__help">{help}</span>}
       </div>
       {name && <input type="hidden" name={name} value={v ? toISODate(v) : ''} />}
       {mounted && (
-        <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough gl-portal--anchored">
-          <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : t.choose} tabIndex={-1} className={cx('gl-datepicker-panel', glassClass('strong'))}>
-            <div data-gl-content>
+        <MotionScope motion={motion} bare><Portal className="sg-portal--passthrough sg-portal--anchored">
+          <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : t.choose} tabIndex={-1} className={cx('sg-datepicker-panel', glassClass('strong'))}>
+            <div data-sg-content>
               <Calendar {...calendar} locale={locale} motion={motion} value={v} onChange={(d) => { setV(d); setOpen(false); }} />
             </div>
           </div>

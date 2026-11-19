@@ -1,4 +1,4 @@
-# Glass Layer 디자인 언어 (0.1)
+# Satin Glass 디자인 언어 (0.1)
 
 > 디자인 언어에서 실제로 정한 값과 그 이유를 정리한다.
 
@@ -22,11 +22,11 @@
 
 ## 2. 토큰
 
-- **색**: `--gl-<hue>-<step>`(원시) + `--gl-<semantic>`(테마별). 빌드할 때 대비를 검사하고, 기준에 못 미치면 빌드가 실패한다.
+- **색**: `--sg-<hue>-<step>`(원시) + `--sg-<semantic>`(테마별). 빌드할 때 대비를 검사하고, 기준에 못 미치면 빌드가 실패한다.
   - 기본 테마: 본문 7:1, 보조 텍스트 4.5:1, 강조 텍스트 4.5:1
   - 고대비 테마: 기준을 한 단계씩 올림(본문·보조·강조 텍스트 모두 7:1)
-- **재질**: `--gl-glass-fill(-strong|-subtle|-clear)`, `--gl-glass-rim-lit/-shade`, `--gl-glass-depth`, `--gl-glass-highlight`, `--gl-blur(-strong|-subtle)`
-- **모션**: `--gl-spring-<name>`(linear 이징) + `--gl-spring-<name>-duration`
+- **재질**: `--sg-glass-fill(-strong|-subtle|-clear)`, `--sg-glass-rim-lit/-shade`, `--sg-glass-depth`, `--sg-glass-highlight`, `--sg-blur(-strong|-subtle)`
+- **모션**: `--sg-spring-<name>`(linear 이징) + `--sg-spring-<name>-duration`
 
 | 스프링 | 응답 | 감쇠 | 정착 시간 | 쓰임 |
 |---|---|---|---|---|
@@ -44,7 +44,7 @@
 3. **포인터 빛:** 포인터 이벤트는 창 하나에서만 받고 rAF로 묶는다. 요소 위치는 스크롤·크기 변화가 있을 때만 다시 잰다. 하이라이트는 합성 레이어의 transform으로만 움직인다.
 4. **제스처 상태:** 끌기·눌림 상태는 React 상태나 data 속성에 둔다. 클래스에 두면 다시 그릴 때 지워진다.
 5. **유리 표면은 스스로 스크롤하지 않는다.**
-   - **규칙:** 유리는 항상 바깥에서 잘라내고(`overflow: hidden`), 스크롤은 안쪽 요소가 맡는다. 사이드바는 `.gl-sidebar__scroll`, 대화상자는 `.gl-dialog__scroll`, 메뉴는 `[data-gl-content]`가 스크롤한다.
+   - **규칙:** 유리는 항상 바깥에서 잘라내고(`overflow: hidden`), 스크롤은 안쪽 요소가 맡는다. 사이드바는 `.sg-sidebar__scroll`, 대화상자는 `.sg-dialog__scroll`, 메뉴는 `[data-sg-content]`가 스크롤한다.
    - **이유:** 포인터 하이라이트는 유리 안에 절대 위치로 놓인 요소다. 유리가 스스로 스크롤하면, 하이라이트가 가장자리로 갈 때 스크롤 영역이 커져서 스크롤바가 생긴다.
    - **검사:** e2e가 모든 문서 페이지에서 스크롤하는 유리 표면이 없는지 확인한다.
 6. **앵커형 패널은 페이지에 붙는다.**
@@ -139,8 +139,8 @@
 - 컴포넌트 하나: 컴포넌트의 `motion` 속성
 
 **적용 범위:**
-- **CSS:** `[data-gl-motion]`에 성격별 `--gl-spring-*` 값이 들어 있다.
-- **JS:** 탭·세그먼트 표시와 슬라이더 손잡이는 가장 가까운 `[data-gl-motion]`에서 성격을 읽는다.
+- **CSS:** `[data-sg-motion]`에 성격별 `--sg-spring-*` 값이 들어 있다.
+- **JS:** 탭·세그먼트 표시와 슬라이더 손잡이는 가장 가까운 `[data-sg-motion]`에서 성격을 읽는다.
 - **포털:** 메뉴·팝오버·시트·대화상자는 포털로 뜨지만 같은 성격을 이어받는다.
 
 **성격이 바꾸는 효과:**

@@ -4,7 +4,7 @@ import * as pw from 'playwright';
 const b = await pw[process.env.BROWSER || 'chromium'].launch(); const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
 const r = await p.locator('.grid--3 > *').nth(1).evaluate((col) => new Promise((res) => {
-  const btn = [...col.querySelectorAll('button')].find((x) => x.textContent === '+30'); const bar = col.querySelector('.gl-progress__bar');
+  const btn = [...col.querySelectorAll('button')].find((x) => x.textContent === '+30'); const bar = col.querySelector('.sg-progress__bar');
   const xs = []; let second = 0; const t0 = performance.now();
   btn.click(); setTimeout(() => { second = performance.now(); btn.click(); }, 110);
   const f = () => { xs.push([performance.now(), new DOMMatrix(getComputedStyle(bar).transform).a]); if (performance.now() - t0 < 600) requestAnimationFrame(f); else res({ xs, second }); };

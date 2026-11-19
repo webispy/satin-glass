@@ -4,7 +4,7 @@
    only. Reduced motion: opening, closing and paging by button or key fade; finger-driven motion still follows
    the finger and settles without overshoot. */
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Spring, animate, fade, loop, prefersReducedMotion, pushLayer, trapFocus, type MotionName } from '@glass-layer/core';
+import { Spring, animate, fade, loop, prefersReducedMotion, pushLayer, trapFocus, type MotionName } from '@satin-glass/core';
 import { cx, useControllable, useIsoLayoutEffect } from './utils';
 import { MotionScope, Portal, useTheme } from './foundation';
 import { IconButton } from './controls';
@@ -64,8 +64,8 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
   const pitch = box.w + GAP;
 
   /* the live layers of the current slide */
-  const layer = (i = atRef.current) => root.current?.querySelector<HTMLElement>(`[data-gl-slide="${i}"] .gl-media__dismiss`) ?? null;
-  const frame = (i = atRef.current) => root.current?.querySelector<HTMLElement>(`[data-gl-slide="${i}"] .gl-media__frame`) ?? null;
+  const layer = (i = atRef.current) => root.current?.querySelector<HTMLElement>(`[data-sg-slide="${i}"] .sg-media__dismiss`) ?? null;
+  const frame = (i = atRef.current) => root.current?.querySelector<HTMLElement>(`[data-sg-slide="${i}"] .sg-media__frame`) ?? null;
 
   /* ---------------------------------------------------------------- springs (velocity carries across retargets) */
   const z = useRef<Z>({ s: 1, x: 0, y: 0 });
@@ -90,7 +90,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
       paintZ();
     });
   };
-  const resetZ = () => { stopZ.current(); zs.current = null; z.current = { s: 1, x: 0, y: 0 }; root.current?.querySelectorAll<HTMLElement>('.gl-media__frame').forEach((f) => { f.style.transform = ''; }); setZoomed(false); };
+  const resetZ = () => { stopZ.current(); zs.current = null; z.current = { s: 1, x: 0, y: 0 }; root.current?.querySelectorAll<HTMLElement>('.sg-media__frame').forEach((f) => { f.style.transform = ''; }); setZoomed(false); };
   const trackTo = (i: number, velocity = 0) => {
     stopT.current();
     const el = root.current;
@@ -154,7 +154,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     z.current = { s: 1, x: 0, y: 0 }; zs.current = null;
     tx.current = new Spring(-atRef.current * (b.w + GAP), 'smooth', el); paintT(-atRef.current * (b.w + GAP));
     const pop = pushLayer(() => close.current('escape'), true);
-    const trap = trapFocus(el, el.querySelector<HTMLElement>('[data-gl-close]'));
+    const trap = trapFocus(el, el.querySelector<HTMLElement>('[data-sg-close]'));
     hideThumb(atRef.current);
     release.set(() => { pop(); trap(); stopZ.current(); stopT.current(); });
     const l = layer()!;
@@ -162,7 +162,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     if (prefersReducedMotion(el)) return fade(el, 0, 1, 140);
     const from = originTransform(atRef.current);
     fade(backdrop.current!, 0, 1, 220);
-    el.querySelectorAll<HTMLElement>('.gl-media__bar, .gl-media__caption, .gl-media__nav').forEach((x) => fade(x, 0, 1, 200));
+    el.querySelectorAll<HTMLElement>('.sg-media__bar, .sg-media__caption, .sg-media__nav').forEach((x) => fade(x, 0, 1, 200));
     if (from) {
       l.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 90, fill: 'backwards' });
       return animate(l, [{ transform: from }, { transform: 'none' }], 'smooth').finished.then(() => undefined, () => undefined);
@@ -182,7 +182,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     };
     if (prefersReducedMotion(el)) return fade(el, 1, 0, 110).then(restore);
     const l = layer(), f = frame();
-    el.querySelectorAll<HTMLElement>('.gl-media__bar, .gl-media__caption, .gl-media__nav').forEach((x) => fade(x, +getComputedStyle(x).opacity, 0, 120));
+    el.querySelectorAll<HTMLElement>('.sg-media__bar, .sg-media__caption, .sg-media__nav').forEach((x) => fade(x, +getComputedStyle(x).opacity, 0, 120));
     const bd = backdrop.current!;
     fade(bd, +getComputedStyle(bd).opacity, 0, 220);
     if (!l) return fade(el, 1, 0, 160).then(restore);
@@ -351,23 +351,23 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
   return (
     <MotionScope motion={motion} bare><Portal>
       {/* tabIndex -1: a click on the photo keeps focus in the viewer, so the keys keep working */}
-      <div ref={root} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} className={cx('gl-media', className)} data-gl-theme={dark}
+      <div ref={root} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} className={cx('sg-media', className)} data-sg-theme={dark}
         data-chrome={chrome ? 'shown' : 'hidden'} data-zoomed={zoomed || undefined} onKeyDown={onKey}
         onFocus={() => setChrome(true)}>
-        <div ref={backdrop} className="gl-media__backdrop" />
-        <div ref={stage} className="gl-media__stage" onDoubleClick={(e) => {
+        <div ref={backdrop} className="sg-media__backdrop" />
+        <div ref={stage} className="sg-media__stage" onDoubleClick={(e) => {
           if (e.nativeEvent instanceof PointerEvent && e.nativeEvent.pointerType !== 'mouse') return;
           const r = stage.current!.getBoundingClientRect();
           const c = { x: e.clientX - r.left - r.width / 2, y: e.clientY - r.top - r.height / 2 };
           if (z.current.s > 1.01) springZ({ s: 1, x: 0, y: 0 }); else zoomAt(c.x, c.y, DOUBLE_TAP_ZOOM);
         }}>
-          <div ref={track} className="gl-media__track">
+          <div ref={track} className="sg-media__track">
             {slides.map((i) => {
               const it = items[i], { fw, fh } = fit(i);
               return (
-                <div key={i} data-gl-slide={i} className="gl-media__slide" style={{ transform: `translateX(${i * pitch}px)` }} aria-hidden={i !== at || undefined}>
-                  <div className="gl-media__dismiss">
-                    <div className="gl-media__frame" style={{ width: fw, height: fh }}>
+                <div key={i} data-sg-slide={i} className="sg-media__slide" style={{ transform: `translateX(${i * pitch}px)` }} aria-hidden={i !== at || undefined}>
+                  <div className="sg-media__dismiss">
+                    <div className="sg-media__frame" style={{ width: fw, height: fh }}>
                       {it.render ? it.render() : (
                         <img src={it.src} alt={it.alt} draggable={false}
                           onLoad={(e) => { const im = e.currentTarget; if (!it.width && im.naturalWidth) setSizes((m) => (m[i] ? m : { ...m, [i]: [im.naturalWidth, im.naturalHeight] })); }} />
@@ -379,19 +379,19 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
             })}
           </div>
         </div>
-        <div className="gl-media__bar">
-          <IconButton data-gl-close variant="glass" icon={<CloseIcon />} label={labels.close ?? 'Close'} onClick={() => close.current('action')} />
-          {n > 1 && <span className="gl-media__count" aria-live="polite" aria-atomic="true">{at + 1} / {n}</span>}
-          <div className="gl-media__actions">{actions}</div>
+        <div className="sg-media__bar">
+          <IconButton data-sg-close variant="glass" icon={<CloseIcon />} label={labels.close ?? 'Close'} onClick={() => close.current('action')} />
+          {n > 1 && <span className="sg-media__count" aria-live="polite" aria-atomic="true">{at + 1} / {n}</span>}
+          <div className="sg-media__actions">{actions}</div>
         </div>
         {n > 1 && (
           <>
-            <IconButton className="gl-media__nav gl-media__nav--prev" variant="glass" icon={<ChevronLeftIcon />} label={labels.previous ?? 'Previous'} disabled={at === 0} onClick={() => go(at - 1)} />
-            <IconButton className="gl-media__nav gl-media__nav--next" variant="glass" icon={<ChevronRightIcon />} label={labels.next ?? 'Next'} disabled={at === n - 1} onClick={() => go(at + 1)} />
+            <IconButton className="sg-media__nav sg-media__nav--prev" variant="glass" icon={<ChevronLeftIcon />} label={labels.previous ?? 'Previous'} disabled={at === 0} onClick={() => go(at - 1)} />
+            <IconButton className="sg-media__nav sg-media__nav--next" variant="glass" icon={<ChevronRightIcon />} label={labels.next ?? 'Next'} disabled={at === n - 1} onClick={() => go(at + 1)} />
           </>
         )}
-        {item?.caption && <div className="gl-media__caption">{item.caption}</div>}
-        {item?.render && <span className="gl-visually-hidden">{item.alt}</span>}
+        {item?.caption && <div className="sg-media__caption">{item.caption}</div>}
+        {item?.render && <span className="sg-visually-hidden">{item.alt}</span>}
       </div>
     </Portal></MotionScope>
   );

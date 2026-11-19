@@ -83,22 +83,22 @@ describe('Stat / Tag / CardHeader', () => {
   it('says the direction in words; colour follows whether up is good', () => {
     const { container, rerender } = render(<Stat label="방문" value="1,204" delta="+12%" labels={{ up: '증가', down: '감소' }} />);
     expect(container.textContent).toContain('증가');
-    expect(container.querySelector('.gl-stat__delta')!.getAttribute('data-good')).toBe('good');
+    expect(container.querySelector('.sg-stat__delta')!.getAttribute('data-good')).toBe('good');
     rerender(<Stat label="오류" value="3" delta="+2%" invert />);
-    expect(container.querySelector('.gl-stat__delta')!.getAttribute('data-good')).toBe('bad');
+    expect(container.querySelector('.sg-stat__delta')!.getAttribute('data-good')).toBe('bad');
     rerender(<Stat label="비용" value="$1" delta="-4%" invert />);
-    expect(container.querySelector('.gl-stat__delta')!.getAttribute('data-good')).toBe('good');
+    expect(container.querySelector('.sg-stat__delta')!.getAttribute('data-good')).toBe('good');
   });
   it('loading shows a skeleton and is aria-busy', () => {
     const { container } = render(<Stat label="방문" value="1" loading />);
     expect(container.firstElementChild!.getAttribute('aria-busy')).toBe('true');
-    expect(container.querySelector('.gl-skeleton')).toBeTruthy();
+    expect(container.querySelector('.sg-skeleton')).toBeTruthy();
   });
   it('tag: tone, outline, and span attributes pass through', () => {
     const { container } = render(<Tag tone="warning" variant="outline" id="t1" aria-label="재고 부족 상품">재고 부족</Tag>);
-    const t = container.querySelector('.gl-tag')!;
+    const t = container.querySelector('.sg-tag')!;
     expect(t.getAttribute('data-tone')).toBe('warning');
-    expect(t.classList.contains('gl-tag--outline')).toBe(true);
+    expect(t.classList.contains('sg-tag--outline')).toBe(true);
     expect(t.id).toBe('t1');
   });
   it('card header: a heading of the given level, a description, trailing actions', () => {
@@ -141,15 +141,15 @@ describe('charts', () => {
   });
   it('bar chart: arrow keys announce the category', () => {
     const { container } = render(<BarChart aria-label="채널" data={data} x="d" series={series} />);
-    const plot = container.querySelector('.gl-chart__plot')!;
+    const plot = container.querySelector('.sg-chart__plot')!;
     fireEvent.keyDown(plot, { key: 'ArrowRight' });
     expect(container.querySelector('[aria-live]')!.textContent).toContain('월');
   });
   it('donut: percentages; marks', () => {
     const { container } = render(<><DonutChart aria-label="기기" data={[{ label: '모바일', value: 3 }, { label: 'PC', value: 1 }]} locale="en-US" /><BarMeter value={50} /><IntervalPlot value={80} low={75} high={85} /></>);
     expect(container.textContent).toContain('75%');
-    expect((container.querySelector('.gl-barmeter__fill') as HTMLElement).style.transform).toMatch(/^scaleX\(0\.50*\)$/);
-    expect((container.querySelector('.gl-interval__dot') as HTMLElement).style.left).toMatch(/^80(\.0+)?%$/);
+    expect((container.querySelector('.sg-barmeter__fill') as HTMLElement).style.transform).toMatch(/^scaleX\(0\.50*\)$/);
+    expect((container.querySelector('.sg-interval__dot') as HTMLElement).style.left).toMatch(/^80(\.0+)?%$/);
   });
 });
 
@@ -202,7 +202,7 @@ describe('DataTable', () => {
   it('keyboard: arrows move between cells; one tab stop', () => {
     render(<T />);
     const first = document.querySelector<HTMLElement>('[data-r="-1"][data-c="0"]')!;
-    const stops = () => [...document.querySelectorAll<HTMLElement>('.gl-table [tabindex="0"]')];
+    const stops = () => [...document.querySelectorAll<HTMLElement>('.sg-table [tabindex="0"]')];
     expect(stops()).toHaveLength(1);
     stops()[0].focus();
     fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
@@ -214,11 +214,11 @@ describe('DataTable', () => {
   });
   it('pinned rows, empty values, empty state, loading skeleton', () => {
     const { rerender } = render(<T pinnedRows={[{ id: 'best', name: '가장 좋음', score: 95, cost: 1 }]} />);
-    expect(document.querySelector('.gl-table__pinned')!.textContent).toContain('가장 좋음');
-    expect(document.querySelector('.gl-table__none')).toBeTruthy();
+    expect(document.querySelector('.sg-table__pinned')!.textContent).toContain('가장 좋음');
+    expect(document.querySelector('.sg-table__none')).toBeTruthy();
     rerender(<T rows={[]} empty="없음" />);
     expect(screen.getByText('없음')).toBeTruthy();
     rerender(<T rows={[]} loading />);
-    expect(document.querySelectorAll('tbody .gl-skeleton').length).toBeGreaterThan(0);
+    expect(document.querySelectorAll('tbody .sg-skeleton').length).toBeGreaterThan(0);
   });
 });

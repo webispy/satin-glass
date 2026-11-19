@@ -1,6 +1,6 @@
 /* Overlay helpers: anchored placement, the "bloom" open/close motion, focus management and a layer stack. */
 import { animate, prefersReducedMotion, type SpringName } from './motion';
-/* springs named here resolve against the panel's motion personality (nearest [data-gl-motion]) */
+/* springs named here resolve against the panel's motion personality (nearest [data-sg-motion]) */
 
 /* ---------------------------------------------------------------- placement */
 export type Side = 'top' | 'bottom' | 'left' | 'right';
@@ -42,7 +42,7 @@ export function bloomIn(panel: HTMLElement, origin: { x: number; y: number }, fr
   const [sx, sy] = typeof from === 'number' ? [from, from] : from;
   const a = animate(panel, [{ transform: `scale(${sx}, ${sy})` }, { transform: 'scale(1)' }], spring);
   const o = panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: spring === 'pop' ? 70 : 120, easing: 'linear', fill: 'both' });
-  const content = panel.querySelector<HTMLElement>('[data-gl-content]');
+  const content = panel.querySelector<HTMLElement>('[data-sg-content]');
   if (content) animate(content, [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], 'snappy', { delay: spring === 'pop' ? 25 : 40 });
   return Promise.all([a.finished, o.finished]).then(() => undefined, () => undefined);
 }

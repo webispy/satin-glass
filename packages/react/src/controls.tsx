@@ -3,7 +3,7 @@ import {
   type ButtonHTMLAttributes, type CSSProperties, type ElementType, type HTMLAttributes, type InputHTMLAttributes,
   type KeyboardEvent, type ReactElement, type ReactNode, type TextareaHTMLAttributes,
 } from 'react';
-import { animate, createBridge, createOverflowStrip, drag, loop, motionFor, prefersReducedMotion, Spring, springTiming, type Bridge, type MotionName, type OverflowStrip } from '@glass-layer/core';
+import { animate, createBridge, createOverflowStrip, drag, loop, motionFor, prefersReducedMotion, Spring, springTiming, type Bridge, type MotionName, type OverflowStrip } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { glassClass, useGlassLight } from './foundation';
 import { ClearIcon, MinusIcon, PlusIcon, SearchIcon, CloseIcon } from './icons';
@@ -11,8 +11,8 @@ import { ClearIcon, MinusIcon, PlusIcon, SearchIcon, CloseIcon } from './icons';
 /* ================================================================================================ Spinner */
 export function Spinner({ size = 20, label = 'Loading', className, style }: { size?: number; label?: string; className?: string; style?: CSSProperties }) {
   return (
-    <svg className={cx('gl-spinner', className)} viewBox="0 0 24 24" role="progressbar" aria-label={label} style={{ '--_s': `${size}px`, ...style } as CSSProperties}>
-      <circle className="gl-spinner__track" cx="12" cy="12" r="9" />
+    <svg className={cx('sg-spinner', className)} viewBox="0 0 24 24" role="progressbar" aria-label={label} style={{ '--_s': `${size}px`, ...style } as CSSProperties}>
+      <circle className="sg-spinner__track" cx="12" cy="12" r="9" />
       <circle cx="12" cy="12" r="9" strokeDasharray="18 100" />
     </svg>
   );
@@ -49,26 +49,26 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       aria-busy={loading || undefined}
       data-loading={loading || undefined}
       data-tone={tone !== 'accent' ? tone : undefined}
-      className={cx('gl-button', `gl-button--${variant}`, size !== 'md' && `gl-button--${size}`, shape === 'round' && 'gl-button--round', block && 'gl-button--block', glass && glassClass('regular'), className)}
+      className={cx('sg-button', `sg-button--${variant}`, size !== 'md' && `sg-button--${size}`, shape === 'round' && 'sg-button--round', block && 'sg-button--block', glass && glassClass('regular'), className)}
       {...rest}
     >
       {startIcon}
       {children !== undefined && children !== null && <span>{children}</span>}
       {endIcon}
-      {loading && <span className="gl-button__spinner"><Spinner size={size === 'sm' ? 16 : 18} /></span>}
+      {loading && <span className="sg-button__spinner"><Spinner size={size === 'sm' ? 16 : 18} /></span>}
     </Comp>
   );
 });
 
 export type IconButtonProps = Omit<ButtonProps, 'startIcon' | 'endIcon' | 'children'> & { icon: ReactNode; label: string };
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton({ icon, label, className, variant = 'plain', ...rest }, ref) {
-  return <Button ref={ref} variant={variant} aria-label={label} title={rest.title ?? label} className={cx('gl-button--icon', className)} startIcon={icon} {...rest} />;
+  return <Button ref={ref} variant={variant} aria-label={label} title={rest.title ?? label} className={cx('sg-button--icon', className)} startIcon={icon} {...rest} />;
 });
 
 /** One glass shared by several buttons; as tall as a standalone button of the same size. */
 export const ButtonGroup = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { vertical?: boolean; glass?: boolean; size?: 'sm' | 'md' | 'lg' }>(function ButtonGroup({ vertical, glass = true, size = 'md', className, ...rest }, ref) {
   const lightRef = useGlassLight(glass);
-  return <div ref={mergeRefs(ref, lightRef)} role="group" className={cx('gl-button-group', size !== 'md' && `gl-button-group--${size}`, vertical && 'gl-button-group--vertical', glass && glassClass('regular'), className)} {...rest} />;
+  return <div ref={mergeRefs(ref, lightRef)} role="group" className={cx('sg-button-group', size !== 'md' && `sg-button-group--${size}`, vertical && 'sg-button-group--vertical', glass && glassClass('regular'), className)} {...rest} />;
 });
 
 /* ================================================================================================ Switch */
@@ -95,7 +95,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
      which is what made the switch feel slower than everything else. ---- */
   const eng = useRef<{ L: Spring; R: Spring; W: number; T: number; pad: number; reach: number; stop: (() => void) | null; squashed: boolean; wall: 'l' | 'r' | null } | null>(null);
   const geom = () => {
-    const b = el.current!, cs = getComputedStyle(b), th = b.querySelector<HTMLElement>('.gl-switch__thumb')!;
+    const b = el.current!, cs = getComputedStyle(b), th = b.querySelector<HTMLElement>('.sg-switch__thumb')!;
     return { W: b.clientWidth, T: th.offsetHeight, pad: parseFloat(cs.getPropertyValue('--_pad')) || 2, reach: parseFloat(cs.getPropertyValue('--_reach')) || 6 };
   };
   const render = () => {
@@ -103,9 +103,9 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
     if (!e || !b) return;
     const lo = e.pad, hi = e.W - e.pad;
     const l = Math.min(hi, Math.max(lo, e.L.value)), r = Math.max(lo, Math.min(hi, e.R.value));
-    const th = b.querySelector<HTMLElement>('.gl-switch__thumb')!;
-    th.style.setProperty('--gl-sw-l', `${l.toFixed(2)}px`);
-    th.style.setProperty('--gl-sw-r', `${Math.max(r, l + 1).toFixed(2)}px`);
+    const th = b.querySelector<HTMLElement>('.sg-switch__thumb')!;
+    th.style.setProperty('--sg-sw-l', `${l.toFixed(2)}px`);
+    th.style.setProperty('--sg-sw-r', `${Math.max(r, l + 1).toFixed(2)}px`);
     /* the moment the leading edge meets the end of the rail, the knob squashes against it (personality) */
     if (e.wall && !e.squashed && ((e.wall === 'r' && e.R.value >= hi - 0.6) || (e.wall === 'l' && e.L.value <= lo + 0.6))) {
       e.squashed = true;
@@ -113,7 +113,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
     }
   };
   const squash = (side: 'l' | 'r') => {
-    const b = el.current, knob = b?.querySelector<HTMLElement>('.gl-switch__knob');
+    const b = el.current, knob = b?.querySelector<HTMLElement>('.sg-switch__knob');
     if (!b || !knob || prefersReducedMotion(b)) return;
     const s = motionFor(b).squash;
     if (s <= 0) return;
@@ -236,9 +236,9 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
       type="button"
       role="switch"
       aria-checked={on}
-      data-gl-motion={motion}
+      data-sg-motion={motion}
       disabled={disabled}
-      className={cx('gl-switch', size === 'sm' && 'gl-switch--sm', pressed && 'is-pressed', draggingSw && 'is-dragging', className)}
+      className={cx('sg-switch', size === 'sm' && 'sg-switch--sm', pressed && 'is-pressed', draggingSw && 'is-dragging', className)}
       onClick={(e) => {
         onClick?.(e);
         if (e.defaultPrevented) return;
@@ -247,7 +247,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
       }}
       {...rest}
     >
-      <span className="gl-switch__thumb"><span className="gl-switch__knob" /></span>
+      <span className="sg-switch__thumb"><span className="sg-switch__knob" /></span>
     </button>
   );
 });
@@ -391,15 +391,15 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
       tabIndex={disabled ? -1 : 0}
       aria-valuemin={min} aria-valuemax={max} aria-valuenow={v} aria-valuetext={format(v)}
       aria-disabled={disabled || undefined}
-      data-gl-motion={motion}
-      className={cx('gl-slider', active && 'is-active', className)}
+      data-sg-motion={motion}
+      className={cx('sg-slider', active && 'is-active', className)}
       style={style}
       onKeyDown={onKey}
       {...rest}
     >
-      <span className="gl-slider__track"><span className="gl-slider__fill" /></span>
-      <span className="gl-slider__thumb" />
-      {showValue && <span className={cx('gl-slider__bubble', glassClass('strong'))} aria-hidden="true">{format(v)}</span>}
+      <span className="sg-slider__track"><span className="sg-slider__fill" /></span>
+      <span className="sg-slider__thumb" />
+      {showValue && <span className={cx('sg-slider__bubble', glassClass('strong'))} aria-hidden="true">{format(v)}</span>}
     </div>
   );
 });
@@ -442,15 +442,15 @@ export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper
   const stop = () => { clearTimeout(timer.current.t); clearInterval(timer.current.i); };
   useEffect(() => stop, []);
   return (
-    <div ref={mergeRefs(ref, root)} role="group" aria-label={label} data-gl-motion={motion} className={cx('gl-stepper', className)} {...rest}>
-      <button type="button" className="gl-stepper__btn" aria-label={`Decrease ${label}`} disabled={v <= min} onClick={() => bump(-step)} onPointerDown={hold(-step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><MinusIcon /></button>
-      <span className="gl-stepper__value" aria-live="polite">
+    <div ref={mergeRefs(ref, root)} role="group" aria-label={label} data-sg-motion={motion} className={cx('sg-stepper', className)} {...rest}>
+      <button type="button" className="sg-stepper__btn" aria-label={`Decrease ${label}`} disabled={v <= min} onClick={() => bump(-step)} onPointerDown={hold(-step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><MinusIcon /></button>
+      <span className="sg-stepper__value" aria-live="polite">
         {leaving.map((l) => (
           <span key={`out-${l.id}`} data-leave={l.dir} aria-hidden="true" onAnimationEnd={() => setLeaving((xs) => xs.filter((x) => x.id !== l.id))}>{format(l.v)}</span>
         ))}
         <span key={v} data-roll={dir}>{format(v)}</span>
       </span>
-      <button type="button" className="gl-stepper__btn" aria-label={`Increase ${label}`} disabled={v >= max} onClick={() => bump(step)} onPointerDown={hold(step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><PlusIcon /></button>
+      <button type="button" className="sg-stepper__btn" aria-label={`Increase ${label}`} disabled={v >= max} onClick={() => bump(step)} onPointerDown={hold(step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><PlusIcon /></button>
     </div>
   );
 });
@@ -465,7 +465,7 @@ export type SegmentedControlProps<T extends string> = Omit<HTMLAttributes<HTMLDi
   'aria-label'?: string;
 };
 
-const itemsOf = (c: HTMLElement) => Array.from(c.querySelectorAll<HTMLElement>(':scope > [data-gl-item]'));
+const itemsOf = (c: HTMLElement) => Array.from(c.querySelectorAll<HTMLElement>(':scope > [data-sg-item]'));
 
 /** Shared by SegmentedControl and TabBar: the droplet-bridge indicator, on a track that scrolls sideways when
     the items do not fit (the selected item is kept in view). */
@@ -492,7 +492,7 @@ export function useBridge(container: React.RefObject<HTMLElement | null>, indica
     sizes.current = typeof ResizeObserver !== 'undefined' ? new ResizeObserver((entries) => {
       let moved = false;
       for (const e of entries) { const w = e.contentRect.width, was = seen.get(e.target); seen.set(e.target, w); if (was !== undefined && Math.abs(w - was) >= 0.5) moved = true; }
-      if (moved && !c.hasAttribute('data-gl-dragging')) bridge.current?.moveTo(at.current);
+      if (moved && !c.hasAttribute('data-sg-dragging')) bridge.current?.moveTo(at.current);
     }) : null;
     return () => { bridge.current?.destroy(); bridge.current = null; strip.current?.destroy(); strip.current = null; sizes.current?.disconnect(); sizes.current = null; };
   }, []);
@@ -523,7 +523,7 @@ function rovingKeys(e: KeyboardEvent<HTMLElement>, count: number, current: numbe
   if (next < 0) return;
   e.preventDefault();
   select(next);
-  const items = (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(':scope > [data-gl-item]');
+  const items = (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(':scope > [data-sg-item]');
   items[next]?.focus();
 }
 
@@ -533,11 +533,11 @@ export function SegmentedControl<T extends string>({ options, value, defaultValu
   const index = Math.max(0, options.findIndex((o) => o.value === v));
   useBridge(box, ind, index, (i) => !options[i].disabled && setV(options[i].value));
   return (
-    <div ref={box} role="radiogroup" data-gl-motion={motion} className={cx('gl-segmented', size === 'sm' && 'gl-segmented--sm', className)} onKeyDown={(e) => rovingKeys(e, options.length, index, (i) => setV(options[i].value), (i) => !!options[i].disabled)} {...rest}>
-      <span ref={ind} className="gl-segmented__indicator" aria-hidden="true" />
+    <div ref={box} role="radiogroup" data-sg-motion={motion} className={cx('sg-segmented', size === 'sm' && 'sg-segmented--sm', className)} onKeyDown={(e) => rovingKeys(e, options.length, index, (i) => setV(options[i].value), (i) => !!options[i].disabled)} {...rest}>
+      <span ref={ind} className="sg-segmented__indicator" aria-hidden="true" />
       {options.map((o, i) => (
-        <button key={o.value} type="button" role="radio" data-gl-item aria-checked={i === index} tabIndex={i === index ? 0 : -1} disabled={o.disabled} className="gl-segmented__item" onClick={() => setV(o.value)}>
-          {o.icon}<span className="gl-segmented__label" data-label={typeof o.label === 'string' ? o.label : undefined}>{o.label}</span>
+        <button key={o.value} type="button" role="radio" data-sg-item aria-checked={i === index} tabIndex={i === index ? 0 : -1} disabled={o.disabled} className="sg-segmented__item" onClick={() => setV(o.value)}>
+          {o.icon}<span className="sg-segmented__label" data-label={typeof o.label === 'string' ? o.label : undefined}>{o.label}</span>
         </button>
       ))}
     </div>
@@ -567,15 +567,15 @@ export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ val
   const index = Math.max(0, tabs.findIndex((t) => t.value === v));
   useBridge(bar, ind, index, (i) => !tabs[i].disabled && setV(tabs[i].value));
   return (
-    <nav ref={ref} data-gl-motion={motion} className={cx('gl-tabbar', compact && 'gl-tabbar--compact', className)} aria-label={label} {...rest}>
+    <nav ref={ref} data-sg-motion={motion} className={cx('sg-tabbar', compact && 'sg-tabbar--compact', className)} aria-label={label} {...rest}>
       {/* the glass clips; the track inside scrolls when the tabs do not fit (a scrolling glass would drag its rim along) */}
-      <div ref={lightRef} className={cx('gl-tabbar__bar', glassClass('regular'))}>
-        <div ref={bar} role="tablist" className="gl-tabbar__track" onKeyDown={(e) => rovingKeys(e, tabs.length, index, (i) => setV(tabs[i].value), (i) => !!tabs[i].disabled)}>
-          <span ref={ind} className="gl-tabbar__indicator" aria-hidden="true" />
+      <div ref={lightRef} className={cx('sg-tabbar__bar', glassClass('regular'))}>
+        <div ref={bar} role="tablist" className="sg-tabbar__track" onKeyDown={(e) => rovingKeys(e, tabs.length, index, (i) => setV(tabs[i].value), (i) => !!tabs[i].disabled)}>
+          <span ref={ind} className="sg-tabbar__indicator" aria-hidden="true" />
           {tabs.map((t, i) => (
-            <button key={t.value} type="button" role="tab" data-gl-item aria-selected={i === index} tabIndex={i === index ? 0 : -1} disabled={t.disabled} className="gl-tabbar__item" onClick={() => setV(t.value)}>
-              <span className="gl-tabbar__icon">{t.icon}{t.badge}</span>
-              <span className="gl-tabbar__label">{t.label}</span>
+            <button key={t.value} type="button" role="tab" data-sg-item aria-selected={i === index} tabIndex={i === index ? 0 : -1} disabled={t.disabled} className="sg-tabbar__item" onClick={() => setV(t.value)}>
+              <span className="sg-tabbar__icon">{t.icon}{t.badge}</span>
+              <span className="sg-tabbar__label">{t.label}</span>
             </button>
           ))}
         </div>
@@ -587,7 +587,7 @@ export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ val
 
 /** The glass button that sits beside a TabBar. */
 export const TabBarAction = forwardRef<HTMLButtonElement, Omit<IconButtonProps, 'variant'>>(function TabBarAction({ className, ...rest }, ref) {
-  return <IconButton ref={ref} variant="glass" className={cx('gl-tabbar__action', className)} {...rest} />;
+  return <IconButton ref={ref} variant="glass" className={cx('sg-tabbar__action', className)} {...rest} />;
 });
 
 /* ================================================================================================ TextField */
@@ -602,7 +602,7 @@ export type TextAreaFieldProps = TextareaHTMLAttributes<HTMLTextAreaElement> & F
 
 export const TextField = forwardRef<HTMLInputElement | HTMLTextAreaElement, TextFieldProps | TextAreaFieldProps>(function TextField(props, ref) {
   const { label, helperText, error, startAdornment, endAdornment, clearable, onClear, fieldClassName, className, id, multiline, disabled, ...rest } = props as TextFieldProps & { multiline?: boolean };
-  const auto = useStableId('gl-field');
+  const auto = useStableId('sg-field');
   const fid = id ?? auto;
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const [filled, setFilled] = useState(Boolean(rest.value ?? rest.defaultValue));
@@ -610,7 +610,7 @@ export const TextField = forwardRef<HTMLInputElement | HTMLTextAreaElement, Text
   const help = typeof error === 'string' || (error && typeof error !== 'boolean') ? error : helperText;
   const helpId = help ? `${fid}-help` : undefined;
   const common = {
-    id: fid, className: 'gl-field__input', disabled, 'aria-invalid': invalid || undefined, 'aria-describedby': helpId,
+    id: fid, className: 'sg-field__input', disabled, 'aria-invalid': invalid || undefined, 'aria-describedby': helpId,
   };
   const userOnInput = (rest as { onInput?: (e: never) => void }).onInput;
   const onInput = (e: { currentTarget: { value: string } }) => { setFilled(Boolean(e.currentTarget.value)); userOnInput?.(e as never); };
@@ -623,17 +623,17 @@ export const TextField = forwardRef<HTMLInputElement | HTMLTextAreaElement, Text
     el.focus();
   };
   return (
-    <div className={cx('gl-field', fieldClassName)} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
-      {label && <label className="gl-field__label" htmlFor={fid}>{label}</label>}
-      <div className={cx('gl-field__control', className)}>
-        {startAdornment && <span className="gl-field__adorn">{startAdornment}</span>}
+    <div className={cx('sg-field', fieldClassName)} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
+      {label && <label className="sg-field__label" htmlFor={fid}>{label}</label>}
+      <div className={cx('sg-field__control', className)}>
+        {startAdornment && <span className="sg-field__adorn">{startAdornment}</span>}
         {multiline
           ? <textarea ref={mergeRefs(ref as React.Ref<HTMLTextAreaElement>, inputRef as React.Ref<HTMLTextAreaElement>)} {...common} {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)} onInput={onInput} />
           : <input ref={mergeRefs(ref as React.Ref<HTMLInputElement>, inputRef as React.Ref<HTMLInputElement>)} {...common} {...(rest as InputHTMLAttributes<HTMLInputElement>)} onInput={onInput} />}
-        {clearable && filled && !disabled && <button type="button" className="gl-field__clear" aria-label="Clear" onClick={clear}><ClearIcon /></button>}
-        {endAdornment && <span className="gl-field__adorn">{endAdornment}</span>}
+        {clearable && filled && !disabled && <button type="button" className="sg-field__clear" aria-label="Clear" onClick={clear}><ClearIcon /></button>}
+        {endAdornment && <span className="sg-field__adorn">{endAdornment}</span>}
       </div>
-      {help && <span id={helpId} className="gl-field__help">{help}</span>}
+      {help && <span id={helpId} className="sg-field__help">{help}</span>}
     </div>
   );
 });
@@ -648,7 +648,7 @@ export type SearchFieldProps = Omit<TextFieldProps, 'startAdornment' | 'type' | 
 export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(function SearchField({ glass, onCancel, cancelLabel = 'Cancel', label = 'Search', placeholder = 'Search', className, ...rest }, ref) {
   const [focused, setFocused] = useState(false);
   return (
-    <div className={cx('gl-search', glass && 'gl-search--glass', className)} role="search" onFocus={() => setFocused(true)} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setFocused(false); }}>
+    <div className={cx('sg-search', glass && 'sg-search--glass', className)} role="search" onFocus={() => setFocused(true)} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setFocused(false); }}>
       <TextField
         ref={ref as React.Ref<HTMLInputElement>}
         type="search"
@@ -661,7 +661,7 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
         {...rest}
       />
       {onCancel && (
-        <Button variant="plain" className={cx('gl-search__cancel', focused && 'is-shown')} tabIndex={focused ? undefined : -1} aria-hidden={focused ? undefined : true}
+        <Button variant="plain" className={cx('sg-search__cancel', focused && 'is-shown')} tabIndex={focused ? undefined : -1} aria-hidden={focused ? undefined : true}
           onMouseDown={(e) => e.preventDefault() /* keep focus in the field until the click */} onClick={onCancel}>{cancelLabel}</Button>
       )}
     </div>
@@ -678,16 +678,16 @@ export const Chip = forwardRef<HTMLButtonElement, ChipProps>(function Chip({ sel
     /* an input chip: a group with a label and its own remove button (a button may not contain another button) */
     const name = typeof children === 'string' ? children : undefined;
     return (
-      <span role="group" aria-label={name} className={cx('gl-chip', 'gl-chip--removable', className)} style={style}>
-        {icon}<span className="gl-chip__label">{children}</span>
-        <button ref={ref} type="button" className="gl-chip__remove" aria-label={name ? `Remove ${name}` : 'Remove'} onClick={onRemove} disabled={rest.disabled}><CloseIcon width={14} height={14} /></button>
+      <span role="group" aria-label={name} className={cx('sg-chip', 'sg-chip--removable', className)} style={style}>
+        {icon}<span className="sg-chip__label">{children}</span>
+        <button ref={ref} type="button" className="sg-chip__remove" aria-label={name ? `Remove ${name}` : 'Remove'} onClick={onRemove} disabled={rest.disabled}><CloseIcon width={14} height={14} /></button>
       </span>
     );
   }
   return (
-    <button ref={ref} type="button" aria-pressed={toggle ? selected : undefined} className={cx('gl-chip', className)} style={style}
+    <button ref={ref} type="button" aria-pressed={toggle ? selected : undefined} className={cx('sg-chip', className)} style={style}
       onClick={(e) => { onClick?.(e); if (toggle) onSelectedChange?.(!selected); }} {...rest}>
-      {icon}<span className="gl-chip__label">{children}</span>
+      {icon}<span className="sg-chip__label">{children}</span>
     </button>
   );
 });
@@ -706,10 +706,10 @@ export function Badge({ children, tone = 'danger', dot, max = 99, className, ...
     else if (prev.current !== shown && !reduced) animate(b, [{ transform: 'scale(1.28)' }, { transform: 'scale(1)' }], 'bouncy');
     prev.current = shown;
   }, [shown]);
-  return <span ref={el} className={cx('gl-badge', tone !== 'danger' && `gl-badge--${tone}`, dot && 'gl-badge--dot', className)} {...rest}>{dot ? null : shown}</span>;
+  return <span ref={el} className={cx('sg-badge', tone !== 'danger' && `sg-badge--${tone}`, dot && 'sg-badge--dot', className)} {...rest}>{dot ? null : shown}</span>;
 }
 export function BadgeAnchor({ badge, children }: { badge: ReactNode; children: ReactNode }) {
-  return <span className="gl-badge-anchor">{children}{badge}</span>;
+  return <span className="sg-badge-anchor">{children}{badge}</span>;
 }
 
 const AVATAR_HUES = ['iris', 'azure', 'teal', 'jade', 'amber', 'coral', 'rose', 'orchid'];
@@ -717,8 +717,8 @@ export function Avatar({ name = '', src, size = 40, className, style }: { name?:
   const initials = name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   const hue = AVATAR_HUES[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_HUES.length];
   return (
-    <span className={cx('gl-avatar', className)} role="img" aria-label={name || undefined}
-      style={{ '--_s': `${size}px`, '--_bg': `var(--gl-${hue}-200)`, '--_fg': `var(--gl-${hue}-800)`, '--_fg-hc': `var(--gl-${hue}-950)`, ...style } as CSSProperties}>
+    <span className={cx('sg-avatar', className)} role="img" aria-label={name || undefined}
+      style={{ '--_s': `${size}px`, '--_bg': `var(--sg-${hue}-200)`, '--_fg': `var(--sg-${hue}-800)`, '--_fg-hc': `var(--sg-${hue}-950)`, ...style } as CSSProperties}>
       {src ? <img src={src} alt="" /> : initials}
     </span>
   );
@@ -728,10 +728,10 @@ export function Avatar({ name = '', src, size = 40, className, style }: { name?:
 export type CardProps = HTMLAttributes<HTMLDivElement> & { variant?: 'elevated' | 'outlined'; interactive?: boolean; as?: ElementType };
 export const Card = forwardRef<HTMLDivElement, CardProps>(function Card({ variant = 'elevated', interactive, as, className, ...rest }, ref) {
   const Comp = (as ?? (interactive ? 'button' : 'div')) as ElementType;
-  return <Comp ref={ref} className={cx('gl-card', variant === 'outlined' && 'gl-card--outlined', interactive && 'gl-card--interactive', className)} {...(Comp === 'button' ? { type: 'button' } : null)} {...rest} />;
+  return <Comp ref={ref} className={cx('sg-card', variant === 'outlined' && 'sg-card--outlined', interactive && 'sg-card--interactive', className)} {...(Comp === 'button' ? { type: 'button' } : null)} {...rest} />;
 });
-export const CardMedia = (p: React.ImgHTMLAttributes<HTMLImageElement>) => <img className="gl-card__media" alt="" {...p} />;
-export const CardBody = ({ className, ...p }: HTMLAttributes<HTMLDivElement>) => <div className={cx('gl-card__body', className)} {...p} />;
+export const CardMedia = (p: React.ImgHTMLAttributes<HTMLImageElement>) => <img className="sg-card__media" alt="" {...p} />;
+export const CardBody = ({ className, ...p }: HTMLAttributes<HTMLDivElement>) => <div className={cx('sg-card__body', className)} {...p} />;
 export type CardHeaderProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'> & {
   title: ReactNode;
   description?: ReactNode;
@@ -744,9 +744,9 @@ export type CardHeaderProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'> & {
 export function CardHeader({ title, description, actions, level = 3, className, ...rest }: CardHeaderProps) {
   const H = `h${level}` as 'h3';
   return (
-    <div className={cx('gl-card__header', className)} {...rest}>
-      <div className="gl-card__heading"><H className="gl-card__title">{title}</H>{description && <p className="gl-card__desc">{description}</p>}</div>
-      {actions && <div className="gl-card__actions">{actions}</div>}
+    <div className={cx('sg-card__header', className)} {...rest}>
+      <div className="sg-card__heading"><H className="sg-card__title">{title}</H>{description && <p className="sg-card__desc">{description}</p>}</div>
+      {actions && <div className="sg-card__actions">{actions}</div>}
     </div>
   );
 }
@@ -762,7 +762,7 @@ export function Progress({ value, max = 100, size = 'md', label = 'Progress', mo
   useIsoLayoutEffect(() => {
     const d = el.current;
     if (!d || indeterminate) return;
-    const bar = d.querySelector<HTMLElement>('.gl-progress__bar')!;
+    const bar = d.querySelector<HTMLElement>('.sg-progress__bar')!;
     const draw = (v: number) => bar.style.setProperty('--_p', Math.min(1, Math.max(0, v)).toFixed(4));
     if (!eng.current) { eng.current = { s: new Spring(p, 'smooth', d), stop: null }; draw(p); return; }
     const e = eng.current;
@@ -771,9 +771,9 @@ export function Progress({ value, max = 100, size = 'md', label = 'Progress', mo
   }, [p, indeterminate]);
   useEffect(() => () => { eng.current?.stop?.(); }, []);
   return (
-    <div ref={el} role="progressbar" data-gl-motion={motion} aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={indeterminate ? undefined : value}
-      className={cx('gl-progress', size === 'sm' && 'gl-progress--sm', indeterminate && 'gl-progress--indeterminate', className)}>
-      <span className="gl-progress__bar" />
+    <div ref={el} role="progressbar" data-sg-motion={motion} aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={indeterminate ? undefined : value}
+      className={cx('sg-progress', size === 'sm' && 'sg-progress--sm', indeterminate && 'sg-progress--indeterminate', className)}>
+      <span className="sg-progress__bar" />
     </div>
   );
 }
@@ -796,7 +796,7 @@ export const PageControl = forwardRef<HTMLDivElement, PageControlProps>(function
     return drag(c, {
       axis: 'x', threshold: 6,
       move: ({ x }) => {
-        const dots = Array.from(c.querySelectorAll<HTMLElement>('.gl-pagecontrol__dot'));
+        const dots = Array.from(c.querySelectorAll<HTMLElement>('.sg-pagecontrol__dot'));
         let best = 0, d = Infinity;
         dots.forEach((dt, i) => { const r = dt.getBoundingClientRect(), dd = Math.abs(x - (r.left + r.width / 2)); if (dd < d) { d = dd; best = i; } });
         if (best !== pr.current) setP(best);
@@ -804,12 +804,12 @@ export const PageControl = forwardRef<HTMLDivElement, PageControlProps>(function
     });
   }, [setP]);
   return (
-    <div ref={mergeRefs(ref, el, glass ? lightRef : undefined)} role="group" aria-label={label} tabIndex={0} data-gl-motion={motion}
-      className={cx('gl-pagecontrol', glass && cx('gl-pagecontrol--glass', glassClass(onMedia ? 'clear' : 'regular')), onMedia && 'gl-pagecontrol--on-media', className)}
+    <div ref={mergeRefs(ref, el, glass ? lightRef : undefined)} role="group" aria-label={label} tabIndex={0} data-sg-motion={motion}
+      className={cx('sg-pagecontrol', glass && cx('sg-pagecontrol--glass', glassClass(onMedia ? 'clear' : 'regular')), onMedia && 'sg-pagecontrol--on-media', className)}
       onKeyDown={(e) => { if (e.key === 'ArrowRight' && p < count - 1) { e.preventDefault(); setP(p + 1); } if (e.key === 'ArrowLeft' && p > 0) { e.preventDefault(); setP(p - 1); } }}
       {...rest}>
       {Array.from({ length: count }, (_, i) => (
-        <button key={i} type="button" tabIndex={-1} className="gl-pagecontrol__dot" aria-current={i === p ? 'true' : undefined} aria-label={`${label} ${i + 1} of ${count}`} onClick={() => setP(i)} />
+        <button key={i} type="button" tabIndex={-1} className="sg-pagecontrol__dot" aria-current={i === p ? 'true' : undefined} aria-label={`${label} ${i + 1} of ${count}`} onClick={() => setP(i)} />
       ))}
     </div>
   );

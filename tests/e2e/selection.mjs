@@ -25,7 +25,7 @@ await go('selection');
 /* ---------------- checkbox */
 {
   const c = p.getByRole('checkbox', { name: '마케팅 수신 (선택)' });
-  const tick = await frames(`() => document.querySelectorAll('.gl-check__input')[6].click()`, `() => parseFloat(getComputedStyle(document.querySelectorAll('.gl-check__tick')[6]).strokeDashoffset)`);
+  const tick = await frames(`() => document.querySelectorAll('.sg-check__input')[6].click()`, `() => parseFloat(getComputedStyle(document.querySelectorAll('.sg-check__tick')[6]).strokeDashoffset)`);
   const now = await c.isChecked();
   ok('checkbox: click toggles; the tick is drawn over several frames', !now && (reduced || between(tick, 0, 20) >= 2), `checked ${now}, drawing frames ${between(tick, 0, 20)}`);
   await c.focus(); await p.keyboard.press('Space');
@@ -33,7 +33,7 @@ await go('selection');
   const parent = p.getByRole('checkbox', { name: '편의시설 모두' });
   const ind0 = await parent.evaluate((e) => e.indeterminate);
   await parent.click(); await p.waitForTimeout(200);
-  const allChecked = await p.locator('.gl-check__input').evaluateAll((xs) => xs.slice(1, 5).every((x) => x.checked));
+  const allChecked = await p.locator('.sg-check__input').evaluateAll((xs) => xs.slice(1, 5).every((x) => x.checked));
   await p.getByRole('checkbox', { name: '화장실' }).click();
   const ind1 = await parent.evaluate((e) => e.indeterminate);
   ok('checkbox: "all" shows mixed, checks every child, and goes mixed again when one is cleared', ind0 && allChecked && ind1, `${ind0} → all ${allChecked} → ${ind1}`);
@@ -41,7 +41,7 @@ await go('selection');
 /* ---------------- radio */
 {
   const bike = p.getByRole('radio', { name: '자전거' });
-  const dot = await frames(`() => document.querySelectorAll('.gl-check--radio .gl-check__input')[1].click()`, `() => new DOMMatrix(getComputedStyle(document.querySelectorAll('.gl-check--radio .gl-check__dot')[1]).transform).a`);
+  const dot = await frames(`() => document.querySelectorAll('.sg-check--radio .sg-check__input')[1].click()`, `() => new DOMMatrix(getComputedStyle(document.querySelectorAll('.sg-check--radio .sg-check__dot')[1]).transform).a`);
   ok('radio: click selects; the dot grows over several frames', await bike.isChecked() && (reduced || between(dot, 0, 1) >= 2), `growing frames ${between(dot, 0, 1)}`);
   await bike.focus(); await p.keyboard.press('ArrowDown');
   ok('radio: ↓ moves to and selects the next (native radio group)', await p.getByRole('radio', { name: '자동차' }).isChecked());
@@ -52,7 +52,7 @@ await go('selection');
 {
   const dark = page.getByRole('radio', { name: '다크' });
   await dark.click(); await p.waitForTimeout(400);
-  ok('choice list: clicking a row chooses it (checkmark shows)', (await dark.getAttribute('aria-checked')) === 'true' && await dark.locator('.gl-choice__check').evaluate((e) => +getComputedStyle(e).opacity > 0.5));
+  ok('choice list: clicking a row chooses it (checkmark shows)', (await dark.getAttribute('aria-checked')) === 'true' && await dark.locator('.sg-choice__check').evaluate((e) => +getComputedStyle(e).opacity > 0.5));
   await p.keyboard.press('ArrowDown'); await p.waitForTimeout(150);
   ok('choice list: ↓ moves focus and selection to the next row', (await page.getByRole('radio', { name: /시스템 설정/ }).getAttribute('aria-checked')) === 'true');
   const weather = p.getByRole('checkbox', { name: '날씨 경보' });
@@ -64,7 +64,7 @@ await go('selection');
   const cb = p.getByRole('combobox', { name: /이동 수단/ });
   await cb.scrollIntoViewIfNeeded();
   /* bloom: sample the panel's scale while a real click opens it */
-  await p.evaluate(() => { window.__sc = []; window.__rec = true; const f = () => { const l = document.querySelector('.gl-listbox'); if (l) window.__sc.push(new DOMMatrix(getComputedStyle(l).transform).d); if (window.__rec) requestAnimationFrame(f); }; requestAnimationFrame(f); });
+  await p.evaluate(() => { window.__sc = []; window.__rec = true; const f = () => { const l = document.querySelector('.sg-listbox'); if (l) window.__sc.push(new DOMMatrix(getComputedStyle(l).transform).d); if (window.__rec) requestAnimationFrame(f); }; requestAnimationFrame(f); });
   await cb.click(); await p.waitForTimeout(650);
   const sc = await p.evaluate(() => { window.__rec = false; return window.__sc; });
   const lb = p.getByRole('listbox');
@@ -84,8 +84,8 @@ await go('selection');
   const region = p.getByRole('combobox', { name: /지역/ });
   await region.focus(); await p.keyboard.press('ArrowDown'); await p.waitForTimeout(250);
   await p.keyboard.press('End'); await p.waitForTimeout(200);
-  const vis = await p.evaluate(() => { const lb = document.querySelector('.gl-listbox [data-gl-content]').getBoundingClientRect(); const a = document.querySelector('.gl-option[data-active]').getBoundingClientRect(); return a.top >= lb.top - 1 && a.bottom <= lb.bottom + 1; });
-  const groups = await p.locator('.gl-listbox [role=group]').count();
+  const vis = await p.evaluate(() => { const lb = document.querySelector('.sg-listbox [data-sg-content]').getBoundingClientRect(); const a = document.querySelector('.sg-option[data-active]').getBoundingClientRect(); return a.top >= lb.top - 1 && a.bottom <= lb.bottom + 1; });
+  const groups = await p.locator('.sg-listbox [role=group]').count();
   ok('select: long grouped list scrolls inside the panel; the active option is kept in view', vis && groups === 4, `groups ${groups}`);
   await p.mouse.click(1200, 120); await p.waitForTimeout(300);
   ok('select: a click outside closes it', (await p.getByRole('listbox').count()) === 0);
@@ -105,7 +105,7 @@ await go('selection');
   const st = await p.evaluate(() => new Promise((res) => {
     const out = []; const t0 = performance.now();
     document.querySelector('[role=combobox][aria-label="거리 단위"]').click();
-    const f = () => { const l = document.querySelector('.gl-listbox'); if (l) out.push(l.scrollTop); if (performance.now() - t0 < 600) requestAnimationFrame(f); else res(out); };
+    const f = () => { const l = document.querySelector('.sg-listbox'); if (l) out.push(l.scrollTop); if (performance.now() - t0 < 600) requestAnimationFrame(f); else res(out); };
     requestAnimationFrame(f);
   }));
   ok('select (last option chosen): the panel never scrolls itself while it opens (rim and items stay put)', st.length > 5 && st.every((v) => v === 0), `panel scrollTop ${[...new Set(st)].join('→')}`);
@@ -120,10 +120,10 @@ await go('selection');
   const focusDay = () => p.evaluate(() => document.activeElement?.getAttribute('data-date'));
   const f0 = await focusDay();
   ok('date picker: opens a calendar dialog with focus on a day', (await dlg.count()) === 1 && !!f0, f0);
-  const disabledPast = await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 1); const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; const b = document.querySelector(`.gl-datepicker-panel [data-date="${iso}"]`); return b ? b.getAttribute('aria-disabled') === 'true' : true; });
+  const disabledPast = await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 1); const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; const b = document.querySelector(`.sg-datepicker-panel [data-date="${iso}"]`); return b ? b.getAttribute('aria-disabled') === 'true' : true; });
   ok('date picker: days before min are disabled', disabledPast);
   await p.keyboard.press('ArrowRight'); const f1 = await focusDay();
-  const slide = await frames(`() => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true }))`, `() => new DOMMatrix(getComputedStyle(document.querySelector('.gl-datepicker-panel .gl-calendar__body')).transform).e`, 500);
+  const slide = await frames(`() => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true }))`, `() => new DOMMatrix(getComputedStyle(document.querySelector('.sg-datepicker-panel .sg-calendar__body')).transform).e`, 500);
   const f2 = await focusDay();
   ok('date picker: → moves a day; PageDown moves a month and the grid slides in', f1 > f0 && f2.slice(5, 7) !== f1.slice(5, 7) && (reduced || slide.some((x) => Math.abs(x) > 2)), `${f0} → ${f1} → ${f2}, max slide ${Math.max(...slide.map(Math.abs)).toFixed(1)}`);
   await p.keyboard.press('Enter'); await p.waitForTimeout(400);
@@ -132,13 +132,13 @@ await go('selection');
   ok('date picker: Escape closes and focus returns to the field', (await dlg.count()) === 0 && await dp.evaluate((e) => e === document.activeElement));
   const wk = p.getByRole('button', { name: /주말만/ });
   await wk.click(); await p.waitForTimeout(400);
-  const weekdays = await p.locator('.gl-datepicker-panel .gl-day').evaluateAll((bs) => bs.filter((x) => { const d = new Date(x.dataset.date + 'T12:00'); return d.getDay() !== 0 && d.getDay() !== 6; }).every((x) => x.getAttribute('aria-disabled') === 'true'));
+  const weekdays = await p.locator('.sg-datepicker-panel .sg-day').evaluateAll((bs) => bs.filter((x) => { const d = new Date(x.dataset.date + 'T12:00'); return d.getDay() !== 0 && d.getDay() !== 6; }).every((x) => x.getAttribute('aria-disabled') === 'true'));
   ok('date picker: isDateDisabled disables weekdays', weekdays);
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   const en = p.getByRole('button', { name: /English/ });
   await en.click(); await p.waitForTimeout(400);
-  const head = await p.locator('.gl-datepicker-panel th').allTextContents();
-  ok('date picker: locale en-US, Monday first', head[0] === 'M' && (await p.locator('.gl-datepicker-panel .gl-calendar__title').textContent()).match(/[A-Z][a-z]+ \d{4}/) !== null, head.join(''));
+  const head = await p.locator('.sg-datepicker-panel th').allTextContents();
+  ok('date picker: locale en-US, Monday first', head[0] === 'M' && (await p.locator('.sg-datepicker-panel .sg-calendar__title').textContent()).match(/[A-Z][a-z]+ \d{4}/) !== null, head.join(''));
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
 }
 
@@ -186,7 +186,7 @@ await go('selection');
   {
     const dp = p.getByRole('button', { name: /방문 날짜/ });
     await dp.scrollIntoViewIfNeeded(); await p.evaluate(() => scrollBy(0, 200)); await dp.click(); await p.waitForTimeout(600);
-    await p.evaluate(() => { window.__g = []; window.__on = true; const pn = document.querySelector('.gl-datepicker-panel'), a = document.querySelector('[aria-haspopup=dialog]');
+    await p.evaluate(() => { window.__g = []; window.__on = true; const pn = document.querySelector('.sg-datepicker-panel'), a = document.querySelector('[aria-haspopup=dialog]');
       const f = () => { window.__g.push(pn.getBoundingClientRect().top - a.getBoundingClientRect().top); if (window.__on) requestAnimationFrame(f); }; requestAnimationFrame(f); });
     await p.mouse.move(1150, 450);
     for (let i = 0; i < 20; i++) { await p.mouse.wheel(0, i < 10 ? -80 : 80); await p.waitForTimeout(16); }
@@ -198,14 +198,14 @@ await go('selection');
   }
   await go('selection');
   const dp = p.getByRole('button', { name: /방문 날짜/ });
-  await check('date picker', () => dp.click(), '.gl-datepicker-panel', dp);
+  await check('date picker', () => dp.click(), '.sg-datepicker-panel', dp);
   const sel = p.getByRole('combobox', { name: /이동 수단/ });
-  await check('select', () => sel.click(), '.gl-listbox', sel);
+  await check('select', () => sel.click(), '.sg-listbox', sel);
   await go('overlays');
   const info = p.locator('.docs__page').getByRole('button', { name: '정보' });
-  await check('popover', () => info.click(), '.gl-popover', info);
+  await check('popover', () => info.click(), '.sg-popover', info);
   const dir = p.locator('.docs__page').getByRole('button', { name: '길찾기' });
-  await check('menu', () => dir.click(), '.gl-menu', dir);
+  await check('menu', () => dir.click(), '.sg-menu', dir);
   /* context menu: a lifted item over a scrim — the page holds still while it is open */
   await p.setViewportSize({ width: 1280, height: 480 });
   const item = p.locator('.docs__page').getByRole('button', { name: '노을 사진' });
@@ -213,7 +213,7 @@ await go('selection');
     await item.scrollIntoViewIfNeeded(); await item.click({ button: 'right' }); await p.waitForTimeout(500);
     const y0 = await p.evaluate(() => scrollY);
     await p.mouse.wheel(0, 200); await p.waitForTimeout(300);
-    const y1 = await p.evaluate(() => scrollY), stillOpen = (await p.locator('.gl-menu').count()) === 1;
+    const y1 = await p.evaluate(() => scrollY), stillOpen = (await p.locator('.sg-menu').count()) === 1;
     ok('context menu: the page does not scroll under it, and it stays open', y1 === y0 && stillOpen, `scrollY ${y0} → ${y1}`);
     await p.keyboard.press('Escape'); await p.waitForTimeout(400);
     ok('context menu: after closing, the page scrolls again', !(await p.evaluate(() => document.body.style.overflow === 'hidden')));

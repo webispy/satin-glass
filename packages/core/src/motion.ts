@@ -1,14 +1,14 @@
 import {
   springs, motions, defaultMotion, reducedMotion, springAt, springDuration, springEasing,
   type SpringParams, type SpringName, type MotionName, type Motion,
-} from '@glass-layer/tokens';
+} from '@satin-glass/tokens';
 
 export { springs, motions, defaultMotion, reducedMotion, springAt, springDuration, springEasing };
 export type { SpringParams, SpringName, MotionName, Motion };
 
-/** The motion personality in effect for an element: the nearest [data-gl-motion], else the default. */
+/** The motion personality in effect for an element: the nearest [data-sg-motion], else the default. */
 export function motionOf(el?: Element | null): MotionName {
-  const m = el?.closest?.('[data-gl-motion]')?.getAttribute('data-gl-motion');
+  const m = el?.closest?.('[data-sg-motion]')?.getAttribute('data-sg-motion');
   return m && m in motions ? (m as MotionName) : defaultMotion;
 }
 /** The motion in effect for `el`: its personality, or the reduced motion when motion is reduced there. */
@@ -16,11 +16,11 @@ export const motionFor = (el?: Element | null): Motion => (prefersReducedMotion(
 
 const params = (s: SpringName | SpringParams, el?: Element | null): SpringParams => (typeof s === 'string' ? motionFor(el)[s] : s);
 
-/** Whether motion should be reduced for `el`: the nearest [data-gl-reduce-motion] decides ("true" / "false",
+/** Whether motion should be reduced for `el`: the nearest [data-sg-reduce-motion] decides ("true" / "false",
     set by ThemeProvider or reduceMotionScope), otherwise the system setting (prefers-reduced-motion). */
 export function prefersReducedMotion(el?: Element | null): boolean {
-  const scope = el?.closest?.('[data-gl-reduce-motion]') ?? (typeof document !== 'undefined' ? document.querySelector('[data-gl-reduce-motion]') : null);
-  const forced = scope?.getAttribute('data-gl-reduce-motion');
+  const scope = el?.closest?.('[data-sg-reduce-motion]') ?? (typeof document !== 'undefined' ? document.querySelector('[data-sg-reduce-motion]') : null);
+  const forced = scope?.getAttribute('data-sg-reduce-motion');
   if (forced === 'true') return true;
   if (forced === 'false') return false;
   return systemReduced();

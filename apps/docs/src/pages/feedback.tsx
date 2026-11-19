@@ -1,7 +1,7 @@
 /* Status and feedback inside the page: tags, banners, empty states, tooltips. (Toasts and dialogs, which float
    above the page, are on the overlays page.) */
 import { useState } from 'react';
-import { Banner, Button, EmptyState, IconButton, Stack, Tag, Text, Tooltip } from '@glass-layer/react';
+import { Banner, Button, EmptyState, IconButton, Stack, Tag, Text, Tooltip } from '@satin-glass/react';
 import { Bold, Check, Clock, Inbox, Italic, Link2, PackageSearch, Truck, Underline, WifiOff } from 'lucide-react';
 import { Demo, Page, Section } from '../shared';
 

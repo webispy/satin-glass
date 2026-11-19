@@ -17,25 +17,25 @@ export type AccordionProps = {
 
 export function Accordion({ items, multiple = true, value, defaultValue = [], onChange, level = 3, className, style }: AccordionProps) {
   const [open, setOpen] = useControllable<string[]>(value, defaultValue, onChange);
-  const id = useStableId('gl-acc');
+  const id = useStableId('sg-acc');
   const root = useRef<HTMLDivElement>(null);
   const H = `h${level}` as 'h3';
   const toggle = (v: string) => setOpen(open.includes(v) ? open.filter((x) => x !== v) : multiple ? [...open, v] : [v]);
   return (
-    <div ref={root} className={cx('gl-accordion', className)} style={style}>
+    <div ref={root} className={cx('sg-accordion', className)} style={style}>
       {items.map((it, i) => {
         const on = open.includes(it.value);
         return (
-          <div key={it.value} className="gl-accordion__item" data-open={on || undefined}>
-            <H className="gl-accordion__heading">
-              <button type="button" id={`${id}-b${i}`} className="gl-accordion__trigger" aria-expanded={on} aria-controls={`${id}-r${i}`} disabled={it.disabled} onClick={() => toggle(it.value)}>
-                <span className="gl-accordion__title">{it.title}</span>
-                {it.meta && <span className="gl-accordion__meta">{it.meta}</span>}
-                <ChevronDownIcon className="gl-accordion__chevron" />
+          <div key={it.value} className="sg-accordion__item" data-open={on || undefined}>
+            <H className="sg-accordion__heading">
+              <button type="button" id={`${id}-b${i}`} className="sg-accordion__trigger" aria-expanded={on} aria-controls={`${id}-r${i}`} disabled={it.disabled} onClick={() => toggle(it.value)}>
+                <span className="sg-accordion__title">{it.title}</span>
+                {it.meta && <span className="sg-accordion__meta">{it.meta}</span>}
+                <ChevronDownIcon className="sg-accordion__chevron" />
               </button>
             </H>
-            <div id={`${id}-r${i}`} role="region" aria-labelledby={`${id}-b${i}`} className="gl-accordion__region" inert={!on || undefined}>
-              <div className="gl-accordion__clip"><div className="gl-accordion__content">{it.content}</div></div>
+            <div id={`${id}-r${i}`} role="region" aria-labelledby={`${id}-b${i}`} className="sg-accordion__region" inert={!on || undefined}>
+              <div className="sg-accordion__clip"><div className="sg-accordion__content">{it.content}</div></div>
             </div>
           </div>
         );

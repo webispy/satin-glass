@@ -1,49 +1,49 @@
 /* ============================================================================================
    App bar: a floating glass bar inset from the edges (not edge-to-edge); title in the middle or large below
    ============================================================================================ */
-.gl-appbar { position: sticky; top: 0; z-index: var(--gl-z-bar); padding: var(--gl-size-bar-inset) var(--gl-size-bar-inset) 0; pointer-events: none; }
-.gl-appbar__bar {
+.sg-appbar { position: sticky; top: 0; z-index: var(--sg-z-bar); padding: var(--sg-size-bar-inset) var(--sg-size-bar-inset) 0; pointer-events: none; }
+.sg-appbar__bar {
   pointer-events: auto; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
-  height: var(--gl-size-bar); padding: 0 8px; --_radius: var(--gl-radius-xl);
+  height: var(--sg-size-bar); padding: 0 8px; --_radius: var(--sg-radius-xl);
 }
 /* see-through at the top of the page; the glass fades in as content scrolls under it (no hard swap) */
-@property --gl-bar-depth { syntax: "<color>"; inherits: false; initial-value: transparent; }
-.gl-appbar__bar {
-  --gl-bar-depth: var(--gl-glass-depth);
-  background-image: linear-gradient(180deg, var(--gl-bar-depth), rgba(255, 255, 255, 0) 52%);
-  transition: background-color var(--gl-duration-slow) var(--gl-ease-out), box-shadow var(--gl-duration-slow) var(--gl-ease-out), --gl-bar-depth var(--gl-duration-slow) var(--gl-ease-out),
-    -webkit-backdrop-filter var(--gl-duration-slow) var(--gl-ease-out), backdrop-filter var(--gl-duration-slow) var(--gl-ease-out);
+@property --sg-bar-depth { syntax: "<color>"; inherits: false; initial-value: transparent; }
+.sg-appbar__bar {
+  --sg-bar-depth: var(--sg-glass-depth);
+  background-image: linear-gradient(180deg, var(--sg-bar-depth), rgba(255, 255, 255, 0) 52%);
+  transition: background-color var(--sg-duration-slow) var(--sg-ease-out), box-shadow var(--sg-duration-slow) var(--sg-ease-out), --sg-bar-depth var(--sg-duration-slow) var(--sg-ease-out),
+    -webkit-backdrop-filter var(--sg-duration-slow) var(--sg-ease-out), backdrop-filter var(--sg-duration-slow) var(--sg-ease-out);
 }
-.gl-appbar__bar::before { transition: opacity var(--gl-duration-slow) var(--gl-ease-out); }
-:where(.gl-appbar[data-transparent-top][data-at-top]) > .gl-appbar__bar {   /* low specificity: reduce transparency (solid glass) wins */
-  background-color: rgba(255, 255, 255, 0); --gl-bar-depth: rgba(255, 255, 255, 0);
+.sg-appbar__bar::before { transition: opacity var(--sg-duration-slow) var(--sg-ease-out); }
+:where(.sg-appbar[data-transparent-top][data-at-top]) > .sg-appbar__bar {   /* low specificity: reduce transparency (solid glass) wins */
+  background-color: rgba(255, 255, 255, 0); --sg-bar-depth: rgba(255, 255, 255, 0);
   box-shadow: 0 0 0 rgba(0, 0, 0, 0), 0 0 0 rgba(0, 0, 0, 0);
   -webkit-backdrop-filter: blur(0px) saturate(1); backdrop-filter: blur(0px) saturate(1);
 }
-:where(.gl-appbar[data-transparent-top][data-at-top]) > .gl-appbar__bar::before, :where(.gl-appbar[data-transparent-top][data-at-top]) > .gl-appbar__bar::after { opacity: 0; }
-.gl-appbar__leading { display: flex; align-items: center; gap: 4px; justify-self: start; min-width: 0; }
-.gl-appbar__trailing { display: flex; align-items: center; gap: 4px; justify-self: end; min-width: 0; }
-.gl-appbar__title { margin: 0; font-size: 17px; line-height: 24px; font-weight: 650; letter-spacing: -0.01em; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where(.sg-appbar[data-transparent-top][data-at-top]) > .sg-appbar__bar::before, :where(.sg-appbar[data-transparent-top][data-at-top]) > .sg-appbar__bar::after { opacity: 0; }
+.sg-appbar__leading { display: flex; align-items: center; gap: 4px; justify-self: start; min-width: 0; }
+.sg-appbar__trailing { display: flex; align-items: center; gap: 4px; justify-self: end; min-width: 0; }
+.sg-appbar__title { margin: 0; font-size: 17px; line-height: 24px; font-weight: 650; letter-spacing: -0.01em; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* large title hand-over, driven by scroll (--_p: 0 = large title fully below the bar, 1 = fully under it).
    Scroll-linked, so no transitions: it is exactly where the finger puts it. The small title rises 6 px into place
    over the second half; the large title fades as it slides under the glass. */
-.gl-appbar[data-large="true"] .gl-appbar__title {
+.sg-appbar[data-large="true"] .sg-appbar__title {
   opacity: clamp(0, calc((var(--_p, 0) - 0.45) / 0.55), 1);
   transform: translateY(calc((1 - clamp(0, calc((var(--_p, 0) - 0.45) / 0.55), 1)) * 6px));
 }
-.gl-appbar__large {
-  margin: 12px 0 4px; padding: 0 calc(var(--gl-size-bar-inset) + 8px); font-size: var(--gl-text-title-1-size); line-height: var(--gl-text-title-1-line); font-weight: 750; letter-spacing: -0.02em;
+.sg-appbar__large {
+  margin: 12px 0 4px; padding: 0 calc(var(--sg-size-bar-inset) + 8px); font-size: var(--sg-text-title-1-size); line-height: var(--sg-text-title-1-line); font-weight: 750; letter-spacing: -0.02em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   opacity: clamp(0, calc(1 - var(--_p, 0) * 1.6), 1);   /* gone by the time the small title is half in: no double title */
 }
 /* reduced motion: the hand-over is a cross-fade only (no rising) */
-[data-gl-reduce-motion="true"] .gl-appbar[data-large="true"] .gl-appbar__title { transform: none; }
-@media (prefers-reduced-motion: reduce) { .gl-root:not([data-gl-reduce-motion="false"]) .gl-appbar[data-large="true"] .gl-appbar__title { transform: none; } }
+[data-sg-reduce-motion="true"] .sg-appbar[data-large="true"] .sg-appbar__title { transform: none; }
+@media (prefers-reduced-motion: reduce) { .sg-root:not([data-sg-reduce-motion="false"]) .sg-appbar[data-large="true"] .sg-appbar__title { transform: none; } }
 
 /* scroll edge: a cheap colour fade (no blur) under floating bars, so content never fights with the glass */
-.gl-scroll-fade { position: sticky; z-index: calc(var(--gl-z-bar) - 1); left: 0; right: 0; height: 28px; pointer-events: none; background: linear-gradient(var(--_dir, 180deg), var(--gl-bg), color-mix(in srgb, var(--gl-bg) 0%, transparent)); opacity: var(--_o, 1); transition: opacity var(--gl-duration-base) ease; }
-.gl-scroll-fade--top { top: 0; margin-bottom: -28px; }
-.gl-scroll-fade--bottom { bottom: 0; margin-top: -28px; --_dir: 0deg; }
+.sg-scroll-fade { position: sticky; z-index: calc(var(--sg-z-bar) - 1); left: 0; right: 0; height: 28px; pointer-events: none; background: linear-gradient(var(--_dir, 180deg), var(--sg-bg), color-mix(in srgb, var(--sg-bg) 0%, transparent)); opacity: var(--_o, 1); transition: opacity var(--sg-duration-base) ease; }
+.sg-scroll-fade--top { top: 0; margin-bottom: -28px; }
+.sg-scroll-fade--bottom { bottom: 0; margin-top: -28px; --_dir: 0deg; }
 
 /* ============================================================================================
    Tab bar: a floating glass bar with fixed corner radius; the selection is a soft accent fill that travels
@@ -51,115 +51,115 @@
    Tabs share the width but never get narrower than 64 px (48 px compact): with more tabs than fit, the track
    inside the glass scrolls sideways, its ends fade and the selected tab is kept in view (core/overflow.ts).
    ============================================================================================ */
-.gl-tabbar { position: relative; display: flex; align-items: flex-end; gap: 8px; padding: 0 var(--gl-size-bar-inset); pointer-events: none; }
-.gl-tabbar > * { pointer-events: auto; }
-.gl-tabbar__bar {
-  flex: 1; min-width: 0; position: relative; display: flex; height: var(--gl-size-tab-bar); padding: 5px; gap: 0;   /* min-width 0: long labels truncate instead of widening the page */
-  --_radius: var(--gl-radius-xl); contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+.sg-tabbar { position: relative; display: flex; align-items: flex-end; gap: 8px; padding: 0 var(--sg-size-bar-inset); pointer-events: none; }
+.sg-tabbar > * { pointer-events: auto; }
+.sg-tabbar__bar {
+  flex: 1; min-width: 0; position: relative; display: flex; height: var(--sg-size-tab-bar); padding: 5px; gap: 0;   /* min-width 0: long labels truncate instead of widening the page */
+  --_radius: var(--sg-radius-xl); contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
 }
 /* the glass clips, the track scrolls (its corners are concentric with the bar's). The track reaches over the bar's
    top and bottom padding (margin out, padding in): a scroller clips both ways, and a badge with its ring rises above
    the items — inside the track's own box it would lose the top of its ring. */
-.gl-tabbar__track {
+.sg-tabbar__track {
   --_tab-min: 64px;
-  position: relative; flex: 1; min-width: 0; display: flex; gap: 0; border-radius: calc(var(--gl-radius-xl) - 5px);
+  position: relative; flex: 1; min-width: 0; display: flex; gap: 0; border-radius: calc(var(--sg-radius-xl) - 5px);
   margin-block: -5px; padding-block: 5px;
   overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; contain: layout; touch-action: pan-y;
 }
-.gl-tabbar__track::-webkit-scrollbar { display: none; }
-.gl-tabbar__indicator {
+.sg-tabbar__track::-webkit-scrollbar { display: none; }
+.sg-tabbar__indicator {
   position: absolute; top: 5px; bottom: 5px; left: 0; width: 0; z-index: 0;
-  border-radius: calc(var(--gl-radius-xl) - 5px);
-  background: var(--gl-glass-selection);
+  border-radius: calc(var(--sg-radius-xl) - 5px);
+  background: var(--sg-glass-selection);
   will-change: transform, width;
-  transition: background-color var(--gl-duration-fast) ease;
+  transition: background-color var(--sg-duration-fast) ease;
 }
 /* while held, the drop is a little denser */
-.gl-tabbar__track[data-gl-pressing] .gl-tabbar__indicator { background: color-mix(in oklab, var(--gl-glass-selection), var(--gl-accent) 10%); }
-.gl-tabbar__item {
+.sg-tabbar__track[data-sg-pressing] .sg-tabbar__indicator { background: color-mix(in oklab, var(--sg-glass-selection), var(--sg-accent) 10%); }
+.sg-tabbar__item {
   position: relative; z-index: 1; flex: 1 0 0; min-width: var(--_tab-min); appearance: none; border: 0; margin: 0; padding: 0; background: none; font: inherit;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  color: var(--gl-label-secondary); border-radius: calc(var(--gl-radius-xl) - 5px); cursor: pointer;
+  color: var(--sg-label-secondary); border-radius: calc(var(--sg-radius-xl) - 5px); cursor: pointer;
   font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.01em;
-  transition: color var(--gl-duration-fast) ease;
+  transition: color var(--sg-duration-fast) ease;
 }
-.gl-tabbar__item svg { width: 24px; height: 24px; }
+.sg-tabbar__item svg { width: 24px; height: 24px; }
 /* the icon carries its badge, so both press together and the badge is placed against the glyph, not the cell */
-.gl-tabbar__icon { position: relative; display: inline-flex; transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
-.gl-tabbar__item[aria-selected="true"], .gl-tabbar__item[data-hover] { color: var(--gl-accent-text); }
-.gl-tabbar__item:active .gl-tabbar__icon { transform: scale(0.9); }
-.gl-tabbar__item:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
+.sg-tabbar__icon { position: relative; display: inline-flex; transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+.sg-tabbar__item[aria-selected="true"], .sg-tabbar__item[data-hover] { color: var(--sg-accent-text); }
+.sg-tabbar__item:active .sg-tabbar__icon { transform: scale(0.9); }
+.sg-tabbar__item:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--sg-focus-ring); }
 /* badge: sits on the glyph's top-right corner, only its inner edge overlapping (4 px), with a ring that
    cuts it out of the glyph; tab-bar size (16 px, 10 px digits) so it reads as a mark, not a button */
-.gl-tabbar__icon > .gl-badge { position: absolute; top: -5px; left: calc(100% - 7px); height: 16px; min-width: 16px; padding: 0 4.5px; font-size: 10px; letter-spacing: 0; box-shadow: 0 0 0 2px var(--gl-bg-elevated); }
-.gl-tabbar__icon > .gl-badge--dot { top: -1px; left: calc(100% - 5px); height: 8px; min-width: 8px; width: 8px; padding: 0; }
-.gl-tabbar__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
-.gl-tabbar__action { flex: none; width: var(--gl-size-tab-bar); height: var(--gl-size-tab-bar); --_radius: var(--gl-radius-xl); border-radius: var(--gl-radius-xl); }   /* same corner as the bar (.gl-button would make it 12) */
-.gl-tabbar__action svg { width: 24px; height: 24px; }
+.sg-tabbar__icon > .sg-badge { position: absolute; top: -5px; left: calc(100% - 7px); height: 16px; min-width: 16px; padding: 0 4.5px; font-size: 10px; letter-spacing: 0; box-shadow: 0 0 0 2px var(--sg-bg-elevated); }
+.sg-tabbar__icon > .sg-badge--dot { top: -1px; left: calc(100% - 5px); height: 8px; min-width: 8px; width: 8px; padding: 0; }
+.sg-tabbar__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+.sg-tabbar__action { flex: none; width: var(--sg-size-tab-bar); height: var(--sg-size-tab-bar); --_radius: var(--sg-radius-xl); border-radius: var(--sg-radius-xl); }   /* same corner as the bar (.sg-button would make it 12) */
+.sg-tabbar__action svg { width: 24px; height: 24px; }
 /* compact: icons only */
 /* the label stays in the accessibility tree (visually hidden), so a tab's name is its label (+ badge) as in the full bar */
-.gl-tabbar--compact .gl-tabbar__label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.gl-tabbar--compact .gl-tabbar__bar { height: 52px; }
-.gl-tabbar--compact .gl-tabbar__track { --_tab-min: 48px; }
-.gl-tabbar--compact .gl-tabbar__action { width: 52px; height: 52px; }
+.sg-tabbar--compact .sg-tabbar__label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.sg-tabbar--compact .sg-tabbar__bar { height: 52px; }
+.sg-tabbar--compact .sg-tabbar__track { --_tab-min: 48px; }
+.sg-tabbar--compact .sg-tabbar__action { width: 52px; height: 52px; }
 
 /* ============================================================================================
    Sidebar (tablet / desktop): a glass column inset from the window edge
    ============================================================================================ */
 /* the glass clips; an inner element scrolls (a scrolling glass would let its pointer highlight grow the scroll area) */
-.gl-sidebar { display: flex; flex-direction: column; width: 260px; --_radius: var(--gl-radius-xl); }
-.gl-sidebar__scroll { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px; overflow: auto; overscroll-behavior: contain; border-radius: inherit; }
-.gl-sidebar__section { margin: 14px 10px 4px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--gl-label-tertiary); letter-spacing: 0.02em; }
-.gl-sidebar__item {
+.sg-sidebar { display: flex; flex-direction: column; width: 260px; --_radius: var(--sg-radius-xl); }
+.sg-sidebar__scroll { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px; overflow: auto; overscroll-behavior: contain; border-radius: inherit; }
+.sg-sidebar__section { margin: 14px 10px 4px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--sg-label-tertiary); letter-spacing: 0.02em; }
+.sg-sidebar__item {
   appearance: none; border: 0; margin: 0; font: inherit; width: 100%; text-align: left;
-  display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 8px 10px; border-radius: var(--gl-radius-md);
-  background: none; color: var(--gl-label); font-size: 15px; cursor: pointer; text-decoration: none;
-  transition: background-color var(--gl-duration-instant) ease;
+  display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 8px 10px; border-radius: var(--sg-radius-md);
+  background: none; color: var(--sg-label); font-size: 15px; cursor: pointer; text-decoration: none;
+  transition: background-color var(--sg-duration-instant) ease;
 }
-@media (hover: hover) { .gl-sidebar__item:hover { background: var(--gl-fill); } }
-.gl-sidebar__item:active { background: var(--gl-fill-strong); }
-.gl-sidebar__item[aria-current="page"] { background: var(--gl-glass-selection); color: var(--gl-accent-text); font-weight: 620; }
-.gl-sidebar__item:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gl-focus-ring); }
-.gl-sidebar__item svg { width: 18px; height: 18px; flex: none; }
-.gl-sidebar__count { margin-left: auto; font-size: 13px; color: var(--gl-label-tertiary); font-variant-numeric: tabular-nums; }
+@media (hover: hover) { .sg-sidebar__item:hover { background: var(--sg-fill); } }
+.sg-sidebar__item:active { background: var(--sg-fill-strong); }
+.sg-sidebar__item[aria-current="page"] { background: var(--sg-glass-selection); color: var(--sg-accent-text); font-weight: 620; }
+.sg-sidebar__item:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--sg-focus-ring); }
+.sg-sidebar__item svg { width: 18px; height: 18px; flex: none; }
+.sg-sidebar__count { margin-left: auto; font-size: 13px; color: var(--sg-label-tertiary); font-variant-numeric: tabular-nums; }
 
 /* ============================================================================================
    Breadcrumbs: a quiet trail; the current page ends it in full-strength text. Levels truncate rather than wrap.
    ============================================================================================ */
-.gl-breadcrumbs { min-width: 0; font-size: var(--gl-text-subhead-size); line-height: 20px; }
-.gl-breadcrumbs ol { display: flex; align-items: center; min-width: 0; margin: 0; padding: 0; list-style: none; }
-.gl-crumb { display: flex; align-items: center; min-width: 0; flex: 0 1 auto; }
-.gl-crumb:last-child { flex-shrink: 0.4; }
-.gl-crumb__sep { flex: none; width: 14px; height: 14px; margin: 0 2px; color: var(--gl-label-tertiary); stroke-width: 2.4; }
-.gl-crumb__item {
-  display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 14em; height: 32px; padding: 0 6px; border: 0; border-radius: var(--gl-radius-sm);
-  background: none; color: var(--gl-label-secondary); font: inherit; text-decoration: none; cursor: pointer;
-  transition: background-color var(--gl-duration-fast) ease, color var(--gl-duration-fast) ease;
+.sg-breadcrumbs { min-width: 0; font-size: var(--sg-text-subhead-size); line-height: 20px; }
+.sg-breadcrumbs ol { display: flex; align-items: center; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.sg-crumb { display: flex; align-items: center; min-width: 0; flex: 0 1 auto; }
+.sg-crumb:last-child { flex-shrink: 0.4; }
+.sg-crumb__sep { flex: none; width: 14px; height: 14px; margin: 0 2px; color: var(--sg-label-tertiary); stroke-width: 2.4; }
+.sg-crumb__item {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 14em; height: 32px; padding: 0 6px; border: 0; border-radius: var(--sg-radius-sm);
+  background: none; color: var(--sg-label-secondary); font: inherit; text-decoration: none; cursor: pointer;
+  transition: background-color var(--sg-duration-fast) ease, color var(--sg-duration-fast) ease;
 }
-.gl-crumb__item > svg:not(.gl-crumb__sep) { flex: none; width: 16px; height: 16px; }
-.gl-crumb__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (hover: hover) { a.gl-crumb__item:hover, button.gl-crumb__item:hover { background: var(--gl-fill); color: var(--gl-label); } }
-a.gl-crumb__item:active, button.gl-crumb__item:active { background: var(--gl-fill-strong); }
-.gl-crumb__item:focus-visible { outline: none; box-shadow: var(--gl-ring); }
-.gl-crumb__item[aria-current="page"] { color: var(--gl-label); font-weight: 600; cursor: default; max-width: 22em; }
-.gl-crumb__more { width: 32px; padding: 0; justify-content: center; }
-.gl-crumb__more svg { width: 18px; height: 18px; fill: currentColor; }
-.gl-crumb__more[aria-expanded="true"] { background: var(--gl-fill); color: var(--gl-label); }
+.sg-crumb__item > svg:not(.sg-crumb__sep) { flex: none; width: 16px; height: 16px; }
+.sg-crumb__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (hover: hover) { a.sg-crumb__item:hover, button.sg-crumb__item:hover { background: var(--sg-fill); color: var(--sg-label); } }
+a.sg-crumb__item:active, button.sg-crumb__item:active { background: var(--sg-fill-strong); }
+.sg-crumb__item:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-crumb__item[aria-current="page"] { color: var(--sg-label); font-weight: 600; cursor: default; max-width: 22em; }
+.sg-crumb__more { width: 32px; padding: 0; justify-content: center; }
+.sg-crumb__more svg { width: 18px; height: 18px; fill: currentColor; }
+.sg-crumb__more[aria-expanded="true"] { background: var(--sg-fill); color: var(--sg-label); }
 
 /* ============================================================================================
    Navigation stack: pages slide in over each other inside a region (the region sets the height)
    ============================================================================================ */
-.gl-nav { position: relative; overflow: hidden; overflow: clip; isolation: isolate; background: var(--gl-bg-grouped); touch-action: pan-y; }
-.gl-nav__page { position: absolute; inset: 0; background: var(--gl-bg-grouped); }
-.gl-nav__page[data-hidden] { visibility: hidden; }
+.sg-nav { position: relative; overflow: hidden; overflow: clip; isolation: isolate; background: var(--sg-bg-grouped); touch-action: pan-y; }
+.sg-nav__page { position: absolute; inset: 0; background: var(--sg-bg-grouped); }
+.sg-nav__page[data-hidden] { visibility: hidden; }
 /* the page coming in casts a soft edge on the one it covers (clipped away when it rests at 0) */
-.gl-nav__page:not([data-depth="0"]) { box-shadow: -1px 0 0 var(--gl-separator), -16px 0 32px rgba(0, 0, 0, 0.08); }
-.gl-nav[data-moving] .gl-nav__page { will-change: transform; }
-.gl-nav__scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }   /* a sideways finger is the stack's (swipe back), not the browser's */
-.gl-nav__shade { position: absolute; inset: 0; z-index: calc(var(--gl-z-bar) + 1); background: var(--gl-scrim); opacity: 0; pointer-events: none; }
-.gl-navpage__body { display: flex; flex-direction: column; gap: 24px; padding: 12px var(--gl-size-bar-inset) 32px; }
-.gl-nav__back { max-width: 100%; min-width: 0; padding-left: 2px; padding-right: 8px; }
-.gl-nav__back > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gl-nav__back svg { flex: none; }
-[data-gl-nav-title] { outline: none; border-radius: 4px; }
-[data-gl-nav-title]:focus-visible { box-shadow: var(--gl-ring); }
+.sg-nav__page:not([data-depth="0"]) { box-shadow: -1px 0 0 var(--sg-separator), -16px 0 32px rgba(0, 0, 0, 0.08); }
+.sg-nav[data-moving] .sg-nav__page { will-change: transform; }
+.sg-nav__scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }   /* a sideways finger is the stack's (swipe back), not the browser's */
+.sg-nav__shade { position: absolute; inset: 0; z-index: calc(var(--sg-z-bar) + 1); background: var(--sg-scrim); opacity: 0; pointer-events: none; }
+.sg-navpage__body { display: flex; flex-direction: column; gap: 24px; padding: 12px var(--sg-size-bar-inset) 32px; }
+.sg-nav__back { max-width: 100%; min-width: 0; padding-left: 2px; padding-right: 8px; }
+.sg-nav__back > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-nav__back svg { flex: none; }
+[data-sg-nav-title] { outline: none; border-radius: 4px; }
+[data-sg-nav-title]:focus-visible { box-shadow: var(--sg-ring); }

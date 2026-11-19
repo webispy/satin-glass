@@ -4,7 +4,7 @@
    activation="manual"), Home/End; each tab controls its panel. Panels slide in from the side you moved toward.
    A row of filter choices is not tabs: use chips (or a segmented control for two to five options). */
 import { useDeferredValue, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { animate, fade, prefersReducedMotion, type MotionName } from '@glass-layer/core';
+import { animate, fade, prefersReducedMotion, type MotionName } from '@satin-glass/core';
 import { cx, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { Badge, useBridge } from './controls';
 
@@ -25,7 +25,7 @@ export function Tabs<T extends string = string>({ items, value, defaultValue, on
   const [v, setV] = useControllable<T>(value, defaultValue ?? items.find((i) => !i.disabled)?.value ?? items[0]?.value, onChange);
   const index = Math.max(0, items.findIndex((i) => i.value === v));
   const list = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null), panel = useRef<HTMLDivElement>(null);
-  const id = useStableId('gl-tabs');
+  const id = useStableId('sg-tabs');
   /* the tab itself answers at once; the panel's content (charts, tables…) renders as a transition, in slices,
      so a heavy panel never blocks the frame the tap lands in */
   const shown = useDeferredValue(index);
@@ -43,7 +43,7 @@ export function Tabs<T extends string = string>({ items, value, defaultValue, on
   }, [shown]);
   const enabled = items.map((it, i) => (it.disabled ? -1 : i)).filter((i) => i >= 0);
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    const tabs = Array.from(e.currentTarget.querySelectorAll<HTMLElement>(':scope > [data-gl-item]'));
+    const tabs = Array.from(e.currentTarget.querySelectorAll<HTMLElement>(':scope > [data-sg-item]'));
     const at = tabs.indexOf(document.activeElement as HTMLElement);
     const k = e.key;
     let next = -1;
@@ -58,21 +58,21 @@ export function Tabs<T extends string = string>({ items, value, defaultValue, on
   };
   const cur = items[shown] ?? items[index];
   return (
-    <div className={cx('gl-tabs', className)} style={style} data-gl-motion={motion}>
-      <div ref={list} role="tablist" aria-label={label} className="gl-tabs__list" onKeyDown={onKey}>
-        <span ref={ind} className="gl-tabs__indicator" aria-hidden="true" />
+    <div className={cx('sg-tabs', className)} style={style} data-sg-motion={motion}>
+      <div ref={list} role="tablist" aria-label={label} className="sg-tabs__list" onKeyDown={onKey}>
+        <span ref={ind} className="sg-tabs__indicator" aria-hidden="true" />
         {items.map((it, i) => (
-          <button key={it.value} type="button" role="tab" id={`${id}-t${i}`} data-gl-item aria-selected={i === index}
+          <button key={it.value} type="button" role="tab" id={`${id}-t${i}`} data-sg-item aria-selected={i === index}
             aria-controls={hasPanels ? `${id}-p` : undefined} tabIndex={i === index ? 0 : -1} disabled={it.disabled}
-            className="gl-tabs__tab" onClick={() => setV(it.value)}>
-            {it.icon}<span className="gl-tabs__label" data-label={typeof it.label === 'string' ? it.label : undefined}>{it.label}</span>
+            className="sg-tabs__tab" onClick={() => setV(it.value)}>
+            {it.icon}<span className="sg-tabs__label" data-label={typeof it.label === 'string' ? it.label : undefined}>{it.label}</span>
             {/* a count or a word becomes the library's neutral Badge (it pops in and bumps on change, as in TabBar); any other node is used as given */}
-            {it.badge !== undefined && (typeof it.badge === 'number' || typeof it.badge === 'string' ? <Badge tone="neutral" className="gl-tabs__badge">{it.badge}</Badge> : it.badge)}
+            {it.badge !== undefined && (typeof it.badge === 'number' || typeof it.badge === 'string' ? <Badge tone="neutral" className="sg-tabs__badge">{it.badge}</Badge> : it.badge)}
           </button>
         ))}
       </div>
       {hasPanels && (
-        <div ref={panel} role="tabpanel" id={`${id}-p`} aria-labelledby={`${id}-t${shown}`} aria-busy={shown !== index || undefined} tabIndex={0} className={cx('gl-tabs__panel', panelClassName)}>
+        <div ref={panel} role="tabpanel" id={`${id}-p`} aria-labelledby={`${id}-t${shown}`} aria-busy={shown !== index || undefined} tabIndex={0} className={cx('sg-tabs__panel', panelClassName)}>
           {cur?.content}
         </div>
       )}

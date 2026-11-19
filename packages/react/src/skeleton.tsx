@@ -27,13 +27,13 @@ export function Skeleton({ variant = 'text', lines = 1, width, height, size = 40
   useIsoLayoutEffect(() => { ref.current?.style.setProperty('--_sync', `${-(performance.now() % SWEEP_MS)}ms`); }, []);
   if (variant === 'text' && lines > 1) {
     return (
-      <span ref={ref} className={cx('gl-skeleton-lines', className)} style={{ width: len(width), ...style }} aria-hidden="true">
-        {Array.from({ length: lines }, (_, i) => <span key={i} className="gl-skeleton gl-skeleton--text" style={i === lines - 1 ? { width: '62%' } : undefined} />)}
+      <span ref={ref} className={cx('sg-skeleton-lines', className)} style={{ width: len(width), ...style }} aria-hidden="true">
+        {Array.from({ length: lines }, (_, i) => <span key={i} className="sg-skeleton sg-skeleton--text" style={i === lines - 1 ? { width: '62%' } : undefined} />)}
       </span>
     );
   }
   const dims: CSSProperties = variant === 'circle'
     ? { width: size, height: size }
     : { width: len(width), height: len(height), borderRadius: len(radius) };
-  return <span ref={ref} className={cx('gl-skeleton', `gl-skeleton--${variant}`, className)} style={{ ...dims, ...style }} aria-hidden="true" />;
+  return <span ref={ref} className={cx('sg-skeleton', `sg-skeleton--${variant}`, className)} style={{ ...dims, ...style }} aria-hidden="true" />;
 }

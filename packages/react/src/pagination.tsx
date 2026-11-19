@@ -33,19 +33,19 @@ export function Pagination({ page, pageCount, onChange, siblings = 1, 'aria-labe
   const go = (n: number) => { if (n >= 1 && n <= count && n !== cur) onChange(n); };
   return (
     /* --_digits: every slot as wide as the widest page number, so nothing shifts while the window moves */
-    <nav aria-label={label} className={cx('gl-pagination', className)} data-wide={siblings > 1 || undefined} style={{ ['--_digits' as string]: String(count).length, ...style } as CSSProperties}>
-      <button type="button" className="gl-pagination__step" aria-label={labels.previous ?? 'Previous page'} disabled={cur <= 1} onClick={() => go(cur - 1)}><ChevronLeftIcon /></button>
-      <ol className="gl-pagination__pages">
+    <nav aria-label={label} className={cx('sg-pagination', className)} data-wide={siblings > 1 || undefined} style={{ ['--_digits' as string]: String(count).length, ...style } as CSSProperties}>
+      <button type="button" className="sg-pagination__step" aria-label={labels.previous ?? 'Previous page'} disabled={cur <= 1} onClick={() => go(cur - 1)}><ChevronLeftIcon /></button>
+      <ol className="sg-pagination__pages">
         {pageWindow(cur, count, siblings).map((n, i) => (
           <li key={n ?? `gap${i}`}>
-            {n === null ? <span className="gl-pagination__gap" aria-hidden="true">…</span> : (
-              <button type="button" className="gl-pagination__page" aria-label={pageLabel(n)} aria-current={n === cur ? 'page' : undefined} onClick={() => go(n)}>{n}</button>
+            {n === null ? <span className="sg-pagination__gap" aria-hidden="true">…</span> : (
+              <button type="button" className="sg-pagination__page" aria-label={pageLabel(n)} aria-current={n === cur ? 'page' : undefined} onClick={() => go(n)}>{n}</button>
             )}
           </li>
         ))}
       </ol>
-      <span className="gl-pagination__compact" aria-hidden="true">{cur} / {count}</span>
-      <button type="button" className="gl-pagination__step" aria-label={labels.next ?? 'Next page'} disabled={cur >= count} onClick={() => go(cur + 1)}><ChevronRightIcon /></button>
+      <span className="sg-pagination__compact" aria-hidden="true">{cur} / {count}</span>
+      <button type="button" className="sg-pagination__step" aria-label={labels.next ?? 'Next page'} disabled={cur >= count} onClick={() => go(cur + 1)}><ChevronRightIcon /></button>
     </nav>
   );
 }

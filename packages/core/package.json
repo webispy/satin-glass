@@ -1,5 +1,5 @@
 {
-  "name": "@glass-layer/core",
+  "name": "@satin-glass/core",
   "version": "0.3.0",
   "type": "module",
   "sideEffects": [
@@ -21,7 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@glass-layer/tokens": "workspace:*"
+    "@satin-glass/tokens": "workspace:*"
   },
   "devDependencies": {
     "vitest": "5.1.0",

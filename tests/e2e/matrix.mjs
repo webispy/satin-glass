@@ -66,12 +66,12 @@ for (const c of combos) {
           if (cs.display === 'none' || cs.visibility === 'hidden') continue;
           const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
           if (!own) continue;
-          if (el.closest('.gl-visually-hidden')) continue;   /* screen-reader-only text is meant to be clipped */
+          if (el.closest('.sg-visually-hidden')) continue;   /* screen-reader-only text is meant to be clipped */
           const rect = el.getBoundingClientRect();
           if (rect.width === 0 || rect.height === 0) continue;
           /* disabled text and decorative copies are exempt (WCAG 1.4.3) */
           let dim = false;
-          for (let e = el; e; e = e.parentElement) { const s2 = getComputedStyle(e); if (+s2.opacity < 0.99 || e.matches?.('[disabled],[aria-disabled="true"],[aria-hidden="true"],.gl-lift')) { dim = true; break; } }
+          for (let e = el; e; e = e.parentElement) { const s2 = getComputedStyle(e); if (+s2.opacity < 0.99 || e.matches?.('[disabled],[aria-disabled="true"],[aria-hidden="true"],.sg-lift')) { dim = true; break; } }
           let invisible = false;
           for (let e = el; e; e = e.parentElement) if (+getComputedStyle(e).opacity === 0) { invisible = true; break; }
           if (invisible) continue;
@@ -89,7 +89,7 @@ for (const c of combos) {
           res.checked++;
           if (rr < need - 0.05) res.contrast.push(`${rr.toFixed(2)}<${need} ${el.tagName}.${(el.className || '').toString().split(' ')[0]} "${el.textContent.trim().slice(0, 20)}" ${size}px`);
         }
-        if (rt) res.blur = [...document.querySelectorAll('.gl-glass')].filter((e) => { const f = getComputedStyle(e).backdropFilter; return f && f !== 'none'; }).length;
+        if (rt) res.blur = [...document.querySelectorAll('.sg-glass')].filter((e) => { const f = getComputedStyle(e).backdropFilter; return f && f !== 'none'; }).length;
         return res;
       }, { hc: c.hc, rt: c.rt });
       const key = `${tag} @${width}`;

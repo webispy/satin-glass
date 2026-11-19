@@ -3,8 +3,8 @@ import {
   type CSSProperties, type ElementType, type HTMLAttributes, type ReactNode, type ComponentPropsWithoutRef,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { attachLight, type MotionName } from '@glass-layer/core';
-import type { TextStyle } from '@glass-layer/tokens';
+import { attachLight, type MotionName } from '@satin-glass/core';
+import type { TextStyle } from '@satin-glass/tokens';
 import { cx, mergeRefs } from './utils';
 
 /* ================================================================================================ Theme */
@@ -17,7 +17,7 @@ export type Theme = {
   reduceTransparency: boolean | 'system';
   /** pointer-following highlight on glass */
   light: boolean;
-  /** CSS variable overrides, e.g. { accent: '#0a7' } → --gl-accent */
+  /** CSS variable overrides, e.g. { accent: '#0a7' } → --sg-accent */
   tokens?: Record<string, string>;
   /** motion personality: 'calm' | 'lively' (default) | 'playful' */
   motion?: MotionName;
@@ -38,14 +38,14 @@ const MotionCtx = createContext<MotionName | undefined>(undefined);
 export const useMotion = () => useContext(MotionCtx);
 
 export type MotionScopeProps = { motion?: MotionName; children?: ReactNode; /** context only, no wrapper element (for portals) */ bare?: boolean };
-/** Sets the motion personality for everything inside: CSS springs via [data-gl-motion], JS springs and portals via context. */
+/** Sets the motion personality for everything inside: CSS springs via [data-sg-motion], JS springs and portals via context. */
 export function MotionScope({ motion, children, bare }: MotionScopeProps) {
   const outer = useContext(MotionCtx);
   const m = motion ?? outer;
   if (!motion) return <>{children}</>;
   return (
     <MotionCtx.Provider value={m}>
-      {bare ? children : <div data-gl-motion={m} style={{ display: 'contents' }}>{children}</div>}
+      {bare ? children : <div data-sg-motion={m} style={{ display: 'contents' }}>{children}</div>}
     </MotionCtx.Provider>
   );
 }
@@ -62,7 +62,7 @@ function useMedia(q: string): boolean {
 }
 
 const tokenStyle = (tokens?: Record<string, string>): CSSProperties | undefined =>
-  tokens ? (Object.fromEntries(Object.entries(tokens).map(([k, v]) => [`--gl-${k}`, v])) as CSSProperties) : undefined;
+  tokens ? (Object.fromEntries(Object.entries(tokens).map(([k, v]) => [`--sg-${k}`, v])) as CSSProperties) : undefined;
 
 export type ThemeProviderProps = HTMLAttributes<HTMLDivElement> & { theme?: Theme; children?: ReactNode };
 
@@ -80,7 +80,7 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
   return (
     <ThemeCtx.Provider value={resolved}>
      <MotionCtx.Provider value={theme.motion}>
-      <div ref={ref} data-gl-theme={resolved.name} data-gl-motion={theme.motion} data-gl-reduce-motion={theme.reduceMotion === 'system' ? undefined : String(theme.reduceMotion)} className={cx('gl-root', rt && 'gl-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
+      <div ref={ref} data-sg-theme={resolved.name} data-sg-motion={theme.motion} data-sg-reduce-motion={theme.reduceMotion === 'system' ? undefined : String(theme.reduceMotion)} className={cx('sg-root', rt && 'sg-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
         {children}
       </div>
      </MotionCtx.Provider>
@@ -96,7 +96,7 @@ export function Portal({ children, className }: { children: ReactNode; className
   const host = typeof document !== 'undefined' ? document.body : null;
   if (!host) return null;
   return createPortal(
-    <div className={cx('gl-root gl-portal', className)} data-gl-theme={t.name} data-gl-motion={motion} data-gl-reduce-motion={t.reduceMotion === 'system' ? undefined : String(t.reduceMotion)} style={tokenStyle(t.tokens)}>{children}</div>,
+    <div className={cx('sg-root sg-portal', className)} data-sg-theme={t.name} data-sg-motion={motion} data-sg-reduce-motion={t.reduceMotion === 'system' ? undefined : String(t.reduceMotion)} style={tokenStyle(t.tokens)}>{children}</div>,
     host,
   );
 }
@@ -124,7 +124,7 @@ export function useGlassLight(enabled = true) {
 }
 
 export function glassClass(variant: GlassVariant = 'regular', pressable?: boolean) {
-  return cx('gl-glass', variant !== 'regular' && `gl-glass--${variant}`, pressable && 'gl-pressable');
+  return cx('sg-glass', variant !== 'regular' && `sg-glass--${variant}`, pressable && 'sg-pressable');
 }
 
 export const Glass = forwardRef(function Glass<E extends ElementType = 'div'>(
@@ -138,7 +138,7 @@ export const Glass = forwardRef(function Glass<E extends ElementType = 'div'>(
       ref={mergeRefs(ref, lightRef)}
       className={cx(glassClass(variant, pressable), className)}
       data-tint={tint ? '' : undefined}
-      style={{ ...(tint ? { '--gl-tint': tint } : null), ...(radius ? { '--_radius': `var(--gl-radius-${radius})` } : null), ...style } as CSSProperties}
+      style={{ ...(tint ? { '--sg-tint': tint } : null), ...(radius ? { '--_radius': `var(--sg-radius-${radius})` } : null), ...style } as CSSProperties}
       {...rest}
     />
   );
@@ -157,7 +157,7 @@ export const Text = forwardRef(function Text<E extends ElementType = 'p'>(
   { as, variant = 'body', tone = 'default', truncate, tabular, className, ...rest }: TextProps<E>, ref: React.Ref<HTMLElement>,
 ) {
   const Comp = (as ?? defaultTag[variant] ?? 'p') as ElementType;
-  return <Comp ref={ref} className={cx('gl-text', `gl-text--${variant}`, tone !== 'default' && `gl-text--${tone}`, truncate && 'gl-text--truncate', tabular && 'gl-text--tabular', className)} {...rest} />;
+  return <Comp ref={ref} className={cx('sg-text', `sg-text--${variant}`, tone !== 'default' && `sg-text--${tone}`, truncate && 'sg-text--truncate', tabular && 'sg-text--tabular', className)} {...rest} />;
 }) as <E extends ElementType = 'p'>(p: TextProps<E> & { ref?: React.Ref<HTMLElement> }) => React.ReactElement | null;
 
 const space = (v: number | string | undefined) => (v === undefined ? undefined : typeof v === 'number' ? `${v * 4}px` : v);
@@ -174,13 +174,13 @@ export type StackProps = HTMLAttributes<HTMLDivElement> & {
 };
 export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack({ direction = 'column', gap, align, justify, wrap, padding, as, className, style, ...rest }, ref) {
   const Comp = (as ?? 'div') as ElementType;
-  return <Comp ref={ref} className={cx('gl-stack', direction === 'row' && 'gl-stack--row', className)} style={{ gap: space(gap), alignItems: align, justifyContent: justify, flexWrap: wrap ? 'wrap' : undefined, padding: space(padding), ...style }} {...rest} />;
+  return <Comp ref={ref} className={cx('sg-stack', direction === 'row' && 'sg-stack--row', className)} style={{ gap: space(gap), alignItems: align, justifyContent: justify, flexWrap: wrap ? 'wrap' : undefined, padding: space(padding), ...style }} {...rest} />;
 });
 
 export function Divider({ vertical, className, ...rest }: HTMLAttributes<HTMLHRElement> & { vertical?: boolean }) {
-  return <hr className={cx('gl-divider', vertical && 'gl-divider--vertical', className)} aria-orientation={vertical ? 'vertical' : undefined} {...rest} />;
+  return <hr className={cx('sg-divider', vertical && 'sg-divider--vertical', className)} aria-orientation={vertical ? 'vertical' : undefined} {...rest} />;
 }
 
 export function VisuallyHidden(props: HTMLAttributes<HTMLSpanElement>) {
-  return <span className="gl-visually-hidden" {...props} />;
+  return <span className="sg-visually-hidden" {...props} />;
 }

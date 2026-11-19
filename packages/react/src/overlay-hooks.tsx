@@ -1,6 +1,6 @@
 /* Internal overlay plumbing shared by the overlay components (not part of the public API). */
 import { useEffect, useRef } from 'react';
-import { bloomIn, bloomOut, holdScrollLock, place, pushLayer, type Placement } from '@glass-layer/core';
+import { bloomIn, bloomOut, holdScrollLock, place, pushLayer, type Placement } from '@satin-glass/core';
 import { useIsoLayoutEffect, usePresence } from './utils';
 
 export type CloseReason = 'escape' | 'backdrop' | 'action' | 'swipe' | 'select';

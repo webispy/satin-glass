@@ -2,113 +2,113 @@
    Overlays. Motion lives in core/overlay.ts (bloom: transform + opacity only, via Web Animations).
    The scrim only dims — no full-screen blur (the most expensive thing a page can ask a GPU-less device for).
    ============================================================================================ */
-.gl-portal, .gl-root.gl-portal { position: fixed; inset: 0; z-index: var(--gl-z-dialog); pointer-events: none; background: none; }
-.gl-portal > * { pointer-events: auto; }
+.sg-portal, .sg-root.sg-portal { position: fixed; inset: 0; z-index: var(--sg-z-dialog); pointer-events: none; background: none; }
+.sg-portal > * { pointer-events: auto; }
 /* anchored panels (menu, popover, listbox, date panel) live in document coordinates: the page's own scrolling
    carries them with their anchor on the compositor, with no frame of lag; only inner scroll areas need JS */
-.gl-portal.gl-portal--anchored { position: absolute; inset: 0 auto auto 0; width: 100%; height: 0; }
-.gl-portal--passthrough > .gl-scrim { pointer-events: auto; }
+.sg-portal.sg-portal--anchored { position: absolute; inset: 0 auto auto 0; width: 100%; height: 0; }
+.sg-portal--passthrough > .sg-scrim { pointer-events: auto; }
 
-.gl-scrim { position: fixed; inset: 0; background: var(--gl-scrim); opacity: 0; transition: opacity var(--gl-duration-base) ease; }
-.gl-scrim--clear { background: transparent; }
-.gl-scrim.is-open { opacity: 1; }
+.sg-scrim { position: fixed; inset: 0; background: var(--sg-scrim); opacity: 0; transition: opacity var(--sg-duration-base) ease; }
+.sg-scrim--clear { background: transparent; }
+.sg-scrim.is-open { opacity: 1; }
 
 /* ---- Dialog (alert) ---- */
-.gl-dialog-wrap { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; pointer-events: none; }
-.gl-dialog {
+.sg-dialog-wrap { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; pointer-events: none; }
+.sg-dialog {
   pointer-events: auto; width: min(360px, 100%); max-height: calc(100vh - 48px);
-  --_radius: var(--gl-radius-2xl); display: flex; flex-direction: column;
+  --_radius: var(--sg-radius-2xl); display: flex; flex-direction: column;
 }
-/* scrolls inside the glass (see .gl-sidebar__scroll) */
-.gl-dialog__scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 24px 20px 18px; display: flex; flex-direction: column; gap: 8px; }
-.gl-dialog__icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: var(--gl-accent-soft); color: var(--gl-accent-text); margin-bottom: 6px; }
-.gl-dialog__icon[data-tone="danger"] { background: var(--gl-danger-soft); color: var(--gl-danger-text); }
-.gl-dialog__icon svg { width: 22px; height: 22px; }
-.gl-dialog__title { margin: 0; font-size: 18px; line-height: 24px; font-weight: 700; letter-spacing: -0.012em; }
-.gl-dialog__body { margin: 0; font-size: 15px; line-height: 22px; color: var(--gl-label-secondary); }
-.gl-dialog__actions { display: flex; gap: 8px; margin-top: 14px; }
-.gl-dialog__actions > * { flex: 1; }
-.gl-dialog__actions--stacked { flex-direction: column-reverse; }
+/* scrolls inside the glass (see .sg-sidebar__scroll) */
+.sg-dialog__scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 24px 20px 18px; display: flex; flex-direction: column; gap: 8px; }
+.sg-dialog__icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: var(--sg-accent-soft); color: var(--sg-accent-text); margin-bottom: 6px; }
+.sg-dialog__icon[data-tone="danger"] { background: var(--sg-danger-soft); color: var(--sg-danger-text); }
+.sg-dialog__icon svg { width: 22px; height: 22px; }
+.sg-dialog__title { margin: 0; font-size: 18px; line-height: 24px; font-weight: 700; letter-spacing: -0.012em; }
+.sg-dialog__body { margin: 0; font-size: 15px; line-height: 22px; color: var(--sg-label-secondary); }
+.sg-dialog__actions { display: flex; gap: 8px; margin-top: 14px; }
+.sg-dialog__actions > * { flex: 1; }
+.sg-dialog__actions--stacked { flex-direction: column-reverse; }
 
 /* ---- Sheet: floats 8 px above the screen edge, fixed radius, drag down to dismiss ---- */
-.gl-sheet-wrap { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); pointer-events: none; }
-.gl-sheet {
+.sg-sheet-wrap { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); pointer-events: none; }
+.sg-sheet {
   pointer-events: auto; position: relative; width: min(640px, 100%); max-height: calc(100% - 40px);
-  display: flex; flex-direction: column; --_radius: var(--gl-radius-2xl);
+  display: flex; flex-direction: column; --_radius: var(--sg-radius-2xl);
   will-change: transform; touch-action: none;
 }
-.gl-sheet--full { height: calc(100% - 40px); }
-.gl-sheet__grabber { flex: none; display: grid; place-items: center; height: 22px; cursor: grab; }
-.gl-sheet__grabber::before { content: ""; width: 38px; height: 5px; border-radius: var(--gl-radius-full); background: var(--gl-label-tertiary); opacity: 0.55; }
-.gl-sheet__header { flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 0 12px 8px; min-height: 44px; }
-.gl-sheet__title { margin: 0; font-size: 17px; line-height: 24px; font-weight: 700; text-align: center; grid-column: 2; }
-.gl-sheet__header > :last-child:not(.gl-sheet__title) { justify-self: end; grid-column: 3; }
-.gl-sheet__header > :first-child:not(.gl-sheet__title) { justify-self: start; grid-column: 1; }
-.gl-sheet__body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 4px 16px 20px; }
+.sg-sheet--full { height: calc(100% - 40px); }
+.sg-sheet__grabber { flex: none; display: grid; place-items: center; height: 22px; cursor: grab; }
+.sg-sheet__grabber::before { content: ""; width: 38px; height: 5px; border-radius: var(--sg-radius-full); background: var(--sg-label-tertiary); opacity: 0.55; }
+.sg-sheet__header { flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 0 12px 8px; min-height: 44px; }
+.sg-sheet__title { margin: 0; font-size: 17px; line-height: 24px; font-weight: 700; text-align: center; grid-column: 2; }
+.sg-sheet__header > :last-child:not(.sg-sheet__title) { justify-self: end; grid-column: 3; }
+.sg-sheet__header > :first-child:not(.sg-sheet__title) { justify-self: start; grid-column: 1; }
+.sg-sheet__body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 4px 16px 20px; }
 @media (min-width: 900px) {
-  .gl-sheet-wrap--adaptive { align-items: center; padding: 32px; }
+  .sg-sheet-wrap--adaptive { align-items: center; padding: 32px; }
 }
 
 /* ---- Menu ---- */
-.gl-menu {
+.sg-menu {
   position: absolute; left: 0; top: 0; min-width: 220px; max-width: min(320px, calc(100vw - 24px)); max-height: calc(100vh - 24px);
-  display: flex; flex-direction: column; --_radius: var(--gl-radius-lg); outline: none;
+  display: flex; flex-direction: column; --_radius: var(--sg-radius-lg); outline: none;
 }
-.gl-menu > [data-gl-content] { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 6px; }
-.gl-menu__item {
+.sg-menu > [data-sg-content] { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 6px; }
+.sg-menu__item {
   appearance: none; border: 0; margin: 0; font: inherit; width: 100%; text-align: left;
   display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px;
-  border-radius: calc(var(--gl-radius-lg) - 6px); background: none; color: var(--gl-label); font-size: 15px; line-height: 20px; cursor: pointer;
+  border-radius: calc(var(--sg-radius-lg) - 6px); background: none; color: var(--sg-label); font-size: 15px; line-height: 20px; cursor: pointer;
 }
-.gl-menu__item[data-active], .gl-menu__item:focus-visible { background: var(--gl-fill-strong); outline: none; }
-@media (hover: hover) { .gl-menu__item:hover { background: var(--gl-fill-strong); outline: none; } }
-.gl-menu__item[aria-disabled="true"] { color: var(--gl-label-disabled); cursor: default; background: none; }
-.gl-menu__item[data-tone="danger"] { color: var(--gl-danger-text); }
-.gl-menu__item svg { width: 18px; height: 18px; flex: none; }
-.gl-menu__item-label { flex: 1; min-width: 0; }
-.gl-menu__item-hint { font-size: 13px; color: var(--gl-label-tertiary); }
-.gl-menu__check { width: 16px; height: 16px; color: var(--gl-accent-text); }
-.gl-menu__sep { height: 1px; margin: 5px 10px; background: var(--gl-separator); }
-.gl-menu__label { padding: 8px 10px 4px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--gl-label-tertiary); }
+.sg-menu__item[data-active], .sg-menu__item:focus-visible { background: var(--sg-fill-strong); outline: none; }
+@media (hover: hover) { .sg-menu__item:hover { background: var(--sg-fill-strong); outline: none; } }
+.sg-menu__item[aria-disabled="true"] { color: var(--sg-label-disabled); cursor: default; background: none; }
+.sg-menu__item[data-tone="danger"] { color: var(--sg-danger-text); }
+.sg-menu__item svg { width: 18px; height: 18px; flex: none; }
+.sg-menu__item-label { flex: 1; min-width: 0; }
+.sg-menu__item-hint { font-size: 13px; color: var(--sg-label-tertiary); }
+.sg-menu__check { width: 16px; height: 16px; color: var(--sg-accent-text); }
+.sg-menu__sep { height: 1px; margin: 5px 10px; background: var(--sg-separator); }
+.sg-menu__label { padding: 8px 10px 4px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--sg-label-tertiary); }
 
 /* ---- Popover ---- */
-.gl-popover { position: absolute; left: 0; top: 0; max-width: min(340px, calc(100vw - 24px)); padding: 16px; --_radius: var(--gl-radius-lg); outline: none; }
+.sg-popover { position: absolute; left: 0; top: 0; max-width: min(340px, calc(100vw - 24px)); padding: 16px; --_radius: var(--sg-radius-lg); outline: none; }
 
 /* ---- Action sheet: grouped actions above a separate cancel ---- */
-.gl-actionsheet-wrap { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); pointer-events: none; }
-.gl-actionsheet { pointer-events: auto; width: min(440px, 100%); display: flex; flex-direction: column; gap: 8px; }
-.gl-actionsheet__group { --_radius: var(--gl-radius-xl); display: flex; flex-direction: column; }
-.gl-actionsheet__head { padding: 14px 20px 10px; text-align: center; }
-.gl-actionsheet__title { margin: 0; font-size: 13px; line-height: 18px; font-weight: 650; color: var(--gl-label-secondary); }
-.gl-actionsheet__message { margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--gl-label-tertiary); }
-.gl-actionsheet__action {
+.sg-actionsheet-wrap { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); pointer-events: none; }
+.sg-actionsheet { pointer-events: auto; width: min(440px, 100%); display: flex; flex-direction: column; gap: 8px; }
+.sg-actionsheet__group { --_radius: var(--sg-radius-xl); display: flex; flex-direction: column; }
+.sg-actionsheet__head { padding: 14px 20px 10px; text-align: center; }
+.sg-actionsheet__title { margin: 0; font-size: 13px; line-height: 18px; font-weight: 650; color: var(--sg-label-secondary); }
+.sg-actionsheet__message { margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--sg-label-tertiary); }
+.sg-actionsheet__action {
   appearance: none; border: 0; margin: 0; font: inherit; width: 100%; min-height: 54px; padding: 0 20px;
-  display: flex; align-items: center; justify-content: center; gap: 8px; background: none; color: var(--gl-accent-text);
+  display: flex; align-items: center; justify-content: center; gap: 8px; background: none; color: var(--sg-accent-text);
   font-size: 17px; font-weight: 560; cursor: pointer; position: relative;
 }
-.gl-actionsheet__action + .gl-actionsheet__action::before, .gl-actionsheet__head + .gl-actionsheet__action::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; transform: scaleY(0.5); background: var(--gl-separator-strong); }
-.gl-actionsheet__action:focus-visible { background: var(--gl-fill); outline: none; }
-@media (hover: hover) { .gl-actionsheet__action:hover { background: var(--gl-fill); outline: none; } }
-.gl-actionsheet__action:active { background: var(--gl-fill-strong); }
-.gl-actionsheet__action[data-tone="danger"] { color: var(--gl-danger-text); }
-.gl-actionsheet__action--cancel { font-weight: 700; border-radius: var(--gl-radius-xl); }
+.sg-actionsheet__action + .sg-actionsheet__action::before, .sg-actionsheet__head + .sg-actionsheet__action::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; transform: scaleY(0.5); background: var(--sg-separator-strong); }
+.sg-actionsheet__action:focus-visible { background: var(--sg-fill); outline: none; }
+@media (hover: hover) { .sg-actionsheet__action:hover { background: var(--sg-fill); outline: none; } }
+.sg-actionsheet__action:active { background: var(--sg-fill-strong); }
+.sg-actionsheet__action[data-tone="danger"] { color: var(--sg-danger-text); }
+.sg-actionsheet__action--cancel { font-weight: 700; border-radius: var(--sg-radius-xl); }
 
 /* ---- Context menu: the item lifts (a clone) above a dimmed page; the menu sits beside it ---- */
-.gl-lift { position: fixed; margin: 0; pointer-events: none; border-radius: var(--gl-radius-lg); overflow: hidden; box-shadow: var(--gl-shadow-lg); will-change: transform; }
+.sg-lift { position: fixed; margin: 0; pointer-events: none; border-radius: var(--sg-radius-lg); overflow: hidden; box-shadow: var(--sg-shadow-lg); will-change: transform; }
 
 /* ---- Toast ---- */
-.gl-toaster { position: fixed; z-index: var(--gl-z-toast); left: 0; right: 0; top: max(12px, env(safe-area-inset-top)); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; padding: 0 12px; }
-.gl-toaster--bottom { top: auto; bottom: max(16px, env(safe-area-inset-bottom)); flex-direction: column-reverse; }
-.gl-toast {
+.sg-toaster { position: fixed; z-index: var(--sg-z-toast); left: 0; right: 0; top: max(12px, env(safe-area-inset-top)); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; padding: 0 12px; }
+.sg-toaster--bottom { top: auto; bottom: max(16px, env(safe-area-inset-bottom)); flex-direction: column-reverse; }
+.sg-toast {
   pointer-events: auto; display: flex; align-items: center; gap: 10px; min-height: 48px; max-width: min(460px, 100%);
-  padding: 8px 8px 8px 14px; --_radius: var(--gl-radius-lg); touch-action: pan-y; will-change: transform;
+  padding: 8px 8px 8px 14px; --_radius: var(--sg-radius-lg); touch-action: pan-y; will-change: transform;
 }
-.gl-toast__icon { flex: none; width: 20px; height: 20px; color: var(--gl-accent-text); }
-.gl-toast[data-tone="success"] .gl-toast__icon { color: var(--gl-success-text); }
-.gl-toast[data-tone="danger"] .gl-toast__icon { color: var(--gl-danger-text); }
-.gl-toast__text { flex: 1; min-width: 0; font-size: 15px; line-height: 20px; font-weight: 520; padding: 6px 4px 6px 0; }
-.gl-toast__text small { display: block; font-size: 13px; line-height: 18px; font-weight: 450; color: var(--gl-label-secondary); }
+.sg-toast__icon { flex: none; width: 20px; height: 20px; color: var(--sg-accent-text); }
+.sg-toast[data-tone="success"] .sg-toast__icon { color: var(--sg-success-text); }
+.sg-toast[data-tone="danger"] .sg-toast__icon { color: var(--sg-danger-text); }
+.sg-toast__text { flex: 1; min-width: 0; font-size: 15px; line-height: 20px; font-weight: 520; padding: 6px 4px 6px 0; }
+.sg-toast__text small { display: block; font-size: 13px; line-height: 18px; font-weight: 450; color: var(--sg-label-secondary); }
 
 /* anchored panels clip but never scroll themselves (their content does): while the bloom's content offset overhangs
    the panel, nothing (scrollIntoView, focus(), find-in-page) can scroll it and drag the glass rim along */
-.gl-menu, .gl-popover, .gl-listbox, .gl-datepicker-panel { overflow: hidden; overflow: clip; }
+.sg-menu, .sg-popover, .sg-listbox, .sg-datepicker-panel { overflow: hidden; overflow: clip; }

@@ -8,7 +8,7 @@ describe('Button', () => {
     const on = vi.fn();
     const { rerender } = render(<Button variant="filled" onClick={on}>저장</Button>);
     const b = screen.getByRole('button', { name: '저장' });
-    expect(b.className).toContain('gl-button--filled');
+    expect(b.className).toContain('sg-button--filled');
     fireEvent.click(b); expect(on).toHaveBeenCalledTimes(1);
     rerender(<Button variant="filled" onClick={on} loading>저장</Button>);
     expect((b as HTMLButtonElement).disabled).toBe(true); expect(b.getAttribute('aria-busy')).toBe('true');
@@ -159,8 +159,8 @@ describe('ThemeProvider', () => {
   it('sets the theme name and token overrides on its element', () => {
     const { container } = render(<ThemeProvider theme={createTheme({ mode: 'dark', contrast: 'more', tokens: { accent: '#0a7' } })}><span /></ThemeProvider>);
     const root = container.firstElementChild as HTMLElement;
-    expect(root.dataset.glTheme).toBe('dark-hc');
-    expect(root.style.getPropertyValue('--gl-accent')).toBe('#0a7');
+    expect(root.dataset.sgTheme).toBe('dark-hc');
+    expect(root.style.getPropertyValue('--sg-accent')).toBe('#0a7');
   });
 });
 

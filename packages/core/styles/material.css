@@ -6,29 +6,29 @@
    · a highlight that sits where the pointer is (core/light.ts moves it with a transform)
    Everything that animates is transform/opacity on a composited pseudo-element.
    ============================================================================================ */
-.gl-glass {
-  --_fill: var(--gl-glass-fill);
-  --_blur: var(--gl-blur);
-  --_shadow: var(--gl-shadow-md);
-  --_radius: var(--gl-radius-xl);
+.sg-glass {
+  --_fill: var(--sg-glass-fill);
+  --_blur: var(--sg-blur);
+  --_shadow: var(--sg-shadow-md);
+  --_radius: var(--sg-radius-xl);
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  color: var(--gl-glass-ink);
+  color: var(--sg-glass-ink);
   border-radius: var(--_radius);
-  background-color: var(--gl-bg-elevated);
-  background-image: linear-gradient(180deg, var(--gl-glass-depth), rgba(255, 255, 255, 0) 52%);
+  background-color: var(--sg-bg-elevated);
+  background-image: linear-gradient(180deg, var(--sg-glass-depth), rgba(255, 255, 255, 0) 52%);
   box-shadow: var(--_shadow);
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .gl-glass {
+  .sg-glass {
     background-color: var(--_fill);
-    -webkit-backdrop-filter: blur(var(--_blur)) saturate(var(--gl-saturate));
-    backdrop-filter: blur(var(--_blur)) saturate(var(--gl-saturate));
+    -webkit-backdrop-filter: blur(var(--_blur)) saturate(var(--sg-saturate));
+    backdrop-filter: blur(var(--_blur)) saturate(var(--sg-saturate));
   }
 }
 /* the lit rim: a 1px gradient border drawn with a mask (no box-shadow stack, no extra element) */
-.gl-glass::before {
+.sg-glass::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -36,13 +36,13 @@
   border-radius: inherit;
   padding: 1px;
   pointer-events: none;
-  background: linear-gradient(var(--gl-light-angle, 165deg), var(--gl-glass-rim-lit), rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0) 60%, var(--gl-glass-rim-shade)) border-box;
+  background: linear-gradient(var(--sg-light-angle, 165deg), var(--sg-glass-rim-lit), rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0) 60%, var(--sg-glass-rim-shade)) border-box;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
 }
 /* the pointer highlight */
-.gl-glass::after {
+.sg-glass::after {
   content: "";
   position: absolute;
   left: 0;
@@ -52,44 +52,44 @@
   aspect-ratio: 1;
   border-radius: 50%;
   pointer-events: none;
-  background: radial-gradient(closest-side, var(--gl-glass-highlight), rgba(255, 255, 255, 0));
+  background: radial-gradient(closest-side, var(--sg-glass-highlight), rgba(255, 255, 255, 0));
   translate: -50% -50%;
-  transform: translate3d(var(--gl-hx, 25%), var(--gl-hy, 0px), 0);
-  opacity: var(--gl-hk, 0);
+  transform: translate3d(var(--sg-hx, 25%), var(--sg-hy, 0px), 0);
+  opacity: var(--sg-hk, 0);
   will-change: transform, opacity;
-  transition: opacity 260ms var(--gl-ease-out);
+  transition: opacity 260ms var(--sg-ease-out);
 }
-.gl-glass > * { position: relative; z-index: 1; }
+.sg-glass > * { position: relative; z-index: 1; }
 
-.gl-glass--strong { --_fill: var(--gl-glass-fill-strong); --_blur: var(--gl-blur-strong); --_shadow: var(--gl-shadow-lg); }
-.gl-glass--subtle { --_fill: var(--gl-glass-fill-subtle); --_blur: var(--gl-blur-subtle); --_shadow: var(--gl-shadow-sm); }
-/* over photos and video: clear fill, white ink, a darker shaded rim; pair with .gl-dimming when the media is bright */
-.gl-glass--clear {
-  --_fill: var(--gl-glass-fill-clear); --_blur: var(--gl-blur-subtle); --_shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
-  --gl-glass-rim-lit: rgba(255, 255, 255, 0.55); --gl-glass-rim-shade: rgba(0, 0, 0, 0.25); --gl-glass-depth: rgba(255, 255, 255, 0.12); --gl-glass-highlight: rgba(255, 255, 255, 0.35);
+.sg-glass--strong { --_fill: var(--sg-glass-fill-strong); --_blur: var(--sg-blur-strong); --_shadow: var(--sg-shadow-lg); }
+.sg-glass--subtle { --_fill: var(--sg-glass-fill-subtle); --_blur: var(--sg-blur-subtle); --_shadow: var(--sg-shadow-sm); }
+/* over photos and video: clear fill, white ink, a darker shaded rim; pair with .sg-dimming when the media is bright */
+.sg-glass--clear {
+  --_fill: var(--sg-glass-fill-clear); --_blur: var(--sg-blur-subtle); --_shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  --sg-glass-rim-lit: rgba(255, 255, 255, 0.55); --sg-glass-rim-shade: rgba(0, 0, 0, 0.25); --sg-glass-depth: rgba(255, 255, 255, 0.12); --sg-glass-highlight: rgba(255, 255, 255, 0.35);
   color: #fff;
 }
-/* tinted glass: the content's colour seeps into the fill (set --gl-tint, e.g. from useImageTint) */
-.gl-glass[data-tint] { --_fill: color-mix(in oklab, var(--gl-glass-fill) 84%, var(--gl-tint, transparent)); }
+/* tinted glass: the content's colour seeps into the fill (set --sg-tint, e.g. from useImageTint) */
+.sg-glass[data-tint] { --_fill: color-mix(in oklab, var(--sg-glass-fill) 84%, var(--sg-tint, transparent)); }
 
-.gl-dimming { position: absolute; inset: 0; pointer-events: none; background: rgba(0, 0, 0, 0.32); }
+.sg-dimming { position: absolute; inset: 0; pointer-events: none; background: rgba(0, 0, 0, 0.32); }
 
 /* pressable glass: presses IN (a short, firm give) and the light gathers under the finger */
-.gl-pressable { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
-.gl-pressable:active, .gl-pressable.is-pressed { transform: scale(0.965); transition-duration: 90ms; transition-timing-function: var(--gl-ease-out); }
-.gl-pressable.gl-glass:active::after, .gl-pressable.gl-glass.is-pressed::after { opacity: 1; transition-duration: 60ms; }
+.sg-pressable { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+.sg-pressable:active, .sg-pressable.is-pressed { transform: scale(0.965); transition-duration: 90ms; transition-timing-function: var(--sg-ease-out); }
+.sg-pressable.sg-glass:active::after, .sg-pressable.sg-glass.is-pressed::after { opacity: 1; transition-duration: 60ms; }
 
 /* accessibility: reduce transparency → solid surfaces; increased contrast → solid 1.5px rim */
-.gl-reduce-transparency .gl-glass, .gl-glass.gl-reduce-transparency { background-color: var(--gl-bg-elevated); -webkit-backdrop-filter: none; backdrop-filter: none; }
-.gl-reduce-transparency .gl-glass--clear { background-color: rgba(20, 20, 24, 0.86); }
+.sg-reduce-transparency .sg-glass, .sg-glass.sg-reduce-transparency { background-color: var(--sg-bg-elevated); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.sg-reduce-transparency .sg-glass--clear { background-color: rgba(20, 20, 24, 0.86); }
 @media (prefers-reduced-transparency: reduce) {
-  .gl-glass { background-color: var(--gl-bg-elevated); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .gl-glass--clear { background-color: rgba(20, 20, 24, 0.86); }
+  .sg-glass { background-color: var(--sg-bg-elevated); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .sg-glass--clear { background-color: rgba(20, 20, 24, 0.86); }
 }
-[data-gl-theme$="-hc"] .gl-glass::before, .gl-glass[data-gl-theme$="-hc"]::before { padding: 1.5px; background: var(--gl-label); }
-[data-gl-theme$="-hc"] .gl-glass::after { display: none; }
+[data-sg-theme$="-hc"] .sg-glass::before, .sg-glass[data-sg-theme$="-hc"]::before { padding: 1.5px; background: var(--sg-label); }
+[data-sg-theme$="-hc"] .sg-glass::after { display: none; }
 @media (forced-colors: active) {
-  .gl-glass { background: Canvas; color: CanvasText; border: 1px solid CanvasText; -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .gl-glass::before, .gl-glass::after { display: none; }
+  .sg-glass { background: Canvas; color: CanvasText; border: 1px solid CanvasText; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .sg-glass::before, .sg-glass::after { display: none; }
 }
 /* reduced motion: see base.css */

@@ -36,7 +36,7 @@ describe('Skeleton', () => {
     const { container } = render(<><Skeleton lines={3} /><Skeleton variant="circle" size={32} /></>);
     const [lines, circle] = Array.from(container.children) as HTMLElement[];
     expect(lines.getAttribute('aria-hidden')).toBe('true');
-    expect(lines.querySelectorAll('.gl-skeleton')).toHaveLength(3);
+    expect(lines.querySelectorAll('.sg-skeleton')).toHaveLength(3);
     expect(circle.style.width).toBe('32px');
     expect(circle.getAttribute('aria-hidden')).toBe('true');
   });
@@ -70,8 +70,8 @@ describe('MediaViewer', () => {
   });
   it('only the current slide is exposed; neighbours are rendered (preloaded) but hidden', () => {
     const { baseElement } = render(<T start={1} />);
-    const slides = [...baseElement.querySelectorAll('[data-gl-slide]')];
-    expect(slides.map((s) => s.getAttribute('data-gl-slide'))).toEqual(['0', '1', '2']);
+    const slides = [...baseElement.querySelectorAll('[data-sg-slide]')];
+    expect(slides.map((s) => s.getAttribute('data-sg-slide'))).toEqual(['0', '1', '2']);
     expect(slides.map((s) => s.getAttribute('aria-hidden'))).toEqual(['true', null, 'true']);
   });
   it('closes with the close button and with Escape', async () => {

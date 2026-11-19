@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 4173;
 const b = await pw[engine].launch(engine === 'firefox' ? { firefoxUserPrefs: { 'network.security.ports.banned.override': String(PORT) } } : {});
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const ORIGIN = process.env.DIST ? 'http://glass-layer.test' : `http://localhost:${PORT}`;
+const ORIGIN = process.env.DIST ? 'http://satin-glass.test' : `http://localhost:${PORT}`;
 const U = (id, q = '') => `${ORIGIN}/${q}#/${id}`;
 const DIST = new URL('../../apps/docs/dist/', import.meta.url);
 const TYPES = { html: 'text/html', js: 'text/javascript', css: 'text/css', svg: 'image/svg+xml', png: 'image/png', json: 'application/json', woff2: 'font/woff2' };
@@ -26,7 +26,7 @@ const newPage = async (opts = {}) => {
   });
   const p = await ctx.newPage();
   p.on('pageerror', (e) => errors.push(e.message));
-  p.on('console', (m) => { if (m.type() === 'error' && !/https?:\/\/(?!localhost|glass-layer\.test)/.test(m.text())) errors.push(m.text()); });
+  p.on('console', (m) => { if (m.type() === 'error' && !/https?:\/\/(?!localhost|satin-glass\.test)/.test(m.text())) errors.push(m.text()); });
   return p;
 };
 const settle = (p, ms = 650) => p.waitForTimeout(ms);
@@ -48,8 +48,8 @@ const still = (box, k, max = 2000) => box.evaluate((el, { k, max }) => new Promi
 }), { k, max });
 const lab = (p, sel) => p.locator(`[data-lab="${sel}"]`);
 
-const SEG = { track: '.gl-segmented', item: '.gl-segmented__item', ind: '.gl-segmented__indicator', role: 'radio', on: 'aria-checked' };
-const TAB = { track: '.gl-tabbar__track', item: '.gl-tabbar__item', ind: '.gl-tabbar__indicator', role: 'tab', on: 'aria-selected' };
+const SEG = { track: '.sg-segmented', item: '.sg-segmented__item', ind: '.sg-segmented__indicator', role: 'radio', on: 'aria-checked' };
+const TAB = { track: '.sg-tabbar__track', item: '.sg-tabbar__item', ind: '.sg-tabbar__indicator', role: 'tab', on: 'aria-selected' };
 const CASES = [
   ['many-seg-full', SEG], ['many-seg-360', SEG], ['many-seg-240', SEG], ['many-seg-disabled', SEG], ['many-seg-refused', SEG, { refused: 'doc' }],
   ['many-tabs-360-action', TAB], ['many-tabs-360', TAB], ['many-tabs-300-action', TAB], ['many-tabs-300-compact', TAB, { compact: true }],
@@ -64,7 +64,7 @@ const state = (box, k) => box.evaluate((el, k) => {
     dl: s ? +(i.left - s.left).toFixed(2) : NaN, dr: s ? +(i.right - s.right).toFixed(2) : NaN,
     visible: !!s && s.left >= tr.left - 1 && s.right <= tr.right + 1,
     scroll: Math.round(t.scrollLeft), scrollable: t.scrollWidth > t.clientWidth + 1,
-    moreStart: t.hasAttribute('data-gl-more-start'), moreEnd: t.hasAttribute('data-gl-more-end'),
+    moreStart: t.hasAttribute('data-sg-more-start'), moreEnd: t.hasAttribute('data-sg-more-end'),
   };
 }, k);
 const lands = (s) => s.count === 1 && Math.abs(s.dl) <= 1.5 && Math.abs(s.dr) <= 1.5 && s.visible;
@@ -85,7 +85,7 @@ async function checkCase(p, id, k, opt = {}, vw, quick = false) {
         const text = lab?.textContent ?? '';
         const shown = lab && getComputedStyle(lab).display !== 'none' && lab.getBoundingClientRect().width > 1;   /* compact: visually hidden */
         return { w: r.width, h: r.height, text, cut: shown && lab.scrollWidth > lab.clientWidth + 1, iconW: icon?.width ?? null,
-          iconHit: !!(icon && shown && lab.getBoundingClientRect().width > 0 && it.classList.contains('gl-segmented__item') && icon.right > lab.getBoundingClientRect().left + 0.5) };
+          iconHit: !!(icon && shown && lab.getBoundingClientRect().width > 0 && it.classList.contains('sg-segmented__item') && icon.right > lab.getBoundingClientRect().left + 0.5) };
       });
       return { trackIn: tr.left >= br.left - 0.5 && tr.right <= br.right + 0.5, trackH: tr.height, items, compact };
     }, { k, compact: !!opt.compact });
@@ -190,7 +190,7 @@ const atWidth = async (vw) => {
   if (vw === 1280) {
     /* the regular few-item controls still share the width equally (unchanged look) */
     await p.goto(U('navigation')); await settle(p, 700);
-    const eq = await p.evaluate(() => { const ws = [...document.querySelector('.docs__page .gl-tabbar__track').querySelectorAll('.gl-tabbar__item')].map((t) => t.getBoundingClientRect().width); return { spread: Math.max(...ws) - Math.min(...ws), scroll: (() => { const t = document.querySelector('.docs__page .gl-tabbar__track'); return t.scrollWidth - t.clientWidth; })() }; });
+    const eq = await p.evaluate(() => { const ws = [...document.querySelector('.docs__page .sg-tabbar__track').querySelectorAll('.sg-tabbar__item')].map((t) => t.getBoundingClientRect().width); return { spread: Math.max(...ws) - Math.min(...ws), scroll: (() => { const t = document.querySelector('.docs__page .sg-tabbar__track'); return t.scrollWidth - t.clientWidth; })() }; });
     ok('navigation page: a regular tab bar still has equal tabs and nothing to scroll', eq.spread < 1 && eq.scroll <= 1, JSON.stringify(eq));
   }
   await p.context().close();

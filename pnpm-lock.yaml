@@ -29,10 +29,10 @@ importers:
 
   apps/docs:
     dependencies:
-      '@glass-layer/react':
+      '@satin-glass/react':
         specifier: workspace:*
         version: link:../../packages/react
-      '@glass-layer/tokens':
+      '@satin-glass/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
       lucide-react:
@@ -60,7 +60,7 @@ importers:
 
   packages/core:
     dependencies:
-      '@glass-layer/tokens':
+      '@satin-glass/tokens':
         specifier: workspace:*
         version: link:../tokens
     devDependencies:
@@ -73,10 +73,10 @@ importers:
 
   packages/react:
     dependencies:
-      '@glass-layer/core':
+      '@satin-glass/core':
         specifier: workspace:*
         version: link:../core
-      '@glass-layer/tokens':
+      '@satin-glass/tokens':
         specifier: workspace:*
         version: link:../tokens
     devDependencies:

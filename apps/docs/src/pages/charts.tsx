@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import {
   BarChart, BarMeter, Button, DonutChart, IntervalPlot, LineChart, SegmentedControl, Sparkline, Stack, Stat, Text,
-} from '@glass-layer/react';
+} from '@satin-glass/react';
 import { CircleDollarSign, MousePointerClick, RotateCcw, ShoppingBag } from 'lucide-react';
 import { Demo, Page, Section } from '../shared';
 import { CATEGORY_SHARE, DAYS, MONTHS, PRODUCTS, REGIONS, num, wonShort } from '../data';
@@ -14,7 +14,7 @@ const pct = (k: 'visits' | 'orders' | 'revenue') => { const v = (week(k) / lastW
 
 export function ChartsPage() {
   return (
-    <Page title="차트와 지표" intro="직접 그린 SVG 차트입니다. 계열 색은 테마 토큰(--gl-chart-1…6)을 쓰고, 네 테마 모두 카드 위에서 3:1 이상의 대비를 지킵니다. 키보드로 점을 옮기면 값을 읽어 주고, 전체 데이터는 화면에 보이지 않는 표로도 제공합니다.">
+    <Page title="차트와 지표" intro="직접 그린 SVG 차트입니다. 계열 색은 테마 토큰(--sg-chart-1…6)을 쓰고, 네 테마 모두 카드 위에서 3:1 이상의 대비를 지킵니다. 키보드로 점을 옮기면 값을 읽어 주고, 전체 데이터는 화면에 보이지 않는 표로도 제공합니다.">
       <Stats />
       <Lines />
       <Bars />

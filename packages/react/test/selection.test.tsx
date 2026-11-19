@@ -161,7 +161,7 @@ describe('DatePicker', () => {
     const trigger = screen.getByRole('button', { name: /방문일/ });
     fireEvent.click(trigger);
     const dlg = await screen.findByRole('dialog');
-    const target = dlg.querySelector<HTMLButtonElement>('.gl-day:not([data-outside]):not([aria-disabled="true"])')!;
+    const target = dlg.querySelector<HTMLButtonElement>('.sg-day:not([data-outside]):not([aria-disabled="true"])')!;
     fireEvent.click(target);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     const iso = target.dataset.date!;

@@ -21,20 +21,20 @@ export type CheckboxProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' |
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Checkbox({ checked, defaultChecked = false, indeterminate = false, onChange, label, description, className, style, disabled, id, ...rest }, ref) {
   const [on, setOn] = useControllable(checked, defaultChecked, onChange);
   const input = useRef<HTMLInputElement>(null);
-  const auto = useStableId('gl-check');
+  const auto = useStableId('sg-check');
   const iid = id ?? auto;
   useEffect(() => { if (input.current) input.current.indeterminate = indeterminate; }, [indeterminate]);
   return (
-    <label className={cx('gl-check', className)} style={style} data-disabled={disabled || undefined}>
-      <input ref={mergeRefs(ref, input)} id={iid} type="checkbox" className="gl-check__input" checked={on} disabled={disabled}
+    <label className={cx('sg-check', className)} style={style} data-disabled={disabled || undefined}>
+      <input ref={mergeRefs(ref, input)} id={iid} type="checkbox" className="sg-check__input" checked={on} disabled={disabled}
         aria-describedby={description ? `${iid}-d` : undefined} onChange={(e) => setOn(e.currentTarget.checked)} {...rest} />
-      <span className="gl-check__box" aria-hidden="true">
-        <svg className="gl-check__mark" viewBox="0 0 16 16"><path className="gl-check__tick" d="M3.5 8.4l3 3 6-6.6" /><path className="gl-check__dash" d="M4 8h8" /></svg>
+      <span className="sg-check__box" aria-hidden="true">
+        <svg className="sg-check__mark" viewBox="0 0 16 16"><path className="sg-check__tick" d="M3.5 8.4l3 3 6-6.6" /><path className="sg-check__dash" d="M4 8h8" /></svg>
       </span>
       {(label || description) && (
-        <span className="gl-check__text">
+        <span className="sg-check__text">
           {label && <span>{label}</span>}
-          {description && <span id={`${iid}-d`} className="gl-check__desc">{description}</span>}
+          {description && <span id={`${iid}-d`} className="sg-check__desc">{description}</span>}
         </span>
       )}
     </label>
@@ -53,11 +53,11 @@ export type RadioGroupProps = {
 /** Native radios with one name: arrow keys move and select, Tab enters at the checked one. */
 export function RadioGroup({ value, defaultValue, onChange, name, label, disabled, direction = 'column', children, className, style, 'aria-label': ariaLabel }: RadioGroupProps) {
   const [v, setV] = useControllable<string | undefined>(value, defaultValue, onChange as (v: string | undefined) => void);
-  const auto = useStableId('gl-radio');
+  const auto = useStableId('sg-radio');
   return (
     <RadioContext.Provider value={{ name: name ?? auto, value: v, set: (x) => setV(x), disabled }}>
-      <fieldset className={cx('gl-radio-group', direction === 'row' && 'gl-radio-group--row', className)} style={style} aria-label={label ? undefined : ariaLabel} disabled={disabled}>
-        {label && <legend className="gl-radio-group__legend">{label}</legend>}
+      <fieldset className={cx('sg-radio-group', direction === 'row' && 'sg-radio-group--row', className)} style={style} aria-label={label ? undefined : ariaLabel} disabled={disabled}>
+        {label && <legend className="sg-radio-group__legend">{label}</legend>}
         {children}
       </fieldset>
     </RadioContext.Provider>
@@ -68,18 +68,18 @@ export type RadioProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'n
 export const Radio = forwardRef<HTMLInputElement, RadioProps>(function Radio({ value, label, description, className, style, disabled, id, ...rest }, ref) {
   const ctx = useContext(RadioContext);
   if (!ctx) throw new Error('Radio must be inside a RadioGroup');
-  const auto = useStableId('gl-radio-i');
+  const auto = useStableId('sg-radio-i');
   const iid = id ?? auto;
   const off = disabled || ctx.disabled;
   return (
-    <label className={cx('gl-check', 'gl-check--radio', className)} style={style} data-disabled={off || undefined}>
-      <input ref={ref} id={iid} type="radio" className="gl-check__input" name={ctx.name} value={value} checked={ctx.value === value} disabled={off}
+    <label className={cx('sg-check', 'sg-check--radio', className)} style={style} data-disabled={off || undefined}>
+      <input ref={ref} id={iid} type="radio" className="sg-check__input" name={ctx.name} value={value} checked={ctx.value === value} disabled={off}
         aria-describedby={description ? `${iid}-d` : undefined} onChange={() => ctx.set(value)} {...rest} />
-      <span className="gl-check__box" aria-hidden="true"><span className="gl-check__dot" /></span>
+      <span className="sg-check__box" aria-hidden="true"><span className="sg-check__dot" /></span>
       {(label || description) && (
-        <span className="gl-check__text">
+        <span className="sg-check__text">
           {label && <span>{label}</span>}
-          {description && <span id={`${iid}-d`} className="gl-check__desc">{description}</span>}
+          {description && <span id={`${iid}-d`} className="sg-check__desc">{description}</span>}
         </span>
       )}
     </label>
@@ -110,7 +110,7 @@ export function ChoiceList<T extends string = string>(props: ChoiceListProps<T>)
   const current = !multiple ? options.findIndex((o) => o.value === single) : -1;
   const tabStop = current >= 0 && !options[current].disabled ? current : enabled[0];
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    const rows = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[data-gl-choice]'));
+    const rows = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[data-sg-choice]'));
     const at = rows.indexOf(document.activeElement as HTMLElement);
     const dir = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
     let next = -1;
@@ -125,18 +125,18 @@ export function ChoiceList<T extends string = string>(props: ChoiceListProps<T>)
     if (!multiple) pick(options[next]);   /* radio semantics: moving selects */
   };
   return (
-    <div role={multiple ? 'group' : 'radiogroup'} aria-label={label} className={cx('gl-list', className)} style={style} onKeyDown={onKey}>
+    <div role={multiple ? 'group' : 'radiogroup'} aria-label={label} className={cx('sg-list', className)} style={style} onKeyDown={onKey}>
       {options.map((o, i) => (
-        <div key={o.value} className="gl-list-row" data-has-leading={o.icon ? true : undefined}>
-          <button type="button" data-gl-choice role={multiple ? 'checkbox' : 'radio'} aria-checked={isOn(o.value)} aria-disabled={o.disabled || undefined}
+        <div key={o.value} className="sg-list-row" data-has-leading={o.icon ? true : undefined}>
+          <button type="button" data-sg-choice role={multiple ? 'checkbox' : 'radio'} aria-checked={isOn(o.value)} aria-disabled={o.disabled || undefined}
             tabIndex={multiple ? (o.disabled ? -1 : 0) : i === tabStop ? 0 : -1}
-            className="gl-list-item gl-list-item--action gl-choice" onClick={() => pick(o)}>
-            {o.icon && <span className="gl-list-item__leading" style={o.tileColor ? ({ '--_tile': o.tileColor } as CSSProperties) : undefined} aria-hidden="true">{o.icon}</span>}
-            <span className="gl-list-item__text">
-              <span className="gl-list-item__title">{o.label}</span>
-              {o.description && <span className="gl-list-item__subtitle">{o.description}</span>}
+            className="sg-list-item sg-list-item--action sg-choice" onClick={() => pick(o)}>
+            {o.icon && <span className="sg-list-item__leading" style={o.tileColor ? ({ '--_tile': o.tileColor } as CSSProperties) : undefined} aria-hidden="true">{o.icon}</span>}
+            <span className="sg-list-item__text">
+              <span className="sg-list-item__title">{o.label}</span>
+              {o.description && <span className="sg-list-item__subtitle">{o.description}</span>}
             </span>
-            <CheckIcon className="gl-choice__check" />
+            <CheckIcon className="sg-choice__check" />
           </button>
         </div>
       ))}

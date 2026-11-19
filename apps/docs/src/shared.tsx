@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { Text } from '@glass-layer/react';
+import { Text } from '@satin-glass/react';
 
 export function Page({ title, intro, children }: { title: string; intro?: ReactNode; children: ReactNode }) {
   return (

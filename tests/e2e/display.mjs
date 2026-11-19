@@ -28,7 +28,7 @@ await go('display');
   const sc = p.locator('[data-scroll=largetitle]');
   await sc.scrollIntoViewIfNeeded();
   const read = () => sc.evaluate((e) => {
-    const h = e.querySelector('.gl-appbar'), small = h.querySelector('.gl-appbar__title'), large = e.querySelector('.gl-appbar__large');
+    const h = e.querySelector('.sg-appbar'), small = h.querySelector('.sg-appbar__title'), large = e.querySelector('.sg-appbar__large');
     return { small: +getComputedStyle(small).opacity, rise: new DOMMatrix(getComputedStyle(small).transform).f, large: +getComputedStyle(large).opacity, top: h.hasAttribute('data-at-top'), collapsed: h.hasAttribute('data-collapsed') };
   });
   const steps = [];
@@ -57,10 +57,10 @@ await go('display');
   const items = await p.getByRole('menu').getByRole('menuitem').allTextContents();
   ok('breadcrumbs: "…" opens a menu of the folded levels', items.join('|') === '문서|2026|여행 계획', items.join('|'));
   await p.keyboard.press('ArrowDown'); await p.keyboard.press('Enter'); await p.waitForTimeout(450);
-  const toasted = await p.locator('.gl-toast').filter({ hasText: '2026' }).count();
+  const toasted = await p.locator('.sg-toast').filter({ hasText: '2026' }).count();
   ok('breadcrumbs: choosing a folded level from the keyboard goes there; focus comes back to "…"', toasted === 1 && await more.evaluate((e) => e === document.activeElement), `toast ${toasted}`);
   const narrow = p.getByRole('navigation', { name: '좁은 경로' });
-  const fit = await narrow.evaluate((n) => { const box = n.parentElement.getBoundingClientRect(); return [...n.querySelectorAll('.gl-crumb__item')].every((i) => { const r = i.getBoundingClientRect(); return r.right <= box.right + 0.5 && r.left >= box.left - 0.5; }) && [...n.querySelectorAll('.gl-crumb__label')].some((l) => l.scrollWidth > l.clientWidth); });
+  const fit = await narrow.evaluate((n) => { const box = n.parentElement.getBoundingClientRect(); return [...n.querySelectorAll('.sg-crumb__item')].every((i) => { const r = i.getBoundingClientRect(); return r.right <= box.right + 0.5 && r.left >= box.left - 0.5; }) && [...n.querySelectorAll('.sg-crumb__label')].some((l) => l.scrollWidth > l.clientWidth); });
   ok('breadcrumbs (narrow): every level stays inside, truncated with an ellipsis', fit);
   await p.keyboard.press('Tab');
 }
@@ -71,16 +71,16 @@ await go('display');
   await btn.scrollIntoViewIfNeeded(); await btn.click(); await p.waitForTimeout(100);
   const busy = await page.locator('[aria-busy=true]').count();
   /* the light band: position (relative to each element's width) of two skeletons of different widths */
-  const sweep = await frames('() => {}', `() => [...document.querySelectorAll('[data-demo=skeleton] .gl-skeleton')].slice(0, 2).map((e) => { const m = new DOMMatrix(getComputedStyle(e, '::after').transform); return m.e / e.offsetWidth; })`, 1700);   /* a whole 1.6 s cycle: the band rests at the end of each pass */
+  const sweep = await frames('() => {}', `() => [...document.querySelectorAll('[data-demo=skeleton] .sg-skeleton')].slice(0, 2).map((e) => { const m = new DOMMatrix(getComputedStyle(e, '::after').transform); return m.e / e.offsetWidth; })`, 1700);   /* a whole 1.6 s cycle: the band rests at the end of each pass */
   const xs = sweep.map((v) => v[0]), moving = new Set(xs.map((x) => x.toFixed(2))).size;
   const inStep = sweep.every(([a, c]) => Math.abs(a - c) < 0.02);
-  const anim = await page.locator('.gl-skeleton').first().evaluate((e) => getComputedStyle(e).animationName);
+  const anim = await page.locator('.sg-skeleton').first().evaluate((e) => getComputedStyle(e).animationName);
   if (reduced) ok('skeleton (reduced motion): no moving band; the placeholders breathe instead', moving <= 1 && anim.includes('breathe'), `band positions ${moving}, animation ${anim}`);
   else ok('skeleton: one band of light sweeps every placeholder in step', moving > 10 && inStep, `positions ${moving}, in step ${inStep}`);
-  const hidden = await page.locator('.gl-skeleton, .gl-skeleton-lines').evaluateAll((xs) => xs.every((x) => x.closest('[aria-hidden=true]')));
+  const hidden = await page.locator('.sg-skeleton, .sg-skeleton-lines').evaluateAll((xs) => xs.every((x) => x.closest('[aria-hidden=true]')));
   ok('skeleton: placeholders are hidden from screen readers; the region is aria-busy', hidden && busy === 1);
   await p.waitForTimeout(2000);
-  ok('skeleton: content replaces it when loaded', (await page.locator('[data-demo=skeleton] .gl-avatar').count()) === 3 && (await page.locator('[aria-busy=true]').count()) === 0);
+  ok('skeleton: content replaces it when loaded', (await page.locator('[data-demo=skeleton] .sg-avatar').count()) === 3 && (await page.locator('[aria-busy=true]').count()) === 0);
 }
 
 /* ---------------------------------------------------------------- media viewer */
@@ -89,7 +89,7 @@ await go('display');
   await thumb.scrollIntoViewIfNeeded(); await p.waitForTimeout(200);
   const tr = await thumb.boundingBox();
   const open = await frames(`() => document.querySelectorAll('[data-demo=media] button')[1].click()`,
-    `() => { const l = document.querySelector('.gl-media [data-gl-slide="1"] .gl-media__dismiss'); if (!l) return null; const m = new DOMMatrix(getComputedStyle(l).transform), o = +getComputedStyle(l).opacity; return [m.a, m.e, m.f, o]; }`, 700);
+    `() => { const l = document.querySelector('.sg-media [data-sg-slide="1"] .sg-media__dismiss'); if (!l) return null; const m = new DOMMatrix(getComputedStyle(l).transform), o = +getComputedStyle(l).opacity; return [m.a, m.e, m.f, o]; }`, 700);
   const got = open.filter(Boolean);
   const dlg = p.getByRole('dialog', { name: '사진 보기' });
   if (reduced) ok('viewer (reduced motion): opens with a fade, in place (no zoom from the thumbnail)', got.every(([a, e, f]) => Math.abs(a - 1) < 0.001 && Math.abs(e) < 0.5 && Math.abs(f) < 0.5), JSON.stringify(got.slice(0, 2)));
@@ -102,34 +102,34 @@ await go('display');
   ok('viewer: a modal dialog; focus on Close; the page behind cannot scroll; the thumbnail is hidden (the photo has left it)',
     (await dlg.count()) === 1 && (await p.evaluate(() => document.activeElement?.getAttribute('aria-label'))) === '닫기'
     && (await p.evaluate(() => getComputedStyle(document.body).overflow)) === 'hidden' && (await thumb.evaluate((e) => getComputedStyle(e).visibility)) === 'hidden');
-  ok('viewer: counter and caption', (await dlg.locator('.gl-media__count').textContent()) === '2 / 6' && (await dlg.locator('.gl-media__caption').textContent()).includes('세로'));
+  ok('viewer: counter and caption', (await dlg.locator('.sg-media__count').textContent()) === '2 / 6' && (await dlg.locator('.sg-media__caption').textContent()).includes('세로'));
   /* paging */
-  const trackX = () => p.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.gl-media__track')).transform).e);
+  const trackX = () => p.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.sg-media__track')).transform).e);
   const x0 = await trackX();
-  const slide = await frames(`() => document.querySelector('.gl-media').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))`, `() => new DOMMatrix(getComputedStyle(document.querySelector('.gl-media__track')).transform).e`, 700);
+  const slide = await frames(`() => document.querySelector('.sg-media').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))`, `() => new DOMMatrix(getComputedStyle(document.querySelector('.sg-media__track')).transform).e`, 700);
   const target = x0 - (1280 + 24);
   const mids = slide.filter((x) => Math.abs(x - x0) > 2 && Math.abs(x - target) > 2).length;
-  ok(reduced ? 'viewer (reduced motion): → shows the next photo without sliding' : 'viewer: → slides to the next photo', (await dlg.locator('.gl-media__count').textContent()) === '3 / 6' && Math.abs(slide[slide.length - 1] - target) < 1 && (reduced ? mids === 0 : mids >= 3), `in-between frames ${mids}`);
+  ok(reduced ? 'viewer (reduced motion): → shows the next photo without sliding' : 'viewer: → slides to the next photo', (await dlg.locator('.sg-media__count').textContent()) === '3 / 6' && Math.abs(slide[slide.length - 1] - target) < 1 && (reduced ? mids === 0 : mids >= 3), `in-between frames ${mids}`);
   await p.keyboard.press('ArrowLeft'); await p.waitForTimeout(600);
   /* swipe with the mouse */
   await p.mouse.move(900, 450); await p.mouse.down();
   for (let i = 1; i <= 8; i++) { await p.mouse.move(900 - i * 50, 452); await p.waitForTimeout(16); }
   await p.mouse.up(); await p.waitForTimeout(700);
-  ok('viewer: a swipe left goes to the next photo', (await dlg.locator('.gl-media__count').textContent()) === '3 / 6');
+  ok('viewer: a swipe left goes to the next photo', (await dlg.locator('.sg-media__count').textContent()) === '3 / 6');
   await p.mouse.move(500, 450); await p.mouse.down();
   for (let i = 1; i <= 6; i++) { await p.mouse.move(500 + i * 25, 450); await p.waitForTimeout(40); }
   await p.waitForTimeout(150); await p.mouse.up(); await p.waitForTimeout(700);
-  ok('viewer: a short drag, held and let go, springs back to the same photo', (await dlg.locator('.gl-media__count').textContent()) === '3 / 6' && Math.abs((await trackX()) + 2 * 1304) < 1);
+  ok('viewer: a short drag, held and let go, springs back to the same photo', (await dlg.locator('.sg-media__count').textContent()) === '3 / 6' && Math.abs((await trackX()) + 2 * 1304) < 1);
   await p.keyboard.press('End'); await p.waitForTimeout(600);
   await p.mouse.move(800, 450); await p.mouse.down();
   for (let i = 1; i <= 8; i++) { await p.mouse.move(800 - i * 50, 450); await p.waitForTimeout(16); }
   const pulled = await trackX();
   await p.mouse.up(); await p.waitForTimeout(800);
-  ok('viewer: past the last photo the strip resists (rubber band) and settles back', (await dlg.locator('.gl-media__count').textContent()) === '6 / 6' && pulled > -5 * 1304 - 400 * 0.5 && pulled < -5 * 1304 && Math.abs((await trackX()) + 5 * 1304) < 1, `pulled ${(pulled + 5 * 1304).toFixed(0)} px`);
+  ok('viewer: past the last photo the strip resists (rubber band) and settles back', (await dlg.locator('.sg-media__count').textContent()) === '6 / 6' && pulled > -5 * 1304 - 400 * 0.5 && pulled < -5 * 1304 && Math.abs((await trackX()) + 5 * 1304) < 1, `pulled ${(pulled + 5 * 1304).toFixed(0)} px`);
   ok('viewer: Next is disabled on the last photo', await dlg.getByRole('button', { name: '다음 사진' }).isDisabled());
   await p.keyboard.press('Home'); await p.waitForTimeout(600);
   /* zoom */
-  const zoom = () => p.evaluate(() => { const f = document.querySelector('.gl-media [data-gl-slide="0"] .gl-media__frame'); const m = new DOMMatrix(getComputedStyle(f).transform); return { s: m.a, x: m.e, y: m.f }; });
+  const zoom = () => p.evaluate(() => { const f = document.querySelector('.sg-media [data-sg-slide="0"] .sg-media__frame'); const m = new DOMMatrix(getComputedStyle(f).transform); return { s: m.a, x: m.e, y: m.f }; });
   await p.mouse.dblclick(800, 400); await p.waitForTimeout(700);
   const z1 = await zoom();
   ok('viewer: double-click zooms in at that point', Math.abs(z1.s - 2.5) < 0.02 && z1.x < -50, JSON.stringify(z1));
@@ -137,8 +137,8 @@ await go('display');
   for (let i = 1; i <= 6; i++) { await p.mouse.move(800 + i * 30, 400 + i * 10); await p.waitForTimeout(16); }
   await p.mouse.up(); await p.waitForTimeout(700);
   const z2 = await zoom();
-  ok('viewer: zoomed in, a drag pans the photo (and does not page)', z2.x > z1.x + 60 && (await dlg.locator('.gl-media__count').textContent()) === '1 / 6', `x ${z1.x.toFixed(0)} → ${z2.x.toFixed(0)}`);
-  const bounds = await p.evaluate(() => { const f = document.querySelector('.gl-media [data-gl-slide="0"] .gl-media__frame').getBoundingClientRect(); return { l: f.left, r: f.right, t: f.top, b: f.bottom }; });
+  ok('viewer: zoomed in, a drag pans the photo (and does not page)', z2.x > z1.x + 60 && (await dlg.locator('.sg-media__count').textContent()) === '1 / 6', `x ${z1.x.toFixed(0)} → ${z2.x.toFixed(0)}`);
+  const bounds = await p.evaluate(() => { const f = document.querySelector('.sg-media [data-sg-slide="0"] .sg-media__frame').getBoundingClientRect(); return { l: f.left, r: f.right, t: f.top, b: f.bottom }; });
   ok('viewer: panning stops at the photo\'s edges (no empty space pulled in)', bounds.l <= 0.5 && bounds.r >= 1279.5, JSON.stringify(bounds));
   await p.keyboard.press('0'); await p.waitForTimeout(700);
   ok('viewer: 0 resets the zoom', Math.abs((await zoom()).s - 1) < 0.01);
@@ -157,7 +157,7 @@ await go('display');
   await p.keyboard.press('ArrowRight'); await p.waitForTimeout(600);
   await p.mouse.move(640, 300); await p.mouse.down();
   const bd = [];
-  for (let i = 1; i <= 10; i++) { await p.mouse.move(645, 300 + i * 30); await p.waitForTimeout(16); if (i === 5) bd.push(await p.evaluate(() => +getComputedStyle(document.querySelector('.gl-media__backdrop')).opacity)); }
+  for (let i = 1; i <= 10; i++) { await p.mouse.move(645, 300 + i * 30); await p.waitForTimeout(16); if (i === 5) bd.push(await p.evaluate(() => +getComputedStyle(document.querySelector('.sg-media__backdrop')).opacity)); }
   await p.mouse.up(); await p.waitForTimeout(700);
   const t2 = p.locator('[data-demo=media] button').nth(1);   /* Home → 1, then → 2: the second photo */
   ok('viewer: swiping down fades the backdrop with the distance and dismisses it', bd[0] < 0.9 && bd[0] > 0.2 && (await dlg.count()) === 0, `backdrop at 150 px: ${bd[0]?.toFixed(2)}`);
@@ -184,12 +184,12 @@ await go('display');
   await th.scrollIntoViewIfNeeded(); await th.tap(); await q.waitForTimeout(800);
   ok('touch: tap a thumbnail opens the viewer', (await q.getByRole('dialog').count()) === 1);
   await q.touchscreen.tap(195, 420); await q.waitForTimeout(500);
-  const hidden = await q.locator('.gl-media').getAttribute('data-chrome');
+  const hidden = await q.locator('.sg-media').getAttribute('data-chrome');
   await q.touchscreen.tap(195, 420); await q.waitForTimeout(500);
-  const shown = await q.locator('.gl-media').getAttribute('data-chrome');
+  const shown = await q.locator('.sg-media').getAttribute('data-chrome');
   ok('touch: a single tap hides the bars, another shows them', hidden === 'hidden' && shown === 'shown', `${hidden} → ${shown}`);
   await q.touchscreen.tap(195, 420); await q.waitForTimeout(80); await q.touchscreen.tap(195, 420); await q.waitForTimeout(700);
-  const zs = await q.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.gl-media [data-gl-slide="0"] .gl-media__frame')).transform).a);
+  const zs = await q.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.sg-media [data-sg-slide="0"] .sg-media__frame')).transform).a);
   ok('touch: a double tap zooms', Math.abs(zs - 2.5) < 0.05, zs.toFixed(2));
   await q.keyboard.press('0'); await q.waitForTimeout(600);
   if (engine === 'chromium') {
@@ -197,13 +197,13 @@ await go('display');
     const pt = (id, x, y) => ({ x, y, id, radiusX: 1, radiusY: 1, force: 1 });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pt(0, 160, 420), pt(1, 230, 420)] });
     for (let i = 1; i <= 10; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [pt(0, 160 - i * 8, 420), pt(1, 230 + i * 8, 420)] }); await q.waitForTimeout(16); }
-    const during = await q.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.gl-media [data-gl-slide="0"] .gl-media__frame')).transform).a);
+    const during = await q.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.sg-media [data-sg-slide="0"] .sg-media__frame')).transform).a);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await q.waitForTimeout(600);
     ok('touch (Chromium): pinching apart zooms with the fingers', during > 1.8 && during < 3.4, `scale ${during.toFixed(2)} (fingers 70 → 230 px)`);
   }
   await q.keyboard.press('0'); await q.waitForTimeout(500);
-  const sw = q.locator('.gl-media__stage');
+  const sw = q.locator('.sg-media__stage');
   await sw.evaluate(() => {});
   await q.touchscreen.tap(10, 10).catch(() => {});
   await t.close();
@@ -215,7 +215,7 @@ await go('display');
   const axe = readFileSync(new URL('../../node_modules/axe-core/axe.min.js', import.meta.url), 'utf8');
   await page.getByRole('button', { name: /한강 위로/ }).click(); await p.waitForTimeout(700);
   await p.addScriptTag({ content: axe });
-  const v = await p.evaluate(async () => (await window.axe.run(document.querySelector('.gl-media'), { resultTypes: ['violations'] })).violations.filter((x) => x.impact === 'serious' || x.impact === 'critical').map((x) => `${x.id}: ${x.nodes[0]?.target}`));
+  const v = await p.evaluate(async () => (await window.axe.run(document.querySelector('.sg-media'), { resultTypes: ['violations'] })).violations.filter((x) => x.impact === 'serious' || x.impact === 'critical').map((x) => `${x.id}: ${x.nodes[0]?.target}`));
   ok('axe: the open viewer has no serious or critical violations', v.length === 0, v.join(' | '));
   await p.keyboard.press('Escape'); await p.waitForTimeout(400);
 }

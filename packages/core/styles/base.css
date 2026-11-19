@@ -1,89 +1,89 @@
 /* ============================================================================================
    Base: root, typography, focus, accessibility switches
    ============================================================================================ */
-.gl-root {
-  font-family: var(--gl-font-sans);
-  font-size: var(--gl-text-body-size);
-  line-height: var(--gl-text-body-line);
-  font-weight: var(--gl-text-body-weight);
-  letter-spacing: var(--gl-text-body-tracking);
-  color: var(--gl-label);
-  background: var(--gl-bg);
+.sg-root {
+  font-family: var(--sg-font-sans);
+  font-size: var(--sg-text-body-size);
+  line-height: var(--sg-text-body-line);
+  font-weight: var(--sg-text-body-weight);
+  letter-spacing: var(--sg-text-body-tracking);
+  color: var(--sg-label);
+  background: var(--sg-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   /* (no "tnum" here: font-feature-settings beats font-variant-numeric, and a "tnum" 0 inherited everywhere turned
      off the tabular figures that tables, stats, charts and pagination ask for) */
   font-feature-settings: "ss06";
-  --gl-ring: 0 0 0 2px var(--gl-bg), 0 0 0 4px var(--gl-focus-ring);
+  --sg-ring: 0 0 0 2px var(--sg-bg), 0 0 0 4px var(--sg-focus-ring);
 }
-.gl-root *, .gl-root *::before, .gl-root *::after { box-sizing: border-box; }
+.sg-root *, .sg-root *::before, .sg-root *::after { box-sizing: border-box; }
 
 /* text styles */
-.gl-text { margin: 0; }
-.gl-text--display   { font-size: var(--gl-text-display-size);   line-height: var(--gl-text-display-line);   font-weight: var(--gl-text-display-weight);   letter-spacing: var(--gl-text-display-tracking); }
-.gl-text--title-1   { font-size: var(--gl-text-title-1-size);   line-height: var(--gl-text-title-1-line);   font-weight: var(--gl-text-title-1-weight);   letter-spacing: var(--gl-text-title-1-tracking); }
-.gl-text--title-2   { font-size: var(--gl-text-title-2-size);   line-height: var(--gl-text-title-2-line);   font-weight: var(--gl-text-title-2-weight);   letter-spacing: var(--gl-text-title-2-tracking); }
-.gl-text--title-3   { font-size: var(--gl-text-title-3-size);   line-height: var(--gl-text-title-3-line);   font-weight: var(--gl-text-title-3-weight);   letter-spacing: var(--gl-text-title-3-tracking); }
-.gl-text--headline  { font-size: var(--gl-text-headline-size);  line-height: var(--gl-text-headline-line);  font-weight: var(--gl-text-headline-weight);  letter-spacing: var(--gl-text-headline-tracking); }
-.gl-text--body      { font-size: var(--gl-text-body-size);      line-height: var(--gl-text-body-line);      font-weight: var(--gl-text-body-weight);      letter-spacing: var(--gl-text-body-tracking); }
-.gl-text--callout   { font-size: var(--gl-text-callout-size);   line-height: var(--gl-text-callout-line);   font-weight: var(--gl-text-callout-weight);   letter-spacing: var(--gl-text-callout-tracking); }
-.gl-text--subhead   { font-size: var(--gl-text-subhead-size);   line-height: var(--gl-text-subhead-line);   font-weight: var(--gl-text-subhead-weight);   letter-spacing: var(--gl-text-subhead-tracking); }
-.gl-text--footnote  { font-size: var(--gl-text-footnote-size);  line-height: var(--gl-text-footnote-line);  font-weight: var(--gl-text-footnote-weight);  letter-spacing: var(--gl-text-footnote-tracking); }
-.gl-text--caption   { font-size: var(--gl-text-caption-size);   line-height: var(--gl-text-caption-line);   font-weight: var(--gl-text-caption-weight);   letter-spacing: var(--gl-text-caption-tracking); }
-.gl-text--caption-2 { font-size: var(--gl-text-caption-2-size); line-height: var(--gl-text-caption-2-line); font-weight: var(--gl-text-caption-2-weight); letter-spacing: var(--gl-text-caption-2-tracking); }
-.gl-text--secondary { color: var(--gl-label-secondary); }
-.gl-text--tertiary  { color: var(--gl-label-tertiary); }
-.gl-text--accent    { color: var(--gl-accent-text); }
-.gl-text--danger    { color: var(--gl-danger-text); }
-.gl-text--success   { color: var(--gl-success-text); }
-.gl-text--truncate  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gl-text--tabular   { font-variant-numeric: tabular-nums; }
+.sg-text { margin: 0; }
+.sg-text--display   { font-size: var(--sg-text-display-size);   line-height: var(--sg-text-display-line);   font-weight: var(--sg-text-display-weight);   letter-spacing: var(--sg-text-display-tracking); }
+.sg-text--title-1   { font-size: var(--sg-text-title-1-size);   line-height: var(--sg-text-title-1-line);   font-weight: var(--sg-text-title-1-weight);   letter-spacing: var(--sg-text-title-1-tracking); }
+.sg-text--title-2   { font-size: var(--sg-text-title-2-size);   line-height: var(--sg-text-title-2-line);   font-weight: var(--sg-text-title-2-weight);   letter-spacing: var(--sg-text-title-2-tracking); }
+.sg-text--title-3   { font-size: var(--sg-text-title-3-size);   line-height: var(--sg-text-title-3-line);   font-weight: var(--sg-text-title-3-weight);   letter-spacing: var(--sg-text-title-3-tracking); }
+.sg-text--headline  { font-size: var(--sg-text-headline-size);  line-height: var(--sg-text-headline-line);  font-weight: var(--sg-text-headline-weight);  letter-spacing: var(--sg-text-headline-tracking); }
+.sg-text--body      { font-size: var(--sg-text-body-size);      line-height: var(--sg-text-body-line);      font-weight: var(--sg-text-body-weight);      letter-spacing: var(--sg-text-body-tracking); }
+.sg-text--callout   { font-size: var(--sg-text-callout-size);   line-height: var(--sg-text-callout-line);   font-weight: var(--sg-text-callout-weight);   letter-spacing: var(--sg-text-callout-tracking); }
+.sg-text--subhead   { font-size: var(--sg-text-subhead-size);   line-height: var(--sg-text-subhead-line);   font-weight: var(--sg-text-subhead-weight);   letter-spacing: var(--sg-text-subhead-tracking); }
+.sg-text--footnote  { font-size: var(--sg-text-footnote-size);  line-height: var(--sg-text-footnote-line);  font-weight: var(--sg-text-footnote-weight);  letter-spacing: var(--sg-text-footnote-tracking); }
+.sg-text--caption   { font-size: var(--sg-text-caption-size);   line-height: var(--sg-text-caption-line);   font-weight: var(--sg-text-caption-weight);   letter-spacing: var(--sg-text-caption-tracking); }
+.sg-text--caption-2 { font-size: var(--sg-text-caption-2-size); line-height: var(--sg-text-caption-2-line); font-weight: var(--sg-text-caption-2-weight); letter-spacing: var(--sg-text-caption-2-tracking); }
+.sg-text--secondary { color: var(--sg-label-secondary); }
+.sg-text--tertiary  { color: var(--sg-label-tertiary); }
+.sg-text--accent    { color: var(--sg-accent-text); }
+.sg-text--danger    { color: var(--sg-danger-text); }
+.sg-text--success   { color: var(--sg-success-text); }
+.sg-text--truncate  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-text--tabular   { font-variant-numeric: tabular-nums; }
 
-.gl-stack { display: flex; flex-direction: column; }
-.gl-stack--row { flex-direction: row; }
-.gl-divider { border: 0; margin: 0; height: 1px; background: var(--gl-separator); flex: none; }
-.gl-divider--vertical { width: 1px; height: auto; align-self: stretch; }
+.sg-stack { display: flex; flex-direction: column; }
+.sg-stack--row { flex-direction: row; }
+.sg-divider { border: 0; margin: 0; height: 1px; background: var(--sg-separator); flex: none; }
+.sg-divider--vertical { width: 1px; height: auto; align-self: stretch; }
 
-.gl-icon { width: 1.25em; height: 1.25em; flex: none; display: inline-block; vertical-align: middle; }
+.sg-icon { width: 1.25em; height: 1.25em; flex: none; display: inline-block; vertical-align: middle; }
 
-.gl-visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.sg-visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* the shared focus ring (keyboard only) */
-.gl-focusable:focus-visible, .gl-root :where(button, [href], [tabindex]):focus-visible { outline: none; box-shadow: var(--gl-ring); }
+.sg-focusable:focus-visible, .sg-root :where(button, [href], [tabindex]):focus-visible { outline: none; box-shadow: var(--sg-ring); }
 
 /* Reduced motion (theme.reduceMotion, e.g. a VDI / remote-desktop session, or the system setting unless a theme
    says "false"). Not "everything instant" — a control snapping through several states in a few frames reads as
-   stutter. Instead: --gl-spring-* become a short, critically damped curve (tokens.css), so small state changes
+   stutter. Instead: --sg-spring-* become a short, critically damped curve (tokens.css), so small state changes
    still slide briefly without overshoot; anything that travels, grows or bounces becomes a fade; squash, gel,
    press-in and the pointer light are off; progress indicators keep moving gently. */
-[data-gl-reduce-motion="true"] .gl-stepper__value > [data-roll] { animation: none; }
-[data-gl-reduce-motion="true"] .gl-stepper__value > [data-leave] { display: none; }
-[data-gl-reduce-motion="true"] .gl-field__clear, [data-gl-reduce-motion="true"] .gl-button__spinner { animation-name: gl-fade-in-plain; }
-[data-gl-reduce-motion="true"] .gl-search__cancel { transform: none; }
-[data-gl-reduce-motion="true"] .gl-pressable:active, [data-gl-reduce-motion="true"] .gl-pressable.is-pressed, [data-gl-reduce-motion="true"] .gl-button:active:not(:disabled), [data-gl-reduce-motion="true"] .gl-chip:active, [data-gl-reduce-motion="true"] .gl-card--interactive:active,
-[data-gl-reduce-motion="true"] .gl-stepper__btn:active:not(:disabled), [data-gl-reduce-motion="true"] .gl-tabbar__item:active .gl-tabbar__icon,
-[data-gl-reduce-motion="true"] .gl-pagination__page:active, [data-gl-reduce-motion="true"] .gl-pagination__step:active, [data-gl-reduce-motion="true"] .gl-weekday:active { transform: none !important; }
-[data-gl-reduce-motion="true"] .gl-glass::after { display: none; }
-[data-gl-reduce-motion="true"] .gl-slider.is-active .gl-slider__thumb { --_s: 1; }
-[data-gl-reduce-motion="true"] .gl-slider__bubble, [data-gl-reduce-motion="true"] .gl-slider.is-active .gl-slider__bubble { transform: none; }
-[data-gl-reduce-motion="true"] .gl-spinner { animation: gl-spin 1.4s linear infinite; }
-[data-gl-reduce-motion="true"] .gl-progress--indeterminate .gl-progress__bar { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite; }
-[data-gl-reduce-motion="true"] .gl-table__busy span::after { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite; }
+[data-sg-reduce-motion="true"] .sg-stepper__value > [data-roll] { animation: none; }
+[data-sg-reduce-motion="true"] .sg-stepper__value > [data-leave] { display: none; }
+[data-sg-reduce-motion="true"] .sg-field__clear, [data-sg-reduce-motion="true"] .sg-button__spinner { animation-name: sg-fade-in-plain; }
+[data-sg-reduce-motion="true"] .sg-search__cancel { transform: none; }
+[data-sg-reduce-motion="true"] .sg-pressable:active, [data-sg-reduce-motion="true"] .sg-pressable.is-pressed, [data-sg-reduce-motion="true"] .sg-button:active:not(:disabled), [data-sg-reduce-motion="true"] .sg-chip:active, [data-sg-reduce-motion="true"] .sg-card--interactive:active,
+[data-sg-reduce-motion="true"] .sg-stepper__btn:active:not(:disabled), [data-sg-reduce-motion="true"] .sg-tabbar__item:active .sg-tabbar__icon,
+[data-sg-reduce-motion="true"] .sg-pagination__page:active, [data-sg-reduce-motion="true"] .sg-pagination__step:active, [data-sg-reduce-motion="true"] .sg-weekday:active { transform: none !important; }
+[data-sg-reduce-motion="true"] .sg-glass::after { display: none; }
+[data-sg-reduce-motion="true"] .sg-slider.is-active .sg-slider__thumb { --_s: 1; }
+[data-sg-reduce-motion="true"] .sg-slider__bubble, [data-sg-reduce-motion="true"] .sg-slider.is-active .sg-slider__bubble { transform: none; }
+[data-sg-reduce-motion="true"] .sg-spinner { animation: sg-spin 1.4s linear infinite; }
+[data-sg-reduce-motion="true"] .sg-progress--indeterminate .sg-progress__bar { width: 100%; transform: none; animation: sg-pulse 1.6s ease-in-out infinite; }
+[data-sg-reduce-motion="true"] .sg-table__busy span::after { width: 100%; transform: none; animation: sg-pulse 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__value > [data-roll] { animation: none; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__value > [data-leave] { display: none; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-field__clear, .gl-root:not([data-gl-reduce-motion="false"]) .gl-button__spinner { animation-name: gl-fade-in-plain; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-search__cancel { transform: none; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-pressable:active, .gl-root:not([data-gl-reduce-motion="false"]) .gl-pressable.is-pressed, .gl-root:not([data-gl-reduce-motion="false"]) .gl-button:active:not(:disabled), .gl-root:not([data-gl-reduce-motion="false"]) .gl-chip:active, .gl-root:not([data-gl-reduce-motion="false"]) .gl-card--interactive:active,
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-stepper__btn:active:not(:disabled), .gl-root:not([data-gl-reduce-motion="false"]) .gl-tabbar__item:active .gl-tabbar__icon, .gl-root:not([data-gl-reduce-motion="false"]) .gl-pagination__page:active, .gl-root:not([data-gl-reduce-motion="false"]) .gl-pagination__step:active { transform: none !important; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-glass::after { display: none; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-slider.is-active .gl-slider__thumb { --_s: 1; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-slider__bubble, .gl-root:not([data-gl-reduce-motion="false"]) .gl-slider.is-active .gl-slider__bubble { transform: none; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-spinner { animation: gl-spin 1.4s linear infinite; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-progress--indeterminate .gl-progress__bar { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-table__busy span::after { width: 100%; transform: none; animation: gl-pulse 1.6s ease-in-out infinite; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-stepper__value > [data-roll] { animation: none; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-stepper__value > [data-leave] { display: none; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-field__clear, .sg-root:not([data-sg-reduce-motion="false"]) .sg-button__spinner { animation-name: sg-fade-in-plain; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-search__cancel { transform: none; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-pressable:active, .sg-root:not([data-sg-reduce-motion="false"]) .sg-pressable.is-pressed, .sg-root:not([data-sg-reduce-motion="false"]) .sg-button:active:not(:disabled), .sg-root:not([data-sg-reduce-motion="false"]) .sg-chip:active, .sg-root:not([data-sg-reduce-motion="false"]) .sg-card--interactive:active,
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-stepper__btn:active:not(:disabled), .sg-root:not([data-sg-reduce-motion="false"]) .sg-tabbar__item:active .sg-tabbar__icon, .sg-root:not([data-sg-reduce-motion="false"]) .sg-pagination__page:active, .sg-root:not([data-sg-reduce-motion="false"]) .sg-pagination__step:active { transform: none !important; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-glass::after { display: none; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-slider.is-active .sg-slider__thumb { --_s: 1; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-slider__bubble, .sg-root:not([data-sg-reduce-motion="false"]) .sg-slider.is-active .sg-slider__bubble { transform: none; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-spinner { animation: sg-spin 1.4s linear infinite; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-progress--indeterminate .sg-progress__bar { width: 100%; transform: none; animation: sg-pulse 1.6s ease-in-out infinite; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-table__busy span::after { width: 100%; transform: none; animation: sg-pulse 1.6s ease-in-out infinite; }
 }
-@keyframes gl-fade-in-plain { from { opacity: 0; } }
-@keyframes gl-fade-out-plain { to { opacity: 0; } }
-@keyframes gl-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.7; } }
+@keyframes sg-fade-in-plain { from { opacity: 0; } }
+@keyframes sg-fade-out-plain { to { opacity: 0; } }
+@keyframes sg-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.7; } }

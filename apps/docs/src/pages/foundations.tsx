@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { palette, STEPS, motions, springAt, springDuration, typography, SPRING_NAMES, type Hue, type MotionName, type SpringName } from '@glass-layer/tokens';
-import { Button, Glass, Stack, Text, SegmentedControl, Switch, Slider, Stepper, Progress, PageControl, TabBar, Tab, MotionScope, Menu, MenuItem, Badge, useTheme } from '@glass-layer/react';
+import { palette, STEPS, motions, springAt, springDuration, typography, SPRING_NAMES, type Hue, type MotionName, type SpringName } from '@satin-glass/tokens';
+import { Button, Glass, Stack, Text, SegmentedControl, Switch, Slider, Stepper, Progress, PageControl, TabBar, Tab, MotionScope, Menu, MenuItem, Badge, useTheme } from '@satin-glass/react';
 import { Home, Map, Bookmark, User, Footprints, Bike, Car } from 'lucide-react';
 import { Sun, Sparkles, MousePointer2 } from 'lucide-react';
 import { Demo, Page, Photo, Section, sceneTint } from '../shared';
 
 export function Overview() {
   return (
-    <Page title="Glass Layer" intro="빛을 따라 움직이는 유리 재질 위에 만든 React UI 라이브러리. 콘텐츠가 먼저 보이고, 컨트롤은 그 위에 가볍게 떠 있습니다.">
+    <Page title="Satin Glass" intro="빛을 따라 움직이는 유리 재질 위에 만든 React UI 라이브러리. 콘텐츠가 먼저 보이고, 컨트롤은 그 위에 가볍게 떠 있습니다.">
       <Section title="원칙">
         <div className="grid grid--3">
           {[
@@ -18,7 +18,7 @@ export function Overview() {
             ['접근성 기본값', '고대비 테마 두 가지, 투명도 줄이기, 동작 줄이기, 키보드 조작을 모두 지원합니다.'],
             ['한글 우선 타이포', 'Pretendard 기반. 한글과 영문의 무게와 높이를 맞췄습니다.'],
           ].map(([t, d]) => (
-            <Glass key={t} variant="subtle" style={{ padding: 18, borderRadius: 'var(--gl-radius-lg)' }}>
+            <Glass key={t} variant="subtle" style={{ padding: 18, borderRadius: 'var(--sg-radius-lg)' }}>
               <Text variant="headline">{t}</Text>
               <Text variant="subhead" tone="secondary" style={{ marginTop: 4 }}>{d}</Text>
             </Glass>
@@ -27,8 +27,8 @@ export function Overview() {
       </Section>
       <Section title="설치">
         <Demo col>
-          <code className="code">pnpm add @glass-layer/react</code>
-          <code className="code">import '@glass-layer/react/styles.css'</code>
+          <code className="code">pnpm add @satin-glass/react</code>
+          <code className="code">import '@satin-glass/react/styles.css'</code>
           <code className="code">{'<ThemeProvider theme={createTheme({ mode: "system" })}>…</ThemeProvider>'}</code>
         </Demo>
       </Section>
@@ -45,7 +45,7 @@ export function Colors() {
           <div className="swatches">
             <span />{STEPS.map((s) => <span key={s} style={{ textAlign: 'center' }}>{s}</span>)}
             {(Object.keys(palette) as Hue[]).map((h) => [
-              <b key={h} style={{ fontWeight: 600, color: 'var(--gl-label-secondary)' }}>{h}</b>,
+              <b key={h} style={{ fontWeight: 600, color: 'var(--sg-label-secondary)' }}>{h}</b>,
               ...STEPS.map((s) => <i key={h + s} className="swatch" style={{ background: palette[h][s] }} title={`${h}-${s} ${palette[h][s]}`} />),
             ])}
           </div>
@@ -54,7 +54,7 @@ export function Colors() {
       <Section title="의미 색" intro="테마(라이트·다크·고대비 2종)에 따라 바뀌는 이름. 빌드 시 WCAG 대비를 검사합니다 — 본문 7:1, 보조 텍스트 4.5:1 이상.">
         <div className="grid grid--4">
           {sem.map((k) => (
-            <div key={k} className="token-chip"><i style={{ background: `var(--gl-${k})` }} /><span className="code">--gl-{k}</span></div>
+            <div key={k} className="token-chip"><i style={{ background: `var(--sg-${k})` }} /><span className="code">--sg-{k}</span></div>
           ))}
         </div>
       </Section>
@@ -67,8 +67,8 @@ export function Typography() {
     <Page title="타이포그래피" intro="본문 16px(웹 기준), 크기가 커질수록 자간을 좁힙니다. 글꼴은 Pretendard → 시스템 글꼴 순.">
       <Demo col>
         {(Object.keys(typography) as (keyof typeof typography)[]).map((k) => (
-          <div key={k} className="label-row" style={{ borderBottom: '1px solid var(--gl-separator)', paddingBottom: 8 }}>
-            <Text variant={k} truncate>유리 너머의 풍경 Glass Layer</Text>
+          <div key={k} className="label-row" style={{ borderBottom: '1px solid var(--sg-separator)', paddingBottom: 8 }}>
+            <Text variant={k} truncate>유리 너머의 풍경 Satin Glass</Text>
             <span className="code" style={{ flex: 'none' }}>{k} · {typography[k][0]}/{typography[k][1]}</span>
           </div>
         ))}
@@ -88,16 +88,16 @@ function SpringPlot({ name, motion }: { name: SpringName; motion: MotionName }) 
   const pts = (m: MotionName) => { const p = motions[m][name], dd = springDuration(p) / 1000; return Array.from({ length: 121 }, (_, i) => { const t = (1.1 * i) / 120; return `${(t / 1.1) * W},${H - 14 - Math.min(1.3, springAt(p, Math.min(t, dd))) * (H - 40)}`; }).join(' '); };
   const [on, setOn] = useState(false);
   return (
-    <Glass variant="subtle" style={{ padding: 14, borderRadius: 'var(--gl-radius-lg)' }}>
+    <Glass variant="subtle" style={{ padding: 14, borderRadius: 'var(--sg-radius-lg)' }}>
       <div className="label-row"><Text variant="headline">{name}</Text><span className="code">{s.response}s · ζ {s.damping} · {Math.round(d * 1000)}ms</span></div>
       <svg className="spring-plot" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
-        <line x1="0" x2={W} y1={26} y2={26} stroke="var(--gl-separator-strong)" strokeDasharray="3 4" />
-        {PERSONAS.filter((p) => p.id !== motion).map((p) => <polyline key={p.id} points={pts(p.id)} fill="none" stroke="var(--gl-label-tertiary)" strokeWidth="1.2" opacity="0.5" />)}
-        <polyline points={pts(motion)} fill="none" stroke="var(--gl-accent)" strokeWidth="2.5" />
+        <line x1="0" x2={W} y1={26} y2={26} stroke="var(--sg-separator-strong)" strokeDasharray="3 4" />
+        {PERSONAS.filter((p) => p.id !== motion).map((p) => <polyline key={p.id} points={pts(p.id)} fill="none" stroke="var(--sg-label-tertiary)" strokeWidth="1.2" opacity="0.5" />)}
+        <polyline points={pts(motion)} fill="none" stroke="var(--sg-accent)" strokeWidth="2.5" />
       </svg>
       <div className="label-row" style={{ marginTop: 6 }}>
         <div style={{ flex: 1, height: 18 }}>
-          <div className="spring-dot" style={{ transform: on ? 'translateX(200px)' : 'none', transition: `transform var(--gl-spring-${name}-duration) var(--gl-spring-${name})` }} />
+          <div className="spring-dot" style={{ transform: on ? 'translateX(200px)' : 'none', transition: `transform var(--sg-spring-${name}-duration) var(--sg-spring-${name})` }} />
         </div>
         <Button size="sm" variant="plain" onClick={() => setOn((v) => !v)}>재생</Button>
       </div>
@@ -119,7 +119,7 @@ function MotionColumn({ motion }: { motion: MotionName }) {
   const p = PERSONAS.find((x) => x.id === motion)!;
   return (
     <MotionScope motion={motion}>
-      <Glass variant="subtle" style={{ padding: 16, borderRadius: 'var(--gl-radius-xl)', display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+      <Glass variant="subtle" style={{ padding: 16, borderRadius: 'var(--sg-radius-xl)', display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
         <div><Text variant="headline">{p.label}</Text><Text variant="footnote" tone="secondary">{p.note}</Text></div>
         <SegmentedControl size="sm" aria-label={`${motion} 세그먼트`} value={seg} onChange={setSeg} options={[{ value: 'walk', label: '도보', icon: <Footprints /> }, { value: 'bike', label: '자전거', icon: <Bike /> }, { value: 'car', label: '차', icon: <Car /> }]} />
         <TabBar compact value={tab} onChange={setTab} aria-label={`${motion} 탭`} style={{ padding: 0 }}>
@@ -152,7 +152,7 @@ export function Motion() {
           <code className="code">{'createTheme({ motion: "playful" })'}</code>
           <code className="code">{'<MotionScope motion="calm">…</MotionScope>'}</code>
           <code className="code">{'<SegmentedControl motion="playful" … />'}</code>
-          <Text variant="subhead" tone="secondary">CSS 전환은 [data-gl-motion]의 linear() 이징을 따르고, 손가락을 따르는 JS 스프링과 포털로 뜨는 메뉴·시트도 같은 성격을 씁니다. 동작 줄이기를 켜면 모두 즉시 끝납니다.</Text>
+          <Text variant="subhead" tone="secondary">CSS 전환은 [data-sg-motion]의 linear() 이징을 따르고, 손가락을 따르는 JS 스프링과 포털로 뜨는 메뉴·시트도 같은 성격을 씁니다. 동작 줄이기를 켜면 모두 즉시 끝납니다.</Text>
         </Demo>
       </Section>
       <Section title={`스프링 곡선 — ${PERSONAS.find((p) => p.id === current)!.label}`} intro="굵은 선이 현재 성격, 옅은 선이 나머지 두 성격입니다.">
@@ -176,10 +176,10 @@ export function Material() {
     <Page title="재질" intro="빛을 따르는 유리. 빛을 받는 쪽 테두리만 밝고 반대쪽은 그늘지며, 포인터(터치에서는 손가락)가 있는 곳에 하이라이트가 모입니다. 모든 브라우저에서 같은 모습입니다.">
       <Section title="변형" intro="regular · strong(패널) · subtle(보조 표면) · clear(사진 위). 포인터를 카드 위로 움직여 보세요.">
         <div ref={box}>
-          <Photo scene={s} style={{ borderRadius: 'var(--gl-radius-xl)', padding: 28, minHeight: 320 }}>
+          <Photo scene={s} style={{ borderRadius: 'var(--sg-radius-xl)', padding: 28, minHeight: 320 }}>
             <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 16 }}>
               {(['regular', 'strong', 'subtle', 'clear'] as const).map((v) => (
-                <Glass key={v} variant={v} pressable style={{ padding: 18, minHeight: 120, borderRadius: 'var(--gl-radius-xl)' }}>
+                <Glass key={v} variant={v} pressable style={{ padding: 18, minHeight: 120, borderRadius: 'var(--sg-radius-xl)' }}>
                   <Stack gap={2}>
                     <MousePointer2 size={18} />
                     <Text variant="headline">{v}</Text>
@@ -187,7 +187,7 @@ export function Material() {
                   </Stack>
                 </Glass>
               ))}
-              <Glass tint={sceneTint(s)} style={{ padding: 18, minHeight: 120, borderRadius: 'var(--gl-radius-xl)' }}>
+              <Glass tint={sceneTint(s)} style={{ padding: 18, minHeight: 120, borderRadius: 'var(--sg-radius-xl)' }}>
                 <Stack gap={2}><Sparkles size={18} /><Text variant="headline">tinted</Text><Text variant="footnote" style={{ opacity: 0.8 }}>배경 색이 스며든 유리 (useImageTint)</Text></Stack>
               </Glass>
             </div>

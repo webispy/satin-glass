@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   Button, Calendar, Checkbox, ChoiceList, DatePicker, List, ListItem, ListSection, Radio, RadioGroup, Select, Stack, Switch, Text, TimePicker, TimeWheel,
   WeekdayPicker, describeWeekdays, useToast,
-} from '@glass-layer/react';
+} from '@satin-glass/react';
 import { Bike, Car, Footprints, Train, Moon, Sun, Monitor, Wifi, Bell, MapPin } from 'lucide-react';
 import { Demo, Page, Section } from '../shared';
 
@@ -63,9 +63,9 @@ export function Selection() {
         <div className="grid grid--2">
           <ListSection header="화면 모드">
             <ChoiceList aria-label="화면 모드" value={appearance} onChange={setAppearance} options={[
-              { value: 'light', label: '라이트', icon: <Sun />, tileColor: 'var(--gl-amber-500)' },
-              { value: 'dark', label: '다크', icon: <Moon />, tileColor: 'var(--gl-iris-700)' },
-              { value: 'system', label: '시스템 설정', description: '기기 설정을 따라요', icon: <Monitor />, tileColor: 'var(--gl-slate-500)' },
+              { value: 'light', label: '라이트', icon: <Sun />, tileColor: 'var(--sg-amber-500)' },
+              { value: 'dark', label: '다크', icon: <Moon />, tileColor: 'var(--sg-iris-700)' },
+              { value: 'system', label: '시스템 설정', description: '기기 설정을 따라요', icon: <Monitor />, tileColor: 'var(--sg-slate-500)' },
             ]} />
           </ListSection>
           <ListSection header="알림 받을 항목" footer={`${notif.length}개 선택`}>
@@ -99,9 +99,9 @@ export function Selection() {
           <Demo col>
             <Text variant="subhead" tone="secondary">목록 행 안에서 (inline)</Text>
             <List>
-              <ListItem leading={<MapPin />} tileColor="var(--gl-coral-500)" title="거리 단위" trailing={<Select variant="inline" aria-label="거리 단위" value={unit} onChange={setUnit} options={[{ value: 'km', label: '킬로미터' }, { value: 'mi', label: '마일' }]} />} />
-              <ListItem leading={<Wifi />} tileColor="var(--gl-azure-500)" title="지도 다운로드" trailing={<Select variant="inline" aria-label="지도 다운로드" defaultValue="wifi" options={[{ value: 'wifi', label: 'Wi‑Fi에서만' }, { value: 'always', label: '항상' }, { value: 'never', label: '안 함' }]} />} />
-              <ListItem leading={<Bell />} tileColor="var(--gl-rose-500)" title="소리" trailing={<Select variant="inline" aria-label="소리" defaultValue="chime" placement="bottom-end" options={[{ value: 'chime', label: '차임' }, { value: 'bell', label: '종' }, { value: 'none', label: '없음' }]} />} />
+              <ListItem leading={<MapPin />} tileColor="var(--sg-coral-500)" title="거리 단위" trailing={<Select variant="inline" aria-label="거리 단위" value={unit} onChange={setUnit} options={[{ value: 'km', label: '킬로미터' }, { value: 'mi', label: '마일' }]} />} />
+              <ListItem leading={<Wifi />} tileColor="var(--sg-azure-500)" title="지도 다운로드" trailing={<Select variant="inline" aria-label="지도 다운로드" defaultValue="wifi" options={[{ value: 'wifi', label: 'Wi‑Fi에서만' }, { value: 'always', label: '항상' }, { value: 'never', label: '안 함' }]} />} />
+              <ListItem leading={<Bell />} tileColor="var(--sg-rose-500)" title="소리" trailing={<Select variant="inline" aria-label="소리" defaultValue="chime" placement="bottom-end" options={[{ value: 'chime', label: '차임' }, { value: 'bell', label: '종' }, { value: 'none', label: '없음' }]} />} />
             </List>
           </Demo>
         </div>

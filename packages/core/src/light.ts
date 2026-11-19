@@ -15,16 +15,16 @@ function frame() {
   pending = false;
   for (const e of entries) {
     /* reduced motion (forced by the theme, or the system): no light chasing the pointer */
-    if (prefersReducedMotion(e.el)) { e.el.style.setProperty('--gl-hk', '0'); continue; }
+    if (prefersReducedMotion(e.el)) { e.el.style.setProperty('--sg-hk', '0'); continue; }
     if (dirty || !e.rect) e.rect = e.el.getBoundingClientRect();
     const r = e.rect;
     const x = px - r.left, y = py - r.top;
     const dx = Math.max(r.left - px, 0, px - r.right), dy = Math.max(r.top - py, 0, py - r.bottom);
     const d = Math.hypot(dx, dy);
     const k = d >= REACH ? 0 : 1 - d / REACH;
-    e.el.style.setProperty('--gl-hx', `${x.toFixed(1)}px`);
-    e.el.style.setProperty('--gl-hy', `${y.toFixed(1)}px`);
-    e.el.style.setProperty('--gl-hk', (k * k).toFixed(3));
+    e.el.style.setProperty('--sg-hx', `${x.toFixed(1)}px`);
+    e.el.style.setProperty('--sg-hy', `${y.toFixed(1)}px`);
+    e.el.style.setProperty('--sg-hk', (k * k).toFixed(3));
   }
   dirty = false;
 }

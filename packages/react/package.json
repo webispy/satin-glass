@@ -1,5 +1,5 @@
 {
-  "name": "@glass-layer/react",
+  "name": "@satin-glass/react",
   "version": "0.3.0",
   "type": "module",
   "sideEffects": ["*.css"],
@@ -9,12 +9,12 @@
   },
   "files": ["dist"],
   "scripts": {
-    "build": "tsup && node -e \"require('fs').copyFileSync(require.resolve('@glass-layer/core/styles.css'),'dist/styles.css')\"",
+    "build": "tsup && node -e \"require('fs').copyFileSync(require.resolve('@satin-glass/core/styles.css'),'dist/styles.css')\"",
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run"
   },
   "peerDependencies": { "react": ">=18.2", "react-dom": ">=18.2" },
-  "dependencies": { "@glass-layer/core": "workspace:*", "@glass-layer/tokens": "workspace:*" },
+  "dependencies": { "@satin-glass/core": "workspace:*", "@satin-glass/tokens": "workspace:*" },
   "devDependencies": {
     "react": "19.3.1", "react-dom": "19.3.1", "@types/react": "19.3.0", "@types/react-dom": "19.3.0",
     "vitest": "5.1.0", "jsdom": "31.0.1", "@testing-library/react": "16.3.3", "@testing-library/user-event": "14.6.12"

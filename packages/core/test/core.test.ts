@@ -21,8 +21,8 @@ describe('springs', () => {
     expect(motions.calm.squash).toBe(0);
     expect(motions.playful.squash).toBeGreaterThan(motions.lively.squash);
   });
-  it('motionOf resolves the nearest [data-gl-motion], else the default', () => {
-    document.body.innerHTML = '<div data-gl-motion="playful"><span id="a"></span></div><span id="b"></span>';
+  it('motionOf resolves the nearest [data-sg-motion], else the default', () => {
+    document.body.innerHTML = '<div data-sg-motion="playful"><span id="a"></span></div><span id="b"></span>';
     expect(motionOf(document.getElementById('a'))).toBe('playful');
     expect(motionOf(document.getElementById('b'))).toBe('lively');
   });
@@ -54,8 +54,8 @@ describe('place', () => {
 });
 
 describe('reduce motion scope', () => {
-  it('the nearest [data-gl-reduce-motion] decides; without one, the system setting', () => {
-    document.body.innerHTML = '<div data-gl-reduce-motion="true"><span id="a"></span><div data-gl-reduce-motion="false"><span id="b"></span></div></div>';
+  it('the nearest [data-sg-reduce-motion] decides; without one, the system setting', () => {
+    document.body.innerHTML = '<div data-sg-reduce-motion="true"><span id="a"></span><div data-sg-reduce-motion="false"><span id="b"></span></div></div>';
     expect(prefersReducedMotion(document.getElementById('a'))).toBe(true);
     expect(prefersReducedMotion(document.getElementById('b'))).toBe(false);
   });

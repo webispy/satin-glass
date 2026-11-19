@@ -1,6 +1,6 @@
 /* Charts (0.3): own SVG charts for dashboards — line / area, bar (grouped, stacked), donut, sparkline — and the
    small marks that live inside table cells (BarMeter, IntervalPlot).
-   Every chart: series colours from the theme (--gl-chart-1…6, ≥ 3:1 on the card), a legend that hides and shows
+   Every chart: series colours from the theme (--sg-chart-1…6, ≥ 3:1 on the card), a legend that hides and shows
    series, a crosshair tooltip that follows the pointer or the arrow keys (the plot is focusable and announces the
    point), and the full data as a hidden table for screen readers. Motion is the library's: entrances draw in on
    the named springs (bars rise on 'bouncy', the donut turns in on 'smooth', lines draw on a non-overshooting
@@ -8,7 +8,7 @@
    velocity when the data changes again mid-way. With reduced motion a chart fades in (140 ms) and data changes
    land at once. */
 import { startTransition, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { Spring, animate, fade, loop, motionFor, prefersReducedMotion } from '@glass-layer/core';
+import { Spring, animate, fade, loop, motionFor, prefersReducedMotion } from '@satin-glass/core';
 import { cx, useIsoLayoutEffect, useStableId, type Tone } from './utils';
 
 /* ------------------------------------------------------------------------------------------------ shared */
@@ -16,7 +16,7 @@ export type ChartSeries = { key: string; label: string; color?: string };
 export type ChartDatum = Record<string, string | number | null | undefined>;
 type Fmt = (v: number) => string;
 
-const COLOR = (i: number) => `var(--gl-chart-${(i % 6) + 1})`;
+const COLOR = (i: number) => `var(--sg-chart-${(i % 6) + 1})`;
 /* Intl formatters are costly to build: one per locale and options, shared by every chart */
 const formatters = new Map<string, Intl.NumberFormat>();
 const nf = (locale: string | undefined, opts: Intl.NumberFormatOptions) => {
@@ -131,20 +131,20 @@ type ChartChromeProps = {
 };
 function ChartChrome({ label, series, hidden, toggle, legend, rows, announce, children, className, style, caption }: ChartChromeProps) {
   return (
-    <figure className={cx('gl-chart', className)} style={style} aria-label={label}>
+    <figure className={cx('sg-chart', className)} style={style} aria-label={label}>
       {legend && series.length > 1 && (
-        <div className="gl-chart__legend" role="group" aria-label={`${label} — series`}>
+        <div className="sg-chart__legend" role="group" aria-label={`${label} — series`}>
           {series.map((s, i) => (
-            <button key={s.key} type="button" className="gl-chart__key" aria-pressed={!hidden.has(s.key)} onClick={() => toggle(s.key)}>
-              <span className="gl-chart__swatch" style={{ background: s.color ?? COLOR(i) }} aria-hidden="true" />{s.label}
+            <button key={s.key} type="button" className="sg-chart__key" aria-pressed={!hidden.has(s.key)} onClick={() => toggle(s.key)}>
+              <span className="sg-chart__swatch" style={{ background: s.color ?? COLOR(i) }} aria-hidden="true" />{s.label}
             </button>
           ))}
         </div>
       )}
       {children}
-      {caption && <figcaption className="gl-chart__caption">{caption}</figcaption>}
-      <div className="gl-visually-hidden" aria-live="polite">{announce}</div>
-      <table className="gl-visually-hidden">
+      {caption && <figcaption className="sg-chart__caption">{caption}</figcaption>}
+      <div className="sg-visually-hidden" aria-live="polite">{announce}</div>
+      <table className="sg-visually-hidden">
         <caption>{label}</caption>
         <thead><tr><th scope="col">{rows.length ? '' : ''}</th>{series.map((s) => <th key={s.key} scope="col">{s.label}</th>)}</tr></thead>
         <tbody>{rows.map((r, i) => <tr key={i}><th scope="row">{r.head}</th>{r.cells.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody>
@@ -181,9 +181,9 @@ type TipRow = { color: string; label: string; value: string };
 function Tip({ x, y, w, title, rows }: { x: number; y: number; w: number; title: string; rows: TipRow[] }) {
   const right = x > w * 0.6;
   return (
-    <div className="gl-chart__tip" aria-hidden="true" style={{ left: x, top: y, transform: `translate(${right ? 'calc(-100% - 12px)' : '12px'}, -50%)` }}>
-      <div className="gl-chart__tip-title">{title}</div>
-      {rows.map((r) => <div key={r.label} className="gl-chart__tip-row"><span className="gl-chart__swatch" style={{ background: r.color }} />{r.label}<b>{r.value}</b></div>)}
+    <div className="sg-chart__tip" aria-hidden="true" style={{ left: x, top: y, transform: `translate(${right ? 'calc(-100% - 12px)' : '12px'}, -50%)` }}>
+      <div className="sg-chart__tip-title">{title}</div>
+      {rows.map((r) => <div key={r.label} className="sg-chart__tip-row"><span className="sg-chart__swatch" style={{ background: r.color }} />{r.label}<b>{r.value}</b></div>)}
     </div>
   );
 }
@@ -220,7 +220,7 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
   const [hidden, toggle] = useHidden(series);
   const [active, setActive] = useState<Active>(null);
   const [kbd, setKbd] = useState(false);
-  const gid = useStableId('gl-lc');
+  const gid = useStableId('sg-lc');
   const shown = series.filter((s) => !hidden.has(s.key));
   const vals = shown.flatMap((s) => data.map((d) => d[s.key]).filter((v): v is number => typeof v === 'number'));
   const lo = Math.min(...vals, zero ?? area ? 0 : Infinity), hi = Math.max(...vals);
@@ -246,17 +246,17 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
   return (
     <ChartChrome label={label} series={series} hidden={hidden} toggle={toggle} legend={legend} announce={announce} caption={caption} className={className} style={style}
       rows={data.map((d) => ({ head: xFormat(String(d[x])), cells: series.map((s) => (typeof d[s.key] === 'number' ? fmt(d[s.key] as number) : '—')) }))}>
-      <div ref={box} className="gl-chart__plot" tabIndex={0} role="img" aria-label={label}
+      <div ref={box} className="sg-chart__plot" tabIndex={0} role="img" aria-label={label}
         onPointerMove={onMove} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}
         onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }}>
         {measured === null ? <div style={{ height }} /> : <svg width={width} height={height} aria-hidden="true">
           <defs>{series.map((s, i) => (
             <linearGradient key={s.key} id={`${gid}-${i}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={s.color ?? COLOR(i)} stopOpacity="0.22" /><stop offset="1" stopColor={s.color ?? COLOR(i)} stopOpacity="0" /></linearGradient>
           ))}</defs>
-          {ticks.map((t) => <g key={t}><line className="gl-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="gl-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{fmt(t)}</text></g>)}
+          {ticks.map((t) => <g key={t}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{fmt(t)}</text></g>)}
           {/* every step-th label, plus the last one when it does not crowd its neighbour */}
           {data.map((d, i) => (i % step === 0 || (i === data.length - 1 && i % step >= step / 2)) ? (
-            <text key={i} className="gl-chart__tick" x={X(i)} y={height - 6} textAnchor={i === 0 ? 'start' : i === data.length - 1 ? 'end' : 'middle'}>{xFormat(String(d[x]))}</text>
+            <text key={i} className="sg-chart__tick" x={X(i)} y={height - 6} textAnchor={i === 0 ? 'start' : i === data.length - 1 ? 'end' : 'middle'}>{xFormat(String(d[x]))}</text>
           ) : null)}
           <g ref={g}>
             {series.map((s, si) => {
@@ -266,13 +266,13 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
               return (
                 <g key={s.key} style={{ color: s.color ?? COLOR(si) }}>
                   {area && <path data-fade d={`${line}L${X(data.length - 1)},${Y(Math.max(y0, 0))}L${X(0)},${Y(Math.max(y0, 0))}Z`} fill={`url(#${gid}-${si})`} />}
-                  <path data-draw className="gl-chart__line" d={line} pathLength={1} />
+                  <path data-draw className="sg-chart__line" d={line} pathLength={1} />
                 </g>
               );
             })}
           </g>
           {active !== null && (
-            <g className="gl-chart__cross">
+            <g className="sg-chart__cross">
               <line x1={X(active)} x2={X(active)} y1={M.top} y2={M.top + ih} />
               {shown.map((s) => { const si = series.indexOf(s); const v = data[active][s.key]; return typeof v === 'number' ? <circle key={s.key} cx={X(active)} cy={Y(v)} r={4} style={{ fill: s.color ?? COLOR(si) }} /> : null; })}
             </g>
@@ -339,13 +339,13 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
   return (
     <ChartChrome label={label} series={series} hidden={hidden} toggle={toggle} legend={legend} announce={announce} caption={caption} className={className} style={style}
       rows={data.map((d) => ({ head: xFormat(String(d[x])), cells: series.map((s) => (typeof d[s.key] === 'number' ? fmt(d[s.key] as number) : '—')) }))}>
-      <div ref={box} className="gl-chart__plot" tabIndex={0} role="img" aria-label={label}
+      <div ref={box} className="sg-chart__plot" tabIndex={0} role="img" aria-label={label}
         onPointerMove={onMove} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}
         onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }}>
         {measured === null ? <div style={{ height }} /> : <svg width={width} height={height} aria-hidden="true">
-          {active !== null && <rect className="gl-chart__band" x={left + active * band} y={M.top} width={band} height={ih} rx={6} />}
-          {ticks.map((t) => <g key={t}><line className="gl-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="gl-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{fmt(t)}</text></g>)}
-          {data.map((d, i) => (i % step === 0 ? <text key={i} className="gl-chart__tick" x={left + i * band + band / 2} y={height - 6} textAnchor="middle">{xFormat(String(d[x]))}</text> : null))}
+          {active !== null && <rect className="sg-chart__band" x={left + active * band} y={M.top} width={band} height={ih} rx={6} />}
+          {ticks.map((t) => <g key={t}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{fmt(t)}</text></g>)}
+          {data.map((d, i) => (i % step === 0 ? <text key={i} className="sg-chart__tick" x={left + i * band + band / 2} y={height - 6} textAnchor="middle">{xFormat(String(d[x]))}</text> : null))}
           <g ref={g}>
             {data.map((_, i) => series.map((s, si) => {
               if (hidden.has(s.key)) return null;
@@ -353,10 +353,10 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
               const y = gv[at] ?? Y(0), h = Math.max(0, gv[at + 1] ?? 0);
               const bx = left + i * band + pad / 2 + (stacked ? 0 : k(s) * groupW);
               const w = Math.max(1, groupW - (stacked || shown.length === 1 ? 0 : 2));
-              return <rect key={`${i}-${s.key}`} data-bar data-i={i} className="gl-chart__bar" x={bx} y={y} width={w} height={h} rx={Math.min(4, w / 2)} style={{ fill: s.color ?? COLOR(si) }} />;
+              return <rect key={`${i}-${s.key}`} data-bar data-i={i} className="sg-chart__bar" x={bx} y={y} width={w} height={h} rx={Math.min(4, w / 2)} style={{ fill: s.color ?? COLOR(si) }} />;
             }))}
           </g>
-          <line className="gl-chart__axis" x1={left} x2={left + iw} y1={Y(0)} y2={Y(0)} />
+          <line className="sg-chart__axis" x1={left} x2={left + iw} y1={Y(0)} y2={Y(0)} />
         </svg>}
         {active !== null && <Tip x={left + active * band + band / 2} y={M.top + ih / 2} w={width} title={xFormat(String(data[active][x]))} rows={rowsFor(active)} />}
       </div>
@@ -429,8 +429,8 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
   };
   const say = (i: number) => `${data[i].label}: ${fmt(data[i].value)} (${pct.format(data[i].value / total)})`;
   return (
-    <figure ref={fig} className={cx('gl-chart', 'gl-donut', className)} style={style} aria-label={label}>
-      <div className="gl-donut__ring" tabIndex={0} role="img" aria-label={label} style={{ width: size, height: size }}
+    <figure ref={fig} className={cx('sg-chart', 'sg-donut', className)} style={style} aria-label={label}>
+      <div className="sg-donut__ring" tabIndex={0} role="img" aria-label={label} style={{ width: size, height: size }}
         onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }} onBlur={() => setActive(null)}
         onPointerMove={(e) => { touch.current = e.pointerType === 'touch'; if (!touch.current) { setKbd(false); setActive(at(e)); } }}
         onPointerLeave={hover(null)} onPointerDown={(e) => { touch.current = e.pointerType === 'touch'; }}
@@ -439,25 +439,25 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
           <g data-rings style={{ transformOrigin: 'center' }}>
             {data.map((d, i) => (
               /* the active slice lifts outward along its middle — a transform, so it moves on a spring instead of jumping */
-              <path key={d.label} className="gl-donut__slice" d={arc(i ? ang[i - 1] : 0, ang[i])} data-active={active === i || undefined}
+              <path key={d.label} className="sg-donut__slice" d={arc(i ? ang[i - 1] : 0, ang[i])} data-active={active === i || undefined}
                 style={{ fill: d.color ?? COLOR(i), opacity: active !== null && active !== i ? 0.45 : 1, transform: active === i ? (() => { const m = ((i ? ang[i - 1] : 0) + ang[i]) / 2; return `translate(${(Math.sin(m) * 4).toFixed(2)}px, ${(-Math.cos(m) * 4).toFixed(2)}px)`; })() : undefined }} />
             ))}
           </g>
         </svg>
-        <div className="gl-donut__center" aria-hidden="true">
-          <div className="gl-donut__value">{active !== null ? pct.format(data[active].value / total) : centerValue ?? fmt(total)}</div>
-          <div className="gl-donut__label">{active !== null ? data[active].label : centerLabel}</div>
+        <div className="sg-donut__center" aria-hidden="true">
+          <div className="sg-donut__value">{active !== null ? pct.format(data[active].value / total) : centerValue ?? fmt(total)}</div>
+          <div className="sg-donut__label">{active !== null ? data[active].label : centerLabel}</div>
         </div>
       </div>
-      <ul className="gl-donut__legend">
+      <ul className="sg-donut__legend">
         {data.map((d, i) => (
           <li key={d.label} data-active={active === i || undefined} onPointerEnter={hover(i)} onPointerLeave={hover(null)} onPointerDown={(e) => { touch.current = e.pointerType === 'touch'; }} onClick={tap(i)}>
-            <span className="gl-chart__swatch" style={{ background: d.color ?? COLOR(i) }} aria-hidden="true" />
-            <span className="gl-donut__name">{d.label}</span><span className="gl-donut__num">{fmt(d.value)}</span><span className="gl-donut__pct">{pct.format(d.value / total)}</span>
+            <span className="sg-chart__swatch" style={{ background: d.color ?? COLOR(i) }} aria-hidden="true" />
+            <span className="sg-donut__name">{d.label}</span><span className="sg-donut__num">{fmt(d.value)}</span><span className="sg-donut__pct">{pct.format(d.value / total)}</span>
           </li>
         ))}
       </ul>
-      <div className="gl-visually-hidden" aria-live="polite">{kbd && active !== null ? say(active) : ''}</div>
+      <div className="sg-visually-hidden" aria-live="polite">{kbd && active !== null ? say(active) : ''}</div>
     </figure>
   );
 }
@@ -477,7 +477,7 @@ export function Sparkline({ values, tone = 'accent', area = true, height = 32, '
   const [box, measured] = useWidth<HTMLDivElement>(120);
   const width = measured ?? 0;
   const g = useRef<SVGGElement>(null);
-  const gid = useStableId('gl-sp');
+  const gid = useStableId('sg-sp');
   const lo = Math.min(...values), hi = Math.max(...values), pad = 3;
   const Y = (v: number) => pad + (height - pad * 2) * (1 - (v - lo) / (hi - lo || 1));
   const ys = useTween(values.map(Y), box, values.join(','));
@@ -485,14 +485,14 @@ export function Sparkline({ values, tone = 'accent', area = true, height = 32, '
   const pts = ys.map((y, i) => [X(i), y] as [number, number]);
   const line = pathOf(pts, true);
   useDrawIn(g, [measured !== null]);
-  const color = tone === 'neutral' ? 'var(--gl-label-tertiary)' : tone === 'accent' ? 'var(--gl-accent)' : tone === 'info' ? 'var(--gl-info-text)' : `var(--gl-${tone})`;
+  const color = tone === 'neutral' ? 'var(--sg-label-tertiary)' : tone === 'accent' ? 'var(--sg-accent)' : tone === 'info' ? 'var(--sg-info-text)' : `var(--sg-${tone})`;
   return (
-    <div ref={box} className={cx('gl-sparkline', className)} style={{ height, color, ...style }} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
+    <div ref={box} className={cx('sg-sparkline', className)} style={{ height, color, ...style }} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
       {measured !== null && <svg width={width} height={height}>
         <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="currentColor" stopOpacity="0.2" /><stop offset="1" stopColor="currentColor" stopOpacity="0" /></linearGradient></defs>
         <g ref={g}>
           {area && <path data-fade d={`${line}L${X(values.length - 1)},${height}L${X(0)},${height}Z`} fill={`url(#${gid})`} />}
-          <path data-draw className="gl-sparkline__line" d={line} pathLength={1} />
+          <path data-draw className="sg-sparkline__line" d={line} pathLength={1} />
         </g>
         {pts.length > 0 && <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r={2.5} fill="currentColor" />}
       </svg>}
@@ -511,8 +511,8 @@ export type BarMeterProps = {
 export function BarMeter({ value, max = 100, min = 0, tone = 'neutral', width = 40, className, style }: BarMeterProps) {
   const p = Math.max(0, Math.min(1, (value - min) / (max - min || 1)));
   return (
-    <span className={cx('gl-barmeter', className)} data-tone={tone} style={{ width, ...style }} aria-hidden="true">
-      <span className="gl-barmeter__fill" style={{ transform: `scaleX(${p.toFixed(4)})` }} />
+    <span className={cx('sg-barmeter', className)} data-tone={tone} style={{ width, ...style }} aria-hidden="true">
+      <span className="sg-barmeter__fill" style={{ transform: `scaleX(${p.toFixed(4)})` }} />
     </span>
   );
 }
@@ -534,11 +534,11 @@ export type IntervalPlotProps = {
 export function IntervalPlot({ value, low, high, min = 0, max = 100, reference, width = 160, tone = 'neutral', 'aria-label': label, className, style }: IntervalPlotProps) {
   const P = (v: number) => `${(Math.max(0, Math.min(1, (v - min) / (max - min || 1))) * 100).toFixed(2)}%`;
   return (
-    <span className={cx('gl-interval', className)} data-tone={tone} style={{ width, ...style }} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
-      <span className="gl-interval__track" />
-      {reference !== undefined && <span className="gl-interval__ref" style={{ left: P(reference) }} />}
-      {low !== undefined && high !== undefined && <span className="gl-interval__range" style={{ left: P(low), width: `calc(${P(high)} - ${P(low)})` }} />}
-      <span className="gl-interval__dot" style={{ left: P(value) }} />
+    <span className={cx('sg-interval', className)} data-tone={tone} style={{ width, ...style }} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
+      <span className="sg-interval__track" />
+      {reference !== undefined && <span className="sg-interval__ref" style={{ left: P(reference) }} />}
+      {low !== undefined && high !== undefined && <span className="sg-interval__range" style={{ left: P(low), width: `calc(${P(high)} - ${P(low)})` }} />}
+      <span className="sg-interval__dot" style={{ left: P(value) }} />
     </span>
   );
 }

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   Accordion, AppBar, Avatar, Breadcrumbs, Button, IconButton, List, ListItem, MediaViewer, SearchField, Skeleton, Stack, Text, useToast,
-} from '@glass-layer/react';
+} from '@satin-glass/react';
 import { ChevronLeft, Folder, Home, Plus, Share, Star } from 'lucide-react';
 import { Demo, Page, Photo, Section } from '../shared';
 

@@ -17,7 +17,7 @@ const still = async (read, ms = 2500) => { let last = await read(), same = 0; co
 /* PageUp / PageDown as plain key events: Playwright on macOS also sends them as scroll-page editing commands, which
    scroll a focused scroller even when the page prevents the key (a real keyboard does not) */
 const pageKey = (loc, key) => loc.evaluate((e, key) => e.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })), key);
-const aligned = (wheel) => wheel.evaluate((w) => { const sc = w.querySelector('.gl-wheel__scroller'), r = sc.getBoundingClientRect(), h = sc.firstElementChild.offsetHeight; const i = Math.round(sc.scrollTop / h); const row = sc.children[i].getBoundingClientRect(); return Math.abs((row.top + row.bottom) / 2 - (r.top + r.bottom) / 2) <= 1 && Math.abs(sc.scrollTop - i * h) <= 1; });
+const aligned = (wheel) => wheel.evaluate((w) => { const sc = w.querySelector('.sg-wheel__scroller'), r = sc.getBoundingClientRect(), h = sc.firstElementChild.offsetHeight; const i = Math.round(sc.scrollTop / h); const row = sc.children[i].getBoundingClientRect(); return Math.abs((row.top + row.bottom) / 2 - (r.top + r.bottom) / 2) <= 1 && Math.abs(sc.scrollTop - i * h) <= 1; });
 
 await go('selection');
 /* ================================================================ wheels (the alarm's time wheel) */
@@ -25,7 +25,7 @@ await go('selection');
   const a = demo('alarm'); await a.scrollIntoViewIfNeeded(); await p.waitForTimeout(300);
   /* the value commits when a wheel comes to rest: wait on the wheels' positions as well as the text */
   const shown = () => a.locator('.alarm-time').textContent();
-  const rest = () => still(() => a.evaluate((x) => [...x.querySelectorAll('.gl-wheel__scroller')].map((e) => e.scrollTop).join(',') + x.querySelector('.alarm-time').textContent), 4000).then(() => p.waitForTimeout(250));
+  const rest = () => still(() => a.evaluate((x) => [...x.querySelectorAll('.sg-wheel__scroller')].map((e) => e.scrollTop).join(',') + x.querySelector('.alarm-time').textContent), 4000).then(() => p.waitForTimeout(250));
   const hour = a.getByRole('spinbutton', { name: '시' }), minute = a.getByRole('spinbutton', { name: '분' }), period = a.getByRole('spinbutton', { name: '오전/오후' });
   const t0 = await shown();
   await hour.focus(); await p.keyboard.press('ArrowDown'); await rest();
@@ -40,28 +40,28 @@ await go('selection');
   await rest(); await p.waitForTimeout(200);
   /* how far one wheel turn goes is the platform's; it moves on and lands on a row */
   const mAfter = +(await shown()).split(':')[1];
-  ok('wheel: the mouse wheel scrolls it and it comes to rest on a row, in the band', mAfter > 45 && mAfter <= 52 && await aligned(a.locator('.gl-wheel').nth(2)), `${await shown()}, aligned ${await aligned(a.locator('.gl-wheel').nth(2))}`);
+  ok('wheel: the mouse wheel scrolls it and it comes to rest on a row, in the band', mAfter > 45 && mAfter <= 52 && await aligned(a.locator('.sg-wheel').nth(2)), `${await shown()}, aligned ${await aligned(a.locator('.sg-wheel').nth(2))}`);
   const mm = `:${mAfter}`;
   /* a click on a row brings that row to the band */
-  const rows = a.locator('.gl-wheel').nth(1).locator('.gl-wheel__item');
+  const rows = a.locator('.sg-wheel').nth(1).locator('.sg-wheel__item');
   await rows.filter({ hasText: /^7$/ }).click(); await rest(); await p.waitForTimeout(150);
   ok('wheel: clicking a row brings it to the band', (await shown()) === `오전 7${mm}`, await shown());
   /* a mouse drags the column (slowly: no fling) */
-  const hb = await a.locator('.gl-wheel').nth(1).boundingBox();
+  const hb = await a.locator('.sg-wheel').nth(1).boundingBox();
   await p.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await p.mouse.down();
   for (let i = 1; i <= 12; i++) { await p.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 - i * 6); await p.waitForTimeout(16); }
   await p.waitForTimeout(150); await p.mouse.up(); await rest(); await p.waitForTimeout(150);
-  ok('wheel: dragging with the mouse turns it by as many rows as it moved (the release is not a click on the grabbed row)', (await shown()) === `오전 9${mm}` && await aligned(a.locator('.gl-wheel').nth(1)), await shown());
+  ok('wheel: dragging with the mouse turns it by as many rows as it moved (the release is not a click on the grabbed row)', (await shown()) === `오전 9${mm}` && await aligned(a.locator('.sg-wheel').nth(1)), await shown());
   await period.focus(); await p.keyboard.press('ArrowDown'); await rest();
   ok('wheel: the period column turns 오전 into 오후 (same hour)', (await shown()) === `오후 9${mm}`, await shown());
   /* the drum: the row in the band is solid, rows further away fade */
-  const op = await a.locator('.gl-wheel').nth(1).evaluate((w) => { const sc = w.querySelector('.gl-wheel__scroller'), h = sc.firstElementChild.offsetHeight, i = Math.round(sc.scrollTop / h); return [0, 1, 2].map((d) => +getComputedStyle(sc.children[i + d].firstElementChild).opacity); });
+  const op = await a.locator('.sg-wheel').nth(1).evaluate((w) => { const sc = w.querySelector('.sg-wheel__scroller'), h = sc.firstElementChild.offsetHeight, i = Math.round(sc.scrollTop / h); return [0, 1, 2].map((d) => +getComputedStyle(sc.children[i + d].firstElementChild).opacity); });
   ok('wheel: rows bend away from the band (solid in it, fading with distance)', op[0] > 0.99 && op[1] < op[0] && op[2] < op[1], JSON.stringify(op));
 }
 
 /* ================================================================ weekdays */
 {
-  const a = demo('alarm'), foot = () => a.locator('.gl-list-section__footer').textContent();
+  const a = demo('alarm'), foot = () => a.locator('.sg-list-section__footer').textContent();
   const sat = a.getByRole('button', { name: '토요일' }), sun = a.getByRole('button', { name: '일요일' });
   ok('weekdays: Monday–Friday read as "주중"', (await foot()) === '반복: 주중', await foot());
   const fill = await sat.evaluate((el) => new Promise((res) => { const out = []; const t0 = performance.now(); el.click(); const f = () => { out.push(new DOMMatrix(getComputedStyle(el, '::before').transform).a); if (performance.now() - t0 < 400) requestAnimationFrame(f); else res(out); }; requestAnimationFrame(f); }));
@@ -79,7 +79,7 @@ await go('selection');
   await field.scrollIntoViewIfNeeded();
   ok('time picker: empty shows the placeholder', (await field.textContent()).includes('시간 선택'));
   await field.click(); await p.waitForTimeout(500);
-  const panel = p.locator('.gl-timepicker-panel');
+  const panel = p.locator('.sg-timepicker-panel');
   const v1 = await field.textContent(), focused = await p.evaluate(() => document.activeElement?.getAttribute('role'));
   ok('time picker: opening starts at a time (now, on the 5-minute step) and focuses the wheels', /^(오전|오후) \d{1,2}:\d[05]$/.test(v1.trim()) && focused === 'spinbutton' && (await panel.count()) === 1, `${v1} / ${focused}`);
   await p.keyboard.press('Tab'); await p.keyboard.press('ArrowDown'); await p.waitForTimeout(400);
@@ -97,7 +97,7 @@ await go('selection');
 {
   const d = demo('date'), field = d.getByRole('button', { name: /생년월일/ });
   await field.scrollIntoViewIfNeeded(); await field.click(); await p.waitForTimeout(600);
-  const panel = p.locator('.gl-datepicker-panel'), title = panel.locator('.gl-calendar__title-btn');
+  const panel = p.locator('.sg-datepicker-panel'), title = panel.locator('.sg-calendar__title-btn');
   const year = panel.getByRole('spinbutton', { name: '연도' });
   ok('birth date: opens on the month / year wheels (defaultMonth 1990), the year wheel focused', (await year.getAttribute('aria-valuetext')) === '1990년' && (await year.evaluate((e) => e === document.activeElement)) && (await title.getAttribute('aria-expanded')) === 'true');
   await p.keyboard.type('1980'); await p.waitForTimeout(700);
@@ -106,33 +106,33 @@ await go('selection');
   ok('birth date: the month wheel next to it (1월 → 3월)', (await title.textContent()) === '1980년 3월', await title.textContent());
   await p.keyboard.press('Enter'); await p.waitForTimeout(600);
   const focusDay = await p.evaluate(() => document.activeElement?.getAttribute('data-date'));
-  ok('birth date: Enter returns to the days of that month, focus on a day', (await panel.locator('.gl-calendar__grid').count()) === 1 && /^1980-03-/.test(focusDay ?? ''), focusDay);
+  ok('birth date: Enter returns to the days of that month, focus on a day', (await panel.locator('.sg-calendar__grid').count()) === 1 && /^1980-03-/.test(focusDay ?? ''), focusDay);
   await panel.locator('[data-date="1980-03-15"]').click(); await p.waitForTimeout(500);
   ok('birth date: picking a day fills the field', (await field.textContent()).includes('1980'), await field.textContent());
   /* max = today: later months of this year are passed over */
   await field.click(); await p.waitForTimeout(500);   /* opens on the wheels again (openTo) */
   await panel.getByRole('spinbutton', { name: '연도' }).focus(); await p.keyboard.press('End'); await p.waitForTimeout(500);
-  const now = new Date(), dis = await panel.locator('.gl-wheel').nth(1).locator('.gl-wheel__item[data-disabled]').count();
+  const now = new Date(), dis = await panel.locator('.sg-wheel').nth(1).locator('.sg-wheel__item[data-disabled]').count();
   ok('birth date: with max = today, months after this one cannot be chosen', dis === 11 - now.getMonth(), `${dis} disabled`);
   await p.keyboard.press('Escape'); await p.waitForTimeout(400);
 
-  const cal = demo('calendar').locator('.gl-calendar');
+  const cal = demo('calendar').locator('.sg-calendar');
   const box = () => cal.evaluate((e) => Math.round(e.getBoundingClientRect().height));
-  const h0 = await box(), t2 = cal.locator('.gl-calendar__title-btn'), m0 = await t2.textContent();
+  const h0 = await box(), t2 = cal.locator('.sg-calendar__title-btn'), m0 = await t2.textContent();
   await t2.click(); await p.waitForTimeout(500);
   const h1 = await box();
   const yw = cal.getByRole('spinbutton', { name: '연도' }); await yw.focus(); await pageKey(yw, 'PageUp'); await p.waitForTimeout(600);
   const m1 = await t2.textContent();
   ok('calendar: the title opens the wheels in place (same size); PageUp on the year goes back 10 years', h1 === h0 && parseInt(m1) === parseInt(m0) - 10, `${h0}/${h1} px, ${m0} → ${m1}`);
   await t2.click(); await p.waitForTimeout(500);
-  ok('calendar: the title again shows the days of the chosen month', (await cal.locator('.gl-calendar__grid').count()) === 1 && (await t2.getAttribute('aria-expanded')) === 'false');
+  ok('calendar: the title again shows the days of the chosen month', (await cal.locator('.sg-calendar__grid').count()) === 1 && (await t2.getAttribute('aria-expanded')) === 'false');
 }
 
 /* ================================================================ navigation stack */
 await go('lists');
 {
-  const n = demo('nav-stack'), title = () => n.locator('.gl-nav__page:not([inert]) .gl-appbar__title').textContent();
-  const pages = () => n.locator('.gl-nav__page').count();
+  const n = demo('nav-stack'), title = () => n.locator('.sg-nav__page:not([inert]) .sg-appbar__title').textContent();
+  const pages = () => n.locator('.sg-nav__page').count();
   /* Safari does not focus a clicked button, so there is no row to go back to: the page's title takes focus instead */
   const webkitFocus = (t) => (engine === 'webkit' ? t : '\u0000');
   ok('navigation stack: starts on its first page', (await title()) === '설정' && (await pages()) === 1);
@@ -140,24 +140,24 @@ await go('lists');
     const box = document.querySelector('[data-demo="nav-stack"]');
     const row = [...box.querySelectorAll('button')].find((x) => x.textContent.startsWith('프로필')); row.focus(); row.click();
     const out = []; const t0 = performance.now();
-    const f = () => { const top = box.querySelectorAll('.gl-nav__page')[1]; if (top) out.push(Math.round(top.getBoundingClientRect().left - box.getBoundingClientRect().left)); if (performance.now() - t0 < 700) requestAnimationFrame(f); else res(out); };
+    const f = () => { const top = box.querySelectorAll('.sg-nav__page')[1]; if (top) out.push(Math.round(top.getBoundingClientRect().left - box.getBoundingClientRect().left)); if (performance.now() - t0 < 700) requestAnimationFrame(f); else res(out); };
     requestAnimationFrame(f);
   }));
   await p.waitForTimeout(300);
   ok('navigation stack: push slides the page in from the trailing edge (reduced motion: fades in place)', (await title()) === '프로필' && (reduced ? path.every((x) => x === 0) : path.filter((x) => x > 0 && x < 300).length >= 3 && path.at(-1) === 0), path.slice(0, 10).join(' '));
-  ok('navigation stack: the back button is named after the page below', (await n.locator('.gl-nav__page:not([inert]) .gl-nav__back').textContent()).includes('설정'));
+  ok('navigation stack: the back button is named after the page below', (await n.locator('.sg-nav__page:not([inert]) .sg-nav__back').textContent()).includes('설정'));
   ok('navigation stack: focus moves to the new page title', (await p.evaluate(() => document.activeElement?.textContent)) === '프로필');
   await n.getByRole('button', { name: '계정 보안' }).click(); await p.waitForTimeout(800);
   const twoStep = n.getByRole('switch', { name: '2단계 인증' });
   await twoStep.click(); await p.waitForTimeout(200);
   await n.getByRole('button', { name: /비밀번호 변경/ }).click(); await p.waitForTimeout(800);
-  const below = await n.locator('.gl-nav__page').evaluateAll((ps) => ps.map((x) => `${x.hasAttribute('inert') ? 'i' : '-'}${x.hasAttribute('data-hidden') ? 'h' : '-'}`).join(' '));
+  const below = await n.locator('.sg-nav__page').evaluateAll((ps) => ps.map((x) => `${x.hasAttribute('inert') ? 'i' : '-'}${x.hasAttribute('data-hidden') ? 'h' : '-'}`).join(' '));
   ok('navigation stack: four deep; the pages below are kept but hidden and inert', (await pages()) === 4 && (await title()) === '비밀번호 변경' && below === 'ih ih ih --', below);
   /* back, frame by frame: the leaving page only ever moves away (or fades) until it is gone — it must never come
      back over the screen for a frame when its slide ends (that was a visible flash) */
   const leave = await p.evaluate(() => new Promise((res) => {
-    const box = document.querySelector('[data-demo="nav-stack"]'), page = box.querySelectorAll('.gl-nav__page')[3];
-    [...box.querySelectorAll('.gl-nav__page')[3].querySelectorAll('button')].find((x) => x.textContent.includes('뒤로')).click();
+    const box = document.querySelector('[data-demo="nav-stack"]'), page = box.querySelectorAll('.sg-nav__page')[3];
+    [...box.querySelectorAll('.sg-nav__page')[3].querySelectorAll('button')].find((x) => x.textContent.includes('뒤로')).click();
     const out = []; const t0 = performance.now();
     const f = () => { out.push(page.isConnected ? `${Math.round(page.getBoundingClientRect().left - box.getBoundingClientRect().left)}/${(+getComputedStyle(page).opacity).toFixed(2)}` : 'gone'); if (performance.now() - t0 < 900) requestAnimationFrame(f); else res(out); };
     requestAnimationFrame(f);

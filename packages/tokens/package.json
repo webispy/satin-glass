@@ -1,5 +1,5 @@
 {
-  "name": "@glass-layer/tokens",
+  "name": "@satin-glass/tokens",
   "version": "0.3.0",
   "type": "module",
   "sideEffects": ["*.css"],

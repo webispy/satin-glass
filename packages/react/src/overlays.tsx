@@ -2,10 +2,10 @@ import {
   Children, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
   type HTMLAttributes, type KeyboardEvent, type ReactElement, type ReactNode,
 } from 'react';
-import { animate, bloomIn, bloomOut, drag, fade, focusables, longPress, place, prefersReducedMotion, pushLayer, trapFocus, type Placement } from '@glass-layer/core';
+import { animate, bloomIn, bloomOut, drag, fade, focusables, longPress, place, prefersReducedMotion, pushLayer, trapFocus, type Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useIsoLayoutEffect, usePresence, useStableId } from './utils';
 import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
-import type { MotionName } from '@glass-layer/core';
+import type { MotionName } from '@satin-glass/core';
 import { Button } from './controls';
 import { CheckIcon, InfoIcon, SuccessIcon, AlertIcon } from './icons';
 
@@ -31,7 +31,7 @@ export type DialogProps = {
 
 export function Dialog({ open, onClose, title, children, icon, tone = 'accent', actions, dismissible = false, role = 'alertdialog', className, motion }: DialogProps) {
   const panel = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
-  const id = useStableId('gl-dialog');
+  const id = useStableId('sg-dialog');
   const lightRef = useGlassLight();
   const release = useRelease();
   const { mounted } = useOverlayLifecycle(open, () => {
@@ -50,14 +50,14 @@ export function Dialog({ open, onClose, title, children, icon, tone = 'accent', 
   const many = Children.count(actions) >= 3;
   return (
     <MotionScope motion={motion} bare><Portal>
-      <div ref={scrim} className="gl-scrim" onClick={() => dismissible && onClose('backdrop')} />
-      <div className="gl-dialog-wrap">
-        <div ref={mergeRefs(panel, lightRef)} role={role} aria-modal="true" aria-labelledby={`${id}-t`} aria-describedby={children ? `${id}-b` : undefined} className={cx('gl-dialog', glassClass('strong'), className)}>
-          <div className="gl-dialog__scroll">
-            {icon && <div className="gl-dialog__icon" data-tone={tone}>{icon}</div>}
-            <h2 id={`${id}-t`} className="gl-dialog__title">{title}</h2>
-            {children && <div id={`${id}-b`} className="gl-dialog__body">{children}</div>}
-            {actions && <div className={cx('gl-dialog__actions', many && 'gl-dialog__actions--stacked')}>{actions}</div>}
+      <div ref={scrim} className="sg-scrim" onClick={() => dismissible && onClose('backdrop')} />
+      <div className="sg-dialog-wrap">
+        <div ref={mergeRefs(panel, lightRef)} role={role} aria-modal="true" aria-labelledby={`${id}-t`} aria-describedby={children ? `${id}-b` : undefined} className={cx('sg-dialog', glassClass('strong'), className)}>
+          <div className="sg-dialog__scroll">
+            {icon && <div className="sg-dialog__icon" data-tone={tone}>{icon}</div>}
+            <h2 id={`${id}-t`} className="sg-dialog__title">{title}</h2>
+            {children && <div id={`${id}-b`} className="sg-dialog__body">{children}</div>}
+            {actions && <div className={cx('sg-dialog__actions', many && 'sg-dialog__actions--stacked')}>{actions}</div>}
           </div>
         </div>
       </div>
@@ -86,7 +86,7 @@ export type SheetProps = {
 
 export function Sheet({ open, onClose, title, leading, trailing, children, size = 'auto', adaptive = true, dismissible = true, className, motion, 'aria-label': ariaLabel }: SheetProps) {
   const panel = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
-  const id = useStableId('gl-sheet');
+  const id = useStableId('sg-sheet');
   const lightRef = useGlassLight();
   const release = useRelease();
   const swiped = useRef(false);
@@ -100,7 +100,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
     const pop = pushLayer(() => close.current('escape'), true);
     const trap = trapFocus(p);
     /* drag the grabber or header down to dismiss */
-    const handle = p.querySelector<HTMLElement>('[data-gl-drag]') ?? p;
+    const handle = p.querySelector<HTMLElement>('[data-sg-drag]') ?? p;
     let y = 0;
     const off = drag(handle, {
       axis: 'y', threshold: 4,
@@ -136,20 +136,20 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
   if (!mounted) return null;
   return (
     <MotionScope motion={motion} bare><Portal>
-      <div ref={scrim} className="gl-scrim" onClick={() => dismissible && onClose('backdrop')} />
-      <div className={cx('gl-sheet-wrap', adaptive && 'gl-sheet-wrap--adaptive')}>
-        <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined} aria-label={title ? undefined : ariaLabel} className={cx('gl-sheet', size === 'full' && 'gl-sheet--full', glassClass('strong'), className)}>
-          <div data-gl-drag>
-            <div className="gl-sheet__grabber" aria-hidden="true" />
+      <div ref={scrim} className="sg-scrim" onClick={() => dismissible && onClose('backdrop')} />
+      <div className={cx('sg-sheet-wrap', adaptive && 'sg-sheet-wrap--adaptive')}>
+        <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined} aria-label={title ? undefined : ariaLabel} className={cx('sg-sheet', size === 'full' && 'sg-sheet--full', glassClass('strong'), className)}>
+          <div data-sg-drag>
+            <div className="sg-sheet__grabber" aria-hidden="true" />
             {(title || leading || trailing) && (
-              <div className="gl-sheet__header">
+              <div className="sg-sheet__header">
                 {leading ?? <span />}
-                {title && <h2 id={`${id}-t`} className="gl-sheet__title">{title}</h2>}
+                {title && <h2 id={`${id}-t`} className="sg-sheet__title">{title}</h2>}
                 {trailing ?? <span />}
               </div>
             )}
           </div>
-          <div className="gl-sheet__body">{children}</div>
+          <div className="sg-sheet__body">{children}</div>
         </div>
       </div>
     </Portal></MotionScope>
@@ -168,20 +168,20 @@ export function MenuItem({ icon, hint, tone = 'default', disabled, checked, onSe
   const { select } = useContext(MenuContext);
   return (
     <button type="button" role={checked === undefined ? 'menuitem' : 'menuitemcheckbox'} aria-checked={checked} aria-disabled={disabled || undefined} tabIndex={-1}
-      data-tone={tone !== 'default' ? tone : undefined} className={cx('gl-menu__item', className)}
+      data-tone={tone !== 'default' ? tone : undefined} className={cx('sg-menu__item', className)}
       onClick={() => !disabled && select(onSelect)} {...rest}>
       {icon}
-      <span className="gl-menu__item-label">{children}</span>
-      {hint && <span className="gl-menu__item-hint">{hint}</span>}
-      {checked && <CheckIcon className="gl-menu__check" />}
+      <span className="sg-menu__item-label">{children}</span>
+      {hint && <span className="sg-menu__item-hint">{hint}</span>}
+      {checked && <CheckIcon className="sg-menu__check" />}
     </button>
   );
 }
-export const MenuSeparator = () => <div className="gl-menu__sep" role="separator" />;
-export const MenuLabel = ({ children }: { children: ReactNode }) => <div className="gl-menu__label" role="presentation">{children}</div>;
+export const MenuSeparator = () => <div className="sg-menu__sep" role="separator" />;
+export const MenuLabel = ({ children }: { children: ReactNode }) => <div className="sg-menu__label" role="presentation">{children}</div>;
 
 function menuKeys(e: KeyboardEvent<HTMLElement>) {
-  const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('.gl-menu__item:not([aria-disabled="true"])'));
+  const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('.sg-menu__item:not([aria-disabled="true"])'));
   const i = items.indexOf(document.activeElement as HTMLElement);
   let n = -1;
   if (e.key === 'ArrowDown') n = (i + 1) % items.length;
@@ -213,15 +213,15 @@ export type MenuProps = {
 export function Menu({ open, onClose, anchor, placement = 'bottom-start', children, className, motion, lockScroll, 'aria-label': label }: MenuProps) {
   const lightRef = useGlassLight();
   const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => {
-    (p.querySelector<HTMLElement>('.gl-menu__item:not([aria-disabled="true"])') ?? p).focus({ preventScroll: true });
+    (p.querySelector<HTMLElement>('.sg-menu__item:not([aria-disabled="true"])') ?? p).focus({ preventScroll: true });
   }, { lockScroll });
   const ctx = useMemo<MenuCtx>(() => ({ select: (fn) => { onClose('select'); fn?.(); } }), [onClose]);
   if (!mounted) return null;
   return (
-    <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough gl-portal--anchored">
+    <MotionScope motion={motion} bare><Portal className="sg-portal--passthrough sg-portal--anchored">
       <MenuContext.Provider value={ctx}>
-        <div ref={mergeRefs(panel, lightRef)} role="menu" aria-label={label} tabIndex={-1} className={cx('gl-menu', glassClass('strong'), className)} onKeyDown={menuKeys}>
-          <div data-gl-content>{children}</div>
+        <div ref={mergeRefs(panel, lightRef)} role="menu" aria-label={label} tabIndex={-1} className={cx('sg-menu', glassClass('strong'), className)} onKeyDown={menuKeys}>
+          <div data-sg-content>{children}</div>
         </div>
       </MenuContext.Provider>
     </Portal></MotionScope>
@@ -235,9 +235,9 @@ export function Popover({ open, onClose, anchor, placement = 'bottom', children,
   const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => { (focusables(p)[0] ?? p).focus({ preventScroll: true }); });
   if (!mounted) return null;
   return (
-    <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough gl-portal--anchored">
-      <div ref={mergeRefs(panel, lightRef)} role="dialog" tabIndex={-1} className={cx('gl-popover', glassClass('strong'), className)} {...aria}>
-        <div data-gl-content>{children}</div>
+    <MotionScope motion={motion} bare><Portal className="sg-portal--passthrough sg-portal--anchored">
+      <div ref={mergeRefs(panel, lightRef)} role="dialog" tabIndex={-1} className={cx('sg-popover', glassClass('strong'), className)} {...aria}>
+        <div data-sg-content>{children}</div>
       </div>
     </Portal></MotionScope>
   );
@@ -252,7 +252,7 @@ export type ActionSheetProps = {
 export function ActionSheet({ open, onClose, title, message, actions, cancelLabel = 'Cancel', motion }: ActionSheetProps) {
   const box = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
   const release = useRelease();
-  const id = useStableId('gl-as');
+  const id = useStableId('sg-as');
   const l1 = useGlassLight(), l2 = useGlassLight();
   const { mounted } = useOverlayLifecycle(open, () => {
     const b = box.current!;
@@ -271,24 +271,24 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
   if (!mounted) return null;
   return (
     <MotionScope motion={motion} bare><Portal>
-      <div ref={scrim} className="gl-scrim" onClick={() => onClose('backdrop')} />
-      <div className="gl-actionsheet-wrap">
-        <div ref={box} className="gl-actionsheet" role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined}>
-          <div ref={l1} className={cx('gl-actionsheet__group', glassClass('strong'))}>
+      <div ref={scrim} className="sg-scrim" onClick={() => onClose('backdrop')} />
+      <div className="sg-actionsheet-wrap">
+        <div ref={box} className="sg-actionsheet" role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined}>
+          <div ref={l1} className={cx('sg-actionsheet__group', glassClass('strong'))}>
             {(title || message) && (
-              <div className="gl-actionsheet__head">
-                {title && <p id={`${id}-t`} className="gl-actionsheet__title">{title}</p>}
-                {message && <p className="gl-actionsheet__message">{message}</p>}
+              <div className="sg-actionsheet__head">
+                {title && <p id={`${id}-t`} className="sg-actionsheet__title">{title}</p>}
+                {message && <p className="sg-actionsheet__message">{message}</p>}
               </div>
             )}
             {actions.map((a, i) => (
-              <button key={i} type="button" className="gl-actionsheet__action" data-tone={a.tone === 'danger' ? 'danger' : undefined} disabled={a.disabled} onClick={() => { onClose('action'); a.onSelect?.(); }}>
+              <button key={i} type="button" className="sg-actionsheet__action" data-tone={a.tone === 'danger' ? 'danger' : undefined} disabled={a.disabled} onClick={() => { onClose('action'); a.onSelect?.(); }}>
                 {a.icon}{a.label}
               </button>
             ))}
           </div>
-          <div ref={l2} className={cx('gl-actionsheet__group', glassClass('strong'))}>
-            <button type="button" data-cancel className="gl-actionsheet__action gl-actionsheet__action--cancel" onClick={() => onClose('action')}>{cancelLabel}</button>
+          <div ref={l2} className={cx('sg-actionsheet__group', glassClass('strong'))}>
+            <button type="button" data-cancel className="sg-actionsheet__action sg-actionsheet__action--cancel" onClick={() => onClose('action')}>{cancelLabel}</button>
           </div>
         </div>
       </div>
@@ -347,9 +347,9 @@ export function ContextMenu({ menu, children, previewSelector, 'aria-label': lab
     <>
       <span ref={host} style={{ display: 'contents' }}>{children}</span>
       {r && (
-        <Portal className="gl-portal--passthrough">
-          <div ref={scrim} className="gl-scrim" style={{ pointerEvents: 'auto' }} />
-          <div ref={lift} className="gl-lift" style={{ left: r.left, top: r.top, width: r.width, height: r.height }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: state.clone }} />
+        <Portal className="sg-portal--passthrough">
+          <div ref={scrim} className="sg-scrim" style={{ pointerEvents: 'auto' }} />
+          <div ref={lift} className="sg-lift" style={{ left: r.left, top: r.top, width: r.width, height: r.height }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: state.clone }} />
         </Portal>
       )}
       <Menu open={state.open} onClose={close} anchor={anchorRect} placement="bottom-start" aria-label={label} lockScroll>{menu}</Menu>
@@ -375,8 +375,8 @@ export function Toaster({ children, position = 'top' }: { children?: ReactNode; 
   return (
     <ToastCtx.Provider value={push}>
       {children}
-      <Portal className="gl-portal--passthrough">
-        <div className={cx('gl-toaster', position === 'bottom' && 'gl-toaster--bottom')} role="region" aria-label="Notifications">
+      <Portal className="sg-portal--passthrough">
+        <div className={cx('sg-toaster', position === 'bottom' && 'sg-toaster--bottom')} role="region" aria-label="Notifications">
           {items.map((t) => <ToastView key={t.id} t={t} edge={position} onDone={() => remove(t.id)} />)}
         </div>
       </Portal>
@@ -426,9 +426,9 @@ function ToastView({ t, edge, onDone }: { t: ToastItem; edge: 'top' | 'bottom'; 
   });
   const icon = t.icon ?? (t.tone === 'success' ? <SuccessIcon /> : t.tone === 'danger' ? <AlertIcon /> : <InfoIcon />);
   return (
-    <div ref={mergeRefs(el, lightRef)} role={t.tone === 'danger' ? 'alert' : 'status'} className={cx('gl-toast', glassClass('strong'))} data-tone={t.tone}>
-      <span className="gl-toast__icon">{icon}</span>
-      <div className="gl-toast__text">{t.title}{t.description && <small>{t.description}</small>}</div>
+    <div ref={mergeRefs(el, lightRef)} role={t.tone === 'danger' ? 'alert' : 'status'} className={cx('sg-toast', glassClass('strong'))} data-tone={t.tone}>
+      <span className="sg-toast__icon">{icon}</span>
+      <div className="sg-toast__text">{t.title}{t.description && <small>{t.description}</small>}</div>
       {t.action && <Button size="sm" variant="tinted" onClick={() => { t.action!.onClick(); leave(); }}>{t.action.label}</Button>}
     </div>
   );

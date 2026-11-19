@@ -1,4 +1,4 @@
-# Glass Layer
+# Satin Glass
 
 빛을 따르는 유리 재질 위에 만든 React UI 라이브러리. 디자인 토큰, 프레임워크 없는 동작 코어, React 컴포넌트, 문서·카탈로그 앱으로 이루어진 pnpm 모노레포다.
 
@@ -8,17 +8,17 @@
 
 | 경로 | 패키지 | 내용 |
 |---|---|---|
-| `packages/tokens` | `@glass-layer/tokens` | OKLCH 팔레트, 테마 4종(라이트·다크·고대비 2종), 간격·반경·글자·모션 토큰 → `tokens.css`와 TS 값. 빌드할 때 WCAG 대비를 검사한다 |
-| `packages/core` | `@glass-layer/core` | 프레임워크 없는 동작(스프링, 포인터 빛, 물방울 선택 표시, 오버레이 배치·피어남·포커스·레이어 스택, 끌기·길게 누르기)과 컴포넌트 CSS(`styles.css`) |
-| `packages/react` | `@glass-layer/react` | React 컴포넌트 40여 개와 훅 |
+| `packages/tokens` | `@satin-glass/tokens` | OKLCH 팔레트, 테마 4종(라이트·다크·고대비 2종), 간격·반경·글자·모션 토큰 → `tokens.css`와 TS 값. 빌드할 때 WCAG 대비를 검사한다 |
+| `packages/core` | `@satin-glass/core` | 프레임워크 없는 동작(스프링, 포인터 빛, 물방울 선택 표시, 오버레이 배치·피어남·포커스·레이어 스택, 끌기·길게 누르기)과 컴포넌트 CSS(`styles.css`) |
+| `packages/react` | `@satin-glass/react` | React 컴포넌트 40여 개와 훅 |
 | `apps/docs` | — | 문서·카탈로그 앱(Vite). 테마 전환과 실제 앱 형태의 쇼케이스 포함 |
 | `tests/e2e` | — | Playwright: 상호작용(Chromium·WebKit·Firefox), 성능(CPU 4배 감속), 스크린샷 |
 
 ## 사용
 
 ```tsx
-import '@glass-layer/react/styles.css';
-import { ThemeProvider, createTheme, Button, TabBar, Tab } from '@glass-layer/react';
+import '@satin-glass/react/styles.css';
+import { ThemeProvider, createTheme, Button, TabBar, Tab } from '@satin-glass/react';
 
 <ThemeProvider theme={createTheme({ mode: 'system' })}>
   <Button variant="filled">계속</Button>

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import {
   AppBar, Badge, Button, Chip, ContextMenu, Glass, IconButton, List, ListItem, ListSection, Menu, MenuItem, MenuSeparator, PageControl,
   Popover, SearchField, SegmentedControl, Sheet, Slider, Stack, Switch, Tab, TabBar, TabBarAction, Text, useToast,
-} from '@glass-layer/react';
+} from '@satin-glass/react';
 import { Bookmark, Compass, Heart, Home, Info, Map, MoreHorizontal, Plus, Search, Settings2, Share, Trash2, User, Mountain, Waves, Tent, Building2 } from 'lucide-react';
 import { Photo, sceneTint } from '../shared';
 import { DisplaySettingsList } from '../settings';

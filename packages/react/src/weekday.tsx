@@ -41,9 +41,9 @@ export function WeekdayPicker({ value, defaultValue = [], onChange, locale = 'ko
   const narrow = useMemo(() => names(locale, 'narrow'), [locale]), long = useMemo(() => names(locale, 'long'), [locale]);
   const set = new Set(v);
   return (
-    <div role="group" aria-label={label} className={cx('gl-weekdays', size === 'sm' && 'gl-weekdays--sm', className)} style={style}>
+    <div role="group" aria-label={label} className={cx('sg-weekdays', size === 'sm' && 'sg-weekdays--sm', className)} style={style}>
       {order(weekStartsOn).map((d) => (
-        <button key={d} type="button" className="gl-weekday" aria-pressed={set.has(d)} aria-label={long[d]} disabled={disabled}
+        <button key={d} type="button" className="sg-weekday" aria-pressed={set.has(d)} aria-label={long[d]} disabled={disabled}
           data-weekend={d === 0 || d === 6 || undefined}
           onClick={() => { const n = new Set(set); if (n.has(d)) n.delete(d); else n.add(d); setV([...n].sort((a, b) => a - b)); }}>
           <span aria-hidden="true">{narrow[d]}</span>

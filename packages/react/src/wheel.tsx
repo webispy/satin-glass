@@ -6,7 +6,7 @@
    For assistive technology each column is a spinbutton: arrows step, PageUp / PageDown jump `pageStep` rows,
    Home / End go to the ends, typing digits or letters jumps to the first row that starts with them. */
 import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { drag, prefersReducedMotion, type MotionName, type Placement } from '@glass-layer/core';
+import { drag, prefersReducedMotion, type MotionName, type Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
 import { useAnchored } from './overlay-hooks';
@@ -171,12 +171,12 @@ export function Wheel<T>({ options, value, defaultValue, onChange, 'aria-label':
 
   const shown = options[Math.min(live, options.length - 1)];
   return (
-    <div className={cx('gl-wheel', className)} style={style} data-align={align !== 'center' ? align : undefined}>
-      <div ref={sc} id={id} className="gl-wheel__scroller" role="spinbutton" tabIndex={0} aria-label={label}
+    <div className={cx('sg-wheel', className)} style={style} data-align={align !== 'center' ? align : undefined}>
+      <div ref={sc} id={id} className="sg-wheel__scroller" role="spinbutton" tabIndex={0} aria-label={label}
         aria-valuenow={live} aria-valuemin={0} aria-valuemax={options.length - 1} aria-valuetext={shown?.label} onKeyDown={onKey}>
         {options.map((o, i) => (
-          <div key={String(o.value)} className="gl-wheel__item" aria-hidden="true" data-disabled={o.disabled || undefined} data-at={i === live || undefined}
-            onClick={() => { if (!s.dragging && !o.disabled && performance.now() - s.dragged > 300) go(i, true); }}><span className="gl-wheel__label">{o.label}</span></div>
+          <div key={String(o.value)} className="sg-wheel__item" aria-hidden="true" data-disabled={o.disabled || undefined} data-at={i === live || undefined}
+            onClick={() => { if (!s.dragging && !o.disabled && performance.now() - s.dragged > 300) go(i, true); }}><span className="sg-wheel__label">{o.label}</span></div>
         ))}
       </div>
     </div>
@@ -185,7 +185,7 @@ export function Wheel<T>({ options, value, defaultValue, onChange, 'aria-label':
 
 /** Columns side by side under one selection band (a time: hour · minute · period; a month and a year). */
 export function WheelGroup({ children, rows = 5, 'aria-label': label, className, style }: { children: ReactNode; rows?: number; 'aria-label'?: string; className?: string; style?: CSSProperties }) {
-  return <div role="group" aria-label={label} className={cx('gl-wheels', className)} style={{ ...style, '--_rows': rows } as CSSProperties}>{children}</div>;
+  return <div role="group" aria-label={label} className={cx('sg-wheels', className)} style={{ ...style, '--_rows': rows } as CSSProperties}>{children}</div>;
 }
 
 /* ================================================================================================ Time */
@@ -251,12 +251,12 @@ export function TimeWheel({ value, defaultValue = null, onChange, minuteStep = 1
   ];
   if (L.h12) {
     const period = <Wheel key="p" aria-label={L.labels.period} options={[{ value: 0, label: L.periods[0] }, { value: 1, label: L.periods[1] }]} value={pm ? 1 : 0} onCommit={onCommit}
-      onChange={(p) => put((t.h % 12) + (p ? 12 : 0), t.m)} className="gl-wheel--period" />;
+      onChange={(p) => put((t.h % 12) + (p ? 12 : 0), t.m)} className="sg-wheel--period" />;
     if (L.periodFirst) cols.unshift(period); else cols.push(period);
   }
   return (
-    <WheelGroup rows={rows} aria-label={label ?? L.labels.choose} className={cx('gl-timewheel', className)} style={style}>
-      {cols.flatMap((c, i) => (i && (c.key === 'm') ? [<span key="sep" className="gl-wheels__sep" aria-hidden="true">:</span>, c] : [c]))}
+    <WheelGroup rows={rows} aria-label={label ?? L.labels.choose} className={cx('sg-timewheel', className)} style={style}>
+      {cols.flatMap((c, i) => (i && (c.key === 'm') ? [<span key="sep" className="sg-wheels__sep" aria-hidden="true">:</span>, c] : [c]))}
     </WheelGroup>
   );
 }
@@ -275,7 +275,7 @@ export type TimePickerProps = Omit<TimeWheelProps, 'rows' | 'onCommit' | 'classN
 };
 
 const ClockIcon = () => (
-  <svg className="gl-select__chevrons" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
+  <svg className="sg-select__chevrons" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
 );
 
 /** A field that opens time wheels in an anchored panel. The time changes as the wheels turn; Enter, Escape or a
@@ -286,7 +286,7 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(functio
   const [v, setV] = useControllable<string | null>(value, defaultValue, onChange as (x: string | null) => void);
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
-  const auto = useStableId('gl-time');
+  const auto = useStableId('sg-time');
   const fid = id ?? auto;
   const L = useMemo(() => timeLocale(locale, hour12), [locale, hour12]);
   const lightRef = useGlassLight();
@@ -306,22 +306,22 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(functio
   const t = parse(v);
   return (
     <>
-      <div className={cx('gl-field', className)} style={style} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
-        {label && <span id={labelId} className="gl-field__label">{label}</span>}
-        <button ref={mergeRefs(ref, trigger)} id={fid} type="button" className="gl-select" disabled={disabled}
+      <div className={cx('sg-field', className)} style={style} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
+        {label && <span id={labelId} className="sg-field__label">{label}</span>}
+        <button ref={mergeRefs(ref, trigger)} id={fid} type="button" className="sg-select" disabled={disabled}
           aria-haspopup="dialog" aria-expanded={open} aria-labelledby={labelId ? `${labelId} ${fid}` : undefined} aria-label={labelId ? undefined : ariaLabel ?? L.labels.choose}
-          aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined} data-gl-motion={motion}
+          aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined} data-sg-motion={motion}
           onClick={() => { if (!open) start(); setOpen((o) => !o); }}>
-          <span className="gl-select__value">{t ? <span className="gl-time-value">{L.format(t.h, t.m)}</span> : <span className="gl-select__placeholder">{placeholder ?? L.labels.placeholder}</span>}</span>
+          <span className="sg-select__value">{t ? <span className="sg-time-value">{L.format(t.h, t.m)}</span> : <span className="sg-select__placeholder">{placeholder ?? L.labels.placeholder}</span>}</span>
           <ClockIcon />
         </button>
-        {help && <span id={`${fid}-help`} className="gl-field__help">{help}</span>}
+        {help && <span id={`${fid}-help`} className="sg-field__help">{help}</span>}
       </div>
       {name && <input type="hidden" name={name} value={v ?? ''} />}
       {mounted && (
-        <MotionScope motion={motion} bare><Portal className="gl-portal--passthrough gl-portal--anchored">
-          <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : L.labels.choose} tabIndex={-1} className={cx('gl-timepicker-panel', glassClass('strong'))}>
-            <div data-gl-content>
+        <MotionScope motion={motion} bare><Portal className="sg-portal--passthrough sg-portal--anchored">
+          <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : L.labels.choose} tabIndex={-1} className={cx('sg-timepicker-panel', glassClass('strong'))}>
+            <div data-sg-content>
               <TimeWheel value={v} onChange={setV} minuteStep={minuteStep} hour12={hour12} locale={locale} onCommit={() => { setOpen(false); }} />
             </div>
           </div>

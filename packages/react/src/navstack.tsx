@@ -6,7 +6,7 @@
    trailing actions) and the page's content scrolling under it. Focus moves to the new page's title on push and back
    to the row that opened it on pop. */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { animate, drag, fade, prefersReducedMotion, type MotionName } from '@glass-layer/core';
+import { animate, drag, fade, prefersReducedMotion, type MotionName } from '@satin-glass/core';
 import { cx, useIsoLayoutEffect } from './utils';
 import { AppBar } from './layout';
 import { Button } from './controls';
@@ -62,8 +62,8 @@ export function NavigationStack({ children, labels, onDepthChange, motion, class
   const depthCb = useRef(onDepthChange); depthCb.current = onDepthChange;
 
   const layer = (i: number) => pages.current[i] ?? null;
-  const shade = (i: number) => layer(i)?.querySelector<HTMLElement>(':scope > .gl-nav__shade') ?? null;
-  const focusTitle = (i: number) => layer(i)?.querySelector<HTMLElement>('[data-gl-nav-title]')?.focus({ preventScroll: true });
+  const shade = (i: number) => layer(i)?.querySelector<HTMLElement>(':scope > .sg-nav__shade') ?? null;
+  const focusTitle = (i: number) => layer(i)?.querySelector<HTMLElement>('[data-sg-nav-title]')?.focus({ preventScroll: true });
   const width = () => box.current?.clientWidth || 360;
   const clear = (...els: (HTMLElement | null)[]) => { for (const el of els) el?.getAnimations().forEach((a) => a.cancel()); };
 
@@ -188,16 +188,16 @@ export function NavigationStack({ children, labels, onDepthChange, motion, class
 
   return (
     <NavCtx.Provider value={api}>
-      <div ref={box} className={cx('gl-nav', className)} style={style} data-gl-motion={motion} data-moving={move ? move.dir : undefined}>
+      <div ref={box} className={cx('sg-nav', className)} style={style} data-sg-motion={motion} data-moving={move ? move.dir : undefined}>
         {layers.map((l, i) => (
-          <div key={l.key} ref={(el) => { pages.current[i] = el; }} className="gl-nav__page" data-depth={i}
+          <div key={l.key} ref={(el) => { pages.current[i] = el; }} className="sg-nav__page" data-depth={i}
             data-hidden={!showing(i) || undefined} inert={i !== top || undefined} aria-hidden={i !== top || undefined}>
-            <div className="gl-nav__scroll">
+            <div className="sg-nav__scroll">
               <PageCtx.Provider value={{ index: i, back: i > 0 ? titles[i - 1] ?? null : null, scroller: (els[i]?.firstElementChild as HTMLElement) ?? null, setTitle, backLabel: labels?.back ?? 'Back', pop }}>
                 {l.node}
               </PageCtx.Provider>
             </div>
-            <div className="gl-nav__shade" aria-hidden="true" />
+            <div className="sg-nav__shade" aria-hidden="true" />
           </div>
         ))}
       </div>
@@ -221,14 +221,14 @@ export function NavigationPage({ title, trailing, largeTitle, children, classNam
   if (!info) throw new Error('NavigationPage: not inside a NavigationStack');
   useIsoLayoutEffect(() => { info.setTitle(info.index, title); }, [title, info.index]);
   const back = info.index > 0 ? (
-    <Button variant="plain" size="sm" className="gl-nav__back" startIcon={<ChevronLeftIcon />} onClick={info.pop}>
-      <span className="gl-visually-hidden">{`${info.backLabel}: `}</span>{info.back ?? info.backLabel}
+    <Button variant="plain" size="sm" className="sg-nav__back" startIcon={<ChevronLeftIcon />} onClick={info.pop}>
+      <span className="sg-visually-hidden">{`${info.backLabel}: `}</span>{info.back ?? info.backLabel}
     </Button>
   ) : null;
   return (
-    <div className={cx('gl-navpage', className)} style={style}>
-      <AppBar title={<span tabIndex={-1} data-gl-nav-title="">{title}</span>} leading={back} trailing={trailing} scrollTarget={info.scroller} transparentAtTop largeTitle={largeTitle} />
-      <div className="gl-navpage__body">{children}</div>
+    <div className={cx('sg-navpage', className)} style={style}>
+      <AppBar title={<span tabIndex={-1} data-sg-nav-title="">{title}</span>} leading={back} trailing={trailing} scrollTarget={info.scroller} transparentAtTop largeTitle={largeTitle} />
+      <div className="sg-navpage__body">{children}</div>
     </div>
   );
 }

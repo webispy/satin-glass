@@ -31,13 +31,13 @@ export function Breadcrumbs({ items, maxItems = 5, itemsBeforeCollapse = 1, item
   const last = items.length - 1;
   const crumb = (c: Crumb, i: number) => {
     const current = i === last;
-    const body = <>{c.icon}<span className="gl-crumb__label">{c.label}</span></>;
+    const body = <>{c.icon}<span className="sg-crumb__label">{c.label}</span></>;
     return (
-      <li key={i} className="gl-crumb">
-        {i > 0 && <ChevronRightIcon className="gl-crumb__sep" />}
-        {current ? <span className="gl-crumb__item" aria-current="page">{body}</span>
-          : c.href ? <a className="gl-crumb__item" href={c.href} onClick={c.onClick}>{body}</a>
-          : <button type="button" className="gl-crumb__item" onClick={c.onClick}>{body}</button>}
+      <li key={i} className="sg-crumb">
+        {i > 0 && <ChevronRightIcon className="sg-crumb__sep" />}
+        {current ? <span className="sg-crumb__item" aria-current="page">{body}</span>
+          : c.href ? <a className="sg-crumb__item" href={c.href} onClick={c.onClick}>{body}</a>
+          : <button type="button" className="sg-crumb__item" onClick={c.onClick}>{body}</button>}
       </li>
     );
   };
@@ -46,13 +46,13 @@ export function Breadcrumbs({ items, maxItems = 5, itemsBeforeCollapse = 1, item
     else if (c.href) location.assign(c.href);
   };
   return (
-    <nav aria-label={label} className={cx('gl-breadcrumbs', className)} style={style}>
+    <nav aria-label={label} className={cx('sg-breadcrumbs', className)} style={style}>
       <ol>
         {head.map((c, i) => crumb(c, i))}
         {fold && (
-          <li className="gl-crumb gl-crumb--more">
-            <ChevronRightIcon className="gl-crumb__sep" />
-            <button ref={more} type="button" className="gl-crumb__item gl-crumb__more" aria-label={moreLabel} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          <li className="sg-crumb sg-crumb--more">
+            <ChevronRightIcon className="sg-crumb__sep" />
+            <button ref={more} type="button" className="sg-crumb__item sg-crumb__more" aria-label={moreLabel} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="6" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="18" cy="12" r="1.6" /></svg>
             </button>
             <Menu open={open} onClose={() => setOpen(false)} anchor={more.current} placement="bottom-start" aria-label={moreLabel}>

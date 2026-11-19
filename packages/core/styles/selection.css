@@ -3,211 +3,211 @@
    ============================================================================================ */
 
 /* ---- Checkbox & radio: a real <input> (forms, keyboard, screen readers) drawn as our own box ---- */
-.gl-check { position: relative; display: inline-flex; align-items: flex-start; gap: 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
-.gl-check[data-disabled="true"] { cursor: default; opacity: 0.42; }
-.gl-check__input { position: absolute; z-index: 1; top: 1px; left: 0; opacity: 0; width: 22px; height: 22px; margin: 0; cursor: inherit; }   /* on top of the drawn box: the real input takes the click */
-.gl-check__box {
+.sg-check { position: relative; display: inline-flex; align-items: flex-start; gap: 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+.sg-check[data-disabled="true"] { cursor: default; opacity: 0.42; }
+.sg-check__input { position: absolute; z-index: 1; top: 1px; left: 0; opacity: 0; width: 22px; height: 22px; margin: 0; cursor: inherit; }   /* on top of the drawn box: the real input takes the click */
+.sg-check__box {
   position: relative; flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px;
-  border-radius: 7px; background: var(--gl-surface); box-shadow: inset 0 0 0 1.5px var(--gl-label-tertiary);
-  transition: background-color var(--gl-duration-fast) ease, box-shadow var(--gl-duration-fast) ease, transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
+  border-radius: 7px; background: var(--sg-surface); box-shadow: inset 0 0 0 1.5px var(--sg-label-tertiary);
+  transition: background-color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
-.gl-check--radio .gl-check__box { border-radius: 50%; }
-.gl-check:active:not([data-disabled="true"]) .gl-check__box { transform: scale(0.9); transition-duration: 90ms; }
-.gl-check__input:focus-visible + .gl-check__box { box-shadow: inset 0 0 0 1.5px var(--gl-label-tertiary), var(--gl-ring); }
-.gl-check__input:checked + .gl-check__box, .gl-check__input:indeterminate + .gl-check__box { background: var(--gl-accent); box-shadow: inset 0 0 0 1.5px var(--gl-accent); }
-.gl-check__input:checked:focus-visible + .gl-check__box, .gl-check__input:indeterminate:focus-visible + .gl-check__box { box-shadow: inset 0 0 0 1.5px var(--gl-accent), var(--gl-ring); }
+.sg-check--radio .sg-check__box { border-radius: 50%; }
+.sg-check:active:not([data-disabled="true"]) .sg-check__box { transform: scale(0.9); transition-duration: 90ms; }
+.sg-check__input:focus-visible + .sg-check__box { box-shadow: inset 0 0 0 1.5px var(--sg-label-tertiary), var(--sg-ring); }
+.sg-check__input:checked + .sg-check__box, .sg-check__input:indeterminate + .sg-check__box { background: var(--sg-accent); box-shadow: inset 0 0 0 1.5px var(--sg-accent); }
+.sg-check__input:checked:focus-visible + .sg-check__box, .sg-check__input:indeterminate:focus-visible + .sg-check__box { box-shadow: inset 0 0 0 1.5px var(--sg-accent), var(--sg-ring); }
 /* the tick is drawn (stroke-dashoffset) on the snappy spring */
-.gl-check__mark { width: 16px; height: 16px; color: var(--gl-on-accent); fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-.gl-check__tick { stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
-.gl-check__dash { opacity: 0; transform: scaleX(0.3); transform-origin: center; transition: opacity var(--gl-duration-fast) ease, transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
-.gl-check__input:checked:not(:indeterminate) + .gl-check__box .gl-check__tick { stroke-dashoffset: 0; }
-.gl-check__input:indeterminate + .gl-check__box .gl-check__dash { opacity: 1; transform: none; }
+.sg-check__mark { width: 16px; height: 16px; color: var(--sg-on-accent); fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.sg-check__tick { stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+.sg-check__dash { opacity: 0; transform: scaleX(0.3); transform-origin: center; transition: opacity var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+.sg-check__input:checked:not(:indeterminate) + .sg-check__box .sg-check__tick { stroke-dashoffset: 0; }
+.sg-check__input:indeterminate + .sg-check__box .sg-check__dash { opacity: 1; transform: none; }
 /* radio: an inner dot grows on the snappy spring */
-.gl-check__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gl-on-accent); transform: scale(0); transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
-.gl-check__input:checked + .gl-check__box .gl-check__dot { transform: scale(1); }
-.gl-check__text { display: flex; flex-direction: column; min-width: 0; font-size: 16px; line-height: 24px; }
-.gl-check__desc { font-size: 13px; line-height: 18px; color: var(--gl-label-secondary); }
-.gl-radio-group { display: flex; flex-direction: column; gap: 12px; border: 0; margin: 0; padding: 0; min-width: 0; }
-.gl-radio-group--row { flex-direction: row; flex-wrap: wrap; gap: 12px 20px; }
-.gl-radio-group__legend { padding: 0; margin: 0 0 4px; font-size: 13px; line-height: 18px; font-weight: 620; color: var(--gl-label-secondary); }
+.sg-check__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sg-on-accent); transform: scale(0); transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+.sg-check__input:checked + .sg-check__box .sg-check__dot { transform: scale(1); }
+.sg-check__text { display: flex; flex-direction: column; min-width: 0; font-size: 16px; line-height: 24px; }
+.sg-check__desc { font-size: 13px; line-height: 18px; color: var(--sg-label-secondary); }
+.sg-radio-group { display: flex; flex-direction: column; gap: 12px; border: 0; margin: 0; padding: 0; min-width: 0; }
+.sg-radio-group--row { flex-direction: row; flex-wrap: wrap; gap: 12px 20px; }
+.sg-radio-group__legend { padding: 0; margin: 0 0 4px; font-size: 13px; line-height: 18px; font-weight: 620; color: var(--sg-label-secondary); }
 
 /* ---- Choice list: rows of a grouped list that are the options; a checkmark marks the chosen ---- */
-.gl-choice { justify-content: space-between; }
-.gl-choice__check { flex: none; width: 20px; height: 20px; color: var(--gl-accent-text); opacity: 0; transform: scale(0.5); transition: opacity var(--gl-duration-fast) ease, transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
-.gl-choice[aria-checked="true"] .gl-choice__check { opacity: 1; transform: none; }
-.gl-choice[aria-disabled="true"] { opacity: 0.42; cursor: default; }
-@media (hover: hover) { .gl-choice[aria-disabled="true"]:hover { background: none; } }
+.sg-choice { justify-content: space-between; }
+.sg-choice__check { flex: none; width: 20px; height: 20px; color: var(--sg-accent-text); opacity: 0; transform: scale(0.5); transition: opacity var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+.sg-choice[aria-checked="true"] .sg-choice__check { opacity: 1; transform: none; }
+.sg-choice[aria-disabled="true"] { opacity: 0.42; cursor: default; }
+@media (hover: hover) { .sg-choice[aria-disabled="true"]:hover { background: none; } }
 
 /* ---- Select: a field-like button (or an inline one, for list rows) and a listbox panel ---- */
-.gl-select {
+.sg-select {
   appearance: none; border: 0; margin: 0; font: inherit; text-align: left; cursor: pointer;
   position: relative; display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;
-  height: 44px; padding: 0 10px 0 12px; border-radius: var(--gl-radius-md);
-  background: var(--gl-fill); color: var(--gl-label); font-size: 16px;
+  height: 44px; padding: 0 10px 0 12px; border-radius: var(--sg-radius-md);
+  background: var(--sg-fill); color: var(--sg-label); font-size: 16px;
   box-shadow: inset 0 0 0 1px transparent;
-  transition: background-color var(--gl-duration-fast) ease, box-shadow var(--gl-duration-fast) ease;
+  transition: background-color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease;
 }
-@media (hover: hover) { .gl-select:hover:not(:disabled) { background: var(--gl-fill-hover); } }
-.gl-select:focus-visible, .gl-select[aria-expanded="true"] { outline: none; background: var(--gl-surface); box-shadow: inset 0 0 0 1.5px var(--gl-accent), 0 0 0 4px var(--gl-accent-soft); }
-.gl-field[data-invalid="true"] .gl-select { box-shadow: inset 0 0 0 1.5px var(--gl-danger); }
-.gl-select:disabled { opacity: 0.5; cursor: default; }
-.gl-select__value { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; }
-.gl-select__value > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gl-select__value svg { width: 18px; height: 18px; flex: none; }
-.gl-select__placeholder { color: var(--gl-label-tertiary); }
-.gl-select__chevrons { flex: none; width: 18px; height: 18px; color: var(--gl-label-secondary); }
+@media (hover: hover) { .sg-select:hover:not(:disabled) { background: var(--sg-fill-hover); } }
+.sg-select:focus-visible, .sg-select[aria-expanded="true"] { outline: none; background: var(--sg-surface); box-shadow: inset 0 0 0 1.5px var(--sg-accent), 0 0 0 4px var(--sg-accent-soft); }
+.sg-field[data-invalid="true"] .sg-select { box-shadow: inset 0 0 0 1.5px var(--sg-danger); }
+.sg-select:disabled { opacity: 0.5; cursor: default; }
+.sg-select__value { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; }
+.sg-select__value > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-select__value svg { width: 18px; height: 18px; flex: none; }
+.sg-select__placeholder { color: var(--sg-label-tertiary); }
+.sg-select__chevrons { flex: none; width: 18px; height: 18px; color: var(--sg-label-secondary); }
 /* inline: sits in a list row's trailing slot — accent text, no field chrome */
-.gl-select--inline { width: auto; height: 32px; padding: 0 6px 0 8px; gap: 4px; background: none; color: var(--gl-accent-text); font-size: 15px; border-radius: var(--gl-radius-sm); }
-.gl-select--inline .gl-select__chevrons { color: inherit; width: 16px; height: 16px; }
-@media (hover: hover) { .gl-select--inline:hover:not(:disabled) { background: var(--gl-fill); } }
-.gl-select--inline:focus-visible, .gl-select--inline[aria-expanded="true"] { background: var(--gl-fill); box-shadow: var(--gl-ring); }
+.sg-select--inline { width: auto; height: 32px; padding: 0 6px 0 8px; gap: 4px; background: none; color: var(--sg-accent-text); font-size: 15px; border-radius: var(--sg-radius-sm); }
+.sg-select--inline .sg-select__chevrons { color: inherit; width: 16px; height: 16px; }
+@media (hover: hover) { .sg-select--inline:hover:not(:disabled) { background: var(--sg-fill); } }
+.sg-select--inline:focus-visible, .sg-select--inline[aria-expanded="true"] { background: var(--sg-fill); box-shadow: var(--sg-ring); }
 
-.gl-listbox { position: absolute; left: 0; top: 0; max-width: min(360px, calc(100vw - 24px)); max-height: min(340px, calc(100vh - 24px)); display: flex; flex-direction: column; --_radius: var(--gl-radius-lg); outline: none; }
+.sg-listbox { position: absolute; left: 0; top: 0; max-width: min(360px, calc(100vw - 24px)); max-height: min(340px, calc(100vh - 24px)); display: flex; flex-direction: column; --_radius: var(--sg-radius-lg); outline: none; }
 /* position: relative → options' offsetTop is measured from this scroller (Select keeps the active one in view) */
-.gl-listbox > [data-gl-content] { position: relative; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 6px; }
-.gl-option {
-  display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px; border-radius: calc(var(--gl-radius-lg) - 6px);
-  color: var(--gl-label); font-size: 15px; line-height: 20px; cursor: pointer; scroll-margin: 6px;
+.sg-listbox > [data-sg-content] { position: relative; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 6px; }
+.sg-option {
+  display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px; border-radius: calc(var(--sg-radius-lg) - 6px);
+  color: var(--sg-label); font-size: 15px; line-height: 20px; cursor: pointer; scroll-margin: 6px;
 }
-.gl-option[data-active] { background: var(--gl-fill-strong); }
-.gl-option[aria-disabled="true"] { color: var(--gl-label-disabled); cursor: default; }
-.gl-option svg:not(.gl-option__check) { width: 18px; height: 18px; flex: none; }
-.gl-option__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.gl-option__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gl-option__desc { font-size: 13px; line-height: 18px; color: var(--gl-label-secondary); }
-.gl-option__check { width: 16px; height: 16px; flex: none; color: var(--gl-accent-text); visibility: hidden; }
-.gl-option[aria-selected="true"] { font-weight: 620; }
-.gl-option[aria-selected="true"] .gl-option__check { visibility: visible; }
-.gl-listbox__group { padding: 8px 10px 4px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--gl-label-tertiary); }
-.gl-listbox__group:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--gl-separator); padding-top: 10px; }
+.sg-option[data-active] { background: var(--sg-fill-strong); }
+.sg-option[aria-disabled="true"] { color: var(--sg-label-disabled); cursor: default; }
+.sg-option svg:not(.sg-option__check) { width: 18px; height: 18px; flex: none; }
+.sg-option__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sg-option__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-option__desc { font-size: 13px; line-height: 18px; color: var(--sg-label-secondary); }
+.sg-option__check { width: 16px; height: 16px; flex: none; color: var(--sg-accent-text); visibility: hidden; }
+.sg-option[aria-selected="true"] { font-weight: 620; }
+.sg-option[aria-selected="true"] .sg-option__check { visibility: visible; }
+.sg-listbox__group { padding: 8px 10px 4px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--sg-label-tertiary); }
+.sg-listbox__group:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--sg-separator); padding-top: 10px; }
 
 /* ---- Calendar ---- */
-.gl-calendar { --_cell: 40px; display: inline-flex; flex-direction: column; gap: 6px; width: calc(var(--_cell) * 7); user-select: none; -webkit-user-select: none; }
-.gl-calendar__head { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 0 2px 6px; }
-.gl-calendar__title { margin: 0; font-size: 16px; line-height: 22px; font-weight: 700; letter-spacing: -0.01em; }
-.gl-calendar__nav { display: flex; gap: 2px; }
-.gl-calendar__grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.gl-calendar__grid th { height: 28px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--gl-label-tertiary); text-align: center; }
-.gl-calendar__grid td { padding: 0; height: var(--_cell); text-align: center; }
-.gl-calendar__body { will-change: transform, opacity; }
-.gl-day {
+.sg-calendar { --_cell: 40px; display: inline-flex; flex-direction: column; gap: 6px; width: calc(var(--_cell) * 7); user-select: none; -webkit-user-select: none; }
+.sg-calendar__head { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 0 2px 6px; }
+.sg-calendar__title { margin: 0; font-size: 16px; line-height: 22px; font-weight: 700; letter-spacing: -0.01em; }
+.sg-calendar__nav { display: flex; gap: 2px; }
+.sg-calendar__grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.sg-calendar__grid th { height: 28px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--sg-label-tertiary); text-align: center; }
+.sg-calendar__grid td { padding: 0; height: var(--_cell); text-align: center; }
+.sg-calendar__body { will-change: transform, opacity; }
+.sg-day {
   appearance: none; border: 0; margin: 0; padding: 0; font: inherit; position: relative;
-  width: 36px; height: 36px; border-radius: 50%; background: none; color: var(--gl-label);
+  width: 36px; height: 36px; border-radius: 50%; background: none; color: var(--sg-label);
   font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; cursor: pointer;
-  transition: background-color var(--gl-duration-instant) ease, color var(--gl-duration-instant) ease, transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
+  transition: background-color var(--sg-duration-instant) ease, color var(--sg-duration-instant) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
-@media (hover: hover) { .gl-day:hover:not([aria-disabled="true"]):not([aria-pressed="true"]) { background: var(--gl-fill); } }
-.gl-day:active:not([aria-disabled="true"]) { transform: scale(0.9); }
-.gl-day:focus-visible { outline: none; box-shadow: var(--gl-ring); }
-.gl-day[data-outside] { color: var(--gl-label-tertiary); }
-.gl-day[data-today] { color: var(--gl-accent-text); font-weight: 750; }
-.gl-day[data-today]::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: currentColor; }
-.gl-day[aria-pressed="true"] { background: var(--gl-accent); color: var(--gl-on-accent); font-weight: 700; }
-.gl-day[aria-pressed="true"]::after { background: var(--gl-on-accent); }
-.gl-day[aria-disabled="true"] { color: var(--gl-label-disabled); cursor: default; text-decoration: line-through; text-decoration-thickness: 1px; }
-.gl-datepicker-panel { position: absolute; left: 0; top: 0; padding: 12px; --_radius: var(--gl-radius-xl); outline: none; }
+@media (hover: hover) { .sg-day:hover:not([aria-disabled="true"]):not([aria-pressed="true"]) { background: var(--sg-fill); } }
+.sg-day:active:not([aria-disabled="true"]) { transform: scale(0.9); }
+.sg-day:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-day[data-outside] { color: var(--sg-label-tertiary); }
+.sg-day[data-today] { color: var(--sg-accent-text); font-weight: 750; }
+.sg-day[data-today]::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: currentColor; }
+.sg-day[aria-pressed="true"] { background: var(--sg-accent); color: var(--sg-on-accent); font-weight: 700; }
+.sg-day[aria-pressed="true"]::after { background: var(--sg-on-accent); }
+.sg-day[aria-disabled="true"] { color: var(--sg-label-disabled); cursor: default; text-decoration: line-through; text-decoration-thickness: 1px; }
+.sg-datepicker-panel { position: absolute; left: 0; top: 0; padding: 12px; --_radius: var(--sg-radius-xl); outline: none; }
 
 /* reduced motion: no tick drawing, no dot growth, no press-in; changes fade */
-[data-gl-reduce-motion="true"] .gl-check__box, [data-gl-reduce-motion="true"] .gl-day { transform: none !important; }
-[data-gl-reduce-motion="true"] .gl-check__tick { transition: opacity var(--gl-duration-fast) ease; stroke-dashoffset: 0; opacity: 0; }
-[data-gl-reduce-motion="true"] .gl-check__input:checked:not(:indeterminate) + .gl-check__box .gl-check__tick { opacity: 1; }
-[data-gl-reduce-motion="true"] .gl-check__dot, [data-gl-reduce-motion="true"] .gl-check__dash, [data-gl-reduce-motion="true"] .gl-choice__check { transform: none; transition: opacity var(--gl-duration-fast) ease; }
-[data-gl-reduce-motion="true"] .gl-check__dot { opacity: 0; }
-[data-gl-reduce-motion="true"] .gl-check__input:checked + .gl-check__box .gl-check__dot { opacity: 1; }
+[data-sg-reduce-motion="true"] .sg-check__box, [data-sg-reduce-motion="true"] .sg-day { transform: none !important; }
+[data-sg-reduce-motion="true"] .sg-check__tick { transition: opacity var(--sg-duration-fast) ease; stroke-dashoffset: 0; opacity: 0; }
+[data-sg-reduce-motion="true"] .sg-check__input:checked:not(:indeterminate) + .sg-check__box .sg-check__tick { opacity: 1; }
+[data-sg-reduce-motion="true"] .sg-check__dot, [data-sg-reduce-motion="true"] .sg-check__dash, [data-sg-reduce-motion="true"] .sg-choice__check { transform: none; transition: opacity var(--sg-duration-fast) ease; }
+[data-sg-reduce-motion="true"] .sg-check__dot { opacity: 0; }
+[data-sg-reduce-motion="true"] .sg-check__input:checked + .sg-check__box .sg-check__dot { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-check__box, .gl-root:not([data-gl-reduce-motion="false"]) .gl-day { transform: none !important; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-check__tick { transition: opacity var(--gl-duration-fast) ease; stroke-dashoffset: 0; opacity: 0; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-check__input:checked:not(:indeterminate) + .gl-check__box .gl-check__tick { opacity: 1; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-check__dot, .gl-root:not([data-gl-reduce-motion="false"]) .gl-check__dash, .gl-root:not([data-gl-reduce-motion="false"]) .gl-choice__check { transform: none; transition: opacity var(--gl-duration-fast) ease; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-check__dot { opacity: 0; }
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-check__input:checked + .gl-check__box .gl-check__dot { opacity: 1; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__box, .sg-root:not([data-sg-reduce-motion="false"]) .sg-day { transform: none !important; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__tick { transition: opacity var(--sg-duration-fast) ease; stroke-dashoffset: 0; opacity: 0; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__input:checked:not(:indeterminate) + .sg-check__box .sg-check__tick { opacity: 1; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__dot, .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__dash, .sg-root:not([data-sg-reduce-motion="false"]) .sg-choice__check { transform: none; transition: opacity var(--sg-duration-fast) ease; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__dot { opacity: 0; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__input:checked + .sg-check__box .sg-check__dot { opacity: 1; }
 }
 /* increased contrast: boxes get a solid 2 px border */
-[data-gl-theme$="-hc"] .gl-check__box { box-shadow: inset 0 0 0 2px var(--gl-label); }
+[data-sg-theme$="-hc"] .sg-check__box { box-shadow: inset 0 0 0 2px var(--sg-label); }
 
 /* ============================================================================================
    Wheels: a column scrolls under a fixed band (shared by the columns of a group); rows bend away like a drum (JS)
    ============================================================================================ */
-.gl-wheels { --_row: 36px; --_rows: 5; }   /* a lone wheel falls back to the same (the group's own values reach its wheels) */
-.gl-wheels { position: relative; display: flex; justify-content: center; align-items: stretch; height: calc(var(--_row) * var(--_rows)); user-select: none; -webkit-user-select: none; }
-.gl-wheels::before, .gl-wheel:not(.gl-wheels > .gl-wheel)::before {
+.sg-wheels { --_row: 36px; --_rows: 5; }   /* a lone wheel falls back to the same (the group's own values reach its wheels) */
+.sg-wheels { position: relative; display: flex; justify-content: center; align-items: stretch; height: calc(var(--_row) * var(--_rows)); user-select: none; -webkit-user-select: none; }
+.sg-wheels::before, .sg-wheel:not(.sg-wheels > .sg-wheel)::before {
   content: ""; position: absolute; left: 0; right: 0; top: calc(50% - var(--_row, 36px) / 2); height: var(--_row, 36px);
-  border-radius: var(--gl-radius-sm); background: var(--gl-fill); pointer-events: none;
+  border-radius: var(--sg-radius-sm); background: var(--sg-fill); pointer-events: none;
 }
-.gl-wheel { position: relative; flex: 1 1 auto; min-width: 3.2em; height: calc(var(--_row, 36px) * var(--_rows, 5)); }
+.sg-wheel { position: relative; flex: 1 1 auto; min-width: 3.2em; height: calc(var(--_row, 36px) * var(--_rows, 5)); }
 /* overscroll none: an elastic bounce past the list end would stretch the whole drum (macOS trackpad flings) */
-.gl-wheel__scroller {
+.sg-wheel__scroller {
   position: relative; z-index: 1; box-sizing: border-box; height: 100%; padding-block: calc(var(--_row, 36px) * (var(--_rows, 5) - 1) / 2);
   overflow-x: hidden; overflow-y: auto; overscroll-behavior: none; scroll-snap-type: y mandatory; scrollbar-width: none;
   touch-action: pan-y; outline: none; cursor: grab;
   -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
 }
-.gl-wheel__scroller::-webkit-scrollbar { display: none; }
-.gl-wheel__scroller:active { cursor: grabbing; }
-.gl-wheel__item {
+.sg-wheel__scroller::-webkit-scrollbar { display: none; }
+.sg-wheel__scroller:active { cursor: grabbing; }
+.sg-wheel__item {
   height: var(--_row, 36px); display: flex; align-items: center; justify-content: center; padding: 0 10px;
-  font-size: 20px; line-height: 24px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--gl-label); white-space: nowrap;
+  font-size: 20px; line-height: 24px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--sg-label); white-space: nowrap;
   scroll-snap-align: center;
 }
-.gl-wheel__label { display: block; will-change: transform, opacity; }
-.gl-wheel[data-align="start"] .gl-wheel__item { justify-content: flex-start; }
-.gl-wheel[data-align="end"] .gl-wheel__item { justify-content: flex-end; }
-.gl-wheel__item[data-disabled] { color: var(--gl-label-disabled); }
+.sg-wheel__label { display: block; will-change: transform, opacity; }
+.sg-wheel[data-align="start"] .sg-wheel__item { justify-content: flex-start; }
+.sg-wheel[data-align="end"] .sg-wheel__item { justify-content: flex-end; }
+.sg-wheel__item[data-disabled] { color: var(--sg-label-disabled); }
 /* keyboard focus rings the band of the focused column */
-.gl-wheel:has(> .gl-wheel__scroller:focus-visible)::after {
+.sg-wheel:has(> .sg-wheel__scroller:focus-visible)::after {
   content: ""; position: absolute; z-index: 2; left: 0; right: 0; top: calc(50% - var(--_row, 36px) / 2); height: var(--_row, 36px);
-  border-radius: var(--gl-radius-sm); box-shadow: inset 0 0 0 2px var(--gl-focus-ring); pointer-events: none;
+  border-radius: var(--sg-radius-sm); box-shadow: inset 0 0 0 2px var(--sg-focus-ring); pointer-events: none;
 }
-.gl-wheels__sep { position: relative; z-index: 1; align-self: center; padding-bottom: 2px; font-size: 20px; line-height: 24px; font-weight: 600; color: var(--gl-label); }
-.gl-timewheel { min-width: 200px; }
-.gl-timewheel .gl-wheel { flex: 0 0 auto; min-width: 3.6em; }
-.gl-timewheel .gl-wheel--period { min-width: 4.4em; }
-.gl-timepicker-panel { position: absolute; left: 0; top: 0; padding: 12px; --_radius: var(--gl-radius-xl); outline: none; }
-.gl-time-value { font-variant-numeric: tabular-nums; }
-[data-gl-theme$="-hc"] .gl-wheels::before, [data-gl-theme$="-hc"] .gl-wheel:not(.gl-wheels > .gl-wheel)::before { box-shadow: inset 0 0 0 1.5px var(--gl-label); }
+.sg-wheels__sep { position: relative; z-index: 1; align-self: center; padding-bottom: 2px; font-size: 20px; line-height: 24px; font-weight: 600; color: var(--sg-label); }
+.sg-timewheel { min-width: 200px; }
+.sg-timewheel .sg-wheel { flex: 0 0 auto; min-width: 3.6em; }
+.sg-timewheel .sg-wheel--period { min-width: 4.4em; }
+.sg-timepicker-panel { position: absolute; left: 0; top: 0; padding: 12px; --_radius: var(--sg-radius-xl); outline: none; }
+.sg-time-value { font-variant-numeric: tabular-nums; }
+[data-sg-theme$="-hc"] .sg-wheels::before, [data-sg-theme$="-hc"] .sg-wheel:not(.sg-wheels > .sg-wheel)::before { box-shadow: inset 0 0 0 1.5px var(--sg-label); }
 
 /* calendar: the title opens month / year wheels in place of the days (same size: the panel does not jump) */
-.gl-calendar__title-btn {
+.sg-calendar__title-btn {
   appearance: none; border: 0; margin: 0 0 0 -6px; padding: 4px 6px; background: none; font: inherit; color: inherit; cursor: pointer;
-  display: inline-flex; align-items: center; gap: 4px; border-radius: var(--gl-radius-sm);
-  transition: background-color var(--gl-duration-instant) ease, color var(--gl-duration-fast) ease;
+  display: inline-flex; align-items: center; gap: 4px; border-radius: var(--sg-radius-sm);
+  transition: background-color var(--sg-duration-instant) ease, color var(--sg-duration-fast) ease;
 }
-@media (hover: hover) { .gl-calendar__title-btn:hover { background: var(--gl-fill); } }
-.gl-calendar__title-btn:active { background: var(--gl-fill-strong); }
-.gl-calendar__title-btn:focus-visible { outline: none; box-shadow: var(--gl-ring); }
-.gl-calendar__title-btn[aria-expanded="true"] { color: var(--gl-accent-text); }
-.gl-calendar__title-chevron { width: 16px; height: 16px; color: var(--gl-accent-text); transition: transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy); }
-.gl-calendar__title-btn[aria-expanded="true"] .gl-calendar__title-chevron { transform: rotate(90deg); }
-.gl-calendar__wheels { height: calc(28px + 6 * var(--_cell)); display: flex; align-items: center; }
-.gl-calendar__wheels > .gl-wheels { flex: 1; --_rows: 7; }
-.gl-calendar__nav[hidden] { display: flex !important; visibility: hidden; }
+@media (hover: hover) { .sg-calendar__title-btn:hover { background: var(--sg-fill); } }
+.sg-calendar__title-btn:active { background: var(--sg-fill-strong); }
+.sg-calendar__title-btn:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-calendar__title-btn[aria-expanded="true"] { color: var(--sg-accent-text); }
+.sg-calendar__title-chevron { width: 16px; height: 16px; color: var(--sg-accent-text); transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+.sg-calendar__title-btn[aria-expanded="true"] .sg-calendar__title-chevron { transform: rotate(90deg); }
+.sg-calendar__wheels { height: calc(28px + 6 * var(--_cell)); display: flex; align-items: center; }
+.sg-calendar__wheels > .sg-wheels { flex: 1; --_rows: 7; }
+.sg-calendar__nav[hidden] { display: flex !important; visibility: hidden; }
 
 /* ============================================================================================
    Weekdays: round toggles in the calendar day's shape; a chosen day fills from the middle (pop spring)
    ============================================================================================ */
-.gl-weekdays { --_s: 40px; display: grid; grid-template-columns: repeat(7, minmax(28px, var(--_s))); gap: 6px; }
-.gl-weekdays--sm { --_s: 32px; gap: 4px; }
-.gl-weekday {
+.sg-weekdays { --_s: 40px; display: grid; grid-template-columns: repeat(7, minmax(28px, var(--_s))); gap: 6px; }
+.sg-weekdays--sm { --_s: 32px; gap: 4px; }
+.sg-weekday {
   appearance: none; border: 0; margin: 0; padding: 0; font: inherit; position: relative; isolation: isolate;
-  width: 100%; aspect-ratio: 1; border-radius: 50%; background: var(--gl-fill); color: var(--gl-label);
+  width: 100%; aspect-ratio: 1; border-radius: 50%; background: var(--sg-fill); color: var(--sg-label);
   font-size: 15px; font-weight: 600; cursor: pointer;
-  transition: background-color var(--gl-duration-instant) ease, color var(--gl-duration-fast) ease, transform var(--gl-spring-snappy-duration) var(--gl-spring-snappy);
+  transition: background-color var(--sg-duration-instant) ease, color var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
-.gl-weekdays--sm .gl-weekday { font-size: 13px; }
-.gl-weekday::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--gl-accent);
-  opacity: 0; transform: scale(0.4); transition: transform var(--gl-spring-pop-duration) var(--gl-spring-pop), opacity var(--gl-duration-fast) ease;
+.sg-weekdays--sm .sg-weekday { font-size: 13px; }
+.sg-weekday::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--sg-accent);
+  opacity: 0; transform: scale(0.4); transition: transform var(--sg-spring-pop-duration) var(--sg-spring-pop), opacity var(--sg-duration-fast) ease;
 }
-.gl-weekday[aria-pressed="true"] { color: var(--gl-on-accent); }
-.gl-weekday[aria-pressed="true"]::before { opacity: 1; transform: none; }
-@media (hover: hover) { .gl-weekday:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--gl-fill-hover); } }
-.gl-weekday:active:not(:disabled) { transform: scale(0.9); }
-.gl-weekday:focus-visible { outline: none; box-shadow: var(--gl-ring); }
-.gl-weekday:disabled { opacity: 0.45; cursor: default; }
-[data-gl-theme$="-hc"] .gl-weekday:not([aria-pressed="true"]) { box-shadow: inset 0 0 0 1.5px var(--gl-label); }
-[data-gl-theme$="-hc"] .gl-weekday:focus-visible { box-shadow: var(--gl-ring); }
+.sg-weekday[aria-pressed="true"] { color: var(--sg-on-accent); }
+.sg-weekday[aria-pressed="true"]::before { opacity: 1; transform: none; }
+@media (hover: hover) { .sg-weekday:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--sg-fill-hover); } }
+.sg-weekday:active:not(:disabled) { transform: scale(0.9); }
+.sg-weekday:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-weekday:disabled { opacity: 0.45; cursor: default; }
+[data-sg-theme$="-hc"] .sg-weekday:not([aria-pressed="true"]) { box-shadow: inset 0 0 0 1.5px var(--sg-label); }
+[data-sg-theme$="-hc"] .sg-weekday:focus-visible { box-shadow: var(--sg-ring); }
 /* reduced motion: no fill growth, no press-in; the fill fades */
-[data-gl-reduce-motion="true"] .gl-weekday, [data-gl-reduce-motion="true"] .gl-weekday::before { transform: none !important; }
+[data-sg-reduce-motion="true"] .sg-weekday, [data-sg-reduce-motion="true"] .sg-weekday::before { transform: none !important; }
 @media (prefers-reduced-motion: reduce) {
-  .gl-root:not([data-gl-reduce-motion="false"]) .gl-weekday, .gl-root:not([data-gl-reduce-motion="false"]) .gl-weekday::before { transform: none !important; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-weekday, .sg-root:not([data-sg-reduce-motion="false"]) .sg-weekday::before { transform: none !important; }
 }

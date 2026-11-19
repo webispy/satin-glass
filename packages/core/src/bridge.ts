@@ -52,7 +52,7 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
     const sy = 1 - squash * Math.min(1, stretch * 1.4);
     indicator.style.transform = `translate3d(${l.toFixed(2)}px,0,0)${sy < 0.999 ? ` scaleY(${sy.toFixed(3)})` : ''}`;
     indicator.style.width = `${w.toFixed(2)}px`;
-    container.style.setProperty('--gl-stretch', stretch.toFixed(3));
+    container.style.setProperty('--sg-stretch', stretch.toFixed(3));
   };
   const run = () => {
     if (stop) return;
@@ -97,13 +97,13 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
 
   const onDown = (ev: PointerEvent) => {
     if (!opts.draggable || ev.button !== 0) return;
-    const item = (ev.target as HTMLElement).closest('[data-gl-item]') as HTMLElement | null;
+    const item = (ev.target as HTMLElement).closest('[data-sg-item]') as HTMLElement | null;
     if (!item || !container.contains(item)) return;
     pressed = true; dragging = false; pid = ev.pointerId; bounds();
     startX = lastX = localX(ev); lastT = performance.now(); vx = 0;
     const g = geom(current);
     grab = g ? startX - (g.l + g.r) / 2 : 0;
-    container.toggleAttribute('data-gl-pressing', true);
+    container.toggleAttribute('data-sg-pressing', true);
   };
   const onMove = (ev: PointerEvent) => {
     if (!pressed || ev.pointerId !== pid) return;
@@ -113,7 +113,7 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
       const g = geom(current);
       /* drag starts from wherever the finger is: grabbing the selection keeps the offset, elsewhere centres on it */
       if (!g || startX < g.l || startX > g.r) grab = 0;
-      dragging = true; container.toggleAttribute('data-gl-dragging', true);
+      dragging = true; container.toggleAttribute('data-sg-dragging', true);
       try { container.setPointerCapture(pid!); } catch { /* not supported */ }
     }
     const dt = Math.max(1, now - lastT);
@@ -130,7 +130,7 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
   const finish = (commit: boolean) => {
     if (!pressed) return;
     pressed = false;
-    container.removeAttribute('data-gl-pressing'); container.removeAttribute('data-gl-dragging');
+    container.removeAttribute('data-sg-pressing'); container.removeAttribute('data-sg-dragging');
     try { if (pid !== null && container.hasPointerCapture(pid)) container.releasePointerCapture(pid); } catch { /* released */ }
     pid = null;
     if (!dragging) return;

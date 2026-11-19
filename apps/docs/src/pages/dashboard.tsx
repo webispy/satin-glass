@@ -6,7 +6,7 @@ import {
   Accordion, Banner, BarChart, BarMeter, Button, Card, CardBody, CardHeader, Chip, DataTable, DonutChart, EmptyState, IconButton,
   LineChart, Pagination, SearchField, SegmentedControl, Select, Sheet, Sparkline, Stat, Tabs, Tag, Text, Tooltip, useToast,
   type Column, type SortState,
-} from '@glass-layer/react';
+} from '@satin-glass/react';
 import { CircleDollarSign, Download, MousePointerClick, PackageSearch, RotateCcw, ShoppingBag, X } from 'lucide-react';
 import { Page } from '../shared';
 import {
@@ -203,11 +203,11 @@ function Products({ lowOnly, setLowOnly }: { lowOnly: boolean; setLowOnly: (v: b
     { key: 'category', header: '분류', width: 80, sortable: true, value: (p) => categoryLabel(p.category), render: (p, { pinned }) => (pinned ? '' : categoryLabel(p.category)) },
     { key: 'price', header: '가격', align: 'end', width: 96, sortable: true, render: (p) => (Number.isNaN(p.price) ? '' : won(p.price)) },
     { key: 'sold', header: '판매량', subheader: '30일', group: '판매', align: 'end', width: 136, sortable: true, firstSort: 'desc',
-      render: (p, { pinned }) => (pinned ? num(p.sold) : <span className="gl-cell-meter"><BarMeter value={p.sold} max={best} width={44} tone={p.sold === best ? 'accent' : 'neutral'} /><span className={p.sold === best ? 'gl-cell-strong' : undefined}>{num(p.sold)}</span></span>) },
+      render: (p, { pinned }) => (pinned ? num(p.sold) : <span className="sg-cell-meter"><BarMeter value={p.sold} max={best} width={44} tone={p.sold === best ? 'accent' : 'neutral'} /><span className={p.sold === best ? 'sg-cell-strong' : undefined}>{num(p.sold)}</span></span>) },
     { key: 'revenue', header: '매출', subheader: '30일', group: '판매', align: 'end', width: 92, sortable: true, firstSort: 'desc', render: (p) => wonShort(p.revenue) },
     { key: 'stock', header: '재고', group: '재고', align: 'end', width: 76, sortable: true, render: (p) => num(p.stock) },
     { key: 'daysLeft', header: '소진 예상', group: '재고', align: 'end', width: 92, sortable: true, description: '최근 30일 속도로 팔릴 때 재고가 바닥나기까지 남은 날이에요.',
-      render: (p) => (p.daysLeft === null ? null : <span className={p.daysLeft <= 7 ? 'gl-cell-danger' : p.daysLeft <= 14 ? 'gl-cell-warning' : undefined}>{p.daysLeft}일</span>) },
+      render: (p) => (p.daysLeft === null ? null : <span className={p.daysLeft <= 7 ? 'sg-cell-danger' : p.daysLeft <= 14 ? 'sg-cell-warning' : undefined}>{p.daysLeft}일</span>) },
     { key: 'state', header: '상태', width: 96, render: (p, { pinned }) => (pinned ? null : p.paused ? <Tag>판매 중지</Tag> : p.daysLeft !== null && p.daysLeft <= 7 ? <Tag tone="danger">재고 부족</Tag> : <Tag tone="success">판매 중</Tag>) },
   ];
   return (

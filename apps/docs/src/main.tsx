@@ -1,10 +1,10 @@
 import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import '@glass-layer/react/styles.css';
+import '@satin-glass/react/styles.css';
 import './docs.css';
-import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, IconButton, Popover, Toaster, type ThemeMode } from '@glass-layer/react';
+import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, IconButton, Popover, Toaster, type ThemeMode } from '@satin-glass/react';
 import { DisplaySettingsProvider, DisplaySettingsBar, DisplaySettingsList } from './settings';
-import type { MotionName } from '@glass-layer/tokens';
+import type { MotionName } from '@satin-glass/tokens';
 import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical, ListChecks, GalleryVerticalEnd, LayoutDashboard, Table2, ChartLine, MessageSquareWarning, X } from 'lucide-react';
 import { Overview, Colors, Typography, Motion, Material } from './pages/foundations';
 import { Buttons, Inputs, Navigation, Lists, Overlays } from './pages/components';
@@ -93,7 +93,7 @@ function App() {
           {/* a closed drawer is inert: its links are off screen and must not take Tab or a screen reader's cursor */}
           <div ref={nav} id="docs-nav" className="docs__nav" inert={(narrow && !navOpen) || undefined}>
             <Sidebar aria-label="문서">
-              <div className="docs__brand"><span className="docs__logo" aria-hidden="true" /><div><b>Glass Layer</b><small>React UI · 0.3</small></div>
+              <div className="docs__brand"><span className="docs__logo" aria-hidden="true" /><div><b>Satin Glass</b><small>React UI · 0.3</small></div>
                 {narrow && <IconButton ref={closeBtn} className="docs__nav-close" icon={<X />} label="메뉴 닫기" onClick={closeNav} />}</div>
               {PAGES.map((p) => {
                 const head = p.group !== group ? (group = p.group) : null;
@@ -111,7 +111,7 @@ function App() {
             <div className="docs__top">
               <IconButton ref={menuBtn} className="docs__menu-btn" variant="glass" icon={<MenuIcon />} label="메뉴" aria-expanded={navOpen} aria-controls="docs-nav" onClick={() => setNavOpen((v) => !v)} />
               {/* wide: every display setting in one bar; narrow: one button opens them all (nothing is hidden) */}
-              <Glass className="docs__settings docs__settings--bar" style={{ borderRadius: 'var(--gl-radius-lg)' }}>
+              <Glass className="docs__settings docs__settings--bar" style={{ borderRadius: 'var(--sg-radius-lg)' }}>
                 <DisplaySettingsBar />
               </Glass>
               <IconButton ref={setSetBtn} className="docs__settings-btn" variant="glass" icon={<SlidersHorizontal />} label="표시 설정" aria-expanded={setOpen} onClick={() => setSetOpen((v) => !v)} />
