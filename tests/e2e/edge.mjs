@@ -397,6 +397,29 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   ok('axe: no serious or critical accessibility violations', found.size === 0, [...found].slice(0, 8).map(([k, v]) => `${k}: ${v}`).join(' | '));
 }
 
+/* ---------------------------------------------------------------- a panel in a scroll area is clipped like its anchor */
+{
+  const q = await b.newPage({ viewport: { width: 1280, height: 1100 } });
+  await q.goto('http://localhost:4173/?mode=light#/showcase'); await q.waitForTimeout(800);
+  await q.evaluate(() => document.querySelector('.phone').scrollIntoView({ block: 'center' }));
+  const scr = q.locator('.phone__screen');
+  await scr.evaluate((e) => { e.scrollTop = e.scrollHeight; }); await q.waitForTimeout(300);
+  await q.getByRole('button', { name: '하늘 호수 정보' }).click(); await q.waitForTimeout(600);
+  const look = () => q.evaluate(() => {
+    const sr = document.querySelector('.phone__screen').getBoundingClientRect(), pop = document.querySelector('.sg-portal .sg-popover');
+    const r = pop.getBoundingClientRect(), cs = getComputedStyle(pop), v = (/inset\(([^)]*)\)/.exec(cs.clipPath)?.[1] ?? '0px').split(/\s+/).map(parseFloat);
+    const top = r.top + v[0], bottom = r.bottom - (v[2] ?? v[0]);
+    return { hidden: cs.visibility === 'hidden', top, bottom, sTop: sr.top, sBottom: sr.bottom, inside: cs.visibility === 'hidden' || (top >= sr.top - 1 && bottom <= sr.bottom + 1) };
+  });
+  const seen = [];
+  for (const f of [0.66, 0.33, 0]) { await scr.evaluate((e, f) => { e.scrollTop = (e.scrollHeight - e.clientHeight) * f; }, f); await q.waitForTimeout(150); seen.push(await look()); }
+  ok('a popover in a scrolling phone screen goes under its edge, never out of the frame', seen.every((x) => x.inside) && seen.some((x) => !x.hidden && x.bottom < x.sBottom + 1 && x.bottom > x.sBottom - 200), JSON.stringify(seen.map((x) => [Math.round(x.top), Math.round(x.bottom), x.hidden])));
+  ok('…and is hidden (no invisible clicks) once it is all out of view', seen.at(-1).hidden, JSON.stringify(seen.at(-1)));
+  await scr.evaluate((e) => { e.scrollTop = e.scrollHeight; }); await q.waitForTimeout(200);
+  const back = await look();
+  ok('…and comes back whole when its anchor scrolls back', !back.hidden && back.inside, JSON.stringify(back));
+  await q.close();
+}
 ok('no page errors during the whole run', errors.length === 0, [...new Set(errors)].slice(0, 3).join(' | '));
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');
 await b.close();

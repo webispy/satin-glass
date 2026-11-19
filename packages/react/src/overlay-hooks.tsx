@@ -78,6 +78,24 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
        A DOMRect anchor is a fixed point and has nothing to follow. */
     const el = anchor instanceof HTMLElement ? anchor : null;
     const doc = (a: DOMRect) => ({ left: a.left + scrollX, top: a.top + scrollY });
+    /* ...and clipped like the anchor. The scroll areas around the anchor (a phone screen, a dialog body) hide what
+       scrolls out of them; the panel, part of the anchor, goes under their edges too instead of floating out of the
+       frame. Only the sides where the panel opened inside the area are clipped (a list that opens past a sidebar's
+       edge keeps showing there), and a panel clipped away entirely is hidden (no invisible clicks). */
+    const clippers = (() => { const out: HTMLElement[] = []; for (let n = el?.parentElement; n && n !== document.body && n !== document.documentElement; n = n.parentElement) { const cs = getComputedStyle(n); if (/auto|scroll/.test(cs.overflowX + cs.overflowY)) out.push(n);   /* areas that scroll (a card that clips its own corners is not one) */ } return out; })();
+    const visibleBox = () => clippers.reduce((b, n) => { const r = n.getBoundingClientRect(); return { top: Math.max(b.top, r.top), left: Math.max(b.left, r.left), bottom: Math.min(b.bottom, r.bottom), right: Math.min(b.right, r.right) }; }, { top: -Infinity, left: -Infinity, bottom: Infinity, right: Infinity });
+    /* the panel's own box (not its transformed one: it may be blooming), in viewport coordinates */
+    const box = () => { const left = parseFloat(p.style.left) - scrollX, top = parseFloat(p.style.top) - scrollY; return { left, top, right: left + p.offsetWidth, bottom: top + p.offsetHeight, width: p.offsetWidth, height: p.offsetHeight }; };
+    const inside = (() => { if (!clippers.length) return null; const b = visibleBox(), q = box(); return { top: q.top >= b.top - 1, bottom: q.bottom <= b.bottom + 1, left: q.left >= b.left - 1, right: q.right <= b.right + 1 }; })();
+    const clip = () => {
+      if (!inside) return;
+      const b = visibleBox(), q = box();
+      const t = inside.top ? Math.max(0, b.top - q.top) : 0, bo = inside.bottom ? Math.max(0, q.bottom - b.bottom) : 0;
+      const l = inside.left ? Math.max(0, b.left - q.left) : 0, ri = inside.right ? Math.max(0, q.right - b.right) : 0;
+      const gone = t + bo >= q.height - 0.5 || l + ri >= q.width - 0.5;
+      p.style.clipPath = t || bo || l || ri ? `inset(${t}px ${ri}px ${bo}px ${l}px)` : '';
+      p.style.visibility = gone ? 'hidden' : '';
+    };
     let side = at.side, base = doc(r), pos = { x: at.x + scrollX, y: at.y + scrollY };
     const align = placement.includes('-') ? placement.slice(placement.indexOf('-')) : '';
     const onScroll = (e: Event) => {
@@ -86,6 +104,7 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       if (!el || !el.isConnected) return;
       const a = doc(el.getBoundingClientRect());
       p.style.left = `${pos.x + a.left - base.left}px`; p.style.top = `${pos.y + a.top - base.top}px`;
+      clip();
     };
     const replace = () => {
       if (!el || !el.isConnected) return;
@@ -94,6 +113,7 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       const next = place({ width: p.offsetWidth, height: p.offsetHeight }, a, `${side}${align}` as Placement);
       side = next.side; base = doc(a); pos = { x: next.x + scrollX, y: next.y + scrollY };
       p.style.left = `${pos.x}px`; p.style.top = `${pos.y}px`; p.dataset.side = next.side;
+      clip();
     };
     document.addEventListener('pointerdown', outside, true);
     if (el) { window.addEventListener('scroll', onScroll, { capture: true, passive: true }); addEventListener('resize', replace); }
