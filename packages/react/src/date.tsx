@@ -335,7 +335,10 @@ function YearGrid({ years, value, current, label, pageRef, onEdge, onPick, onCan
       const top = g.scrollTop, bot = top + g.clientHeight, cs = Array.from(g.children) as HTMLElement[];
       const vis = cs.filter((c) => c.offsetTop >= top - 2 && c.offsetTop + c.offsetHeight <= bot + 2);
       if (vis.length) setRange(`${years[+vis[0].dataset.i!].label} – ${years[+vis[vis.length - 1].dataset.i!].label}`);
-      onEdge({ top: top <= 0, bottom: bot >= g.scrollHeight - 1 });
+      const atTop = top <= 0, atBottom = bot >= g.scrollHeight - 1;
+      onEdge({ top: atTop, bottom: atBottom });
+      /* fade only an edge that has more years behind it (none when everything fits) */
+      g.toggleAttribute('data-more-top', !atTop); g.toggleAttribute('data-more-bottom', !atBottom);
     };
     label();
     g.addEventListener('scroll', label, { passive: true });
