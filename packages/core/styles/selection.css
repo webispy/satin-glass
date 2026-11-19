@@ -135,9 +135,10 @@
   border-radius: var(--gl-radius-sm); background: var(--gl-fill); pointer-events: none;
 }
 .gl-wheel { position: relative; flex: 1 1 auto; min-width: 3.2em; height: calc(var(--_row, 36px) * var(--_rows, 5)); }
+/* overscroll none: an elastic bounce past the list end would stretch the whole drum (macOS trackpad flings) */
 .gl-wheel__scroller {
   position: relative; z-index: 1; box-sizing: border-box; height: 100%; padding-block: calc(var(--_row, 36px) * (var(--_rows, 5) - 1) / 2);
-  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; scrollbar-width: none;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: none; scroll-snap-type: y mandatory; scrollbar-width: none;
   touch-action: pan-y; outline: none; cursor: grab;
   -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
 }

@@ -58,7 +58,8 @@ export function Wheel<T>({ options, value, defaultValue, onChange, 'aria-label':
      the row's label, never the row: a transformed row moves its own snap area, and a smooth scroll would stop short */
   const paint = () => {
     const el = sc.current; if (!el) return;
-    const h = rowH(), mid = el.scrollTop / h, R = DRUM * h;
+    /* clamped: Safari reports scrollTop past either end while an elastic bounce runs, which would bend the end rows */
+    const h = rowH(), mid = Math.max(0, Math.min(el.children.length - 1, el.scrollTop / h)), R = DRUM * h;
     const from = Math.max(0, Math.floor(mid) - 4), to = Math.min(el.children.length - 1, Math.ceil(mid) + 4);
     for (let i = from; i <= to; i++) {
       const row = el.children[i].firstElementChild as HTMLElement, d = i - mid;
