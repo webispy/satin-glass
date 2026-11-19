@@ -1,6 +1,7 @@
 {
   "name": "@satin-glass/core",
   "version": "0.3.0",
+  "license": "Apache-2.0",
   "type": "module",
   "sideEffects": [
     "*.css"
@@ -15,7 +16,8 @@
     "./css/*": "./dist/css/*"
   },
   "files": [
-    "dist"
+    "dist",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean && node scripts/bundle-css.mjs",
