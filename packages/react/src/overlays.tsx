@@ -253,7 +253,7 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
   const box = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
   const release = useRelease();
   const id = useStableId('sg-as');
-  const l1 = useGlassLight(), l2 = useGlassLight();
+  const l1 = useGlassLight();
   const { mounted } = useOverlayLifecycle(open, () => {
     const b = box.current!;
     scrim.current?.classList.add('is-open');
@@ -269,27 +269,33 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
     return box.current!.animate([{ transform: 'none' }, { transform: 'translateY(calc(100% + 24px))' }], { duration: 220, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' }).finished.then(() => undefined, () => undefined);
   });
   if (!mounted) return null;
+  /* arrows move between the rows like a menu (Tab still works); Home / End go to the ends */
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const rows = Array.from(box.current?.querySelectorAll<HTMLButtonElement>('.sg-actionsheet__action:not(:disabled)') ?? []);
+    const i = rows.indexOf(document.activeElement as HTMLButtonElement);
+    const t = e.key === 'ArrowDown' ? i + 1 : e.key === 'ArrowUp' ? (i < 0 ? rows.length - 1 : i - 1) : e.key === 'Home' ? 0 : e.key === 'End' ? rows.length - 1 : null;
+    if (t === null || !rows.length) return;
+    e.preventDefault(); rows[(t + rows.length) % rows.length].focus();
+  };
   return (
     <MotionScope motion={motion} bare><Portal>
       <div ref={scrim} className="sg-scrim" onClick={() => onClose('backdrop')} />
       <div className="sg-actionsheet-wrap">
-        <div ref={box} className="sg-actionsheet" role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined}>
-          <div ref={l1} className={cx('sg-actionsheet__group', glassClass('strong'))}>
-            {(title || message) && (
-              <div className="sg-actionsheet__head">
-                {title && <p id={`${id}-t`} className="sg-actionsheet__title">{title}</p>}
-                {message && <p className="sg-actionsheet__message">{message}</p>}
-              </div>
-            )}
-            {actions.map((a, i) => (
-              <button key={i} type="button" className="sg-actionsheet__action" data-tone={a.tone === 'danger' ? 'danger' : undefined} disabled={a.disabled} onClick={() => { onClose('action'); a.onSelect?.(); }}>
-                {a.icon}{a.label}
-              </button>
-            ))}
-          </div>
-          <div ref={l2} className={cx('sg-actionsheet__group', glassClass('strong'))}>
-            <button type="button" data-cancel className="sg-actionsheet__action sg-actionsheet__action--cancel" onClick={() => onClose('action')}>{cancelLabel}</button>
-          </div>
+        {/* one glass panel: a heading, the actions as menu rows, and a quiet close row at the foot */}
+        <div ref={mergeRefs(box, l1)} className={cx('sg-actionsheet', glassClass('strong'))} role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined} onKeyDown={onKeyDown}>
+          {(title || message) && (
+            <div className="sg-actionsheet__head">
+              {title && <p id={`${id}-t`} className="sg-actionsheet__title">{title}</p>}
+              {message && <p className="sg-actionsheet__message">{message}</p>}
+            </div>
+          )}
+          {actions.map((a, i) => (
+            <button key={i} type="button" className="sg-actionsheet__action" data-tone={a.tone === 'danger' ? 'danger' : undefined} disabled={a.disabled} onClick={() => { onClose('action'); a.onSelect?.(); }}>
+              {a.icon && <span className="sg-actionsheet__icon" aria-hidden="true">{a.icon}</span>}<span className="sg-actionsheet__label">{a.label}</span>
+            </button>
+          ))}
+          <div className="sg-actionsheet__sep" role="presentation" />
+          <button type="button" data-cancel className="sg-actionsheet__action sg-actionsheet__action--cancel" onClick={() => onClose('action')}>{cancelLabel}</button>
         </div>
       </div>
     </Portal></MotionScope>

@@ -345,7 +345,7 @@ export function Overlays() {
             사진과 메모도 함께 지워지고 되돌릴 수 없어요.
           </Dialog>
           <Button variant="neutral" onClick={() => setAs(true)}>공유 옵션…</Button>
-          <ActionSheet open={as} onClose={() => setAs(false)} title="헤론 포인트" message="이 장소를 어떻게 보낼까요?"
+          <ActionSheet open={as} onClose={() => setAs(false)} cancelLabel="닫기" title="헤론 포인트" message="이 장소를 어떻게 보낼까요?"
             actions={[{ label: '링크 복사', icon: <Copy size={18} /> }, { label: '지도 이미지 저장', icon: <Download size={18} /> }, { label: '목록에서 삭제', tone: 'danger', icon: <Trash2 size={18} /> }]} />
           <Button variant="filled" onClick={() => setSheet(true)} startIcon={<Pencil />}>장소 편집</Button>
           <Sheet open={sheet} onClose={() => setSheet(false)} title="장소 편집"

@@ -74,24 +74,30 @@
 /* ---- Popover ---- */
 .sg-popover { position: absolute; left: 0; top: 0; max-width: min(340px, calc(100vw - 24px)); padding: 16px; --_radius: var(--sg-radius-lg); outline: none; }
 
-/* ---- Action sheet: grouped actions above a separate cancel ---- */
+/* ---- Action sheet: one glass panel at the foot of the screen — a heading, the actions as menu rows (leading
+   icon, label), and a quiet close row under a hairline. Rows press like menu items and controls ---- */
 .sg-actionsheet-wrap { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); pointer-events: none; }
-.sg-actionsheet { pointer-events: auto; width: min(440px, 100%); display: flex; flex-direction: column; gap: 8px; }
-.sg-actionsheet__group { --_radius: var(--sg-radius-xl); display: flex; flex-direction: column; }
-.sg-actionsheet__head { padding: 14px 20px 10px; text-align: center; }
+.sg-actionsheet { pointer-events: auto; width: min(440px, 100%); display: flex; flex-direction: column; padding: 6px; --_radius: var(--sg-radius-xl); }
+.sg-actionsheet__head { padding: 10px 12px 8px; }
 .sg-actionsheet__title { margin: 0; font-size: 13px; line-height: 18px; font-weight: 650; color: var(--sg-label-secondary); }
 .sg-actionsheet__message { margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--sg-label-tertiary); }
 .sg-actionsheet__action {
-  appearance: none; border: 0; margin: 0; font: inherit; width: 100%; min-height: 54px; padding: 0 20px;
-  display: flex; align-items: center; justify-content: center; gap: 8px; background: none; color: var(--sg-accent-text);
-  font-size: 17px; font-weight: 560; cursor: pointer; position: relative;
+  appearance: none; border: 0; margin: 0; font: inherit; width: 100%; min-height: 48px; padding: 0 12px;
+  display: flex; align-items: center; gap: 12px; text-align: left; background: none; color: var(--sg-label);
+  font-size: 16px; line-height: 22px; font-weight: 520; cursor: pointer; border-radius: calc(var(--sg-radius-xl) - 6px);
+  transition: background-color var(--sg-duration-instant) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
-.sg-actionsheet__action + .sg-actionsheet__action::before, .sg-actionsheet__head + .sg-actionsheet__action::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; transform: scaleY(0.5); background: var(--sg-separator-strong); }
-.sg-actionsheet__action:focus-visible { background: var(--sg-fill); outline: none; }
-@media (hover: hover) { .sg-actionsheet__action:hover { background: var(--sg-fill); outline: none; } }
-.sg-actionsheet__action:active { background: var(--sg-fill-strong); }
-.sg-actionsheet__action[data-tone="danger"] { color: var(--sg-danger-text); }
-.sg-actionsheet__action--cancel { font-weight: 700; border-radius: var(--sg-radius-xl); }
+.sg-actionsheet__icon { display: inline-flex; flex: none; color: var(--sg-label-secondary); }
+.sg-actionsheet__icon svg { width: 20px; height: 20px; }
+.sg-actionsheet__label { flex: 1; min-width: 0; }
+.sg-actionsheet__action:focus-visible { background: var(--sg-fill-strong); outline: none; }
+@media (hover: hover) { .sg-actionsheet__action:hover:not(:disabled) { background: var(--sg-fill-strong); } }
+.sg-actionsheet__action:active:not(:disabled) { background: var(--sg-fill-strong); transform: scale(0.985); }
+.sg-actionsheet__action:disabled { color: var(--sg-label-disabled); cursor: default; }
+.sg-actionsheet__action[data-tone="danger"], .sg-actionsheet__action[data-tone="danger"] .sg-actionsheet__icon { color: var(--sg-danger-text); }
+.sg-actionsheet__sep { height: 1px; margin: 4px 12px; background: var(--sg-separator); }
+.sg-actionsheet__action--cancel { justify-content: center; text-align: center; color: var(--sg-label-secondary); font-weight: 600; }
+[data-sg-reduce-motion="true"] .sg-actionsheet__action { transform: none !important; }
 
 /* ---- Context menu: the item lifts (a clone) above a dimmed page; the menu sits beside it ---- */
 .sg-lift { position: fixed; margin: 0; pointer-events: none; border-radius: var(--sg-radius-lg); overflow: hidden; box-shadow: var(--sg-shadow-lg); will-change: transform; }
