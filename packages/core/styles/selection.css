@@ -106,6 +106,29 @@
 .sg-day[aria-pressed="true"] { background: var(--sg-accent); background-image: var(--sg-depth-sheen-accent); box-shadow: var(--sg-depth-raised-accent); color: var(--sg-on-accent); font-weight: 700; }
 .sg-day[aria-pressed="true"]::after { background: var(--sg-on-accent); }
 .sg-day[aria-disabled="true"] { color: var(--sg-label-disabled); cursor: default; text-decoration: line-through; text-decoration-thickness: 1px; }
+.sg-calendar__grid td { position: relative; }
+.sg-day { z-index: 1; }
+/* a range: the start and end are chosen days; the days between sit on one band of the accent's soft tint, as tall
+   as a day, laid along the days in reading order and broken only at the week's edges. Its rounded ends wrap the
+   start and end days whole (they nest flush). date.tsx draws it as six strips (one per week) behind the days.
+   While the end is chosen it reaches from the start to the pointer, fainter */
+.sg-calendar__view { position: relative; }
+.sg-calendar__bands { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.sg-calendar__seg { position: absolute; left: 0; top: 0; display: none; height: 36px; border-radius: 18px; will-change: transform, width;
+  background: var(--sg-accent-soft); box-shadow: var(--sg-depth-inset); }
+.sg-calendar__seg[data-kind="faint"] { background: color-mix(in oklab, var(--sg-accent-soft) 50%, transparent); }
+/* in a range the chosen days' accent is a face behind the number (the number never moves; the face opens from its
+   centre) */
+.sg-calendar__grid[aria-multiselectable] .sg-day[aria-pressed="true"] { background: none; box-shadow: none; }
+.sg-day__face {
+  position: absolute; inset: 0; z-index: -1; border-radius: 50%; pointer-events: none;
+  background: var(--sg-accent); background-image: var(--sg-depth-sheen-accent); box-shadow: var(--sg-depth-raised-accent);
+}
+@media (hover: hover) { td[data-band] .sg-day:hover:not([aria-disabled="true"]):not([aria-pressed="true"]) { background: color-mix(in oklab, var(--sg-accent) 14%, transparent); } }
+.sg-rangecalendar { display: inline-flex; flex-direction: column; gap: 6px; }
+.sg-calendar__status { margin: 0; padding: 2px 6px 0; min-height: 18px; font-size: 13px; line-height: 18px; color: var(--sg-label-secondary); }
+.sg-calendar__status[data-done] { color: var(--sg-label); font-weight: 600; }
+.sg-select__meta { flex: none; color: var(--sg-label-secondary); font-size: 0.92em; }
 .sg-datepicker-panel { position: absolute; left: 0; top: 0; padding: 12px; --_radius: var(--sg-radius-xl); outline: none; }
 
 /* reduced motion: no tick drawing, no dot growth, no press-in; changes fade */

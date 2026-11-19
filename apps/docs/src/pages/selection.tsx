@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Button, Calendar, Checkbox, ChoiceList, DatePicker, List, ListItem, ListSection, Radio, RadioGroup, Select, Stack, Switch, Text, TimePicker, TimeWheel,
+  Button, Calendar, Checkbox, ChoiceList, DatePicker, DateRangePicker, RangeCalendar, type DateRange, List, ListItem, ListSection, Radio, RadioGroup, Select, Stack, Switch, Text, TimePicker, TimeWheel,
   WeekdayPicker, describeWeekdays, useToast,
 } from '@satin-glass/react';
 import { Bike, Car, Footprints, Train, Moon, Sun, Monitor, Wifi, Bell, MapPin } from 'lucide-react';
@@ -21,11 +21,16 @@ export function Selection() {
   const [birth, setBirth] = useState<Date | null>(null);
   const [meet, setMeet] = useState<string | null>(null);
   const [al, setAl] = useState({ time: '07:30', days: [1, 2, 3, 4, 5], on: true });
+  const [stay, setStay] = useState<DateRange | null>(null);
+  const [trip, setTrip] = useState<DateRange | null>(null);
+  const [report, setReport] = useState<DateRange | null>(null);
   const putAlarm = (patch: Partial<typeof al>) => setAl((a) => ({ ...a, ...patch }));
   const [fCat, setFCat] = useState('all'), [fSort, setFSort] = useState('new'), [fShip, setFShip] = useState('all');
   const toast = useToast();
   const all = am.length === AMENITIES.length, some = am.length > 0 && !all;
   const maxDate = new Date(); maxDate.setMonth(maxDate.getMonth() + 3);
+  /* a few sold-out nights in the next weeks (the hotel demo) */
+  const soldOut = (d: Date) => { const n = Math.round((d.getTime() - Date.now()) / 864e5); return n === 9 || n === 10 || n === 23; };
   return (
     <Page title="선택" intro="체크박스, 라디오, 선택 목록, 셀렉트, 달력. 체크박스와 라디오는 실제 input이라 폼 제출·키보드·스크린 리더가 그대로 동작하고, 셀렉트와 달력은 WAI-ARIA 패턴(콤보박스·날짜 그리드)을 따릅니다.">
       <Section title="체크박스" intro="체크 표시가 그려지고(snappy), 일부만 선택된 상태(미정)를 표시할 수 있어요.">
@@ -126,6 +131,28 @@ export function Selection() {
           </Demo>
           <Demo center data-demo="calendar">
             <Calendar value={cal} onChange={setCal} aria-label="달력" />
+          </Demo>
+        </div>
+      </Section>
+
+      <Section title="기간" intro="시작과 끝, 두 날짜를 고릅니다. 첫 번째로 누른 날이 시작, 두 번째가 끝이에요. 끝을 고르는 동안에는 시작부터 포인터(또는 키보드 포커스)가 있는 날까지 홈 안의 옅은 띠가 스프링을 타고 따라 흐르고, 끝을 고르면 끝 날짜의 구슬이 가운데에서 차오릅니다. 시작보다 앞선 날이나 닿을 수 없는 날(최대 길이를 넘거나, 중간에 고를 수 없는 날이 끼어 있는 경우)을 누르면 그 날부터 다시 시작해요. 아래 줄은 지금 무엇을 고를 차례인지와 기간의 길이(‘2박 3일’ 또는 ‘3일’)를 알려 줍니다.">
+        <div className="grid grid--2">
+          <Demo col data-demo="range">
+            <DateRangePicker label="숙박 일정" value={stay} onChange={setStay} unit="nights" labels={{ start: '체크인', end: '체크아웃' }} minLength={1} maxLength={14}
+              min={new Date()} max={maxDate} isDateDisabled={(d) => soldOut(d)} name="stay" helperText="최대 14박 · 줄 그은 날은 만실" />
+            <DateRangePicker label="휴가 기간" value={trip} onChange={setTrip} maxLength={29} helperText="최대 30일" />
+            <DateRangePicker label="보고서 기간" value={report} onChange={setReport} max={new Date()} defaultMonth={new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1)} helperText="오늘까지" />
+            <Stack direction="row" gap={8} wrap>
+              {([['최근 7일', 6], ['최근 30일', 29]] as const).map(([l, n]) => {
+                const end = new Date(); end.setHours(12, 0, 0, 0); const start = new Date(end); start.setDate(end.getDate() - n);
+                return <Button key={l} size="sm" variant="tinted" onClick={() => setReport({ start, end })}>{l}</Button>;
+              })}
+              <Button size="sm" variant="plain" onClick={() => setReport(null)}>지우기</Button>
+            </Stack>
+            <Text variant="footnote" tone="secondary">{report ? `보고서: ${report.start.toLocaleDateString('ko-KR')} – ${report.end.toLocaleDateString('ko-KR')}` : '보고서 기간 없음'} · 빠른 선택 버튼처럼 바깥에서 값을 바꿀 수도 있어요.</Text>
+          </Demo>
+          <Demo center data-demo="range-calendar">
+            <RangeCalendar aria-label="여행 일정" unit="nights" labels={{ start: '가는 날', end: '오는 날' }} minLength={1} min={new Date()} />
           </Demo>
         </div>
       </Section>

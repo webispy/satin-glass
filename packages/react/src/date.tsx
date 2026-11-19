@@ -4,9 +4,12 @@
    The head shows the month and the year as two chips, in the order the locale writes them ("2026년 11월",
    "November 2026"). Each opens a grid in place of the days — twelve months, or every year from min to max in one
    scrolling grid (typing digits jumps: "198" → 1980) — that blooms from its chip; picking a year goes on to the
-   months, picking a month back to the days. `monthPicker="wheel"` opens month and year wheels instead. */
-import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { animate, fade, prefersReducedMotion, type MotionName, type Placement } from '@satin-glass/core';
+   months, picking a month back to the days. `monthPicker="wheel"` opens month and year wheels instead.
+   RangeCalendar and DateRangePicker (0.4) choose a start and an end on the same grid: the days between are joined
+   by one band whose head rides a spring: it follows the pointer while the end is chosen and runs a touch past the
+   end when it is picked, which the end day then takes (stretch, then stick). */
+import { createContext, forwardRef, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { Spring, animate, fade, loop, motionFor, prefersReducedMotion, type MotionName, type Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
 import { IconButton } from './controls';
@@ -27,11 +30,17 @@ const addMonths = (d: Date, n: number) => {
 const sameMonth = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 export const toISODate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+/* 을 after a final consonant, 를 after a vowel ("체크인을", "날짜를"); 을 for anything that is not Hangul */
+const objectParticle = (w: string) => { const c = w.trim().charCodeAt(w.trim().length - 1) - 0xac00; return c >= 0 && c < 11172 && c % 28 === 0 ? '를' : '을'; };
 const strings = (locale: string) => locale.toLowerCase().startsWith('ko')
-  ? { prev: '이전 달', next: '다음 달', prevYear: '이전 해', nextYear: '다음 해', prevYears: '이전 연도들', nextYears: '다음 연도들', today: '오늘', choose: '날짜 선택', placeholder: '날짜 선택', pick: '연도와 월 고르기', year: '연도', month: '월', pickYear: '연도 고르기', pickMonth: '월 고르기' }
-  : { prev: 'Previous month', next: 'Next month', prevYear: 'Previous year', nextYear: 'Next year', prevYears: 'Earlier years', nextYears: 'Later years', today: 'Today', choose: 'Choose a date', placeholder: 'Select a date', pick: 'Choose month and year', year: 'Year', month: 'Month', pickYear: 'Choose a year', pickMonth: 'Choose a month' };
+  ? { rangeStart: '시작일', rangeEnd: '종료일', pickNext: (x: string) => `${x}${objectParticle(x)} 고르세요`, partial: (label: string, date: string) => `${label} ${date}`, days: (n: number) => `${n}일`, nights: (n: number) => `${n}박 ${n + 1}일`, chooseRange: '기간 선택', prev: '이전 달', next: '다음 달', prevYear: '이전 해', nextYear: '다음 해', prevYears: '이전 연도들', nextYears: '다음 연도들', today: '오늘', choose: '날짜 선택', placeholder: '날짜 선택', pick: '연도와 월 고르기', year: '연도', month: '월', pickYear: '연도 고르기', pickMonth: '월 고르기' }
+  : { rangeStart: 'start date', rangeEnd: 'end date', pickNext: (x: string) => `Choose the ${x}`, partial: (label: string, date: string) => `${label[0].toUpperCase()}${label.slice(1)}: ${date}`, days: (n: number) => `${n} day${n === 1 ? '' : 's'}`, nights: (n: number) => `${n} night${n === 1 ? '' : 's'}`, chooseRange: 'Choose dates', prev: 'Previous month', next: 'Next month', prevYear: 'Previous year', nextYear: 'Next year', prevYears: 'Earlier years', nextYears: 'Later years', today: 'Today', choose: 'Choose a date', placeholder: 'Select a date', pick: 'Choose month and year', year: 'Year', month: 'Month', pickYear: 'Choose a year', pickMonth: 'Choose a month' };
 
 /* ================================================================================================ Calendar */
+/* a RangeCalendar around a Calendar: the days show the range and a pick goes to it */
+type RangeCtx = { start: Date | null; end: Date | null; pick: (d: Date) => void; reach: (d: Date) => boolean; starts: string; ends: string };
+const RangeContext = createContext<RangeCtx | null>(null);
+
 export type CalendarProps = {
   value?: Date | null; defaultValue?: Date | null; onChange?: (date: Date) => void;
   min?: Date; max?: Date;
@@ -57,6 +66,9 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   { value, defaultValue = null, onChange, min, max, isDateDisabled, locale = 'ko-KR', weekStartsOn = 0, autoFocus, defaultMonth, openTo = 'day', monthPicker = 'grid', motion, className, style, 'aria-label': ariaLabel }, ref,
 ) {
   const [v, setV] = useControllable<Date | null>(value, defaultValue, onChange as (d: Date | null) => void);
+  const range = useContext(RangeContext);
+  /* while the end is being chosen, the day under the pointer (or keyboard focus) previews it */
+  const [hover, setHover] = useState<Date | null>(null);
   const today = useMemo(() => { const n = new Date(); return day(n.getFullYear(), n.getMonth(), n.getDate()); }, []);
   const initial = defaultMonth ? day(defaultMonth.getFullYear(), defaultMonth.getMonth(), 1) : today;
   const [focused, setFocused] = useState<Date>(() => v ?? initial);
@@ -161,7 +173,7 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     else if (k === 'End') d = addDays(focused, 6 - dow);
     else if (k === 'PageUp') d = addMonths(focused, e.shiftKey ? -12 : -1);
     else if (k === 'PageDown') d = addMonths(focused, e.shiftKey ? 12 : 1);
-    else if (k === 'Enter' || k === ' ') { e.preventDefault(); if (!disabled(focused)) setV(focused); return; }
+    else if (k === 'Enter' || k === ' ') { e.preventDefault(); if (!disabled(focused)) { if (range) range.pick(focused); else setV(focused); } return; }
     if (!d) return;
     e.preventDefault();
     focusDay(d);
@@ -172,6 +184,80 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   const start = addDays(first, -lead);
   const weeks = Array.from({ length: 6 }, (_, w) => Array.from({ length: 7 }, (_, i) => addDays(start, w * 7 + i)));
   const titleId = `${id}-title`;
+
+  /* ---- the range band: the days between lie in a groove (the path a range is laid along: depth -1) holding the
+     accent's soft tint, one strip in reading order drawn as runs per week behind the days, rounded at the week's
+     edges and concentric with the end beads. While the end is chosen the tint's head follows the pointer (or
+     keyboard focus) on the snappy spring, flowing round the week's end; a picked end, or a new start, opens its
+     accent face (not the day, not its number) from the centre on the pop spring. Reduced motion: the final
+     geometry, no springs. */
+  const bands = useRef<HTMLDivElement>(null);
+  type BandEng = { H: Spring; stop: (() => void) | null; month: number; key: string };
+  const bandEng = useRef<BandEng | null>(null);
+  const candidate = range && range.start && !range.end && hover && range.reach(hover) && ymd(hover) !== ymd(range.start) ? hover : null;
+  const hoverKey = candidate ? ymd(candidate) : 0;
+  useIsoLayoutEffect(() => {
+    const layer = bands.current, tb = body.current, table = tb?.parentElement as HTMLElement | undefined;
+    if (!range || !layer || !tb || !table || view !== 'day') return;
+    const cell = tb.rows[0]?.cells[0]?.offsetWidth || 40, W = cell * 7, pool = layer.children as HTMLCollectionOf<HTMLElement>;
+    const rowY = Array.from(tb.rows, (r) => table.offsetTop + tb.offsetTop + r.offsetTop + (r.offsetHeight - 36) / 2);
+    const idx = (d: Date) => Math.round((d.getTime() - start.getTime()) / 864e5);
+    const Lx = (i: number) => i * cell + 2, Rx = (i: number) => (i + 1) * cell - 2;
+    type Run = [number, number, 'soft' | 'faint'];
+    const paint = (runs: Run[]) => {
+      let n = 0;
+      for (const [a0, b0, kind] of runs) {
+        const lo = Math.min(a0, b0), hi = Math.max(a0, b0);
+        for (let r = 0; r < rowY.length && n < pool.length; r++) {
+          const L = Math.max(2, Math.max(lo, r * W) - r * W), R = Math.min(W - 2, Math.min(hi, (r + 1) * W) - r * W);
+          if (R - L < 1) continue;
+          const el = pool[n++];
+          el.dataset.kind = kind; el.style.display = 'block';
+          el.style.transform = `translate(${(table.offsetLeft + L).toFixed(2)}px, ${rowY[r].toFixed(2)}px)`;
+          el.style.width = `${(R - L).toFixed(2)}px`;
+          el.style.borderRadius = `${Math.min(18, (R - L) / 2).toFixed(2)}px`;
+        }
+      }
+      for (; n < pool.length; n++) pool[n].style.display = 'none';
+    };
+    const btnOf = (d: Date) => tb.querySelector<HTMLElement>(`[data-date="${toISODate(d)}"]`);
+    const reduced = prefersReducedMotion(layer), sq = motionFor(layer).squash;
+    /* the accent face opens from the centre on the pop spring: from 30 (calm) / 28 (lively) / 27 (playful) px to 36 */
+    const seat = (d: Date) => { const f = btnOf(d)?.querySelector<HTMLElement>('.sg-day__face'); if (f && !reduced) animate(f, [{ transform: `scale(${((30 - 14 * sq) / 36).toFixed(3)})` }, { transform: 'none' }], 'pop'); };
+
+    const startD = range.start;
+    let st = bandEng.current;
+    if (!startD) { st?.stop?.(); if (st) { st.stop = null; st.key = ''; } paint([]); return; }
+    const sI = idx(startD), eI = range.end ? idx(range.end) : null, cI = candidate ? idx(candidate) : null;
+    const tintTo = eI !== null ? Rx(eI) : cI !== null ? Rx(cI) : Lx(sI);
+    const tintKind: Run[2] = eI !== null ? 'soft' : 'faint';
+    const runsAt = (head: number): Run[] => (head > Lx(sI) + 1 ? [[Lx(sI), head, tintKind]] : []);
+    const key = `${ymd(startD)}-${range.end ? ymd(range.end) : ''}`;
+    if (!st) st = bandEng.current = { H: new Spring(tintTo, 'snappy', layer), stop: null, month: 0, key: '' };
+    const was = st.key, newStart = !was || was.split('-')[0] !== String(ymd(startD)), committed = eI !== null && was !== key && !newStart;
+    const fresh = st.month !== ymd(month) || !was || reduced;
+    const monthMoved = Boolean(st.month) && st.month !== ymd(month);
+    st.key = key; st.month = ymd(month);
+    const e = st;
+    const animateHead = (onTick?: () => void) => {
+      if (e.stop) return;
+      e.stop = loop((dt) => {
+        e.H.step(dt); paint(runsAt(e.H.value)); onTick?.();
+        if (!e.H.settled) return;
+        e.H.jump(e.H.target); paint(runsAt(e.H.value)); e.stop = null;
+        return false;
+      });
+    };
+    if (fresh || newStart) {
+      e.stop?.(); e.stop = null; e.H.jump(tintTo); paint(runsAt(tintTo));
+      if (monthMoved) layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 120, fill: 'backwards' });   /* after the month's slide */
+      if (newStart && was && !reduced) seat(startD);
+      return;
+    }
+    e.H.target = tintTo; animateHead();
+    if (committed) seat(range.end!);
+  }, [range?.start ? ymd(range.start) : 0, range?.end ? ymd(range.end) : 0, hoverKey, ymd(month), view]);
+  useEffect(() => () => bandEng.current?.stop?.(), []);
 
   return (
     <div ref={mergeRefs(ref, root)} className={cx('sg-calendar', className)} style={style} data-sg-motion={motion}>
@@ -212,7 +298,8 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
           </>)}
         </div>
       </div>
-      <div ref={viewBox}>
+      <div ref={viewBox} className="sg-calendar__view">
+      {range && view === 'day' && <div ref={bands} className="sg-calendar__bands" aria-hidden="true">{Array.from({ length: 18 }, (_, i) => <span key={i} className="sg-calendar__seg" />)}</div>}
       {view === 'year' && !wheels ? (
         <YearGrid years={years} value={month.getFullYear()} current={today.getFullYear()} label={t.pickYear} pageRef={yearPage} onEdge={setYearEdge}
           onPick={(y) => { toMonth(y, month.getMonth()); opener.current = null; setView('month'); focusSoon('.sg-calendar__cell[aria-selected="true"]'); }} onCancel={backToDays} />
@@ -229,30 +316,43 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
           </WheelGroup>
         </div>
       ) : (
-      <table role="grid" aria-labelledby={ariaLabel ? undefined : titleId} aria-label={ariaLabel} className="sg-calendar__grid" onKeyDown={onKey}>
+      <table role="grid" aria-labelledby={ariaLabel ? undefined : titleId} aria-label={ariaLabel} aria-multiselectable={range ? true : undefined} className="sg-calendar__grid" onKeyDown={onKey}
+        onMouseLeave={range ? () => setHover(null) : undefined}>
         <thead>
           <tr>{weeks[0].map((d) => <th key={d.getDay()} scope="col" abbr={fmt.wdLong.format(d)}>{fmt.wdShort.format(d)}</th>)}</tr>
         </thead>
         <tbody ref={body} className="sg-calendar__body">
-          {weeks.map((wk, wi) => (
-            <tr key={wi}>
-              {wk.map((d) => {
-                const sel = v ? ymd(d) === ymd(v) : false, isToday = ymd(d) === ymd(today), off = disabled(d), out = !sameMonth(d, month);
-                return (
-                  <td key={ymd(d)} role="gridcell" aria-selected={sel}>
-                    <button type="button" className="sg-day" data-date={toISODate(d)} tabIndex={ymd(d) === ymd(focused) ? 0 : -1}
-                      aria-pressed={sel} aria-current={isToday ? 'date' : undefined} aria-disabled={off || undefined}
-                      data-today={isToday ? '' : undefined} data-outside={out ? '' : undefined}
-                      onClick={() => { if (off) return; setFocused(d); if (out) setMonth(startOfMonth(d)); setV(d); }}>
-                      {/* the number is what you see; the full date is what a screen reader hears */}
-                      <span aria-hidden="true">{d.getDate()}</span>
-                      <span className="sg-visually-hidden">{`${fmt.full.format(d)}${isToday ? `, ${t.today}` : ''}`}</span>
-                    </button>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+          {(() => {
+            /* the range drawn: chosen, or from the start to the day under the pointer while the end is chosen */
+            const lo = range?.start ?? null;
+            const hi = range ? (range.end ?? (lo && hover && range.reach(hover) ? hover : null)) : null;
+            const preview = Boolean(range && !range.end && hi);
+            const a = lo && hi ? ymd(lo) : 0, z = lo && hi ? ymd(hi) : 0;
+            return weeks.map((wk, wi) => (
+              <tr key={wi}>
+                {wk.map((d, col) => {
+                  const k = ymd(d), isToday = k === ymd(today), off = disabled(d), out = !sameMonth(d, month);
+                  const sel = range ? Boolean((range.start && k === ymd(range.start)) || (range.end && k === ymd(range.end))) : v ? k === ymd(v) : false;
+                  const band = a && z && a !== z && k >= a && k <= z ? (k === a ? 'start' : k === z ? 'end' : 'mid') : undefined;
+                  const role = range && sel ? (range.start && k === ymd(range.start) ? range.starts : range.ends) : '';
+                  return (
+                    <td key={k} role="gridcell" aria-selected={sel || (band === 'mid' && !preview)} data-band={band} data-col={band ? col : undefined} data-preview={band && preview ? '' : undefined}>
+                      <button type="button" className="sg-day" data-date={toISODate(d)} tabIndex={k === ymd(focused) ? 0 : -1}
+                        aria-pressed={sel} aria-current={isToday ? 'date' : undefined} aria-disabled={off || undefined}
+                        data-today={isToday ? '' : undefined} data-outside={out ? '' : undefined}
+                        onMouseEnter={range ? () => setHover(d) : undefined} onFocus={range ? () => setHover(d) : undefined}
+                        onClick={() => { if (off) return; setFocused(d); if (out) setMonth(startOfMonth(d)); if (range) range.pick(d); else setV(d); }}>
+                        {range && sel && <span className="sg-day__face" aria-hidden="true" />}
+                        {/* the number is what you see; the full date is what a screen reader hears */}
+                        <span aria-hidden="true">{d.getDate()}</span>
+                        <span className="sg-visually-hidden">{`${fmt.full.format(d)}${isToday ? `, ${t.today}` : ''}${role ? `, ${role}` : ''}`}</span>
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ));
+          })()}
         </tbody>
       </table>
       )}
@@ -413,6 +513,140 @@ export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(functio
           <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : t.choose} tabIndex={-1} className={cx('sg-datepicker-panel', glassClass('strong'))}>
             <div data-sg-content>
               <Calendar {...calendar} locale={locale} motion={motion} value={v} onChange={(d) => { setV(d); setOpen(false); }} />
+            </div>
+          </div>
+        </Portal></MotionScope>
+      )}
+    </>
+  );
+});
+
+/* ================================================================================================ ranges (0.4) */
+export type DateRange = { start: Date; end: Date };
+const spanDays = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / 864e5);
+
+export type RangeCalendarProps = Omit<CalendarProps, 'value' | 'defaultValue' | 'onChange' | 'openTo'> & {
+  value?: DateRange | null; defaultValue?: DateRange | null;
+  /** called when both days are chosen */
+  onChange?: (range: DateRange) => void;
+  /** the first day was chosen (a date) or cleared (null), the second is awaited */
+  onPartial?: (start: Date | null) => void;
+  /** fewest / most days from the start to the end (a stay of at least one night: minLength 1). Default 0 / none */
+  minLength?: number; maxLength?: number;
+  /** how the length is told: 'days' (3일, default) or 'nights' (2박 3일) */
+  unit?: 'days' | 'nights';
+  /** what the two days are called (체크인 / 체크아웃); default 시작일 / 종료일 */
+  labels?: { start?: string; end?: string };
+  /** the line under the days that says what to choose next and how long the range is (default true) */
+  status?: boolean;
+};
+
+/** A calendar that chooses a start and an end. The first pick is the start; the second, the end (an earlier day, or
+    one the range cannot reach — past maxLength or past a disabled day — starts over; the start again clears it).
+    Days between start and end are joined by a band. */
+export const RangeCalendar = forwardRef<HTMLDivElement, RangeCalendarProps>(function RangeCalendar(
+  { value, defaultValue = null, onChange, onPartial, minLength = 0, maxLength = Infinity, unit = 'days', labels, status = true, locale = 'ko-KR', min, max, isDateDisabled, className, style, ...cal }, ref,
+) {
+  const [v, setV] = useControllable<DateRange | null>(value, defaultValue, onChange as (r: DateRange | null) => void);
+  const [draft, setDraft] = useState<{ start: Date | null; end: Date | null }>(() => ({ start: v?.start ?? null, end: v?.end ?? null }));
+  useEffect(() => { setDraft({ start: v?.start ?? null, end: v?.end ?? null }); }, [v ? ymd(v.start) : 0, v ? ymd(v.end) : 0]);
+  const t = strings(locale);
+  const S = labels?.start ?? t.rangeStart, E = labels?.end ?? t.rangeEnd;
+  const blocked = (d: Date) => Boolean((min && ymd(d) < ymd(min)) || (max && ymd(d) > ymd(max)) || isDateDisabled?.(d));
+  /* can d end the range that starts at the draft's start? Long enough, not too long, nothing disabled on the way */
+  const reach = (d: Date) => {
+    const s0 = draft.start; if (!s0 || draft.end) return false;
+    const n = spanDays(s0, d);
+    if (n < Math.max(0, minLength) || n > maxLength || blocked(d)) return false;
+    for (let i = 1; i < n; i++) if (blocked(addDays(s0, i))) return false;
+    return true;
+  };
+  const begin = (d: Date | null) => { setDraft({ start: d, end: null }); onPartial?.(d); };
+  const pick = (d: Date) => {
+    if (blocked(d)) return;
+    if (!draft.start || draft.end) { begin(d); return; }
+    if (ymd(d) === ymd(draft.start) && minLength > 0) { begin(null); return; }
+    if (reach(d)) { const r = { start: draft.start, end: d }; setDraft(r); setV(r); return; }
+    begin(d);
+  };
+  const fmtDay = useMemo(() => new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', weekday: 'short' }), [locale]);
+  const length = (a: Date, b: Date) => (unit === 'nights' ? t.nights(spanDays(a, b)) : t.days(spanDays(a, b) + 1));
+  const line = !draft.start ? t.pickNext(S)
+    : !draft.end ? `${t.partial(S, fmtDay.format(draft.start))} · ${t.pickNext(E)}`
+    : `${formatRange(fmtDay, draft.start, draft.end)} · ${length(draft.start, draft.end)}`;
+  const ctx = useMemo<RangeCtx>(() => ({ start: draft.start, end: draft.end, pick, reach, starts: S, ends: E }),
+    [draft.start ? ymd(draft.start) : 0, draft.end ? ymd(draft.end) : 0, minLength, maxLength, S, E, min ? ymd(min) : 0, max ? ymd(max) : 0, isDateDisabled]);
+  return (
+    <div ref={ref} className={cx('sg-rangecalendar', className)} style={style}>
+      <RangeContext.Provider value={ctx}>
+        <Calendar {...cal} locale={locale} min={min} max={max} isDateDisabled={isDateDisabled} value={draft.start} />
+      </RangeContext.Provider>
+      {status && <p className="sg-calendar__status" aria-live="polite" data-done={draft.end ? '' : undefined}>{line}</p>}
+    </div>
+  );
+});
+
+/* "11월 20일 (목) ~ 22일 (토)": the locale's own way of writing a span, where it has one */
+function formatRange(f: Intl.DateTimeFormat, a: Date, b: Date) {
+  const r = (f as Intl.DateTimeFormat & { formatRange?: (x: Date, y: Date) => string }).formatRange;
+  return r ? r.call(f, a, b) : `${f.format(a)} – ${f.format(b)}`;
+}
+
+export type DateRangePickerProps = Omit<RangeCalendarProps, 'status' | 'onPartial' | 'className' | 'style'> & {
+  placeholder?: ReactNode;
+  label?: ReactNode; helperText?: ReactNode; error?: ReactNode | boolean;
+  disabled?: boolean;
+  /** submits the range with forms as an ISO 8601 interval, yyyy-mm-dd/yyyy-mm-dd */
+  name?: string;
+  /** how the range is written in the field (default: the locale's short span, then its length) */
+  format?: (range: DateRange) => string;
+  placement?: Placement;
+  id?: string; className?: string; style?: CSSProperties;
+};
+
+/** A field that opens a RangeCalendar. Choosing the end closes it with the new range; Escape or a click outside
+    before then leaves the range as it was. */
+export const DateRangePicker = forwardRef<HTMLButtonElement, DateRangePickerProps>(function DateRangePicker(
+  { value, defaultValue = null, onChange, placeholder, label, helperText, error, disabled, name, format, placement = 'bottom-start', locale = 'ko-KR', motion, unit = 'days', id, className, style, 'aria-label': ariaLabel, ...range }, ref,
+) {
+  const [v, setV] = useControllable<DateRange | null>(value, defaultValue, onChange as (r: DateRange | null) => void);
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const auto = useStableId('sg-range');
+  const fid = id ?? auto;
+  const t = strings(locale);
+  const lightRef = useGlassLight();
+  const fmtDay = useMemo(() => new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', weekday: 'short' }), [locale]);
+  const text = (r: DateRange) => format ? format(r) : formatRange(fmtDay, r.start, r.end);
+  const length = (r: DateRange) => (unit === 'nights' ? t.nights(spanDays(r.start, r.end)) : t.days(spanDays(r.start, r.end) + 1));
+  const { panel, mounted } = useAnchored(open, trigger.current, placement, () => setOpen(false), (p) => {
+    (p.querySelector<HTMLElement>('.sg-day[tabindex="0"], .sg-calendar__cell[tabindex="0"], .sg-wheel__scroller') ?? p).focus({ preventScroll: true });
+  });
+  const invalid = Boolean(error);
+  const help = typeof error === 'string' || (error && typeof error !== 'boolean') ? error : helperText;
+  const labelId = label ? `${fid}-label` : undefined;
+  return (
+    <>
+      <div className={cx('sg-field', className)} style={style} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
+        {label && <span id={labelId} className="sg-field__label">{label}</span>}
+        <button ref={mergeRefs(ref, trigger)} id={fid} type="button" className="sg-select" disabled={disabled}
+          aria-haspopup="dialog" aria-expanded={open} aria-labelledby={labelId ? `${labelId} ${fid}` : undefined} aria-label={labelId ? undefined : ariaLabel ?? t.chooseRange}
+          aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined} data-sg-motion={motion}
+          onClick={() => setOpen((o) => !o)}>
+          <span className="sg-select__value">{v
+            ? <><span>{text(v)}</span><span className="sg-select__meta">{length(v)}</span></>
+            : <span className="sg-select__placeholder">{placeholder ?? t.chooseRange}</span>}</span>
+          <CalendarIcon />
+        </button>
+        {help && <span id={`${fid}-help`} className="sg-field__help">{help}</span>}
+      </div>
+      {name && <input type="hidden" name={name} value={v ? `${toISODate(v.start)}/${toISODate(v.end)}` : ''} />}
+      {mounted && (
+        <MotionScope motion={motion} bare><Portal className="sg-portal--passthrough sg-portal--anchored">
+          <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : t.chooseRange} tabIndex={-1} className={cx('sg-datepicker-panel', glassClass('strong'))}>
+            <div data-sg-content>
+              <RangeCalendar {...range} unit={unit} locale={locale} motion={motion} value={v}
+                onChange={(r) => { setV(r); window.setTimeout(() => setOpen(false), 260); /* let the band fill before it closes */ }} />
             </div>
           </div>
         </Portal></MotionScope>
