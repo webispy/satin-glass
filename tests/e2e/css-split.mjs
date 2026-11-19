@@ -1,0 +1,115 @@
+// The stylesheets are shipped whole (styles.css) and per category (css/<category>.css). This checks, on every docs
+// page, that every element computes to exactly the same styles:
+//   1. foundation first, then the other categories in reverse order  vs  styles.css   (categories do not depend
+//      on each other's load order; foundation always comes first)
+//   2. for each category: foundation + its declared dependencies + the category  vs  styles.css, comparing only
+//      the elements that category styles (the dependencies listed in the README are enough)
+//   3. styles.layer.css  vs  styles.css (the layered build draws the same)
+// The docs app bundles the library CSS into its own asset, so the asset is replaced here by the variant under
+// test followed by the docs app's own stylesheet (the same for every variant).
+// usage: node tests/e2e/css-split.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+import * as pw from 'playwright';
+import { readFileSync } from 'node:fs';
+const engine = process.env.BROWSER || 'chromium';
+const dist = (p) => readFileSync(new URL(`../../packages/react/dist/${p}`, import.meta.url), 'utf8');
+const docsCss = readFileSync(new URL('../../apps/docs/src/docs.css', import.meta.url), 'utf8');
+const CATS = ['foundation', 'controls', 'layout', 'navigation', 'selection', 'overlays', 'feedback', 'data'];
+/* what each category needs besides foundation — keep in step with the README's table */
+export const DEPS = { controls: [], layout: [], navigation: [], selection: ['controls', 'overlays'], overlays: [], feedback: [], data: ['controls', 'selection'] };
+const cat = Object.fromEntries(CATS.map((c) => [c, dist(`css/${c}.css`)]));
+const full = dist('styles.css'), layered = dist('styles.layer.css');
+const PAGES = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'lab'];
+const QS = ['?mode=light&rm=1', '?mode=dark&hc=1&rm=1'];
+
+const b = await pw[engine].launch();
+let failed = 0;
+const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
+
+/* computed style of every element, keyed by its path; `only` limits it to elements a category draws */
+async function snapshot(css, page, qs, only, foreign) {
+  const ctx = await b.newContext({ viewport: { width: 1280, height: 900 } });
+  const p = await ctx.newPage();
+  await p.route(/\/assets\/.*\.css$/, (r) => r.fulfill({ contentType: 'text/css', body: css + '\n' + docsCss }));
+  /* the web font arrives at a different moment on each load and moves every line; all variants use the fallback */
+  await p.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+  await p.goto(`http://localhost:4173/${qs}#/${page}`);
+  await p.evaluate(() => document.fonts.ready);
+  await p.waitForTimeout(1000);
+  const snap = await p.evaluate(({ only, foreign }) => {
+    /* in the per-category check an element's size follows its contents, which may belong to a category that is
+       not loaded; what a missing dependency would show is a declared value (colour, padding, radius, display…) */
+    const GEOMETRY = ['width', 'height', 'inline-size', 'block-size', 'perspective-origin', 'transform-origin', 'transform', 'top', 'left', 'right', 'bottom',
+      'inset-block-start', 'inset-block-end', 'inset-inline-start', 'inset-inline-end', 'mask-image', '-webkit-mask-image', 'touch-action'];
+    const animated = new Set();
+    for (const a of document.getAnimations()) { try { a.pause(); a.currentTime = 0; } catch {} if (a.effect?.target) animated.add(a.effect.target); }
+    const rx = (l) => new RegExp(`(^|\\s)sg-(${l.join('|')})(__|--|$|\\s)`);
+    const re = only ? rx(only) : null, fre = foreign?.length ? rx(foreign) : null;
+    const out = {};
+    const path = (e) => { const s = []; for (; e && e !== document.body; e = e.parentElement) s.unshift(`${e.tagName}${[...e.parentElement?.children ?? []].indexOf(e)}`); return s.join('>'); };
+    for (const e of document.body.querySelectorAll('*')) {
+      /* a category's own elements, outside any component of a category that is not loaded (whose contextual rules
+         would be missing for a reason that is not a dependency of this one) */
+      if (re) {
+        if (!re.test(e.getAttribute('class') ?? '')) continue;
+        let x = e, inForeign = false; for (; x && !inForeign; x = x.parentElement) inForeign = fre?.test(x.getAttribute('class') ?? '') ?? false;
+        if (inForeign) continue;
+      }
+      const cs = getComputedStyle(e), v = [];
+      /* animation-delay is set from a shared clock (skeleton sweep); an animated element's opacity and transform
+         depend on when it started */
+      const skip = new Set(['animation-delay', ...(animated.has(e) ? ['opacity', 'transform'] : []), ...(only ? GEOMETRY : []),
+        /* the docs column is centred with auto margins: they follow whether the page scrollbar is showing yet */
+        ...(e.classList.contains('docs__page') ? ['margin-left', 'margin-right', 'margin-inline-start', 'margin-inline-end'] : [])]);
+      for (let i = 0; i < cs.length; i++) { const k = cs[i]; if (k.startsWith('--') || skip.has(k)) continue; v.push(k + ':' + cs.getPropertyValue(k)); }
+      for (const pe of ['::before', '::after']) { const ps = getComputedStyle(e, pe); if (ps.content && ps.content !== 'none' && ps.content !== 'normal') v.push(pe + ps.background + ps.borderRadius + ps.boxShadow + (only ? '' : ps.transform + ps.inset + ps.width + ps.height)); }
+      out[path(e)] = v.join(';');
+    }
+    return out;
+  }, { only: only ?? null, foreign: foreign ?? null });
+  await ctx.close();
+  return snap;
+}
+const diff = (a, bb) => {
+  const keys = Object.keys(a), bad = [];
+  for (const k of keys) if (a[k] !== bb[k]) {
+    const x = (a[k] ?? '').split(';'), y = new Set((bb[k] ?? '').split(';'));
+    bad.push(`${k.split('>').slice(-3).join('>')}: ${x.filter((s) => !y.has(s)).slice(0, 3).join(' | ')}`);
+  }
+  return { n: keys.length, bad };
+};
+/* the blocks a category owns: those whose rules first start a line in it (foundation first) */
+const owner = new Map();
+for (const c of CATS) for (const m of cat[c].matchAll(/^\.sg-([a-z][a-z0-9-]*?)(?=__|--|[\s.:,{\[>)])/gm)) if (!owner.has(m[1])) owner.set(m[1], c);
+const owned = (c) => [...owner].filter(([, o]) => o === c).map(([k]) => k);
+
+const reversed = [cat.foundation, ...CATS.slice(1).reverse().map((c) => cat[c])].join('\n');
+for (const qs of QS) for (const page of PAGES) {
+  const base = await snapshot(full, page, qs);
+  const r = diff(base, await snapshot(reversed, page, qs));
+  ok(`reverse category order · ${page} ${qs}`, r.bad.length === 0, r.bad.length ? `${r.bad.length}/${r.n}: ${r.bad.slice(0, 4).join(' ;; ')}` : `${r.n} elements`);
+  if (qs === QS[0]) {
+    const l = diff(base, await snapshot(layered, page, qs));
+    ok(`layered build · ${page}`, l.bad.length === 0, l.bad.length ? `${l.bad.length}/${l.n}: ${l.bad.slice(0, 4).join(' ;; ')}` : '');
+  }
+}
+for (const c of CATS.slice(1)) {
+  const loaded = ['foundation', ...DEPS[c], c], css = loaded.map((x) => cat[x]).join('\n'), only = owned(c);
+  const foreign = CATS.filter((x) => !loaded.includes(x)).flatMap(owned);
+  for (const page of PAGES) {
+    const a = await snapshot(full, page, QS[0], only, foreign);
+    if (!Object.keys(a).length) continue;
+    const r = diff(a, await snapshot(css, page, QS[0], only, foreign));
+    ok(`${c} with foundation${DEPS[c].length ? ' + ' + DEPS[c].join(' + ') : ''} · ${page}`, r.bad.length === 0, r.bad.length ? `${r.bad.length}/${r.n}: ${r.bad.slice(0, 4).join(' ;; ')}` : `${r.n} elements`);
+  }
+}
+if (process.env.BASELINE) {
+  /* one-off: the regrouped bundle against the bundle from before the regrouping */
+  const old = readFileSync(process.env.BASELINE, 'utf8');
+  for (const qs of QS) for (const page of PAGES) {
+    const r = diff(await snapshot(old, page, qs), await snapshot(full, page, qs));
+    ok(`same as before regrouping · ${page} ${qs}`, r.bad.length === 0, r.bad.length ? `${r.bad.length}/${r.n}: ${r.bad.slice(0, 4).join(' ;; ')}` : '');
+  }
+}
+await b.close();
+console.log(failed ? `\n${failed} FAILED` : '\nALL PASSED');
+process.exit(failed ? 1 : 0);

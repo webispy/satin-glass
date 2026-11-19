@@ -1,7 +1,7 @@
 /* ============================================================================================
-   Selection & input (0.2): checkbox, radio, choice list, select, calendar / date picker
+   Selection: checkbox, radio, choice list, select, calendar and date picker, wheels, time, weekdays.
+   Uses the text field from controls and the panel from overlays.
    ============================================================================================ */
-
 /* ---- Checkbox & radio: a real <input> (forms, keyboard, screen readers) drawn as our own box ---- */
 .sg-check { position: relative; display: inline-flex; align-items: flex-start; gap: 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
 .sg-check[data-disabled="true"] { cursor: default; opacity: 0.42; }
@@ -211,3 +211,10 @@
 @media (prefers-reduced-motion: reduce) {
   .sg-root:not([data-sg-reduce-motion="false"]) .sg-weekday, .sg-root:not([data-sg-reduce-motion="false"]) .sg-weekday::before { transform: none !important; }
 }
+
+/* ---------------------------------------------------------------- Select: filter pill */
+.sg-select--filter { width: auto; height: var(--sg-size-control-sm); padding: 0 10px 0 14px; gap: 6px; border-radius: var(--sg-radius-full); background: none; box-shadow: inset 0 0 0 1px var(--sg-separator-strong); font-size: 14px; }
+.sg-select--filter .sg-select__value { flex: none; font-weight: 600; }
+.sg-select--filter .sg-select__chevrons { width: 16px; height: 16px; }
+.sg-select__prefix { color: var(--sg-label-secondary); white-space: nowrap; }
+@media (hover: hover) { .sg-select--filter:hover:not(:disabled) { background: var(--sg-fill); } }

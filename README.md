@@ -9,21 +9,58 @@
 | 경로 | 패키지 | 내용 |
 |---|---|---|
 | `packages/tokens` | `@satin-glass/tokens` | OKLCH 팔레트, 테마 4종(라이트·다크·고대비 2종), 간격·반경·글자·모션 토큰 → `tokens.css`와 TS 값. 빌드할 때 WCAG 대비를 검사한다 |
-| `packages/core` | `@satin-glass/core` | 프레임워크 없는 동작(스프링, 포인터 빛, 물방울 선택 표시, 오버레이 배치·피어남·포커스·레이어 스택, 끌기·길게 누르기)과 컴포넌트 CSS(`styles.css`) |
-| `packages/react` | `@satin-glass/react` | React 컴포넌트 40여 개와 훅 |
+| `packages/core` | `@satin-glass/core` | 프레임워크 없는 동작(스프링, 포인터 빛, 물방울 선택 표시, 오버레이 배치·피어남·포커스·레이어 스택, 끌기·길게 누르기)과 컴포넌트 CSS(`styles.css`, 범주별 `css/*.css`, `styles.layer.css`) |
+| `packages/react` | `@satin-glass/react` | React 컴포넌트와 훅. 범주별 진입점(`/controls`, `/data` …)과 코어의 CSS를 함께 싣는다 |
 | `apps/docs` | — | 문서·카탈로그 앱(Vite). 테마 전환과 실제 앱 형태의 쇼케이스 포함 |
 | `tests/e2e` | — | Playwright: 상호작용(Chromium·WebKit·Firefox), 성능(CPU 4배 감속), 스크린샷 |
 
 ## 사용
 
+React 앱은 `@satin-glass/react` 하나만 설치하면 된다. 토큰과 코어는 의존성으로 함께 설치된다.
+
+```bash
+npm i @satin-glass/react
+```
+
 ```tsx
-import '@satin-glass/react/styles.css';
-import { ThemeProvider, createTheme, Button, TabBar, Tab } from '@satin-glass/react';
+import '@satin-glass/react/styles.css';                 // 전체 스타일 한 파일
+import { ThemeProvider, createTheme, Button } from '@satin-glass/react';
 
 <ThemeProvider theme={createTheme({ mode: 'system' })}>
   <Button variant="filled">계속</Button>
 </ThemeProvider>
 ```
+
+### 범주별로 나눠 쓰기
+
+컴포넌트와 스타일은 같은 이름의 범주로 나뉜다. 루트(`@satin-glass/react`)에서 모두 가져와도 되고, 범주 경로에서 가져와도 된다. JS는 번들러가 쓰지 않는 코드를 걷어 내므로 어느 쪽이든 결과 크기는 같다. 범주 경로는 스타일을 필요한 것만 불러올 때 짝을 맞추기 쉽게 하려고 둔다.
+
+```tsx
+import '@satin-glass/react/css/foundation.css';         // 항상 맨 먼저 (토큰 포함)
+import '@satin-glass/react/css/controls.css';
+import '@satin-glass/react/css/data.css';
+import '@satin-glass/react/css/selection.css';          // data가 필요로 함
+
+import { ThemeProvider } from '@satin-glass/react/foundation';
+import { Button } from '@satin-glass/react/controls';
+import { DataTable, LineChart } from '@satin-glass/react/data';
+```
+
+| 범주 | 컴포넌트 | 함께 불러올 CSS (foundation 외) |
+|---|---|---|
+| `foundation` | `ThemeProvider` `createTheme` `useTheme` `MotionScope` `Glass` `Text` `Stack` `Divider` `Portal` `VisuallyHidden`, 아이콘, `useControllable` `useImageTint` `useGlassLight` | — |
+| `controls` | `Button` `IconButton` `ButtonGroup` `Switch` `Slider` `Stepper` `SegmentedControl` `TextField` `SearchField` `Chip` `Badge` `BadgeAnchor` `Avatar` `Progress` `Spinner` `PageControl` | — |
+| `layout` | `Card` `CardMedia` `CardBody` `CardHeader` `List` `ListItem` `ListSection` `Accordion` `Skeleton` `MediaViewer` | — |
+| `navigation` | `TabBar` `Tab` `TabBarAction` `Tabs` `AppBar` `ScrollFade` `Sidebar` `SidebarSection` `SidebarItem` `Breadcrumbs` `NavigationStack` `NavigationPage` `useNavigation` `Pagination` | — |
+| `selection` | `Checkbox` `RadioGroup` `Radio` `ChoiceList` `Select` `Calendar` `DatePicker` `Wheel` `WheelGroup` `TimePicker` `TimeWheel` `WeekdayPicker` `describeWeekdays` | `controls` `overlays` |
+| `overlays` | `Dialog` `Sheet` `Menu` `MenuItem` `MenuSeparator` `MenuLabel` `Popover` `ActionSheet` `ContextMenu` `Toaster` `useToast` `Tooltip` | — |
+| `feedback` | `Banner` `EmptyState` `Tag` | — |
+| `data` | `DataTable` `LineChart` `BarChart` `DonutChart` `Sparkline` `BarMeter` `IntervalPlot` `Stat` | `controls` `selection` |
+
+- 범주 CSS는 `foundation.css`만 맨 먼저 오면 나머지 순서는 상관없다. e2e(`css-split`)가 모든 문서 페이지에서 순서를 뒤집어 불러와도, 범주마다 위 표의 CSS만 불러와도 계산된 스타일이 전체 파일과 같은지 확인한다.
+- **CSS 레이어**: 앱이 자기 레이어 순서를 쓰는 경우(유틸리티 CSS 프레임워크 등)에는 `@satin-glass/react/styles.layer.css`를 쓴다. 전체가 `@layer satin-glass` 안에 들어 있어, 레이어 밖 앱 스타일이 선택자 우선순위와 상관없이 이긴다. 범주 파일은 `@import '@satin-glass/react/css/controls.css' layer(satin-glass);`처럼 직접 레이어에 넣는다.
+- **React 없이**: `@satin-glass/tokens/tokens.css`(CSS 변수)와 `@satin-glass/core`(스프링, 포인터 빛, 물방울 선택 표시, 오버레이 배치)를 쓴다. 같은 CSS는 `@satin-glass/core/styles.css`와 `@satin-glass/core/css/*`에도 있다.
+- 세 패키지는 버전을 같이 올린다.
 
 글꼴은 Pretendard를 권장한다(라이브러리에 넣지 않음). 문서 앱의 `index.html`처럼 CDN이나 자체 호스팅으로 불러온다.
 
@@ -38,20 +75,5 @@ pnpm e2e            # 빌드 후 전체 검증: 렌더링 매트릭스, 상호�
 ```
 
 문서 앱은 URL로 표시 설정을 받는다(`?mode=dark&hc=1&rt=1&rm=1&motion=calm`). 예외 상황을 모아 둔 `#/lab` 페이지가 있다.
-
-## 컴포넌트
-
-- **기반**: `ThemeProvider` `createTheme` `useTheme` `Glass` `Text` `Stack` `Divider` `Portal` `VisuallyHidden`
-- **버튼**: `Button` `IconButton` `ButtonGroup`
-- **입력**: `TextField` `SearchField` `Switch` `Slider` `Stepper` `SegmentedControl` `Chip`
-- **선택** (0.2): `Checkbox` `RadioGroup` `Radio` `ChoiceList` `Select` `Calendar` `DatePicker`
-- **휠·시간·요일·단계 탐색** (0.3, 진행 중): `Wheel` `WheelGroup` `TimePicker` `TimeWheel` `WeekdayPicker` `describeWeekdays` `NavigationStack` `NavigationPage` `useNavigation` (달력: 연도·월 휠, `openTo`, `defaultMonth`)
-- **구성과 미디어** (0.2): `AppBar largeTitle`(스크롤 연동) `Breadcrumbs` `Skeleton` `MediaViewer`
-- **데이터** (0.3, 진행 중): `DataTable` `Pagination` `LineChart` `BarChart` `DonutChart` `Sparkline` `BarMeter` `IntervalPlot` `Stat` `CardHeader`
-- **상태와 피드백 · 구성** (0.3, 진행 중): `Tabs` `Tooltip` `Banner` `EmptyState` `Tag` `Accordion` `Select variant="filter"`
-- **내비게이션**: `TabBar` `Tab` `TabBarAction` `AppBar` `ScrollFade` `Sidebar` `SidebarItem` `SidebarSection` `PageControl`
-- **표시**: `List` `ListItem` `ListSection` `Card` `CardMedia` `CardBody` `Avatar` `Badge` `BadgeAnchor` `Progress` `Spinner`
-- **오버레이**: `Dialog` `Sheet` `Menu` `MenuItem` `MenuSeparator` `MenuLabel` `Popover` `ActionSheet` `ContextMenu` `Toaster` `useToast`
-- **훅**: `useControllable` `useImageTint` `useGlassLight`
 
 설계 원칙과 결정 사항은 [`docs/design-language.md`](docs/design-language.md)에 있다.

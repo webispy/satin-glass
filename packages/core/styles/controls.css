@@ -1,4 +1,8 @@
 /* ============================================================================================
+   Controls: buttons, switch, slider, segmented control, stepper, text and search fields, chips, badges,
+   avatars, progress, spinner, page control.
+   ============================================================================================ */
+/* ============================================================================================
    Buttons
    ============================================================================================ */
 .sg-button {
@@ -250,7 +254,7 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 .sg-search__cancel.is-shown { max-width: 120px; padding-inline: 12px; margin-left: 4px; opacity: 1; transform: none; }
 
 /* ============================================================================================
-   Chips, badges, avatars, cards
+   Chips, badges, avatars
    ============================================================================================ */
 .sg-chip {
   appearance: none; border: 0; margin: 0; font: inherit;
@@ -287,23 +291,6 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 .sg-avatar img { width: 100%; height: 100%; object-fit: cover; }
 [data-sg-theme$="-hc"] .sg-avatar { color: var(--_fg-hc, var(--sg-label)); }
 
-.sg-card { position: relative; overflow: hidden; border-radius: var(--sg-radius-xl); background: var(--sg-surface); box-shadow: var(--sg-shadow-sm); }
-.sg-card--outlined { box-shadow: inset 0 0 0 1px var(--sg-separator); }
-.sg-card--interactive { appearance: none; border: 0; margin: 0; padding: 0; width: 100%; font: inherit; color: inherit; text-align: inherit; display: block; cursor: pointer; transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), box-shadow var(--sg-duration-base) ease; }
-@media (hover: hover) { .sg-card--interactive:hover { box-shadow: var(--sg-shadow-md); } }
-.sg-card--interactive:active { transform: scale(0.98); }
-.sg-card--interactive:focus-visible { outline: none; box-shadow: var(--sg-ring); }
-.sg-card__media { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--sg-fill); }
-.sg-card__body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
-/* a card's title row: title (+ description) on the leading side, actions on the trailing side — for cards that frame
-   a chart, a table or a list (dashboards, settings). The body below keeps its own padding. */
-.sg-card__header { display: flex; align-items: flex-start; gap: 12px; padding: 16px 16px 0; }
-.sg-card__header + .sg-card__body { padding-top: 12px; }
-.sg-card__heading { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.sg-card__title { margin: 0; font-size: 17px; line-height: 22px; font-weight: 650; letter-spacing: -0.01em; color: var(--sg-label); }
-.sg-card__desc { margin: 0; font-size: 13px; line-height: 18px; color: var(--sg-label-secondary); }
-.sg-card__actions { flex: none; display: flex; align-items: center; gap: 6px; margin: -4px -4px -4px 0; }
-
 /* ============================================================================================
    Progress, spinner, page control
    ============================================================================================ */
@@ -325,32 +312,3 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 .sg-pagecontrol--on-media .sg-pagecontrol__dot { color: #fff; opacity: 0.5; }
 .sg-pagecontrol--on-media .sg-pagecontrol__dot[aria-current="true"] { color: #fff; opacity: 1; }
 .sg-pagecontrol:focus-visible { outline: none; box-shadow: var(--sg-ring); }
-
-/* ============================================================================================
-   Grouped list
-   ============================================================================================ */
-.sg-list-section { display: flex; flex-direction: column; gap: 6px; }
-.sg-list-section__header { margin: 0; padding: 0 16px; font-size: 13px; line-height: 18px; font-weight: 620; color: var(--sg-label-secondary); }
-.sg-list-section__footer { margin: 0; padding: 0 16px; font-size: 12px; line-height: 16px; color: var(--sg-label-secondary); }
-.sg-list { margin: 0; padding: 0; list-style: none; border-radius: var(--sg-radius-lg); background: var(--sg-surface); overflow: hidden; }
-.sg-list--plain { background: none; border-radius: 0; }
-.sg-list-item { position: relative; display: flex; align-items: center; gap: 12px; min-height: var(--sg-size-row); padding: 8px 16px; color: var(--sg-label); }
-/* every row is an li.sg-list-row; separators hang off the li so they work for plain and pressable rows alike */
-.sg-list-row { position: relative; }
-.sg-list-row:not(.sg-list-item) { display: block; }
-.sg-list-row + .sg-list-row::before { content: ""; position: absolute; z-index: 1; top: 0; right: 0; left: var(--_inset, 16px); height: 1px; transform: scaleY(0.5); transform-origin: top; background: var(--sg-separator-strong); pointer-events: none; }
-.sg-list-row[data-has-leading="true"] { --_inset: 58px; }
-.sg-list-item--action { width: 100%; appearance: none; border: 0; margin: 0; font: inherit; text-align: left; background: none; cursor: pointer; transition: background-color var(--sg-duration-instant) ease; }
-@media (hover: hover) { .sg-list-item--action:hover { background: var(--sg-fill); } }
-.sg-list-item--action:active { background: var(--sg-fill-strong); }
-.sg-list-item--action:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--sg-focus-ring); }
-.sg-list-item__leading { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: #fff; background: var(--_tile, var(--sg-accent)); }
-.sg-list-item__leading svg { width: 18px; height: 18px; }
-.sg-list-item__leading--plain { background: none; color: var(--sg-accent-text); }
-.sg-list-item__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.sg-list-item__title { font-size: 16px; line-height: 22px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sg-list-item__subtitle { font-size: 13px; line-height: 18px; color: var(--sg-label-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sg-list-item__trailing { flex: none; display: inline-flex; align-items: center; gap: 6px; color: var(--sg-label-secondary); font-size: 15px; }
-.sg-list-item__chevron { width: 16px; height: 16px; color: var(--sg-label-tertiary); }
-.sg-list-item[data-tone="danger"] .sg-list-item__title { color: var(--sg-danger-text); }
-.sg-list-item[data-tone="accent"] .sg-list-item__title { color: var(--sg-accent-text); }

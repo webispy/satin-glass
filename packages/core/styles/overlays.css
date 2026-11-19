@@ -1,6 +1,6 @@
 /* ============================================================================================
-   Overlays. Motion lives in core/overlay.ts (bloom: transform + opacity only, via Web Animations).
-   The scrim only dims — no full-screen blur (the most expensive thing a page can ask a GPU-less device for).
+   Overlays: dialog, sheet, menu, popover, action sheet, context menu, toast, tooltip.
+   Motion lives in core/overlay.ts (bloom: transform + opacity only, via Web Animations).
    ============================================================================================ */
 .sg-portal, .sg-root.sg-portal { position: fixed; inset: 0; z-index: var(--sg-z-dialog); pointer-events: none; background: none; }
 .sg-portal > * { pointer-events: auto; }
@@ -112,3 +112,12 @@
 /* anchored panels clip but never scroll themselves (their content does): while the bloom's content offset overhangs
    the panel, nothing (scrollIntoView, focus(), find-in-page) can scroll it and drag the glass rim along */
 .sg-menu, .sg-popover, .sg-listbox, .sg-datepicker-panel { overflow: hidden; overflow: clip; }
+
+/* ---------------------------------------------------------------- Tooltip */
+/* one tooltip surface for the library (this one and the chart's): a small raised card, the theme's own colours */
+.sg-tooltip, .sg-chart__tip {
+  border-radius: var(--sg-radius-sm); background: var(--sg-bg-elevated); color: var(--sg-label);
+  box-shadow: var(--sg-shadow-md), 0 0 0 1px var(--sg-separator); font-size: 13px; line-height: 18px;
+}
+[data-sg-theme$="-hc"] :is(.sg-tooltip, .sg-chart__tip) { box-shadow: var(--sg-shadow-md), 0 0 0 1.5px var(--sg-label); }
+.sg-tooltip { position: absolute; z-index: 1; max-width: min(300px, calc(100vw - 16px)); padding: 6px 10px; font-weight: 500; pointer-events: auto; overflow-wrap: anywhere; }

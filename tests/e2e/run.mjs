@@ -8,6 +8,8 @@
 //   finger drags with real touch input: sheet, switch, slider, segmented control, tab bar, wheel fling, swipe back (Chromium)
 //   edge cases: rapid repeats, mid-animation changes, bounds, disabled/refused, long text, touch, keyboard,
 //     320 px reflow, open/close leftovers, axe
+//   stylesheets split by category: every page computes the same with the per-category files in any order, with
+//     each category's listed dependencies only, and with the layered build (Chromium)
 //   performance (CPU ×4), momentum across updates, arrival timing (informational)
 // Everything runs in all three engines (Chromium, WebKit, Firefox); the variants (motion personalities, dark / high
 // contrast / reduced transparency, reduced motion) in Chromium.
@@ -50,6 +52,8 @@ perEngine(checks, 'many items (overflowing segmented / tab bar)', 'overflow.mjs'
 perEngine(checks, 'edge cases', 'edge.mjs');
 sharded(checks, 'render matrix', 'matrix.mjs', (b) => (b === 'chromium' ? 4 : 2));
 perEngine(checks, 'data components & dashboard', 'data.mjs');
+/* the cascade is the same in every engine: the per-category stylesheet check runs once, in Chromium */
+if (ENGINES.includes('chromium')) checks.push(['stylesheets split by category · chromium', 'css-split.mjs', {}]);
 variants(checks, 'data components & dashboard', 'data.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 
 perEngine(motion, 'interactions', 'interact.mjs');

@@ -21,3 +21,4 @@ export * from './table';
 export * from './wheel';
 export * from './weekday';
 export * from './navstack';
+export type { Anchor } from './overlay-hooks';
