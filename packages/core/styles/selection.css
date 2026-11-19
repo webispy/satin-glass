@@ -131,14 +131,16 @@
    ============================================================================================ */
 .sg-wheels { --_row: 36px; --_rows: 5; }   /* a lone wheel falls back to the same (the group's own values reach its wheels) */
 .sg-wheels { position: relative; display: flex; justify-content: center; align-items: stretch; height: calc(var(--_row) * var(--_rows)); user-select: none; -webkit-user-select: none; }
-/* depth: a wheel reads as a segmented control stood on end — the rows turn in a groove (the same as the segmented
-   control's track) and the lens is a still raised chip over it (the same as its chosen segment: opaque surface, sheen,
-   lit top edge, shaded bottom edge, short shadow). Text stays above both; the row in the lens is drawn in full
-   strength, the others recede */
-.sg-wheels, .sg-wheel:not(.sg-wheels > .sg-wheel) { border-radius: var(--sg-radius-lg); background: var(--sg-fill); box-shadow: var(--sg-depth-inset); }
+/* depth: the rows turn on the surface itself (no panel behind them: a tall grey groove was the heaviest thing on the
+   page), and the lens is a still raised chip — the same raised surface as the segmented control's chosen segment
+   (opaque surface, sheen, lit top edge, shaded bottom edge, short shadow). Text stays above it; the row in the lens
+   is drawn in full strength and a little larger, the others recede */
+.sg-wheels, .sg-wheel:not(.sg-wheels > .sg-wheel) { border-radius: var(--sg-radius-lg); }
+/* the lens squeezes while a hand turns the wheel (wheel.tsx writes its transform per frame: its own layer, so the
+   shadow is not repainted) */
 .sg-wheels__lens {
   position: absolute; z-index: 0; left: 4px; right: 4px; top: calc(50% - var(--_row, 36px) / 2); height: var(--_row, 36px);
-  border-radius: calc(var(--sg-radius-lg) - 4px); pointer-events: none;
+  border-radius: calc(var(--sg-radius-lg) - 4px); pointer-events: none; will-change: transform;
   background-color: var(--sg-depth-raised-bg); background-image: var(--sg-depth-sheen);
   box-shadow: var(--sg-depth-raised), 0 0 0 0.5px rgba(var(--sg-shadow-color), 0.06);
 }
@@ -146,7 +148,7 @@
 /* overscroll none: an elastic bounce past the list end would stretch the whole drum (macOS trackpad flings) */
 .sg-wheel__scroller {
   position: relative; z-index: 1; box-sizing: border-box; height: 100%; padding-block: calc(var(--_row, 36px) * (var(--_rows, 5) - 1) / 2);
-  overflow-x: hidden; overflow-y: auto; overscroll-behavior: none; scroll-snap-type: y mandatory; scrollbar-width: none;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: none; scrollbar-width: none;   /* no scroll snap: the wheel's spring pulls a row into the lens */
   touch-action: pan-y; outline: none; cursor: grab;
   -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
 }
@@ -155,12 +157,15 @@
 .sg-wheel__item {
   height: var(--_row, 36px); display: flex; align-items: center; justify-content: center; padding: 0 10px;
   font-size: 20px; line-height: 24px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--sg-label); white-space: nowrap;
-  scroll-snap-align: center;
 }
 .sg-wheel__label { display: block; will-change: transform, opacity; color: var(--sg-label); }
 .sg-wheel[data-align="start"] .sg-wheel__item { justify-content: flex-start; }
 .sg-wheel[data-align="end"] .sg-wheel__item { justify-content: flex-end; }
 .sg-wheel__item[data-disabled] .sg-wheel__label { color: var(--sg-label-disabled); }
+/* a disabled wheel is shown but not turned: no scrolling (wheel, touch, keys and drags are refused in wheel.tsx),
+   faded like other disabled controls */
+.sg-wheels[data-disabled], .sg-wheel[data-disabled]:not(.sg-wheels > .sg-wheel) { opacity: 0.42; }
+.sg-wheel[data-disabled] .sg-wheel__scroller { overflow-y: hidden; cursor: default; touch-action: none; }
 /* keyboard focus rings the band of the focused column */
 .sg-wheel:has(> .sg-wheel__scroller:focus-visible)::after {
   content: ""; position: absolute; z-index: 2; left: 0; right: 0; top: calc(50% - var(--_row, 36px) / 2); height: var(--_row, 36px);
@@ -170,7 +175,8 @@
 .sg-timewheel { width: fit-content; min-width: 216px; max-width: 100%; margin-inline: auto; padding-inline: 14px; }   /* as wide as its columns: no empty groove on either side */
 .sg-timewheel .sg-wheel { flex: 0 0 auto; min-width: 3.6em; }
 .sg-timewheel .sg-wheel--period { min-width: 4.4em; }
-.sg-timepicker-panel { position: absolute; left: 0; top: 0; padding: 6px; --_radius: var(--sg-radius-xl); outline: none; }   /* 6: the groove inside (16) is concentric with the panel (22 − 6) */
+.sg-timepicker-panel { position: absolute; left: 0; top: 0; padding: 6px; --_radius: var(--sg-radius-xl); outline: none; }   /* 6: the wheel inside (16) is concentric with the panel (22 − 6) */
+.sg-timepicker-panel__actions { display: flex; justify-content: flex-end; gap: 6px; padding: 6px 6px 4px; }
 .sg-time-value { font-variant-numeric: tabular-nums; }
 
 /* calendar head: the month and the year as chips, in the locale's order. An open chip wears the selection glass

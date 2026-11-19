@@ -184,3 +184,4 @@ body { background: var(--sg-bg); }
 .corner-table { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 8px 18px; font-size: 14px; line-height: 20px; align-items: baseline; }
 @media (max-width: 560px) { .corner-table { grid-template-columns: auto minmax(0, 1fr); } .corner-table > span:nth-child(3n) { grid-column: 1 / -1; color: var(--sg-label-secondary); margin-bottom: 4px; } }
 
+

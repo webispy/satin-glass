@@ -94,6 +94,24 @@ await go('selection');
   await p.keyboard.press('Enter'); await p.waitForTimeout(500);
   const hidden = await p.locator('input[name=meet]').inputValue();
   ok('time picker: Enter closes it, focus goes back to the field, the form gets HH:mm', (await panel.count()) === 0 && (await field.evaluate((e) => e === document.activeElement)) && /^\d\d:\d[05]$/.test(hidden), hidden);
+  /* Cancel and Escape put the time back as it was; Done takes the draft */
+  const before = (await field.textContent()).trim();
+  await field.click(); await p.waitForTimeout(500);
+  await p.keyboard.press('Tab'); await p.keyboard.press(await stepFocused()); await p.waitForTimeout(600);   /* the hour wheel */
+  const drafted = (await field.textContent()).trim();
+  await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+  const afterEsc = (await field.textContent()).trim(), hidden2 = await p.locator('input[name=meet]').inputValue();
+  ok('time picker: Escape restores the time it had before opening (the draft is dropped)', drafted !== before && afterEsc === before && hidden2 === hidden, `${before} → ${drafted} → ${afterEsc}`);
+  await field.click(); await p.waitForTimeout(500);
+  await p.keyboard.press('Tab'); await p.keyboard.press(await stepFocused()); await p.waitForTimeout(600);
+  const drafted2 = (await field.textContent()).trim();
+  await p.locator('.sg-timepicker-panel').getByRole('button', { name: '취소' }).click(); await p.waitForTimeout(400);
+  ok('time picker: Cancel restores it too', (await field.textContent()).trim() === before && drafted2 !== before, `${drafted2} → ${(await field.textContent()).trim()}`);
+  await field.click(); await p.waitForTimeout(500);
+  await p.keyboard.press('Tab'); await p.keyboard.press(await stepFocused()); await p.waitForTimeout(600);
+  const drafted3 = (await field.textContent()).trim();
+  await p.locator('.sg-timepicker-panel').getByRole('button', { name: '완료' }).click(); await p.waitForTimeout(400);
+  ok('time picker: Done takes the draft', (await field.textContent()).trim() === drafted3 && drafted3 !== before && (await p.locator('.sg-timepicker-panel').count()) === 0, `${before} → ${drafted3}`);
   ok('time picker: 24-hour and English formats', (await t.getByRole('button', { name: /24시간제/ }).textContent()).trim() === '18:45' && (await t.getByRole('button', { name: /영어 표기/ }).textContent()).trim() === '9:15 PM');
 }
 

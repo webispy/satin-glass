@@ -145,8 +145,8 @@ export function Selection() {
                   trailing={<Switch checked={al.on} onChange={(on) => putAlarm({ on })} aria-label="알람 켜기" />} />
               </List>
             </ListSection>
-            <TimeWheel aria-label="알람 시간" value={al.time} onChange={(time) => putAlarm({ time })} />
-            <WeekdayPicker aria-label="반복 요일" value={al.days} onChange={(days) => putAlarm({ days })} style={{ marginInline: 'auto' }} />
+            <TimeWheel aria-label="알람 시간" value={al.time} onChange={(time) => putAlarm({ time })} disabled={!al.on} />
+            <WeekdayPicker aria-label="반복 요일" value={al.days} onChange={(days) => putAlarm({ days })} disabled={!al.on} style={{ marginInline: 'auto' }} />
           </Demo>
         </div>
       </Section>
