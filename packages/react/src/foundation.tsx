@@ -114,13 +114,18 @@ export function Portal({ children, className }: { children: ReactNode; className
 type PolyProps<E extends ElementType, P> = P & { as?: E } & Omit<ComponentPropsWithoutRef<E>, keyof P | 'as'>;
 
 export type GlassVariant = 'regular' | 'strong' | 'subtle' | 'clear';
+/** how high the glass sits: floating (level 3: bars, menus, panels, toasts) or an overlay over a scrim (level 4:
+    sheets, dialogs). The variant is only how dense it is */
+export type GlassLevel = 'float' | 'overlay';
 export type GlassOwnProps = {
+  /** how dense the glass is: regular, strong (panels to read from), subtle, clear (over photos) */
   variant?: GlassVariant;
+  level?: GlassLevel;
   /** pointer-following highlight (default: theme.light) */
   light?: boolean;
   /** colour that seeps into the fill (e.g. from useImageTint) */
   tint?: string;
-  radius?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+  radius?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   pressable?: boolean;
 };
 
@@ -132,12 +137,12 @@ export function useGlassLight(enabled = true) {
   return setEl;
 }
 
-export function glassClass(variant: GlassVariant = 'regular', pressable?: boolean) {
-  return cx('sg-glass', variant !== 'regular' && `sg-glass--${variant}`, pressable && 'sg-pressable');
+export function glassClass(variant: GlassVariant = 'regular', pressable?: boolean, level: GlassLevel = 'float') {
+  return cx('sg-glass', variant !== 'regular' && `sg-glass--${variant}`, level === 'overlay' && 'sg-glass--overlay', pressable && 'sg-pressable');
 }
 
 export const Glass = forwardRef(function Glass<E extends ElementType = 'div'>(
-  { as, variant = 'regular', light, tint, radius, pressable, className, style, ...rest }: PolyProps<E, GlassOwnProps>,
+  { as, variant = 'regular', level = 'float', light, tint, radius, pressable, className, style, ...rest }: PolyProps<E, GlassOwnProps>,
   ref: React.Ref<HTMLElement>,
 ) {
   const Comp = (as ?? 'div') as ElementType;
@@ -145,7 +150,7 @@ export const Glass = forwardRef(function Glass<E extends ElementType = 'div'>(
   return (
     <Comp
       ref={mergeRefs(ref, lightRef)}
-      className={cx(glassClass(variant, pressable), className)}
+      className={cx(glassClass(variant, pressable, level), className)}
       data-tint={tint ? '' : undefined}
       style={{ ...(tint ? { '--sg-tint': tint } : null), ...(radius ? { '--_radius': `var(--sg-radius-${radius})` } : null), ...style } as CSSProperties}
       {...rest}

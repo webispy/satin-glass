@@ -88,7 +88,7 @@ function SpringPlot({ name, motion }: { name: SpringName; motion: MotionName }) 
   const pts = (m: MotionName) => { const p = motions[m][name], dd = springDuration(p) / 1000; return Array.from({ length: 121 }, (_, i) => { const t = (1.1 * i) / 120; return `${(t / 1.1) * W},${H - 14 - Math.min(1.3, springAt(p, Math.min(t, dd))) * (H - 40)}`; }).join(' '); };
   const [on, setOn] = useState(false);
   return (
-    <Glass variant="subtle" style={{ padding: 14, borderRadius: 'var(--sg-radius-lg)' }}>
+    <div className="sg-card" style={{ padding: 14, borderRadius: 'var(--sg-radius-lg)' }}>
       <div className="label-row"><Text variant="headline">{name}</Text><span className="code">{s.response}s · ζ {s.damping} · {Math.round(d * 1000)}ms</span></div>
       <svg className="spring-plot" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
         <line x1="0" x2={W} y1={26} y2={26} stroke="var(--sg-separator-strong)" strokeDasharray="3 4" />
@@ -101,7 +101,7 @@ function SpringPlot({ name, motion }: { name: SpringName; motion: MotionName }) 
         </div>
         <Button size="sm" variant="plain" onClick={() => setOn((v) => !v)}>재생</Button>
       </div>
-    </Glass>
+    </div>
   );
 }
 
@@ -119,7 +119,7 @@ function MotionColumn({ motion }: { motion: MotionName }) {
   const p = PERSONAS.find((x) => x.id === motion)!;
   return (
     <MotionScope motion={motion}>
-      <Glass variant="subtle" style={{ padding: 16, borderRadius: 'var(--sg-radius-lg)', display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+      <div className="sg-card" style={{ padding: 16, borderRadius: 'var(--sg-radius-lg)', display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
         <div><Text variant="headline">{p.label}</Text><Text variant="footnote" tone="secondary">{p.note}</Text></div>
         <SegmentedControl size="sm" aria-label={`${motion} 세그먼트`} value={seg} onChange={setSeg} options={[{ value: 'walk', label: '도보', icon: <Footprints /> }, { value: 'bike', label: '자전거', icon: <Bike /> }, { value: 'car', label: '차', icon: <Car /> }]} />
         <TabBar compact value={tab} onChange={setTab} aria-label={`${motion} 탭`} style={{ padding: 0 }}>
@@ -134,7 +134,7 @@ function MotionColumn({ motion }: { motion: MotionName }) {
         <Menu open={menu} onClose={() => setMenu(false)} anchor={anchor} placement="bottom-end" aria-label={`${motion} 메뉴`}>
           <MenuItem icon={<Footprints />}>도보</MenuItem><MenuItem icon={<Bike />}>자전거</MenuItem><MenuItem icon={<Car />}>자동차</MenuItem>
         </Menu>
-      </Glass>
+      </div>
     </MotionScope>
   );
 }
@@ -181,7 +181,7 @@ function DepthTile({ level }: { level: string }) {
     default: return (
       <span className="depth-tile depth-tile--screen">
         <Photo scene={0} className="depth-photo" /><Glass variant="regular" className="depth-bar" /><span className="depth-scrim" />
-        <Glass variant="strong" className="depth-sheet"><span className="depth-handle" /></Glass>
+        <Glass variant="strong" level="overlay" className="depth-sheet"><span className="depth-handle" /></Glass>
       </span>
     );
   }
@@ -279,6 +279,7 @@ export function Material() {
   const [scene, setScene] = useState('0');
 
   const s = Number(scene);
+  const [tinted, setTinted] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => { box.current?.scrollIntoView({ block: 'nearest' }); }, []);
   return (
@@ -287,21 +288,21 @@ export function Material() {
         <div ref={box}>
           <Photo scene={s} style={{ borderRadius: 'var(--sg-radius-xl)', padding: 28, minHeight: 320 }}>
             <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 16 }}>
+              {/* four samples: with the docs' sidebar and settings bar that is the six large glass surfaces the blur
+                  budget allows; the tint is a switch on the regular one */}
               {(['regular', 'strong', 'subtle', 'clear'] as const).map((v) => (
-                <Glass key={v} variant={v} pressable style={{ padding: 18, minHeight: 120, borderRadius: 'var(--sg-radius-xl)' }}>
+                <Glass key={v} variant={v} pressable tint={v === 'regular' && tinted ? sceneTint(s) : undefined} style={{ padding: 18, minHeight: 120, borderRadius: 'var(--sg-radius-xl)' }}>
                   <Stack gap={2}>
-                    <MousePointer2 size={18} />
-                    <Text variant="headline">{v}</Text>
-                    <Text variant="footnote" style={{ opacity: 0.8 }}>{v === 'clear' ? '사진·영상 위 컨트롤' : v === 'strong' ? '메뉴, 시트, 대화상자' : v === 'subtle' ? '보조 표면' : '바, 버튼'}</Text>
+                    {v === 'regular' && tinted ? <Sparkles size={18} /> : <MousePointer2 size={18} />}
+                    <Text variant="headline">{v === 'regular' && tinted ? 'regular + tint' : v}</Text>
+                    <Text variant="footnote" style={{ opacity: 0.8 }}>{v === 'clear' ? '사진·영상 위 컨트롤' : v === 'strong' ? '메뉴, 시트, 대화상자' : v === 'subtle' ? '보조 표면' : tinted ? '배경 색이 스며든 유리 (useImageTint)' : '바, 버튼'}</Text>
                   </Stack>
                 </Glass>
               ))}
-              <Glass tint={sceneTint(s)} style={{ padding: 18, minHeight: 120, borderRadius: 'var(--sg-radius-xl)' }}>
-                <Stack gap={2}><Sparkles size={18} /><Text variant="headline">tinted</Text><Text variant="footnote" style={{ opacity: 0.8 }}>배경 색이 스며든 유리 (useImageTint)</Text></Stack>
-              </Glass>
             </div>
           </Photo>
         </div>
+        <div className="label-row" style={{ marginTop: 10, maxWidth: 420 }}><Text variant="subhead">regular에 배경 색 스며들게 하기 (tint)</Text><Switch checked={tinted} onChange={setTinted} aria-label="regular에 배경 색 스며들게 하기" /></div>
         <div style={{ marginTop: 14 }}>
           <SegmentedControl aria-label="배경" value={scene} onChange={setScene} options={[0, 1, 2, 3, 4, 5].map((i) => ({ value: String(i), label: `장면 ${i + 1}` }))} />
         </div>

@@ -193,7 +193,8 @@ export const size = {
   'bar': '56px', 'tab-bar': '60px', 'row': '52px', 'bar-inset': '12px',
 } as const;
 
-/* Blur budget: at most three backdrop-filtered layers per screen (bars, one panel, one sheet). */
+/* Blur budget (design-language.md 3): no blurring glass inside blurring glass, at most three stacked over any point
+   (bars, one panel, one sheet), at most six large ones on a screen; e2e blur-budget measures it. */
 export const material = {
   'blur': '18px', 'blur-strong': '28px', 'blur-subtle': '10px', 'saturate': '1.7',
 } as const;

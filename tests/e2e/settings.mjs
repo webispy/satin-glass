@@ -5,6 +5,7 @@
 //   · reduced motion: the nearest data-sg-reduce-motion decides for CSS springs (an inner "false" stops an outer
 //     "true"), sibling areas do not affect each other, and the JS springs agree
 //   · reduce transparency reaches portals: a menu opened with it on is solid, with no backdrop blur
+//   · depth by role: floating dense glass vs an overlay, a light handle in every theme, a selection outline in high contrast
 // usage: node tests/e2e/settings.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
@@ -65,6 +66,26 @@ ok('JS: the nearest setting decides (inner false, outer true, none → system)',
     ok('system high contrast without a theme attribute: depth becomes outlines on :root', /1px/.test(d) && !/rgba/.test(d), d);
   }
   await ctx.close();
+}
+
+/* ---------------------------------------------------------------- depth by role (design-language.md 8) */
+{
+  const r = await p.evaluate(() => {
+    const mk = (html) => { const d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d); return d; };
+    const host = mk(`<div data-sg-theme="light"><div class="sg-glass sg-glass--strong" id="menu"></div><div class="sg-glass sg-glass--strong sg-glass--overlay" id="sheet"></div>
+      <span class="sg-switch__knob" id="knobL" style="position:static;display:block;width:20px;height:20px"></span></div>
+      <div data-sg-theme="dark"><span class="sg-switch__knob" id="knobD" style="position:static;display:block;width:20px;height:20px"></span></div>
+      <div data-sg-theme="light-hc"><div class="sg-tabbar__indicator" id="ind" style="position:static;display:block;width:20px;height:20px"></div></div>
+      <div data-sg-theme="light"><div class="sg-tabbar__indicator" id="ind0" style="position:static;display:block;width:20px;height:20px"></div></div>`);
+    const cs = (id) => getComputedStyle(document.getElementById(id));
+    const v = (id, k) => cs(id).getPropertyValue(k).trim();
+    const out = { menu: cs('menu').boxShadow, sheet: cs('sheet').boxShadow, md: v('menu', '--sg-shadow-md'), lg: v('menu', '--sg-shadow-lg'),
+      knobL: cs('knobL').backgroundImage, knobD: cs('knobD').backgroundImage, ind: cs('ind').boxShadow, ind0: cs('ind0').boxShadow };
+    host.remove(); return out;
+  });
+  ok('depth: dense glass that floats (a menu) casts the floating shadow, an overlay (a sheet) the larger one', r.menu !== r.sheet && /48px/.test(r.sheet) && !/48px/.test(r.menu), `${r.menu.slice(0, 50)}… / ${r.sheet.slice(0, 50)}…`);
+  ok('depth: a handle (switch knob) stays light in dark themes too', r.knobL === r.knobD && /255, 255, 255/.test(r.knobD), r.knobD.slice(0, 60));
+  ok('depth: a flat selection on glass (tab bar) gets an outline in high contrast only', /1\.5px/.test(r.ind) && !/1\.5px/.test(r.ind0), `${r.ind} / ${r.ind0}`);
 }
 
 /* ---------------------------------------------------------------- reduce transparency reaches portals */

@@ -52,7 +52,7 @@ export function Dialog({ open, onClose, title, children, icon, tone = 'accent', 
     <MotionScope motion={motion} bare><Portal>
       <div ref={scrim} className="sg-scrim" onClick={() => dismissible && onClose('backdrop')} />
       <div className="sg-dialog-wrap">
-        <div ref={mergeRefs(panel, lightRef)} role={role} aria-modal="true" aria-labelledby={`${id}-t`} aria-describedby={children ? `${id}-b` : undefined} className={cx('sg-dialog', glassClass('strong'), className)}>
+        <div ref={mergeRefs(panel, lightRef)} role={role} aria-modal="true" aria-labelledby={`${id}-t`} aria-describedby={children ? `${id}-b` : undefined} className={cx('sg-dialog', glassClass('strong', false, 'overlay'), className)}>
           <div className="sg-dialog__scroll">
             {icon && <div className="sg-dialog__icon" data-tone={tone}>{icon}</div>}
             <h2 id={`${id}-t`} className="sg-dialog__title">{title}</h2>
@@ -138,7 +138,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
     <MotionScope motion={motion} bare><Portal>
       <div ref={scrim} className="sg-scrim" onClick={() => dismissible && onClose('backdrop')} />
       <div className={cx('sg-sheet-wrap', adaptive && 'sg-sheet-wrap--adaptive')}>
-        <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined} aria-label={title ? undefined : ariaLabel} className={cx('sg-sheet', size === 'full' && 'sg-sheet--full', glassClass('strong'), className)}>
+        <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined} aria-label={title ? undefined : ariaLabel} className={cx('sg-sheet', size === 'full' && 'sg-sheet--full', glassClass('strong', false, 'overlay'), className)}>
           <div data-sg-drag>
             <div className="sg-sheet__grabber" aria-hidden="true" />
             {(title || leading || trailing) && (
@@ -282,7 +282,7 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
       <div ref={scrim} className="sg-scrim" onClick={() => onClose('backdrop')} />
       <div className="sg-actionsheet-wrap">
         {/* one glass panel: a heading, the actions as menu rows, and a quiet close row at the foot */}
-        <div ref={mergeRefs(box, l1)} className={cx('sg-actionsheet', glassClass('strong'))} role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined} onKeyDown={onKeyDown}>
+        <div ref={mergeRefs(box, l1)} className={cx('sg-actionsheet', glassClass('strong', false, 'overlay'))} role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined} onKeyDown={onKeyDown}>
           {(title || message) && (
             <div className="sg-actionsheet__head">
               {title && <p id={`${id}-t`} className="sg-actionsheet__title">{title}</p>}

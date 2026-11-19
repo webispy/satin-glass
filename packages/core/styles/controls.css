@@ -104,8 +104,8 @@
   --sg-sw-r: calc(var(--_w) - var(--_pad));
 }
 /* the visible knob: the thumb positions it, the knob carries the look and the arrival squash (React animates it) */
-.sg-switch__knob { position: absolute; inset: 0; border-radius: var(--sg-radius-full); background: linear-gradient(180deg, #fff, #f3f4f8);
-  box-shadow: var(--sg-depth-raised), 0 0 0 0.5px rgba(0, 0, 0, 0.06); }
+.sg-switch__knob { position: absolute; inset: 0; border-radius: var(--sg-radius-full); background: var(--sg-depth-handle-bg);
+  box-shadow: var(--sg-depth-raised), var(--sg-depth-handle-edge); }
 .sg-switch--sm { --_w: 40px; --_h: 24px; --_t: 20px; --_reach: 4px; }
 
 /* ============================================================================================
@@ -120,8 +120,8 @@
 /* position (translate) and gel (transform) come from the JS spring every frame; the press swell (scale) is a CSS spring */
 .sg-slider__thumb {
   position: absolute; top: 4px; left: 0; width: 24px; height: 24px; margin-left: -12px;
-  border-radius: 50%; background: linear-gradient(180deg, #fff, #f3f4f8);
-  box-shadow: var(--sg-depth-raised), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  border-radius: 50%; background: var(--sg-depth-handle-bg);
+  box-shadow: var(--sg-depth-raised), var(--sg-depth-handle-edge);
   translate: var(--_pos, 0px) 0;
   transform: scale(var(--_gx, 1), var(--_gy, 1));
   scale: var(--_s, 1);

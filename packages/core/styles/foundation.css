@@ -157,9 +157,23 @@
   transition: opacity 260ms var(--sg-ease-out);
 }
 .sg-glass > * { position: relative; z-index: 1; }
+/* one layer at a time: glass inside glass shares its parent's glass and draws flat — no blur, fill, rim, sheen or
+   shadow of its own (a glass button in a glass bar, a glass control in a glass panel). Not while the parent is not
+   glass yet (an app bar still clear at the top of the page), and not for what floats out of it for a moment (a
+   slider's value bubble). design-language.md 3. 성능 규칙; e2e blur-budget checks it */
+.sg-glass:not(:where(.sg-appbar[data-transparent-top][data-at-top]) > *) .sg-glass:not(.sg-slider__bubble) {
+  --_fill: transparent; --_shadow: none; background-image: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.sg-glass:not(:where(.sg-appbar[data-transparent-top][data-at-top]) > *) .sg-glass:not(.sg-slider__bubble)::before,
+.sg-glass:not(:where(.sg-appbar[data-transparent-top][data-at-top]) > *) .sg-glass:not(.sg-slider__bubble)::after { display: none; }
 
-.sg-glass--strong { --_fill: var(--sg-glass-fill-strong); --_blur: var(--sg-blur-strong); --_shadow: var(--sg-shadow-lg); }
-.sg-glass--subtle { --_fill: var(--sg-glass-fill-subtle); --_blur: var(--sg-blur-subtle); --_shadow: var(--sg-shadow-sm); }
+/* the variant sets how dense the glass is (readability); its height is set apart: floating glass (level 3) casts
+   --sg-shadow-md, an overlay (level 4: sheet, dialog, action sheet) .sg-glass--overlay casts --sg-shadow-lg. A menu
+   is dense glass that floats; a sheet is dense glass over a scrim */
+.sg-glass--strong { --_fill: var(--sg-glass-fill-strong); --_blur: var(--sg-blur-strong); }
+.sg-glass--subtle { --_fill: var(--sg-glass-fill-subtle); --_blur: var(--sg-blur-subtle); }
+.sg-glass--overlay { --_shadow: var(--sg-shadow-lg); }
 /* over photos and video: clear fill, white ink, a darker shaded rim; pair with .sg-dimming when the media is bright */
 .sg-glass--clear {
   --_fill: var(--sg-glass-fill-clear); --_blur: var(--sg-blur-subtle); --_shadow: 0 6px 20px rgba(0, 0, 0, 0.18);

@@ -53,6 +53,13 @@ const depth = [
 /* the raised surface itself: the plain surface in light themes; in dark ones a lighter tint, so a raised thing reads
    lighter than what it sits on (the segmented control's chosen segment, the wheel lens) */
 depth.push(decl('depth-raised-bg', 'var(--sg-surface)'));
+/* a handle that rides a rail (switch knob, slider thumb) stays light in every theme: it must stand apart from both
+   the empty rail and the accent fill under it (see design-language.md 8. 깊이와 레이어, 손잡이); high contrast
+   outlines it through --sg-depth-raised */
+depth.push(decl('depth-handle-bg', 'linear-gradient(180deg, #ffffff, #f3f4f8)'));
+depth.push(decl('depth-handle-edge', '0 0 0 0.5px rgba(0, 0, 0, 0.06)'));
+/* a flat selection on glass (tab bar, sidebar): no outline normally; in high contrast its tint gives way to one */
+depth.push(decl('selection-outline', '0 0 0 0 transparent'));
 out.push(':root, [data-sg-theme] {', ...depth, '}');
 out.push('[data-sg-theme^="dark"] {', decl('depth-raised-bg', 'var(--sg-fill-strong)'), '}');
 out.push('@media (prefers-color-scheme: dark) {', '  :root:not([data-sg-theme]) {', '  ' + decl('depth-raised-bg', 'var(--sg-fill-strong)'), '  }', '}');
@@ -62,6 +69,7 @@ const hcDepth = [
   decl('depth-inset', 'inset 0 0 0 1px var(--sg-separator-strong)'),
   decl('depth-raised', 'inset 0 0 0 1.5px var(--sg-label)'), decl('depth-raised-accent', 'inset 0 0 0 1.5px var(--sg-label)'),
   decl('depth-sheen', 'none'), decl('depth-sheen-accent', 'none'),
+  decl('selection-outline', 'inset 0 0 0 1.5px var(--sg-label)'),
 ];
 out.push('[data-sg-theme$="-hc"] {', ...hcDepth, '}');
 out.push('@media (prefers-contrast: more) {', '  :root:not([data-sg-theme]) {', ...hcDepth.map((l) => '  ' + l), '  }', '}');

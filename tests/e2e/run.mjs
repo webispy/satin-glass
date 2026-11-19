@@ -64,6 +64,7 @@ perEngine(checks, 'settings decide at the nearest boundary', 'settings.mjs');
 if (ENGINES.includes('chromium')) checks.push(['stylesheets split by category · chromium', 'css-split.mjs', {}]);
 /* nested corners stay concentric (design-language.md 9): a static layout check, once, in Chromium */
 if (ENGINES.includes('chromium')) checks.push(['concentric corners · chromium', 'corners.mjs', {}]);
+perEngine(checks, 'blur budget', 'blur-budget.mjs');
 /* keyboard focus visible in every theme and with forced colours (emulated in Chromium) */
 if (ENGINES.includes('chromium')) checks.push(['focus visible · chromium', 'focus.mjs', {}]);
 variants(checks, 'data components & dashboard', 'data.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
