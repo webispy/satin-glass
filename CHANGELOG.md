@@ -8,6 +8,11 @@
 - CSS 접두사: 클래스 `gl-*` → `sg-*`, 변수 `--gl-*` → `--sg-*`, data 속성 `data-gl-*` → `data-sg-*`
 - 아래의 지난 기록도 새 이름과 접두사로 적었다.
 
+### 공개 준비
+- `TabBar`: 선택 표시를 끌어 옮기는 동작을 `draggable` 속성으로 켜게 바꿨다(기본은 꺼짐, 탭해서 고름). 탭 바를 옆으로 스크롤하다 잘못 끄는 일을 줄인다.
+- Apache-2.0 라이선스(`LICENSE`, `NOTICE`, 각 패키지의 `license` 필드). 특허 사용권을 명시적으로 주고, "Satin Glass" 이름(상표)은 라이선스에 포함하지 않는다.
+- 커밋 메시지 규칙(`CONTRIBUTING.md`): Linux 커널 형식, 영어.
+
 ### 패키지 구성
 - 패키지는 세 개 그대로다(`tokens` · `core` · `react`). 앱은 `@satin-glass/react` 하나만 설치하면 나머지가 따라온다. 버전은 셋이 같이 올린다.
 - **범주별 진입점**: `@satin-glass/react/{foundation,controls,layout,navigation,selection,overlays,feedback,data}`. 루트는 지금처럼 전부 내보낸다. 공통 코드는 청크로 나뉘어, 두 진입점을 함께 써도 같은 코드를 두 번 싣지 않는다.
