@@ -148,21 +148,21 @@
    ============================================================================================ */
 .sg-segmented {
   position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(max-content, 1fr);
-  height: 36px; padding: 3px; gap: 0; border-radius: var(--sg-radius-md);
+  height: 36px; --_radius: var(--sg-radius-md); --_nest: 3px; padding: var(--_nest); gap: 0; border-radius: var(--_radius);
   background: var(--sg-fill); box-shadow: var(--sg-depth-inset); contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
   overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none;
 }
 .sg-segmented::-webkit-scrollbar { display: none; }
 .sg-segmented__indicator {
-  position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; z-index: 0;
-  border-radius: calc(var(--sg-radius-md) - 3px);
+  position: absolute; top: var(--_nest); bottom: var(--_nest); left: 0; width: 0; z-index: 0;
+  border-radius: calc(var(--_radius) - var(--_nest));
   background: var(--sg-depth-raised-bg);
   box-shadow: var(--sg-depth-raised), 0 0 0 0.5px rgba(var(--sg-shadow-color), 0.06);
   will-change: transform, width;
 }
 .sg-segmented__item {
   position: relative; z-index: 1; appearance: none; border: 0; background: none; margin: 0; padding: 0 12px;
-  font: inherit; font-size: 14px; font-weight: 560; color: var(--sg-label-secondary); border-radius: calc(var(--sg-radius-md) - 3px);
+  font: inherit; font-size: 14px; font-weight: 560; color: var(--sg-label-secondary); border-radius: calc(var(--_radius) - var(--_nest));
   cursor: pointer; white-space: nowrap; transition: color var(--sg-duration-fast) ease;
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 36px;   /* never narrower than it is tall */
 }
@@ -192,8 +192,8 @@
 /* ============================================================================================
    Stepper: [ − | value | + ]
    ============================================================================================ */
-.sg-stepper { display: inline-flex; align-items: center; height: 36px; padding: 2px; border-radius: var(--sg-radius-md); background: var(--sg-fill); box-shadow: var(--sg-depth-inset); user-select: none; -webkit-user-select: none; }
-.sg-stepper__btn { appearance: none; border: 0; margin: 0; width: 32px; height: 32px; display: grid; place-items: center; border-radius: calc(var(--sg-radius-md) - 2px); background: none; color: var(--sg-label); cursor: pointer; transition: background-color var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+.sg-stepper { display: inline-flex; align-items: center; height: 36px; --_radius: var(--sg-radius-md); --_nest: 2px; padding: var(--_nest); border-radius: var(--_radius); background: var(--sg-fill); box-shadow: var(--sg-depth-inset); user-select: none; -webkit-user-select: none; }
+.sg-stepper__btn { appearance: none; border: 0; margin: 0; width: 32px; height: 32px; display: grid; place-items: center; border-radius: calc(var(--_radius) - var(--_nest)); background: none; color: var(--sg-label); cursor: pointer; transition: background-color var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
 @media (hover: hover) { .sg-stepper__btn:hover:not(:disabled) { background: var(--sg-fill-hover); } }
 .sg-stepper__btn:active:not(:disabled) { transform: scale(0.9); background: var(--sg-fill-strong); }
 .sg-stepper__btn:disabled { color: var(--sg-label-disabled); cursor: default; }

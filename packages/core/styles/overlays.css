@@ -52,13 +52,13 @@
 /* ---- Menu ---- */
 .sg-menu {
   position: absolute; left: 0; top: 0; min-width: 220px; max-width: min(320px, calc(100vw - 24px)); max-height: calc(100vh - 24px);
-  display: flex; flex-direction: column; --_radius: var(--sg-radius-lg); outline: none;
+  display: flex; flex-direction: column; --_radius: var(--sg-radius-lg); --_nest: 6px; outline: none;
 }
-.sg-menu > [data-sg-content] { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 6px; }
+.sg-menu > [data-sg-content] { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: var(--_nest); }
 .sg-menu__item {
   appearance: none; border: 0; margin: 0; font: inherit; width: 100%; text-align: left;
   display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px;
-  border-radius: calc(var(--sg-radius-lg) - 6px); background: none; color: var(--sg-label); font-size: 15px; line-height: 20px; cursor: pointer;
+  border-radius: calc(var(--_radius) - var(--_nest)); background: none; color: var(--sg-label); font-size: 15px; line-height: 20px; cursor: pointer;
 }
 .sg-menu__item[data-active], .sg-menu__item:focus-visible { background: var(--sg-fill-strong); outline: var(--sg-focus-width) solid transparent; outline-offset: calc(-1 * var(--sg-focus-width)); }   /* the fill marks it; forced colours draw the outline */
 @media (hover: hover) { .sg-menu__item:hover { background: var(--sg-fill-strong); outline: none; } }
@@ -77,14 +77,14 @@
 /* ---- Action sheet: one glass panel at the foot of the screen — a heading, the actions as menu rows (leading
    icon, label), and a quiet close row under a hairline. Rows press like menu items and controls ---- */
 .sg-actionsheet-wrap { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); pointer-events: none; }
-.sg-actionsheet { pointer-events: auto; width: min(440px, 100%); display: flex; flex-direction: column; padding: 6px; --_radius: var(--sg-radius-xl); }
+.sg-actionsheet { pointer-events: auto; width: min(440px, 100%); display: flex; flex-direction: column; --_radius: var(--sg-radius-xl); --_nest: 6px; padding: var(--_nest); }
 .sg-actionsheet__head { padding: 10px 12px 8px; }
 .sg-actionsheet__title { margin: 0; font-size: 13px; line-height: 18px; font-weight: 650; color: var(--sg-label-secondary); }
 .sg-actionsheet__message { margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--sg-label-tertiary); }
 .sg-actionsheet__action {
   appearance: none; border: 0; margin: 0; font: inherit; width: 100%; min-height: 48px; padding: 0 12px;
   display: flex; align-items: center; gap: 12px; text-align: left; background: none; color: var(--sg-label);
-  font-size: 16px; line-height: 22px; font-weight: 520; cursor: pointer; border-radius: calc(var(--sg-radius-xl) - 6px);
+  font-size: 16px; line-height: 22px; font-weight: 520; cursor: pointer; border-radius: calc(var(--_radius) - var(--_nest));
   transition: background-color var(--sg-duration-instant) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
 .sg-actionsheet__icon { display: inline-flex; flex: none; color: var(--sg-label-secondary); }

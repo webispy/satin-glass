@@ -57,22 +57,22 @@
 .sg-tabbar { position: relative; display: flex; align-items: flex-end; gap: 8px; padding: 0 var(--sg-size-bar-inset); pointer-events: none; }
 .sg-tabbar > * { pointer-events: auto; }
 .sg-tabbar__bar {
-  flex: 1; min-width: 0; position: relative; display: flex; height: var(--sg-size-tab-bar); padding: 5px; gap: 0;   /* min-width 0: long labels truncate instead of widening the page */
-  --_radius: var(--sg-radius-xl); contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+  flex: 1; min-width: 0; position: relative; display: flex; height: var(--sg-size-tab-bar); padding: var(--_nest); gap: 0;   /* min-width 0: long labels truncate instead of widening the page */
+  --_radius: var(--sg-radius-xl); --_nest: 5px; contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
 }
 /* the glass clips, the track scrolls (its corners are concentric with the bar's). The track reaches over the bar's
    top and bottom padding (margin out, padding in): a scroller clips both ways, and a badge with its ring rises above
    the items — inside the track's own box it would lose the top of its ring. */
 .sg-tabbar__track {
   --_tab-min: 64px;
-  position: relative; flex: 1; min-width: 0; display: flex; gap: 0; border-radius: calc(var(--sg-radius-xl) - 5px);
-  margin-block: -5px; padding-block: 5px;
+  position: relative; flex: 1; min-width: 0; display: flex; gap: 0; border-radius: calc(var(--_radius) - var(--_nest));
+  margin-block: calc(-1 * var(--_nest)); padding-block: var(--_nest);
   overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; contain: layout; touch-action: pan-y;
 }
 .sg-tabbar__track::-webkit-scrollbar { display: none; }
 .sg-tabbar__indicator {
-  position: absolute; top: 5px; bottom: 5px; left: 0; width: 0; z-index: 0;
-  border-radius: calc(var(--sg-radius-xl) - 5px);
+  position: absolute; top: var(--_nest); bottom: var(--_nest); left: 0; width: 0; z-index: 0;
+  border-radius: calc(var(--_radius) - var(--_nest));
   background: var(--sg-glass-selection); box-shadow: var(--sg-selection-outline);
   will-change: transform, width;
   transition: background-color var(--sg-duration-fast) ease;
@@ -82,7 +82,7 @@
 .sg-tabbar__item {
   position: relative; z-index: 1; flex: 1 0 0; min-width: var(--_tab-min); appearance: none; border: 0; margin: 0; padding: 0; background: none; font: inherit;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  color: var(--sg-label-secondary); border-radius: calc(var(--sg-radius-xl) - 5px); cursor: pointer;
+  color: var(--sg-label-secondary); border-radius: calc(var(--_radius) - var(--_nest)); cursor: pointer;
   font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.01em;
   transition: color var(--sg-duration-fast) ease;
 }
@@ -101,7 +101,7 @@
 .sg-tabbar__divider { flex: none; width: 1px; margin: 12px 4px; background: var(--sg-separator); }
 .sg-tabbar__action {
   appearance: none; border: 0; margin: 0; padding: 0; font: inherit; flex: none; width: 52px; display: grid; place-items: center;
-  border-radius: calc(var(--sg-radius-xl) - 5px); background: none; color: var(--sg-label); cursor: pointer;
+  border-radius: calc(var(--_radius) - var(--_nest)); background: none; color: var(--sg-label); cursor: pointer;
   transition: background-color var(--sg-duration-instant) ease;
 }
 @media (hover: hover) { .sg-tabbar__action:hover { background: var(--sg-fill); } }
