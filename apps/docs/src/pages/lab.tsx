@@ -46,7 +46,7 @@ export function Lab() {
             <Button>{LONG.slice(0, 12)}</Button>
           </div>
           <div data-lab="long-tabs" style={{ maxWidth: 420 }}>
-            <TabBar value={tab} onChange={setTab} aria-label="긴 탭">
+            <TabBar draggable value={tab} onChange={setTab} aria-label="긴 탭">
               <Tab value="a" label={LONG} icon={<Home />} /><Tab value="b" label="지도" icon={<Map />} /><Tab value="c" label={LONG} icon={<Bookmark />} badge={<Badge>{1234}</Badge>} />
               <Tab value="d" label="나" icon={<User />} /><Tab value="e" label="설정" icon={<Settings />} />
             </TabBar>
@@ -85,16 +85,16 @@ export function Lab() {
         <Demo col data-lab="many-tabs">
           <Text variant="footnote" tone="secondary">탭 9개 · 360px · 검색 버튼 함께</Text>
           <div data-lab="many-tabs-360-action" style={{ maxWidth: 360 }}>
-            <TabBar defaultValue="home" aria-label="많은 탭 360 검색" action={<TabBarAction icon={<Search />} label="검색" />}>{manyTabs()}</TabBar>
+            <TabBar draggable defaultValue="home" aria-label="많은 탭 360 검색" action={<TabBarAction icon={<Search />} label="검색" />}>{manyTabs()}</TabBar>
           </div>
           <Text variant="footnote" tone="secondary">탭 9개 · 360px</Text>
-          <div data-lab="many-tabs-360" style={{ maxWidth: 360 }}><TabBar defaultValue="settings" aria-label="많은 탭 360">{manyTabs()}</TabBar></div>
+          <div data-lab="many-tabs-360" style={{ maxWidth: 360 }}><TabBar draggable defaultValue="settings" aria-label="많은 탭 360">{manyTabs()}</TabBar></div>
           <Text variant="footnote" tone="secondary">탭 7개 · 300px · 검색 버튼 함께</Text>
           <div data-lab="many-tabs-300-action" style={{ maxWidth: 300 }}>
-            <TabBar defaultValue="home" aria-label="많은 탭 300 검색" action={<TabBarAction icon={<Search />} label="검색" />}>{manyTabs().slice(0, 7)}</TabBar>
+            <TabBar draggable defaultValue="home" aria-label="많은 탭 300 검색" action={<TabBarAction icon={<Search />} label="검색" />}>{manyTabs().slice(0, 7)}</TabBar>
           </div>
           <Text variant="footnote" tone="secondary">탭 9개 · 300px · 아이콘만(compact)</Text>
-          <div data-lab="many-tabs-300-compact" style={{ maxWidth: 300 }}><TabBar compact defaultValue="home" aria-label="많은 탭 300 아이콘만">{manyTabs()}</TabBar></div>
+          <div data-lab="many-tabs-300-compact" style={{ maxWidth: 300 }}><TabBar draggable compact defaultValue="home" aria-label="많은 탭 300 아이콘만">{manyTabs()}</TabBar></div>
         </Demo>
       </Section>
 

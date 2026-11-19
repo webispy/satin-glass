@@ -109,11 +109,11 @@ export function Navigation() {
   const [pg, setPg] = useState(6);
   return (
     <Page title="내비게이션" intro="떠 있는 유리 바. 화면 가장자리에서 12px 띄우고, 모서리는 고정 반경 22px입니다. 페이지 안의 구역은 탭으로, 긴 목록은 페이지 이동으로 나눕니다.">
-      <Section title="탭 바" intro="탭하면 선택 표시가 물방울처럼 늘어나 이어졌다가 새 탭에서 모입니다. 바 위를 끌면 손가락을 따라가고, 놓으면 그 탭이 선택됩니다. 표시는 바 안에만 머뭅니다.">
+      <Section title="탭 바" intro="탭하면 선택 표시가 물방울처럼 늘어나 이어졌다가 새 탭에서 모입니다. 표시는 바 안에만 머뭅니다. draggable을 주면 바 위를 끌 때 손가락을 따라가고, 놓은 탭이 선택됩니다(기본은 꺼짐: 탭해서 고름). 이 예시는 켜 두었습니다.">
         <Demo media style={{ padding: 0, minHeight: 220 }}>
           <Photo scene={0} style={{ position: 'absolute', inset: 0 }} />
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: 20, maxWidth: 460, margin: '0 auto' }}>
-            <TabBar value={tab} onChange={setTab} aria-label="메인" action={<TabBarAction icon={<Search />} label="검색" />}>
+            <TabBar draggable value={tab} onChange={setTab} aria-label="메인" action={<TabBarAction icon={<Search />} label="검색" />}>
               <Tab value="home" label="홈" icon={<Home />} />
               <Tab value="map" label="지도" icon={<Map />} />
               <Tab value="saved" label="저장" icon={<Bookmark />} badge={<Badge>3</Badge>} />

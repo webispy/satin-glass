@@ -196,6 +196,19 @@ ok('toast: its action button works (and dismisses it)', (await p.locator('.sg-to
 
 /* ---------- showcase: an open popover, then another ⓘ — the new one must open (it used to get stuck) ---------- */
 await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(700);
+/* the showcase's tab bar does not opt in to dragging: a drag across it leaves the selection and the drop alone */
+{
+  const sbar = p.locator('.sg-tabbar__bar').first(), stabs = sbar.locator('.sg-tabbar__item'), sind = sbar.locator('.sg-tabbar__indicator');
+  const before = await stabs.evaluateAll((t) => t.findIndex((x) => x.getAttribute('aria-selected') === 'true'));
+  const target = before === 0 ? 2 : 0, i0 = await sind.boundingBox();
+  const [ax, ay] = await center(stabs.nth(before)), [bx] = await center(stabs.nth(target));
+  await p.mouse.move(ax, ay); await p.mouse.down();
+  for (let i = 1; i <= 12; i++) { await p.mouse.move(ax + ((bx - ax) * i) / 12, ay); await p.waitForTimeout(16); }
+  const i1 = await sind.boundingBox();
+  await p.mouse.up(); await p.waitForTimeout(500);
+  const after = await stabs.evaluateAll((t) => t.findIndex((x) => x.getAttribute('aria-selected') === 'true'));
+  ok('tab bar without draggable: a drag neither moves the drop nor changes the tab', after === before && Math.abs(i1.x - i0.x) < 1, `tab ${before} -> ${after}, drop moved ${(i1.x - i0.x).toFixed(1)}px`);
+}
 const infos = p.locator('.phone .sg-list-item .sg-button--icon');
 await infos.nth(0).scrollIntoViewIfNeeded(); await infos.nth(0).click(); await p.waitForTimeout(500);
 const first = await p.locator('.sg-popover').textContent();

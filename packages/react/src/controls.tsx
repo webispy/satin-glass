@@ -554,18 +554,20 @@ export type TabBarProps = Omit<HTMLAttributes<HTMLElement>, 'onChange' | 'defaul
   children: ReactElement<TabProps> | ReactElement<TabProps>[];
   /** a separate glass button beside the bar (e.g. search) */
   action?: ReactNode;
+  /** the selection can be dragged across the tabs and lands where it is released (off by default: a tap selects) */
+  draggable?: boolean;
   compact?: boolean;
   motion?: MotionName;
   'aria-label'?: string;
 };
 
-export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ value, defaultValue, onChange, children, action, compact, motion, className, 'aria-label': label = 'Tabs', ...rest }, ref) {
+export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ value, defaultValue, onChange, children, action, draggable = false, compact, motion, className, 'aria-label': label = 'Tabs', ...rest }, ref) {
   const tabs = Children.toArray(children).filter(isValidElement).map((c) => (c as ReactElement<TabProps>).props);
   const [v, setV] = useControllable(value, defaultValue ?? tabs[0]?.value, onChange);
   const bar = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null);
   const lightRef = useGlassLight();
   const index = Math.max(0, tabs.findIndex((t) => t.value === v));
-  useBridge(bar, ind, index, (i) => !tabs[i].disabled && setV(tabs[i].value));
+  useBridge(bar, ind, index, (i) => !tabs[i].disabled && setV(tabs[i].value), draggable);
   return (
     <nav ref={ref} data-sg-motion={motion} className={cx('sg-tabbar', compact && 'sg-tabbar--compact', className)} aria-label={label} {...rest}>
       {/* the glass clips; the track inside scrolls when the tabs do not fit (a scrolling glass would drag its rim along) */}
