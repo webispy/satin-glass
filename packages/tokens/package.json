@@ -18,7 +18,8 @@
     "NOTICE"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean && tsx scripts/build-css.ts",
+    "build": "tsup src/index.ts --format esm --dts --clean && tsx scripts/build-css.ts && tsx scripts/motion-doc.ts --check",
+    "docs:motion": "tsx scripts/motion-doc.ts",
     "typecheck": "tsc --noEmit -p ."
   }
 }

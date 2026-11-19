@@ -9,6 +9,7 @@
     "test": "pnpm -r --filter './packages/*' test",
     "test:changed": "node scripts/test-changed.mjs",
     "typecheck": "pnpm -r typecheck",
+    "docs:motion": "pnpm --filter @satin-glass/tokens docs:motion",
     "e2e": "pnpm build && pnpm --filter docs build && node tests/e2e/run.mjs",
     "e2e:quick": "pnpm build && pnpm --filter docs build && E2E_ENGINES=chromium node tests/e2e/run.mjs",
     "e2e:changed": "pnpm build && pnpm --filter docs build && node tests/e2e/changed.mjs"

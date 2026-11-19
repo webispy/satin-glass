@@ -78,7 +78,7 @@ export function Typography() {
 }
 
 const PERSONAS: { id: MotionName; label: string; note: string }[] = [
-  { id: 'calm', label: '차분 calm', note: '넘침 없이 정확하게 멈춤. 업무용·정보 밀도 높은 화면' },
+  { id: 'calm', label: '차분 calm', note: '눈에 띄는 넘침 없이 멈춤. 업무용·정보 밀도 높은 화면' },
   { id: 'lively', label: '생동 lively (기본)', note: '한 번 살짝 넘쳤다가 자리 잡음. 늘어남·눌림이 적당히' },
   { id: 'playful', label: '경쾌 playful', note: '탄성이 크고 늘어남·납작해짐이 뚜렷함. 소비자 앱·온보딩' },
 ];
@@ -152,7 +152,7 @@ export function Motion() {
           <code className="code">{'createTheme({ motion: "playful" })'}</code>
           <code className="code">{'<MotionScope motion="calm">…</MotionScope>'}</code>
           <code className="code">{'<SegmentedControl motion="playful" … />'}</code>
-          <Text variant="subhead" tone="secondary">CSS 전환은 [data-sg-motion]의 linear() 이징을 따르고, 손가락을 따르는 JS 스프링과 포털로 뜨는 메뉴·시트도 같은 성격을 씁니다. 동작 줄이기를 켜면 모두 즉시 끝납니다.</Text>
+          <Text variant="subhead" tone="secondary">CSS 전환은 [data-sg-motion]의 linear() 이징을 따르고, 손가락을 따르는 JS 스프링과 포털로 뜨는 메뉴·시트도 같은 성격을 씁니다. 동작 줄이기를 켜면 넘침 없이 짧게(~110ms에 90%) 끝나고, 큰 움직임은 페이드로 바뀝니다.</Text>
         </Demo>
       </Section>
       <Section title={`스프링 곡선 — ${PERSONAS.find((p) => p.id === current)!.label}`} intro="굵은 선이 현재 성격, 옅은 선이 나머지 두 성격입니다.">
