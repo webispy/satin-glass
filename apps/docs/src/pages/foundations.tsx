@@ -1,27 +1,27 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { palette, STEPS, motions, springAt, springDuration, typography, SPRING_NAMES, type Hue, type MotionName, type SpringName } from '@satin-glass/tokens';
-import { Button, Glass, Stack, Text, SegmentedControl, Switch, Slider, Stepper, Progress, PageControl, TabBar, Tab, MotionScope, Menu, MenuItem, Badge, useTheme } from '@satin-glass/react';
+import { Button, Card, CardBody, Glass, Stack, Text, SegmentedControl, Switch, Slider, Stepper, Progress, PageControl, TabBar, Tab, MotionScope, Menu, MenuItem, Badge, useTheme } from '@satin-glass/react';
 import { Home, Map, Bookmark, User, Footprints, Bike, Car } from 'lucide-react';
 import { Sun, Sparkles, MousePointer2 } from 'lucide-react';
 import { Demo, Page, Photo, Section, sceneTint } from '../shared';
 
 export function Overview() {
   return (
-    <Page title="Satin Glass" intro="빛을 따라 움직이는 유리 재질 위에 만든 React UI 라이브러리. 콘텐츠가 먼저 보이고, 컨트롤은 그 위에 가볍게 떠 있습니다.">
-      <Section title="원칙">
+    <Page title="Satin Glass" intro="빛을 부드럽게 흩뜨리는 새틴 유리 위에 만든 React UI 라이브러리. 작은 움직임 하나까지 손끝에 붙도록, 그리고 누구에게나 같은 매끄러움으로.">
+      <Section title="원칙" intro="모든 기초 항목과 컴포넌트의 결정은 이 여섯 가지로 설명할 수 있어야 합니다. 둘이 부딪히면 위에 있는 것을 따릅니다 — 단, 마지막 원칙은 언제나 지켜야 할 바닥입니다.">
         <div className="grid grid--3">
           {[
-            ['콘텐츠 우선', '유리는 컨트롤과 내비게이션에만 씁니다. 콘텐츠 영역은 불투명하고 또렷하게.'],
-            ['빛을 따르는 재질', '테두리는 빛을 받는 쪽만 밝고, 포인터가 있는 곳에 하이라이트가 모입니다.'],
-            ['끊김 없는 움직임', '모든 전환은 이름 붙은 스프링 네 가지. 움직이는 건 transform과 opacity뿐입니다.'],
-            ['고정 반경', '컨트롤 12 · 바와 패널 22 · 시트 28. 캡슐은 칩과 토글에만.'],
-            ['접근성 기본값', '고대비 테마 두 가지, 투명도 줄이기, 동작 줄이기, 키보드 조작을 모두 지원합니다.'],
-            ['한글 우선 타이포', 'Pretendard 기반. 한글과 영문의 무게와 높이를 맞췄습니다.'],
+            ['새틴 유리', '빛을 굴절시키는 맑은 유리가 아니라, 빛을 고르게 흩뜨리는 결 있는 반투명. 뒤의 색과 형태가 부드럽게 비치되, 렌즈처럼 휘지 않습니다.'],
+            ['두 개의 빛', '위에서 오는 고정된 빛이 형태를 만듭니다(밝은 윗변, 그늘진 아랫변, 홈과 볼록). 손끝을 따르는 새틴 광택이 생기를 줍니다.'],
+            ['표면장력', '선택은 물방울처럼 가는 쪽으로 늘어났다가 도착하면 달라붙습니다. 제 레일을 떠나지 않고, 차분할수록 점성이 높습니다.'],
+            ['손끝의 감촉', '눌리는 것은 모두 살짝 들어가고, 손가락 아래로 빛이 모입니다. 잡는 것과 고른 것은 볼록, 그것이 움직이는 길은 홈입니다.'],
+            ['작고 드문 기쁨', '한 번의 조작에 눈에 띄는 움직임은 하나. 반복하는 조작(스크롤, 입력)에는 효과를 얹지 않습니다.'],
+            ['누구에게나 매끄럽게', '고대비에서는 윤곽선으로, 투명도 줄이기에서는 결 있는 불투명 판으로, 동작 줄이기에서는 짧고 넘치지 않는 움직임으로. 키보드 포커스는 언제나 보이고, 60fps를 지킵니다.'],
           ].map(([t, d]) => (
-            <Glass key={t} variant="subtle" style={{ padding: 18, borderRadius: 'var(--sg-radius-lg)' }}>
+            <Card key={t} variant="outlined"><CardBody>
               <Text variant="headline">{t}</Text>
               <Text variant="subhead" tone="secondary" style={{ marginTop: 4 }}>{d}</Text>
-            </Glass>
+            </CardBody></Card>
           ))}
         </div>
       </Section>
@@ -261,11 +261,12 @@ function CornerSection() {
 
 export function Material() {
   const [scene, setScene] = useState('0');
+
   const s = Number(scene);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => { box.current?.scrollIntoView({ block: 'nearest' }); }, []);
   return (
-    <Page title="재질" intro="빛을 따르는 유리. 빛을 받는 쪽 테두리만 밝고 반대쪽은 그늘지며, 포인터(터치에서는 손가락)가 있는 곳에 하이라이트가 모입니다. 모든 브라우저에서 같은 모습입니다.">
+    <Page title="재질" intro="새틴 유리. 빛을 굴절시키지 않고 고르게 흩뜨리는 결 있는 반투명이라, 뒤의 색과 형태가 부드럽게 비칩니다. 위에서 오는 고정된 빛이 테두리의 밝은 윗변과 그늘진 아랫변을 만들고, 포인터(터치에서는 손가락)가 있는 곳에 넓고 옅은 새틴 광택이 번집니다. 모든 브라우저에서 같은 모습입니다.">
       <Section title="변형" intro="regular · strong(패널) · subtle(보조 표면) · clear(사진 위). 포인터를 카드 위로 움직여 보세요.">
         <div ref={box}>
           <Photo scene={s} style={{ borderRadius: 'var(--sg-radius-xl)', padding: 28, minHeight: 320 }}>

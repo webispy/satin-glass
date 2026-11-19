@@ -55,6 +55,9 @@ const light = {
   'glass-ink': p.slate[950],
   'glass-rim-width': '1px',
   'glass-rim-mid': 'rgba(255, 255, 255, 0)',   /* the rim fades out along the sides; high contrast keeps it solid */
+  /* satin: a fine etched grain over the glass fill — felt as texture, never as tint (stronger specks turned white glass
+     grey); dark specks on light glass, light ones on dark, none in high contrast */
+  'glass-grain': `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
   'glass-selection': rgba(p.iris[500], 0.14),
   'shadow-color': '18, 20, 44',
   'shadow-strength': '1',
@@ -104,6 +107,7 @@ const dark: Semantic = {
   'glass-ink': p.slate[50],
   'glass-rim-width': '1px',
   'glass-rim-mid': 'rgba(255, 255, 255, 0)',
+  'glass-grain': `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
   'glass-selection': rgba(p.iris[400], 0.24),
   'shadow-color': '0, 0, 0',
   'shadow-strength': '2.2',
@@ -126,7 +130,7 @@ const lightHc: Semantic = {
   'danger-text': p.ruby[800], 'success-text': p.jade[800], 'info-text': p.azure[800], 'warning-text': p.amber[900],
   'focus-ring': '#000000',
   'glass-fill': '#ffffff', 'glass-fill-strong': '#ffffff', 'glass-fill-subtle': '#ffffff', 'glass-fill-clear': 'rgba(0, 0, 0, 0.72)',
-  'glass-rim-lit': '#000000', 'glass-rim-shade': '#000000', 'glass-rim-mid': '#000000', 'glass-rim-width': '1.5px', 'glass-depth': 'rgba(255, 255, 255, 0)', 'glass-highlight': 'rgba(255, 255, 255, 0)',
+  'glass-rim-lit': '#000000', 'glass-rim-shade': '#000000', 'glass-rim-mid': '#000000', 'glass-rim-width': '1.5px', 'glass-grain': 'none', 'glass-depth': 'rgba(255, 255, 255, 0)', 'glass-highlight': 'rgba(255, 255, 255, 0)',
   'glass-selection': rgba(p.iris[700], 0.16),
   'chart-1': p.iris[800], 'chart-2': p.teal[800], 'chart-3': p.coral[800], 'chart-4': p.azure[900], 'chart-5': p.orchid[800], 'chart-6': p.jade[900],
   'chart-grid': rgba(p.slate[900], 0.22),
@@ -146,7 +150,7 @@ const darkHc: Semantic = {
   'danger-text': p.ruby[200], 'success-text': p.jade[200], 'info-text': p.azure[200], 'warning-text': p.amber[200],
   'focus-ring': '#ffffff',
   'glass-fill': '#000000', 'glass-fill-strong': '#000000', 'glass-fill-subtle': '#000000', 'glass-fill-clear': 'rgba(0, 0, 0, 0.78)',
-  'glass-rim-lit': '#ffffff', 'glass-rim-shade': '#ffffff', 'glass-rim-mid': '#ffffff', 'glass-rim-width': '1.5px', 'glass-depth': 'rgba(255, 255, 255, 0)', 'glass-highlight': 'rgba(255, 255, 255, 0)',
+  'glass-rim-lit': '#ffffff', 'glass-rim-shade': '#ffffff', 'glass-rim-mid': '#ffffff', 'glass-rim-width': '1.5px', 'glass-grain': 'none', 'glass-depth': 'rgba(255, 255, 255, 0)', 'glass-highlight': 'rgba(255, 255, 255, 0)',
   'glass-selection': rgba(p.iris[300], 0.3),
   'chart-1': p.iris[300], 'chart-2': p.teal[200], 'chart-3': p.coral[300], 'chart-4': p.azure[200], 'chart-5': p.orchid[300], 'chart-6': p.jade[200],
   'chart-grid': 'rgba(255, 255, 255, 0.24)',
