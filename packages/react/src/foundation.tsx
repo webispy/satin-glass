@@ -24,13 +24,14 @@ export type Theme = {
   /** reduce motion: true = always (e.g. a remote desktop / VDI session), false = never, 'system' = follow prefers-reduced-motion */
   reduceMotion: boolean | 'system';
 };
-export type ResolvedTheme = Theme & { scheme: 'light' | 'dark'; name: 'light' | 'dark' | 'light-hc' | 'dark-hc' };
+/** the theme with every 'system' setting resolved: what its element (and its portals) actually show */
+export type ResolvedTheme = Theme & { scheme: 'light' | 'dark'; name: 'light' | 'dark' | 'light-hc' | 'dark-hc'; reducedTransparency: boolean; reducedMotion: boolean };
 
 export function createTheme(t: Partial<Theme> = {}): Theme {
   return { mode: 'system', contrast: 'system', reduceTransparency: 'system', reduceMotion: 'system', light: true, ...t };
 }
 
-const ThemeCtx = createContext<ResolvedTheme>({ ...createTheme(), scheme: 'light', name: 'light' });
+const ThemeCtx = createContext<ResolvedTheme>({ ...createTheme(), scheme: 'light', name: 'light', reducedTransparency: false, reducedMotion: false });
 export const useTheme = () => useContext(ThemeCtx);
 
 /* the motion personality in effect (overlays rendered in a portal read it from here) */
@@ -71,16 +72,24 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
   const sysDark = useMedia('(prefers-color-scheme: dark)');
   const sysMore = useMedia('(prefers-contrast: more)');
   const sysRT = useMedia('(prefers-reduced-transparency: reduce)');
+  const sysRM = useMedia('(prefers-reduced-motion: reduce)');
+  const outerMotion = useContext(MotionCtx);
   const resolved = useMemo<ResolvedTheme>(() => {
     const scheme = theme.mode === 'system' ? (sysDark ? 'dark' : 'light') : theme.mode;
     const more = theme.contrast === 'system' ? sysMore : theme.contrast === 'more';
-    return { ...theme, scheme, name: `${scheme}${more ? '-hc' : ''}` as ResolvedTheme['name'] };
-  }, [theme, sysDark, sysMore]);
-  const rt = theme.reduceTransparency === 'system' ? sysRT : theme.reduceTransparency;
+    return {
+      ...theme, scheme, name: `${scheme}${more ? '-hc' : ''}` as ResolvedTheme['name'],
+      reducedTransparency: theme.reduceTransparency === 'system' ? sysRT : theme.reduceTransparency,
+      reducedMotion: theme.reduceMotion === 'system' ? sysRM : theme.reduceMotion,
+    };
+  }, [theme, sysDark, sysMore, sysRT, sysRM]);
+  /* every setting is written resolved on the element, so the nearest provider decides for CSS, JS and portals alike */
+  const motion = theme.motion ?? outerMotion;
+  const rt = resolved.reducedTransparency;
   return (
     <ThemeCtx.Provider value={resolved}>
-     <MotionCtx.Provider value={theme.motion}>
-      <div ref={ref} data-sg-theme={resolved.name} data-sg-motion={theme.motion} data-sg-reduce-motion={theme.reduceMotion === 'system' ? undefined : String(theme.reduceMotion)} className={cx('sg-root', rt && 'sg-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
+     <MotionCtx.Provider value={motion}>
+      <div ref={ref} data-sg-theme={resolved.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(resolved.reducedMotion)} className={cx('sg-root', rt && 'sg-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
         {children}
       </div>
      </MotionCtx.Provider>
@@ -96,7 +105,7 @@ export function Portal({ children, className }: { children: ReactNode; className
   const host = typeof document !== 'undefined' ? document.body : null;
   if (!host) return null;
   return createPortal(
-    <div className={cx('sg-root sg-portal', className)} data-sg-theme={t.name} data-sg-motion={motion} data-sg-reduce-motion={t.reduceMotion === 'system' ? undefined : String(t.reduceMotion)} style={tokenStyle(t.tokens)}>{children}</div>,
+    <div className={cx('sg-root sg-portal', t.reducedTransparency && 'sg-reduce-transparency', className)} data-sg-theme={t.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(t.reducedMotion)} style={tokenStyle(t.tokens)}>{children}</div>,
     host,
   );
 }

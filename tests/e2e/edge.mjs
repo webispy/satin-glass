@@ -287,7 +287,10 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
       const cs = getComputedStyle(e);
       const host = e.closest('.sg-field__control') ?? e;
       const hs = getComputedStyle(host);
-      const ring = (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) || cs.boxShadow !== 'none' || hs.boxShadow !== 'none';
+      /* the mark may sit on the part that shows the value: the slider's thumb */
+      const part = e.querySelector(':scope > .sg-slider__thumb, :scope .sg-slider__thumb'), ps = part ? getComputedStyle(part) : null;
+      const outlined = (x) => x && x.outlineStyle !== 'none' && parseFloat(x.outlineWidth) > 0;
+      const ring = outlined(cs) || outlined(ps) || outlined(hs) || cs.boxShadow !== 'none' || hs.boxShadow !== 'none';
       return { kind: e.getAttribute('role') || e.tagName.toLowerCase(), cls: (e.className || '').toString().split(' ')[0], ring, inPage: !!e.closest('.docs__page') };
     });
     if (info?.inPage) seen.set(`${info.kind}/${info.cls}`, info.ring);

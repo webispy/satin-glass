@@ -13,9 +13,9 @@
 }
 .sg-check--radio .sg-check__box { border-radius: 50%; }
 .sg-check:active:not([data-disabled="true"]) .sg-check__box { transform: scale(0.9); transition-duration: 90ms; }
-.sg-check__input:focus-visible + .sg-check__box { box-shadow: inset 0 0 0 1.5px var(--sg-label-tertiary), var(--sg-ring); }
+.sg-check__input:focus-visible + .sg-check__box { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-check__input:checked + .sg-check__box, .sg-check__input:indeterminate + .sg-check__box { background: var(--sg-accent); box-shadow: inset 0 0 0 1.5px var(--sg-accent); }
-.sg-check__input:checked:focus-visible + .sg-check__box, .sg-check__input:indeterminate:focus-visible + .sg-check__box { box-shadow: inset 0 0 0 1.5px var(--sg-accent), var(--sg-ring); }
+.sg-check__input:checked:focus-visible + .sg-check__box, .sg-check__input:indeterminate:focus-visible + .sg-check__box { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 /* the tick is drawn (stroke-dashoffset) on the snappy spring */
 .sg-check__mark { width: 16px; height: 16px; color: var(--sg-on-accent); fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 .sg-check__tick { stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
@@ -48,7 +48,7 @@
   transition: background-color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease;
 }
 @media (hover: hover) { .sg-select:hover:not(:disabled) { background: var(--sg-fill-hover); } }
-.sg-select:focus-visible, .sg-select[aria-expanded="true"] { outline: none; background: var(--sg-surface); box-shadow: inset 0 0 0 1.5px var(--sg-accent), 0 0 0 4px var(--sg-accent-soft); }
+.sg-select:focus-visible, .sg-select[aria-expanded="true"] { outline: var(--sg-focus-width) solid transparent; outline-offset: calc(-1 * var(--sg-focus-width)); background: var(--sg-surface); box-shadow: inset 0 0 0 1.5px var(--sg-accent), 0 0 0 4px var(--sg-accent-soft); }
 .sg-field[data-invalid="true"] .sg-select { box-shadow: inset 0 0 0 1.5px var(--sg-danger); }
 .sg-select:disabled { opacity: 0.5; cursor: default; }
 .sg-select__value { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; }
@@ -60,7 +60,7 @@
 .sg-select--inline { width: auto; height: 32px; padding: 0 6px 0 8px; gap: 4px; background: none; color: var(--sg-accent-text); font-size: 15px; border-radius: var(--sg-radius-sm); }
 .sg-select--inline .sg-select__chevrons { color: inherit; width: 16px; height: 16px; }
 @media (hover: hover) { .sg-select--inline:hover:not(:disabled) { background: var(--sg-fill); } }
-.sg-select--inline:focus-visible, .sg-select--inline[aria-expanded="true"] { background: var(--sg-fill); box-shadow: var(--sg-ring); }
+.sg-select--inline:focus-visible, .sg-select--inline[aria-expanded="true"] { background: var(--sg-fill); outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 
 .sg-listbox { position: absolute; left: 0; top: 0; max-width: min(360px, calc(100vw - 24px)); max-height: min(340px, calc(100vh - 24px)); display: flex; flex-direction: column; --_radius: var(--sg-radius-lg); outline: none; }
 /* position: relative → options' offsetTop is measured from this scroller (Select keeps the active one in view) */
@@ -99,7 +99,7 @@
 }
 @media (hover: hover) { .sg-day:hover:not([aria-disabled="true"]):not([aria-pressed="true"]) { background: var(--sg-fill); } }
 .sg-day:active:not([aria-disabled="true"]) { transform: scale(0.9); }
-.sg-day:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-day:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-day[data-outside] { color: var(--sg-label-tertiary); }
 .sg-day[data-today] { color: var(--sg-accent-text); font-weight: 750; }
 .sg-day[data-today]::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: currentColor; }
@@ -163,7 +163,7 @@
 /* keyboard focus rings the band of the focused column */
 .sg-wheel:has(> .sg-wheel__scroller:focus-visible)::after {
   content: ""; position: absolute; z-index: 2; left: 0; right: 0; top: calc(50% - var(--_row, 36px) / 2); height: var(--_row, 36px);
-  border-radius: var(--sg-radius-sm); box-shadow: inset 0 0 0 2px var(--sg-focus-ring); pointer-events: none;
+  border-radius: calc(var(--sg-radius-lg) - 4px); outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); pointer-events: none;
 }
 .sg-wheels__sep { position: relative; z-index: 1; align-self: center; padding-bottom: 2px; font-size: 20px; line-height: 24px; font-weight: 600; color: var(--sg-label); }
 .sg-timewheel { min-width: 200px; }
@@ -171,8 +171,6 @@
 .sg-timewheel .sg-wheel--period { min-width: 4.4em; }
 .sg-timepicker-panel { position: absolute; left: 0; top: 0; padding: 12px; --_radius: var(--sg-radius-xl); outline: none; }
 .sg-time-value { font-variant-numeric: tabular-nums; }
-[data-sg-theme$="-hc"] .sg-wheels__lens { box-shadow: inset 0 0 0 1.5px var(--sg-label); }
-[data-sg-theme$="-hc"] .sg-wheels, [data-sg-theme$="-hc"] .sg-wheel:not(.sg-wheels > .sg-wheel) { box-shadow: inset 0 0 0 1px var(--sg-label-secondary); }
 
 /* calendar head: the month and the year as chips, in the locale's order. An open chip wears the selection glass
    (like a selected tab) and its chevron turns over; a press sinks it like any control */
@@ -185,7 +183,7 @@
 }
 @media (hover: hover) { .sg-calendar__chip:hover:not([aria-expanded="true"]) { background: var(--sg-fill-hover); } }
 .sg-calendar__chip:active { transform: scale(0.965); }
-.sg-calendar__chip:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-calendar__chip:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-calendar__chip[aria-expanded="true"] { background: var(--sg-glass-selection); color: var(--sg-accent-on-soft); box-shadow: inset 0 0 0 0.5px color-mix(in oklab, var(--sg-accent) 34%, transparent); }
 .sg-calendar__chip-chevron { width: 15px; height: 15px; color: var(--sg-label-secondary); transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), color var(--sg-duration-fast) ease; }
 .sg-calendar__chip[aria-expanded="true"] .sg-calendar__chip-chevron { transform: rotate(180deg); color: currentColor; }
@@ -195,7 +193,7 @@
    its middle on the pop spring, like a weekday; the current month or year is ringed in the accent */
 .sg-calendar__picker { height: calc(28px + 6 * var(--_cell)); display: flex; flex-direction: column; will-change: transform, opacity; }
 .sg-calendar__caption { height: 28px; flex: none; display: flex; align-items: center; padding: 0 6px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--sg-label-tertiary); font-variant-numeric: tabular-nums; }
-.sg-calendar__cells { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 6px; padding: 2px; outline: none; }
+.sg-calendar__cells { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 6px; padding: 4px; outline: none; }   /* 4: room for a cell's focus outline */
 .sg-calendar__cells--scroll {
   position: relative; grid-auto-rows: 52px; align-content: start; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scroll-padding-block: 12px;
   --_ft: #000; --_fb: #000;
@@ -217,7 +215,7 @@
 }
 @media (hover: hover) { .sg-calendar__cell:hover:not([aria-disabled="true"]):not([aria-selected="true"]) { background: var(--sg-fill-hover); } }
 .sg-calendar__cell:active:not([aria-disabled="true"]) { transform: scale(0.965); }
-.sg-calendar__cell:focus-visible { box-shadow: var(--sg-ring); }
+.sg-calendar__cell:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-calendar__cell[data-current] { color: var(--sg-accent-text); box-shadow: inset 0 0 0 1.5px var(--sg-accent-text); }
 .sg-calendar__cell[aria-selected="true"] { color: var(--sg-on-accent); font-weight: 700; }
 .sg-calendar__cell[aria-selected="true"]::before { opacity: 1; transform: none; }
@@ -252,10 +250,10 @@
 .sg-weekday[aria-pressed="true"]::before { opacity: 1; transform: none; }
 @media (hover: hover) { .sg-weekday:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--sg-fill-hover); } }
 .sg-weekday:active:not(:disabled) { transform: scale(0.9); }
-.sg-weekday:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-weekday:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-weekday:disabled { opacity: 0.45; cursor: default; }
 [data-sg-theme$="-hc"] .sg-weekday:not([aria-pressed="true"]) { box-shadow: inset 0 0 0 1.5px var(--sg-label); }
-[data-sg-theme$="-hc"] .sg-weekday:focus-visible { box-shadow: var(--sg-ring); }
+[data-sg-theme$="-hc"] .sg-weekday:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 /* reduced motion: no fill growth, no press-in; the fill fades */
 [data-sg-reduce-motion="true"] .sg-weekday, [data-sg-reduce-motion="true"] .sg-weekday::before { transform: none !important; }
 @media (prefers-reduced-motion: reduce) {

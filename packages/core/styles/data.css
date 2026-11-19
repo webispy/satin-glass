@@ -23,10 +23,10 @@
 .sg-chart__key { appearance: none; border: 0; margin: 0; padding: 4px 2px; background: none; font: inherit; font-size: 13px; font-weight: 560; color: var(--sg-label-secondary); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border-radius: var(--sg-radius-xs); }
 .sg-chart__key[aria-pressed="false"] { color: var(--sg-label-tertiary); text-decoration: line-through; }
 .sg-chart__key[aria-pressed="false"] .sg-chart__swatch { opacity: 0.3; }
-.sg-chart__key:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-chart__key:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-chart__swatch { flex: none; width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .sg-chart__plot { position: relative; outline: none; border-radius: var(--sg-radius-sm); touch-action: pan-y; }
-.sg-chart__plot:focus-visible { box-shadow: var(--sg-ring); }
+.sg-chart__plot:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-chart__plot svg { display: block; overflow: visible; }
 .sg-chart__grid { stroke: var(--sg-chart-grid); stroke-width: 1; shape-rendering: crispEdges; }
 .sg-chart__axis { stroke: var(--sg-separator-strong); stroke-width: 1; shape-rendering: crispEdges; }
@@ -45,7 +45,7 @@
 .sg-chart__caption { margin-top: 8px; font-size: 13px; color: var(--sg-label-secondary); }
 .sg-donut { display: flex; flex-wrap: wrap; align-items: center; gap: 20px 28px; }
 .sg-donut__ring { position: relative; flex: none; outline: none; border-radius: 50%; }
-.sg-donut__ring:focus-visible { box-shadow: var(--sg-ring); }
+.sg-donut__ring:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-donut__slice { transition: opacity var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
 .sg-donut__legend li { cursor: default; -webkit-tap-highlight-color: transparent; }
 .sg-donut__ring { -webkit-tap-highlight-color: transparent; }
@@ -109,7 +109,7 @@
 [data-align="end"] .sg-table__sortbtn { flex-direction: row-reverse; }
 .sg-table thead .sg-table__sortbtn, .sg-table thead .sg-table__headtxt, .sg-table thead .sg-check { vertical-align: bottom; }
 @media (hover: hover) { .sg-table__sortbtn:hover .sg-table__title { color: var(--sg-accent-text); } }
-.sg-table__sortbtn:focus-visible, .sg-table__headtxt:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-table__sortbtn:focus-visible, .sg-table__headtxt:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-table__sort { flex: none; width: 12px; height: 12px; margin-top: 4px; fill: none; stroke: var(--sg-label-tertiary); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0; overflow: visible; transition: opacity var(--sg-duration-fast) ease; }
 .sg-table__sort path { transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), opacity var(--sg-duration-fast) ease; }
 .sg-table__sortbtn:focus-visible .sg-table__sort, .sg-table__sort[data-dir] { opacity: 1; }
@@ -126,8 +126,8 @@
 .sg-table tbody tr[aria-selected="true"] > * { --_row-bg: color-mix(in srgb, var(--sg-surface), var(--sg-accent) 9%); }
 .sg-table tbody tr[data-muted] > * { color: var(--sg-label-tertiary); }
 .sg-table__row--action { cursor: pointer; }
-.sg-table [data-r]:focus-visible, .sg-table [data-r]:focus { box-shadow: inset 0 0 0 2px var(--sg-focus-ring); border-radius: 4px; }
-.sg-table [data-r] a:focus-visible, .sg-table [data-r] button:focus-visible, .sg-table [data-r] input:focus-visible { outline: none; box-shadow: var(--sg-ring); border-radius: 4px; }
+.sg-table [data-r]:focus-visible, .sg-table [data-r]:focus { outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); border-radius: 4px; }
+.sg-table [data-r] a:focus-visible, .sg-table [data-r] button:focus-visible, .sg-table [data-r] input:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); border-radius: 4px; }
 .sg-table__pinned th, .sg-table__pinned td { --_row-bg: color-mix(in srgb, var(--sg-surface), var(--sg-label) 2.5%); color: var(--sg-label-secondary); }
 .sg-table__pinned tr:last-child > * { --_hline: var(--sg-separator-strong); }
 .sg-table__pinned th, .sg-table__pinned td { position: sticky; top: calc(var(--_head-h, 0px) + var(--_pi, 0) * var(--_rh)); z-index: 2; }

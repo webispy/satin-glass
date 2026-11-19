@@ -19,7 +19,8 @@ const params = (s: SpringName | SpringParams, el?: Element | null): SpringParams
 /** Whether motion should be reduced for `el`: the nearest [data-sg-reduce-motion] decides ("true" / "false",
     set by ThemeProvider or reduceMotionScope), otherwise the system setting (prefers-reduced-motion). */
 export function prefersReducedMotion(el?: Element | null): boolean {
-  const scope = el?.closest?.('[data-sg-reduce-motion]') ?? (typeof document !== 'undefined' ? document.querySelector('[data-sg-reduce-motion]') : null);
+  /* the nearest setting decides; without one, the system (never the first setting found elsewhere on the page) */
+  const scope = el?.closest?.('[data-sg-reduce-motion]');
   const forced = scope?.getAttribute('data-sg-reduce-motion');
   if (forced === 'true') return true;
   if (forced === 'false') return false;

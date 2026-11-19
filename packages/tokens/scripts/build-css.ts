@@ -29,10 +29,6 @@ root.push(...motionDecls(motions[defaultMotion]));
 for (const [name, [fs, lh, fw, tr]] of Object.entries(typography)) {
   root.push(decl(`text-${name}-size`, `${fs}px`), decl(`text-${name}-line`, `${lh}px`), decl(`text-${name}-weight`, fw), decl(`text-${name}-tracking`, `${tr}em`));
 }
-/* shadows read the theme's shadow colour/strength */
-root.push(decl('shadow-sm', '0 1px 2px rgba(var(--sg-shadow-color), calc(0.06 * var(--sg-shadow-strength))), 0 2px 8px rgba(var(--sg-shadow-color), calc(0.05 * var(--sg-shadow-strength)))'));
-root.push(decl('shadow-md', '0 1px 3px rgba(var(--sg-shadow-color), calc(0.07 * var(--sg-shadow-strength))), 0 8px 24px rgba(var(--sg-shadow-color), calc(0.1 * var(--sg-shadow-strength)))'));
-root.push(decl('shadow-lg', '0 2px 6px rgba(var(--sg-shadow-color), calc(0.08 * var(--sg-shadow-strength))), 0 20px 48px rgba(var(--sg-shadow-color), calc(0.16 * var(--sg-shadow-strength)))'));
 out.push(':root {', ...root, '}');
 /* depth and layers (design-language.md, 깊이와 레이어). Light comes from above: what is raised is lit on its top edge,
    shaded on its bottom edge and casts a soft shadow; what is recessed is shaded inside its top edge. Declared on every
@@ -42,7 +38,12 @@ out.push(':root {', ...root, '}');
      well    a deep recess: a wheel's column
      raised  something lifted off its surface that you hold or that marks the choice (knobs, thumbs, the segmented
              chip, the wheel lens); raised-accent and sheen-accent for a chosen accent bead (a day, a month, a weekday) */
+/* shadows read the theme's shadow colour and strength, so they are declared with the depth tokens on every theme
+   element (a var() is resolved where the property is declared: on :root alone, a dark island kept light shadows) */
 const depth = [
+  decl('shadow-sm', '0 1px 2px rgba(var(--sg-shadow-color), calc(0.06 * var(--sg-shadow-strength))), 0 2px 8px rgba(var(--sg-shadow-color), calc(0.05 * var(--sg-shadow-strength)))'),
+  decl('shadow-md', '0 1px 3px rgba(var(--sg-shadow-color), calc(0.07 * var(--sg-shadow-strength))), 0 8px 24px rgba(var(--sg-shadow-color), calc(0.1 * var(--sg-shadow-strength)))'),
+  decl('shadow-lg', '0 2px 6px rgba(var(--sg-shadow-color), calc(0.08 * var(--sg-shadow-strength))), 0 20px 48px rgba(var(--sg-shadow-color), calc(0.16 * var(--sg-shadow-strength)))'),
   decl('depth-inset', 'inset 0 1px 2px rgba(var(--sg-shadow-color), calc(0.14 * var(--sg-shadow-strength))), inset 0 0 0 0.5px rgba(var(--sg-shadow-color), calc(0.05 * var(--sg-shadow-strength)))'),
   decl('depth-well', 'inset 0 10px 12px -12px rgba(var(--sg-shadow-color), calc(0.32 * var(--sg-shadow-strength))), inset 0 -10px 12px -12px rgba(var(--sg-shadow-color), calc(0.24 * var(--sg-shadow-strength))), inset 0 0 0 0.5px var(--sg-separator)'),
   decl('depth-raised', '0 1px 2px rgba(var(--sg-shadow-color), calc(0.12 * var(--sg-shadow-strength))), 0 3px 8px -2px rgba(var(--sg-shadow-color), calc(0.14 * var(--sg-shadow-strength))), inset 0 1px 0 var(--sg-glass-rim-lit), inset 0 -1px 0 var(--sg-glass-rim-shade)'),
@@ -56,11 +57,22 @@ depth.push(decl('depth-raised-bg', 'var(--sg-surface)'));
 out.push(':root, [data-sg-theme] {', ...depth, '}');
 out.push('[data-sg-theme^="dark"] {', decl('depth-raised-bg', 'var(--sg-fill-strong)'), '}');
 out.push('@media (prefers-color-scheme: dark) {', '  :root:not([data-sg-theme]) {', '  ' + decl('depth-raised-bg', 'var(--sg-fill-strong)'), '  }', '}');
-out.push('[data-sg-theme$="-hc"] {', ...['depth-inset', 'depth-well', 'depth-raised', 'depth-raised-accent', 'depth-sheen', 'depth-sheen-accent'].map((n) => decl(n, 'none')), '}');
+/* high contrast: depth turns into outlines, so every groove, knob and chosen thing keeps a visible edge (3:1 for
+   non-text) through the same tokens — no component needs its own high-contrast rule */
+const hcDepth = [
+  decl('depth-inset', 'inset 0 0 0 1px var(--sg-separator-strong)'), decl('depth-well', 'inset 0 0 0 1px var(--sg-separator-strong)'),
+  decl('depth-raised', 'inset 0 0 0 1.5px var(--sg-label)'), decl('depth-raised-accent', 'inset 0 0 0 1.5px var(--sg-label)'),
+  decl('depth-sheen', 'none'), decl('depth-sheen-accent', 'none'),
+];
+out.push('[data-sg-theme$="-hc"] {', ...hcDepth, '}');
+out.push('@media (prefers-contrast: more) {', '  :root:not([data-sg-theme]) {', ...hcDepth.map((l) => '  ' + l), '  }', '}');
 for (const [name, m] of Object.entries(motions)) out.push(`[data-sg-motion="${name}"] {`, ...motionDecls(m), '}');
-/* reduced motion wins over any personality: forced by the theme, or by the system unless the theme says "false" */
-out.push('[data-sg-reduce-motion="true"], [data-sg-reduce-motion="true"] [data-sg-motion] {', ...motionDecls(reducedMotion), '}');
-out.push('@media (prefers-reduced-motion: reduce) {', '  .sg-root:not([data-sg-reduce-motion="false"]), .sg-root:not([data-sg-reduce-motion="false"]) [data-sg-motion] {', ...motionDecls(reducedMotion).map((l) => '  ' + l), '  }', '}');
+/* reduced motion wins over any personality inside it, up to the nearest area that says "false" (@scope's lower
+   bound): the nearest setting decides, as it does for the JS springs (prefersReducedMotion). ThemeProvider and
+   Portal write the resolved setting; the media query covers pages that use the CSS without them */
+const reduced = motionDecls(reducedMotion);
+out.push('@scope ([data-sg-reduce-motion="true"]) to ([data-sg-reduce-motion="false"]) {', '  :scope, [data-sg-motion] {', ...reduced.map((l) => '  ' + l), '  }', '}');
+out.push('@media (prefers-reduced-motion: reduce) {', '  @scope (:root) to ([data-sg-reduce-motion="false"]) {', '    :scope, [data-sg-motion] {', ...reduced.map((l) => '    ' + l), '    }', '  }', '}');
 
 const block = (sel: string, t: ThemeName, scheme: 'light' | 'dark') =>
   [`${sel} {`, `  color-scheme: ${scheme};`, ...Object.entries(themes[t]).map(([k, v]) => decl(k, v)), '}'].join('\n');
@@ -97,13 +109,21 @@ const composite = (fill: string, under: string) => {
   return '#' + [1, 2, 3].map((i, k) => Math.round(+m[i] * a + u[k] * (1 - a)).toString(16).padStart(2, '0')).join('');
 };
 pairs.push(['accent-on-soft', 'accent-soft@surface', 4.5], ['danger-on-soft', 'danger-soft@surface', 4.5], ['#ffffff', 'danger-fill', 4.5]);
+/* states and composited backgrounds: a filled button hovered and pressed, a placeholder inside a field on each
+   page background, white text on clear glass over a white photo */
+pairs.push(['on-accent', 'accent-hover', 4.5], ['on-accent', 'accent-pressed', 4.5],
+  ['label-secondary', 'fill@bg', 4.5], ['label-secondary', 'fill@surface', 4.5], ['label-secondary', 'fill@bg-grouped', 4.5],
+  ['#ffffff', 'glass-fill-clear@#ffffff', 4.5]);
+/* high contrast only: the outline a groove or field gets is non-text and must reach 3:1 against the page */
+const hcOnly = new Set(['separator-strong/bg']);
+pairs.push(['separator-strong', 'bg', 3]);
 let failed = 0;
 for (const t of Object.keys(themes) as ThemeName[]) {
   const th = { ...(themes[t] as Record<string, string>), '#ffffff': '#ffffff' } as Record<string, string>;
   for (const [, bg] of pairs) if (bg.includes('@')) { const [f, u] = bg.split('@'); th[bg] = composite(th[f], th[u]); }
-  const row = pairs.map(([fg, bg, min]) => {
+  const row = pairs.filter(([fg, bg]) => t.endsWith('hc') || !hcOnly.has(`${fg}/${bg}`)).map(([fg, bg, min]) => {
     const r = contrast(th[fg], th[bg]);
-    const target = t.endsWith('hc') ? Math.max(min, min >= 4.5 ? 7 : 4.5) : min;
+    const target = t.endsWith('hc') && !hcOnly.has(`${fg}/${bg}`) ? Math.max(min, min >= 4.5 ? 7 : 4.5) : min;
     if (r < target) failed++;
     return `${r < target ? '✗' : '✓'} ${fg}/${bg} ${r.toFixed(2)}${r < target ? ` (<${target})` : ''}`;
   });

@@ -11,6 +11,8 @@
 //   stylesheets split by category: every page computes the same with the per-category files in any order, with
 //     each category's listed dependencies only, and with the layered build (Chromium)
 //   concentric corners: boxes nested near a corner follow inner = outer − gap (Chromium)
+//   focus visible: Tab through each page; the focused area must change, in all themes and forced colours (Chromium)
+//   settings at the nearest boundary: nested themes, high contrast, reduced motion, reduce transparency in portals
 //   performance (CPU ×4), momentum across updates, arrival timing (informational)
 // Everything runs in all three engines (Chromium, WebKit, Firefox); the variants (motion personalities, dark / high
 // contrast / reduced transparency, reduced motion) in Chromium.
@@ -57,10 +59,13 @@ perEngine(checks, 'many items (overflowing segmented / tab bar)', 'overflow.mjs'
 perEngine(checks, 'edge cases', 'edge.mjs');
 sharded(checks, 'render matrix', 'matrix.mjs', (b) => (b === 'chromium' ? 4 : 2));
 perEngine(checks, 'data components & dashboard', 'data.mjs');
+perEngine(checks, 'settings decide at the nearest boundary', 'settings.mjs');
 /* the cascade is the same in every engine: the per-category stylesheet check runs once, in Chromium */
 if (ENGINES.includes('chromium')) checks.push(['stylesheets split by category · chromium', 'css-split.mjs', {}]);
 /* nested corners stay concentric (design-language.md 9): a static layout check, once, in Chromium */
 if (ENGINES.includes('chromium')) checks.push(['concentric corners · chromium', 'corners.mjs', {}]);
+/* keyboard focus visible in every theme and with forced colours (emulated in Chromium) */
+if (ENGINES.includes('chromium')) checks.push(['focus visible · chromium', 'focus.mjs', {}]);
 variants(checks, 'data components & dashboard', 'data.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 
 perEngine(motion, 'interactions', 'interact.mjs');

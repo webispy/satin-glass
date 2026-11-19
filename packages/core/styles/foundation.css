@@ -16,7 +16,11 @@
   /* (no "tnum" here: font-feature-settings beats font-variant-numeric, and a "tnum" 0 inherited everywhere turned
      off the tabular figures that tables, stats, charts and pagination ask for) */
   font-feature-settings: "ss06";
-  --sg-ring: 0 0 0 2px var(--sg-bg), 0 0 0 4px var(--sg-focus-ring);
+  /* keyboard focus is an outline, never a box-shadow: shadows carry depth (and may be none in high contrast, which
+     would void a shadow list), and forced colours drop them. Outlines follow the corner radius. --sg-focus-outline on
+     the element itself; inside a clipping or scrolling container use the inset form (offset −width) */
+  --sg-focus-width: 2px; --sg-focus-offset: 2px;
+  --sg-focus-outline: var(--sg-focus-width) solid var(--sg-focus-ring);
 }
 .sg-root *, .sg-root *::before, .sg-root *::after { box-sizing: border-box; }
 
@@ -51,7 +55,7 @@
 .sg-visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* the shared focus ring (keyboard only) */
-.sg-focusable:focus-visible, .sg-root :where(button, [href], [tabindex]):focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-focusable:focus-visible, .sg-root :where(button, [href], [tabindex]):focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 
 /* Reduced motion (theme.reduceMotion, e.g. a VDI / remote-desktop session, or the system setting unless a theme
    says "false"). Not "everything instant" — a control snapping through several states in a few frames reads as
@@ -125,9 +129,9 @@
   inset: 0;
   z-index: 2;
   border-radius: inherit;
-  padding: 1px;
+  padding: var(--sg-glass-rim-width);   /* 1.5 px in high contrast, where the rim colours are solid */
   pointer-events: none;
-  background: linear-gradient(var(--sg-light-angle, 165deg), var(--sg-glass-rim-lit), rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0) 60%, var(--sg-glass-rim-shade)) border-box;
+  background: linear-gradient(var(--sg-light-angle, 165deg), var(--sg-glass-rim-lit), var(--sg-glass-rim-mid) 40%, var(--sg-glass-rim-mid) 60%, var(--sg-glass-rim-shade)) border-box;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
@@ -171,14 +175,14 @@
 .sg-pressable.sg-glass:active::after, .sg-pressable.sg-glass.is-pressed::after { opacity: 1; transition-duration: 60ms; }
 
 /* accessibility: reduce transparency → solid surfaces; increased contrast → solid 1.5px rim */
-.sg-reduce-transparency .sg-glass, .sg-glass.sg-reduce-transparency { background-color: var(--sg-bg-elevated); -webkit-backdrop-filter: none; backdrop-filter: none; }
-.sg-reduce-transparency .sg-glass--clear { background-color: rgba(20, 20, 24, 0.86); }
+/* the fill is decided once, through --_fill, so everything drawn from it (glass buttons, the glass search field, hover
+   mixes) turns solid too; glass over media becomes a solid dark plate */
+.sg-reduce-transparency .sg-glass, .sg-glass.sg-reduce-transparency { --_fill: var(--sg-bg-elevated); background-color: var(--_fill); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.sg-reduce-transparency .sg-glass--clear, .sg-glass--clear.sg-reduce-transparency { --_fill: rgb(20, 20, 24); }
 @media (prefers-reduced-transparency: reduce) {
-  .sg-glass { background-color: var(--sg-bg-elevated); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .sg-glass--clear { background-color: rgba(20, 20, 24, 0.86); }
+  .sg-glass { --_fill: var(--sg-bg-elevated); background-color: var(--_fill); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .sg-glass--clear { --_fill: rgb(20, 20, 24); }
 }
-[data-sg-theme$="-hc"] .sg-glass::before, .sg-glass[data-sg-theme$="-hc"]::before { padding: 1.5px; background: var(--sg-label); }
-[data-sg-theme$="-hc"] .sg-glass::after { display: none; }
 @media (forced-colors: active) {
   .sg-glass { background: Canvas; color: CanvasText; border: 1px solid CanvasText; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .sg-glass::before, .sg-glass::after { display: none; }

@@ -9,7 +9,7 @@
 .sg-card--interactive { appearance: none; border: 0; margin: 0; padding: 0; width: 100%; font: inherit; color: inherit; text-align: inherit; display: block; cursor: pointer; transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), box-shadow var(--sg-duration-base) ease; }
 @media (hover: hover) { .sg-card--interactive:hover { box-shadow: var(--sg-shadow-md); } }
 .sg-card--interactive:active { transform: scale(0.98); }
-.sg-card--interactive:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-card--interactive:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-card__media { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--sg-fill); }
 .sg-card__body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
 /* a card's title row: title (+ description) on the leading side, actions on the trailing side — for cards that frame
@@ -38,7 +38,7 @@
 .sg-list-item--action { width: 100%; appearance: none; border: 0; margin: 0; font: inherit; text-align: left; background: none; cursor: pointer; transition: background-color var(--sg-duration-instant) ease; }
 @media (hover: hover) { .sg-list-item--action:hover { background: var(--sg-fill); } }
 .sg-list-item--action:active { background: var(--sg-fill-strong); }
-.sg-list-item--action:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--sg-focus-ring); }
+.sg-list-item--action:focus-visible { outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); }
 .sg-list-item__leading { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: #fff; background: var(--_tile, var(--sg-accent)); }
 .sg-list-item__leading svg { width: 18px; height: 18px; }
 .sg-list-item__leading--plain { background: none; color: var(--sg-accent-text); }
@@ -131,7 +131,7 @@
 .sg-accordion__trigger { transition: background-color var(--sg-duration-instant) ease; }
 @media (hover: hover) { .sg-accordion__trigger:hover:not(:disabled) { background: var(--sg-fill); } }
 .sg-accordion__trigger:active:not(:disabled) { background: var(--sg-fill-strong); }
-.sg-accordion__trigger:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-accordion__trigger:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-accordion__trigger:disabled { color: var(--sg-label-disabled); cursor: default; }
 .sg-accordion__title { flex: 1; min-width: 0; }
 .sg-accordion__meta { font-size: 13px; font-weight: 450; color: var(--sg-label-secondary); }
