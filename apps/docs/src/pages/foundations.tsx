@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { palette, STEPS, motions, springAt, springDuration, typography, SPRING_NAMES, type Hue, type MotionName, type SpringName } from '@satin-glass/tokens';
 import { Button, Glass, Stack, Text, SegmentedControl, Switch, Slider, Stepper, Progress, PageControl, TabBar, Tab, MotionScope, Menu, MenuItem, Badge, useTheme } from '@satin-glass/react';
 import { Home, Map, Bookmark, User, Footprints, Bike, Car } from 'lucide-react';
@@ -119,7 +119,7 @@ function MotionColumn({ motion }: { motion: MotionName }) {
   const p = PERSONAS.find((x) => x.id === motion)!;
   return (
     <MotionScope motion={motion}>
-      <Glass variant="subtle" style={{ padding: 16, borderRadius: 'var(--sg-radius-xl)', display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+      <Glass variant="subtle" style={{ padding: 16, borderRadius: 'var(--sg-radius-lg)', display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
         <div><Text variant="headline">{p.label}</Text><Text variant="footnote" tone="secondary">{p.note}</Text></div>
         <SegmentedControl size="sm" aria-label={`${motion} 세그먼트`} value={seg} onChange={setSeg} options={[{ value: 'walk', label: '도보', icon: <Footprints /> }, { value: 'bike', label: '자전거', icon: <Bike /> }, { value: 'car', label: '차', icon: <Car /> }]} />
         <TabBar compact value={tab} onChange={setTab} aria-label={`${motion} 탭`} style={{ padding: 0 }}>
@@ -167,6 +167,98 @@ export function Motion() {
   );
 }
 
+/* depth and layers: one cross-section from the deepest groove to the overlay, then the components on each level */
+const LEVELS: { n: string; name: string; what: string; where: string; sample: CSSProperties }[] = [
+  { n: '−2', name: '홈 (깊음)', what: '값이 돌아가는 우묵한 자리. 안쪽 윗변·아랫변이 그늘짐', where: '휠의 열', sample: { background: 'var(--sg-fill)', boxShadow: 'var(--sg-depth-well)', borderRadius: 'var(--sg-radius-lg)' } },
+  { n: '−1', name: '홈 (얕음)', what: '값이 움직이는 길. 안쪽 윗변이 살짝 그늘짐', where: '스위치·슬라이더·진행 막대의 레일, 세그먼트·스테퍼의 바탕', sample: { background: 'var(--sg-fill-strong)', boxShadow: 'var(--sg-depth-inset)', borderRadius: 999, height: 14, alignSelf: 'center' } },
+  { n: '0', name: '바탕', what: '페이지 자체', where: '배경, 목록 사이 여백', sample: { background: 'var(--sg-bg)', boxShadow: 'inset 0 0 0 1px var(--sg-separator)', borderRadius: 'var(--sg-radius-lg)' } },
+  { n: '1', name: '표면', what: '바탕 위에 놓인 판. 아주 옅은 그림자 또는 머리카락 선', where: '카드, 목록 묶음, 표', sample: { background: 'var(--sg-surface)', boxShadow: 'var(--sg-shadow-sm)', borderRadius: 'var(--sg-radius-lg)' } },
+  { n: '2', name: '볼록', what: '잡는 것과 고른 것. 윗변이 밝고 아랫변이 그늘지며 짧은 그림자', where: '스위치 손잡이, 슬라이더 손잡이, 세그먼트의 고른 칸, 휠 렌즈, 고른 날짜·월·연도·요일(강조색 구슬)', sample: { background: 'var(--sg-bg-elevated)', backgroundImage: 'var(--sg-depth-sheen)', boxShadow: 'var(--sg-depth-raised)', borderRadius: 'var(--sg-radius-md)' } },
+  { n: '3', name: '떠 있는 유리', what: '내용 위에 뜬 유리. 빛을 따르는 테두리와 넓은 그림자', where: '앱 바, 탭 바, 사이드바, 메뉴, 팝오버, 셀렉트 목록, 날짜·시간 패널, 토스트', sample: {} },
+  { n: '4', name: '덮개', what: '화면을 덮는 유리. 배경은 어둡게만, 가장 넓은 그림자', where: '시트, 대화상자, 액션 시트, 미디어 뷰어', sample: {} },
+];
+function DepthSection() {
+  return (
+    <Section title="깊이와 레이어" intro="모든 컴포넌트는 아래 일곱 층 중 하나에 놓입니다. 빛은 위에서 옵니다: 볼록한 것은 윗변이 밝고 아랫변이 그늘지며 아래로 짧은 그림자가 지고, 오목한 것은 안쪽 윗변이 그늘집니다. 층이 높을수록 그림자는 넓고 옅어집니다.">
+      <Demo col>
+        <div className="depth-table">
+          {LEVELS.map((l) => (
+            <div key={l.n} className="depth-row">
+              <span className="depth-n">{l.n}</span>
+              {l.n === '3' ? <Glass variant="regular" style={{ height: 44, borderRadius: 'var(--sg-radius-lg)' }} />
+                : l.n === '4' ? <Glass variant="strong" style={{ height: 44, borderRadius: 'var(--sg-radius-xl)', boxShadow: 'var(--sg-shadow-lg)' }} />
+                : <span className="depth-sample" style={l.sample} />}
+              <span className="depth-text"><b>{l.name}</b> — {l.what}<br /><span className="depth-where">{l.where}</span></span>
+            </div>
+          ))}
+        </div>
+      </Demo>
+      <Demo center caption="레일은 홈(−1), 손잡이와 고른 칸은 볼록(2). 누르면 볼록한 것이 표면 쪽으로 살짝 들어갑니다(0.965배).">
+        <Stack direction="row" gap={6} align="center" wrap>
+          <Switch defaultChecked aria-label="깊이 예시 스위치" />
+          <div style={{ width: 160 }}><Slider defaultValue={40} aria-label="깊이 예시 슬라이더" /></div>
+          <SegmentedControl aria-label="깊이 예시 세그먼트" defaultValue="b" options={[{ value: 'a', label: '일' }, { value: 'b', label: '주' }, { value: 'c', label: '월' }]} />
+          <Stepper defaultValue={2} aria-label="깊이 예시 스테퍼" />
+          <div style={{ width: 120 }}><Progress value={60} aria-label="깊이 예시 진행" /></div>
+        </Stack>
+      </Demo>
+      <Demo col>
+        <Text variant="subhead">· <b>한 층에 하나씩</b>: 유리 위에 유리를 겹치지 않습니다(버튼 묶음은 유리 하나에 평평한 버튼들). 볼록한 것은 홈이나 표면 위에만 놓입니다.</Text>
+        <Text variant="subhead">· <b>고른 것은 볼록</b>: 선택을 표시하는 것은 그 길(홈)보다 한 층 위에 있습니다. 강조색으로 고른 것은 강조색 구슬(윗부분의 광택, 강조색 그림자)입니다.</Text>
+        <Text variant="subhead">· <b>움직임은 층을 바꾸지 않음</b>: 늘어나고 모이는 물방울, 피어남은 같은 층 안에서 일어납니다. 층이 바뀌는 것은 덮개가 열릴 때뿐입니다.</Text>
+        <Text variant="subhead">· <b>고대비</b>: 깊이 대신 윤곽선으로 모양을 보여 줍니다(깊이 토큰이 모두 none).</Text>
+        <Text variant="subhead" tone="secondary">토큰: <code className="code">--sg-depth-inset</code> <code className="code">--sg-depth-well</code> <code className="code">--sg-depth-raised</code> <code className="code">--sg-depth-raised-accent</code> <code className="code">--sg-depth-sheen</code> <code className="code">--sg-depth-sheen-accent</code> · 그림자 <code className="code">--sg-shadow-sm / md / lg</code> · 유리 <code className="code">Glass variant</code></Text>
+      </Demo>
+    </Section>
+  );
+}
+
+/* corners: radii by role, and the concentric rule for boxes inside boxes */
+function Nested({ outer, gap, inner, label, good }: { outer: number; gap: number; inner: number; label: string; good: boolean }) {
+  return (
+    <div className="corner-demo" data-corners-skip={good ? undefined : ''}>
+      <div className="corner-outer" style={{ borderRadius: outer, padding: gap }}>
+        <div className="corner-inner" style={{ borderRadius: inner }} />
+      </div>
+      <span className="corner-cap" data-good={good || undefined}>{good ? '✓' : '✕'} {label}</span>
+    </div>
+  );
+}
+function CornerSection() {
+  return (
+    <Section title="모서리" intro="반경은 크기가 아니라 역할로 정합니다. 그리고 상자 안의 상자가 바깥 모서리 가까이에 있으면, 두 곡선이 같은 중심을 갖도록 안쪽 반경 = 바깥 반경 − 간격으로 맞춥니다. 그래야 두 테두리 사이의 띠가 모서리에서도 같은 두께로 이어집니다.">
+      <Demo center caption="바깥 22px, 간격 6px. 안쪽이 16px이면 띠의 두께가 모서리까지 같고, 22px 그대로면 모서리에서 띠가 두꺼워지며, 10px이면 얇아져 모서리가 꺾여 보입니다.">
+        <Stack direction="row" gap={6} wrap justify="center">
+          <Nested outer={22} gap={6} inner={16} label="16 = 22 − 6" good />
+          <Nested outer={22} gap={6} inner={22} label="22 (그대로)" good={false} />
+          <Nested outer={22} gap={6} inner={10} label="10 (너무 작음)" good={false} />
+        </Stack>
+      </Demo>
+      <Demo col>
+        <div className="corner-table">
+          <span><b>역할</b></span><span><b>반경</b></span><span><b>예</b></span>
+          <span>아주 작은 것</span><span><code className="code">--sg-radius-xs</code> 6</span><span>표 셀 강조, 작은 표시</span>
+          <span>작은 컨트롤</span><span><code className="code">--sg-radius-sm</code> 9</span><span>달력 칩, 작은 버튼, 세그먼트의 고른 칸(12 − 3)</span>
+          <span>컨트롤</span><span><code className="code">--sg-radius-md</code> 12</span><span>버튼, 입력란, 세그먼트, 스테퍼, 렌즈, 격자 칸</span>
+          <span>카드</span><span><code className="code">--sg-radius-lg</code> 16</span><span>카드, 목록 묶음, 메뉴, 휠의 열</span>
+          <span>바·패널</span><span><code className="code">--sg-radius-xl</code> 22</span><span>앱 바, 탭 바, 사이드바, 액션 시트, 날짜 패널</span>
+          <span>시트</span><span><code className="code">--sg-radius-2xl</code> 28</span><span>시트, 대화상자</span>
+          <span>캡슐</span><span><code className="code">--sg-radius-full</code></span><span>칩, 토글, 배지, 진행 막대 — 캡슐 안의 캡슐은 저절로 같은 중심</span>
+        </div>
+      </Demo>
+      <Demo col>
+        <Text variant="subhead">· <b>같은 중심</b>: 안쪽 상자가 바깥 모서리에서 간격 g만큼 떨어져 있고 g가 바깥 반경 R보다 작으면, 안쪽 반경은 <b>R − g</b>(최소 4px)입니다. 예: 탭 바 22 − 5 = 17, 메뉴 16 − 6 = 10, 액션 시트 22 − 6 = 16, 세그먼트 12 − 3 = 9, 휠 16 − 4 = 12.</Text>
+        <Text variant="subhead">· <b>멀리 있으면 자기 역할대로</b>: 간격이 바깥 반경보다 크면 곡선이 서로 보이지 않으므로, 안쪽은 자기 역할의 반경을 씁니다(패널 안 가운데의 버튼은 12).</Text>
+        <Text variant="subhead">· <b>꽉 차면 바깥이 자름</b>: 간격 0으로 붙는 것(카드의 사진)은 반경을 주지 않고 바깥이 잘라냅니다.</Text>
+        <Text variant="subhead">· <b>바깥을 맞추는 경우</b>: 안쪽이 정해진 모양이면 바깥을 맞춥니다. 캡슐 스위치(24) 옆 간격 8이면 막대는 12 + 8 = 20.</Text>
+        <Text variant="subhead">· <b>화면에는 맞추지 않음</b>: 화면 역할을 하는 영역(내비게이션 스택, 미디어 뷰어)의 모서리에 떠 있는 바를 맞추지 않습니다. 바는 자기 역할의 반경(22)을 씁니다.</Text>
+        <Text variant="subhead">· <b>CSS</b>: 바깥이 <code className="code">--_radius</code>를 갖고, 안쪽은 <code className="code">calc(var(--_radius) - 간격)</code>을 씁니다. 반경 숫자를 따로 적지 않아 바깥이 바뀌면 안쪽이 따라옵니다.</Text>
+        <Text variant="subhead" tone="secondary">e2e <code className="code">corners</code>가 모든 문서 페이지에서 모서리 가까이 겹친 상자를 찾아 이 규칙을 확인합니다.</Text>
+      </Demo>
+    </Section>
+  );
+}
+
 export function Material() {
   const [scene, setScene] = useState('0');
   const s = Number(scene);
@@ -197,6 +289,8 @@ export function Material() {
           <SegmentedControl aria-label="배경" value={scene} onChange={setScene} options={[0, 1, 2, 3, 4, 5].map((i) => ({ value: String(i), label: `장면 ${i + 1}` }))} />
         </div>
       </Section>
+      <DepthSection />
+      <CornerSection />
       <Section title="성능 규칙" intro="유리는 비싼 효과라서 규칙으로 제한합니다.">
         <Demo col>
           <Text variant="subhead">· 화면당 블러 레이어는 세 개까지(바, 패널 하나, 시트 하나). 전체 화면 블러는 쓰지 않습니다 — 배경은 어둡게만.</Text>

@@ -82,14 +82,14 @@
   position: relative; flex: none; display: inline-block;
   width: var(--_w); height: var(--_h); padding: 0; margin: 0; border: 0;
   border-radius: var(--sg-radius-full);
-  background: var(--sg-fill-strong);
+  background: var(--sg-fill-strong); box-shadow: var(--sg-depth-inset);   /* the rail is a groove; the knob is raised */
   cursor: pointer; touch-action: pan-y; -webkit-tap-highlight-color: transparent;
   transition: background-color 220ms var(--sg-ease-out);
 }
 .sg-switch[aria-checked="true"], .sg-switch[data-drag="on"] { background: var(--sg-accent); }
 .sg-switch[data-drag="off"] { background: var(--sg-fill-strong); }
 .sg-switch:disabled { opacity: 0.42; cursor: default; }
-.sg-switch:focus-visible { outline: none; box-shadow: var(--sg-ring); }
+.sg-switch:focus-visible { outline: none; box-shadow: var(--sg-ring), var(--sg-depth-inset); }
 .sg-switch__thumb {
   --sg-sw-l: var(--_pad);
   --sg-sw-r: calc(var(--_pad) + var(--_t));
@@ -105,7 +105,7 @@
 }
 /* the visible knob: the thumb positions it, the knob carries the look and the arrival squash (React animates it) */
 .sg-switch__knob { position: absolute; inset: 0; border-radius: var(--sg-radius-full); background: linear-gradient(180deg, #fff, #f3f4f8);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16), 0 0 0 0.5px rgba(0, 0, 0, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.04); }
+  box-shadow: var(--sg-depth-raised), 0 0 0 0.5px rgba(0, 0, 0, 0.06); }
 .sg-switch--sm { --_w: 40px; --_h: 24px; --_t: 20px; --_reach: 4px; }
 
 /* ============================================================================================
@@ -113,15 +113,15 @@
    ============================================================================================ */
 .sg-slider { --_p: 0; position: relative; height: 32px; touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
 .sg-slider:focus-visible { outline: none; }
-.sg-slider:focus-visible .sg-slider__thumb { box-shadow: var(--sg-ring), 0 2px 6px rgba(0, 0, 0, 0.18); }
+.sg-slider:focus-visible .sg-slider__thumb { box-shadow: var(--sg-ring), var(--sg-depth-raised); }
 .sg-slider[aria-disabled="true"] { opacity: 0.42; cursor: default; }
-.sg-slider__track { position: absolute; left: 0; right: 0; top: 13px; height: 6px; border-radius: var(--sg-radius-full); background: var(--sg-fill-strong); overflow: hidden; }
+.sg-slider__track { position: absolute; left: 0; right: 0; top: 13px; height: 6px; border-radius: var(--sg-radius-full); background: var(--sg-fill-strong); box-shadow: var(--sg-depth-inset); overflow: hidden; }
 .sg-slider__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--sg-accent); transform-origin: left center; transform: scaleX(var(--_fp, 0)); }
 /* position (translate) and gel (transform) come from the JS spring every frame; the press swell (scale) is a CSS spring */
 .sg-slider__thumb {
   position: absolute; top: 4px; left: 0; width: 24px; height: 24px; margin-left: -12px;
   border-radius: 50%; background: linear-gradient(180deg, #fff, #f3f4f8);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--sg-depth-raised), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
   translate: var(--_pos, 0px) 0;
   transform: scale(var(--_gx, 1), var(--_gy, 1));
   scale: var(--_s, 1);
@@ -149,18 +149,17 @@
 .sg-segmented {
   position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(max-content, 1fr);
   height: 36px; padding: 3px; gap: 0; border-radius: var(--sg-radius-md);
-  background: var(--sg-fill); contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+  background: var(--sg-fill); box-shadow: var(--sg-depth-inset); contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
   overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none;
 }
 .sg-segmented::-webkit-scrollbar { display: none; }
 .sg-segmented__indicator {
   position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; z-index: 0;
   border-radius: calc(var(--sg-radius-md) - 3px);
-  background: var(--sg-surface);
-  box-shadow: 0 1px 3px rgba(var(--sg-shadow-color), calc(0.12 * var(--sg-shadow-strength))), 0 0 0 0.5px rgba(var(--sg-shadow-color), 0.06);
+  background: var(--sg-depth-raised-bg);
+  box-shadow: var(--sg-depth-raised), 0 0 0 0.5px rgba(var(--sg-shadow-color), 0.06);
   will-change: transform, width;
 }
-[data-sg-theme="dark"] .sg-segmented__indicator, [data-sg-theme="dark-hc"] .sg-segmented__indicator { background: var(--sg-fill-strong); }
 .sg-segmented__item {
   position: relative; z-index: 1; appearance: none; border: 0; background: none; margin: 0; padding: 0 12px;
   font: inherit; font-size: 14px; font-weight: 560; color: var(--sg-label-secondary); border-radius: calc(var(--sg-radius-md) - 3px);
@@ -193,7 +192,7 @@
 /* ============================================================================================
    Stepper: [ − | value | + ]
    ============================================================================================ */
-.sg-stepper { display: inline-flex; align-items: center; height: 36px; padding: 2px; border-radius: var(--sg-radius-md); background: var(--sg-fill); user-select: none; -webkit-user-select: none; }
+.sg-stepper { display: inline-flex; align-items: center; height: 36px; padding: 2px; border-radius: var(--sg-radius-md); background: var(--sg-fill); box-shadow: var(--sg-depth-inset); user-select: none; -webkit-user-select: none; }
 .sg-stepper__btn { appearance: none; border: 0; margin: 0; width: 32px; height: 32px; display: grid; place-items: center; border-radius: calc(var(--sg-radius-md) - 2px); background: none; color: var(--sg-label); cursor: pointer; transition: background-color var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
 @media (hover: hover) { .sg-stepper__btn:hover:not(:disabled) { background: var(--sg-fill-hover); } }
 .sg-stepper__btn:active:not(:disabled) { transform: scale(0.9); background: var(--sg-fill-strong); }
@@ -294,7 +293,7 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 /* ============================================================================================
    Progress, spinner, page control
    ============================================================================================ */
-.sg-progress { position: relative; width: 100%; min-width: 48px; height: 6px; border-radius: var(--sg-radius-full); background: var(--sg-fill-strong); overflow: hidden; }
+.sg-progress { position: relative; width: 100%; min-width: 48px; height: 6px; border-radius: var(--sg-radius-full); background: var(--sg-fill-strong); box-shadow: var(--sg-depth-inset); overflow: hidden; }
 .sg-progress__bar { position: absolute; inset: 0; border-radius: inherit; background: var(--sg-accent); transform-origin: left center; transform: scaleX(var(--_p, 0)); }   /* --_p is driven by a JS spring */
 .sg-progress--indeterminate .sg-progress__bar { width: 40%; transform: translateX(-100%); animation: sg-indeterminate 1.3s cubic-bezier(0.45, 0, 0.2, 1) infinite; }
 @keyframes sg-indeterminate { to { transform: translateX(250%); } }

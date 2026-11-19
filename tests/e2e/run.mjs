@@ -10,6 +10,7 @@
 //     320 px reflow, open/close leftovers, axe
 //   stylesheets split by category: every page computes the same with the per-category files in any order, with
 //     each category's listed dependencies only, and with the layered build (Chromium)
+//   concentric corners: boxes nested near a corner follow inner = outer − gap (Chromium)
 //   performance (CPU ×4), momentum across updates, arrival timing (informational)
 // Everything runs in all three engines (Chromium, WebKit, Firefox); the variants (motion personalities, dark / high
 // contrast / reduced transparency, reduced motion) in Chromium.
@@ -58,6 +59,8 @@ sharded(checks, 'render matrix', 'matrix.mjs', (b) => (b === 'chromium' ? 4 : 2)
 perEngine(checks, 'data components & dashboard', 'data.mjs');
 /* the cascade is the same in every engine: the per-category stylesheet check runs once, in Chromium */
 if (ENGINES.includes('chromium')) checks.push(['stylesheets split by category · chromium', 'css-split.mjs', {}]);
+/* nested corners stay concentric (design-language.md 9): a static layout check, once, in Chromium */
+if (ENGINES.includes('chromium')) checks.push(['concentric corners · chromium', 'corners.mjs', {}]);
 variants(checks, 'data components & dashboard', 'data.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 
 perEngine(motion, 'interactions', 'interact.mjs');

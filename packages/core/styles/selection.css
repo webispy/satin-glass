@@ -82,6 +82,7 @@
 .sg-listbox__group:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--sg-separator); padding-top: 10px; }
 
 /* ---- Calendar ---- */
+/* a chosen day, month or year is a raised accent bead (depth tokens: a sheen, a lit top edge, an accent shadow) */
 .sg-calendar { --_cell: 40px; display: inline-flex; flex-direction: column; gap: 6px; width: calc(var(--_cell) * 7); user-select: none; -webkit-user-select: none; }
 .sg-calendar__head { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 0 2px 6px; }
 .sg-calendar__title { margin: 0; font-size: 16px; line-height: 22px; font-weight: 700; letter-spacing: -0.01em; }
@@ -102,7 +103,7 @@
 .sg-day[data-outside] { color: var(--sg-label-tertiary); }
 .sg-day[data-today] { color: var(--sg-accent-text); font-weight: 750; }
 .sg-day[data-today]::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: currentColor; }
-.sg-day[aria-pressed="true"] { background: var(--sg-accent); color: var(--sg-on-accent); font-weight: 700; }
+.sg-day[aria-pressed="true"] { background: var(--sg-accent); background-image: var(--sg-depth-sheen-accent); box-shadow: var(--sg-depth-raised-accent); color: var(--sg-on-accent); font-weight: 700; }
 .sg-day[aria-pressed="true"]::after { background: var(--sg-on-accent); }
 .sg-day[aria-disabled="true"] { color: var(--sg-label-disabled); cursor: default; text-decoration: line-through; text-decoration-thickness: 1px; }
 .sg-datepicker-panel { position: absolute; left: 0; top: 0; padding: 12px; --_radius: var(--sg-radius-xl); outline: none; }
@@ -200,6 +201,7 @@
 .sg-calendar__cell > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; padding: 0 4px; }
 .sg-calendar__cell::before {
   content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--sg-accent);
+  background-image: var(--sg-depth-sheen-accent); box-shadow: var(--sg-depth-raised-accent);
   opacity: 0; transform: scale(0.4); transition: transform var(--sg-spring-pop-duration) var(--sg-spring-pop), opacity var(--sg-duration-fast) ease;
 }
 @media (hover: hover) { .sg-calendar__cell:hover:not([aria-disabled="true"]):not([aria-selected="true"]) { background: var(--sg-fill-hover); } }
@@ -232,6 +234,7 @@
 .sg-weekdays--sm .sg-weekday { font-size: 13px; }
 .sg-weekday::before {
   content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--sg-accent);
+  background-image: var(--sg-depth-sheen-accent); box-shadow: var(--sg-depth-raised-accent);
   opacity: 0; transform: scale(0.4); transition: transform var(--sg-spring-pop-duration) var(--sg-spring-pop), opacity var(--sg-duration-fast) ease;
 }
 .sg-weekday[aria-pressed="true"] { color: var(--sg-on-accent); }

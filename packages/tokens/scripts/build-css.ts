@@ -34,6 +34,29 @@ root.push(decl('shadow-sm', '0 1px 2px rgba(var(--sg-shadow-color), calc(0.06 * 
 root.push(decl('shadow-md', '0 1px 3px rgba(var(--sg-shadow-color), calc(0.07 * var(--sg-shadow-strength))), 0 8px 24px rgba(var(--sg-shadow-color), calc(0.1 * var(--sg-shadow-strength)))'));
 root.push(decl('shadow-lg', '0 2px 6px rgba(var(--sg-shadow-color), calc(0.08 * var(--sg-shadow-strength))), 0 20px 48px rgba(var(--sg-shadow-color), calc(0.16 * var(--sg-shadow-strength)))'));
 out.push(':root {', ...root, '}');
+/* depth and layers (design-language.md, 깊이와 레이어). Light comes from above: what is raised is lit on its top edge,
+   shaded on its bottom edge and casts a soft shadow; what is recessed is shaded inside its top edge. Declared on every
+   theme element so they take that theme's shadow colour and glass values. High contrast flattens them (outlines
+   carry the shapes there).
+     inset   a shallow groove: tracks and rails a value moves along (switch, slider, progress, segmented, stepper)
+     well    a deep recess: a wheel's column
+     raised  something lifted off its surface that you hold or that marks the choice (knobs, thumbs, the segmented
+             chip, the wheel lens); raised-accent and sheen-accent for a chosen accent bead (a day, a month, a weekday) */
+const depth = [
+  decl('depth-inset', 'inset 0 1px 2px rgba(var(--sg-shadow-color), calc(0.14 * var(--sg-shadow-strength))), inset 0 0 0 0.5px rgba(var(--sg-shadow-color), calc(0.05 * var(--sg-shadow-strength)))'),
+  decl('depth-well', 'inset 0 10px 12px -12px rgba(var(--sg-shadow-color), calc(0.32 * var(--sg-shadow-strength))), inset 0 -10px 12px -12px rgba(var(--sg-shadow-color), calc(0.24 * var(--sg-shadow-strength))), inset 0 0 0 0.5px var(--sg-separator)'),
+  decl('depth-raised', '0 1px 2px rgba(var(--sg-shadow-color), calc(0.12 * var(--sg-shadow-strength))), 0 3px 8px -2px rgba(var(--sg-shadow-color), calc(0.14 * var(--sg-shadow-strength))), inset 0 1px 0 var(--sg-glass-rim-lit), inset 0 -1px 0 var(--sg-glass-rim-shade)'),
+  decl('depth-raised-accent', '0 1px 2px color-mix(in oklab, var(--sg-accent) 40%, transparent), 0 6px 14px -6px color-mix(in oklab, var(--sg-accent) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14)'),
+  decl('depth-sheen', 'linear-gradient(180deg, var(--sg-glass-depth), rgba(255, 255, 255, 0) 62%)'),
+  decl('depth-sheen-accent', 'linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 58%)'),
+];
+/* the raised surface itself: the plain surface in light themes; in dark ones a lighter tint, so a raised thing reads
+   lighter than what it sits on (the segmented control's chosen segment, the wheel lens) */
+depth.push(decl('depth-raised-bg', 'var(--sg-surface)'));
+out.push(':root, [data-sg-theme] {', ...depth, '}');
+out.push('[data-sg-theme^="dark"] {', decl('depth-raised-bg', 'var(--sg-fill-strong)'), '}');
+out.push('@media (prefers-color-scheme: dark) {', '  :root:not([data-sg-theme]) {', '  ' + decl('depth-raised-bg', 'var(--sg-fill-strong)'), '  }', '}');
+out.push('[data-sg-theme$="-hc"] {', ...['depth-inset', 'depth-well', 'depth-raised', 'depth-raised-accent', 'depth-sheen', 'depth-sheen-accent'].map((n) => decl(n, 'none')), '}');
 for (const [name, m] of Object.entries(motions)) out.push(`[data-sg-motion="${name}"] {`, ...motionDecls(m), '}');
 /* reduced motion wins over any personality: forced by the theme, or by the system unless the theme says "false" */
 out.push('[data-sg-reduce-motion="true"], [data-sg-reduce-motion="true"] [data-sg-motion] {', ...motionDecls(reducedMotion), '}');

@@ -111,7 +111,7 @@ function App() {
             <div className="docs__top">
               <IconButton ref={menuBtn} className="docs__menu-btn" variant="glass" icon={<MenuIcon />} label="메뉴" aria-expanded={navOpen} aria-controls="docs-nav" onClick={() => setNavOpen((v) => !v)} />
               {/* wide: every display setting in one bar; narrow: one button opens them all (nothing is hidden) */}
-              <Glass className="docs__settings docs__settings--bar" style={{ borderRadius: 'var(--sg-radius-lg)' }}>
+              <Glass className="docs__settings docs__settings--bar">
                 <DisplaySettingsBar />
               </Glass>
               <IconButton ref={setSetBtn} className="docs__settings-btn" variant="glass" icon={<SlidersHorizontal />} label="표시 설정" aria-expanded={setOpen} onClick={() => setSetOpen((v) => !v)} />
