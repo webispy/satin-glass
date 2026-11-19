@@ -83,9 +83,12 @@ await go('selection');
   const panel = p.locator('.sg-timepicker-panel');
   const v1 = await field.textContent(), focused = await p.evaluate(() => document.activeElement?.getAttribute('role'));
   ok('time picker: opening starts at a time (now, on the 5-minute step) and focuses the wheels', /^(오전|오후) \d{1,2}:\d[05]$/.test(v1.trim()) && focused === 'spinbutton' && (await panel.count()) === 1, `${v1} / ${focused}`);
-  await p.keyboard.press('Tab'); await p.keyboard.press('ArrowDown'); await p.waitForTimeout(400);
+  /* step toward the side that has room: the field opens at the current time, which may sit on a wheel's last row
+     (12 o'clock, :55) */
+  const stepFocused = () => p.evaluate(() => { const a = document.activeElement; return +a.getAttribute('aria-valuenow') < +a.getAttribute('aria-valuemax') ? 'ArrowDown' : 'ArrowUp'; });
+  await p.keyboard.press('Tab'); await p.keyboard.press(await stepFocused()); await p.waitForTimeout(400);
   const v2 = await field.textContent();
-  await p.keyboard.press('Tab'); await p.keyboard.press('ArrowDown'); await p.waitForTimeout(400);
+  await p.keyboard.press('Tab'); await p.keyboard.press(await stepFocused()); await p.waitForTimeout(400);
   const v3 = await field.textContent();
   ok('time picker: the field follows the wheels (hour, then minute by the step)', v2 !== v1 && v3 !== v2 && /:\d[05]$/.test(v3.trim()), `${v1} → ${v2} → ${v3}`);
   await p.keyboard.press('Enter'); await p.waitForTimeout(500);

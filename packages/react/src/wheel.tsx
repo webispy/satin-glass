@@ -1,11 +1,12 @@
 /* Wheels (0.3): a column of values that scrolls under a fixed selection band — for picking one of many quickly
    (a year out of a century, an hour and a minute). Built on native scrolling with scroll snap, so a finger flick or a
    trackpad keeps its platform momentum and lands on a row; a mouse can drag it (with a fling), the wheel scrolls it,
-   a click on a row brings that row to the band. Rows bend away from the band like a drum (drawn per scroll frame,
-   transforms and opacity only).
+   a click on a row brings that row to the band. The rows turn in a recessed well and recede as they leave the band
+   (smaller, fainter); the band is a still, raised lens like the segmented control's chosen segment, and the row
+   under it is drawn in full strength (drawn per scroll frame, transforms and opacity only).
    For assistive technology each column is a spinbutton: arrows step, PageUp / PageDown jump `pageStep` rows,
    Home / End go to the ends, typing digits or letters jumps to the first row that starts with them. */
-import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { createContext, forwardRef, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { drag, prefersReducedMotion, type MotionName, type Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
@@ -28,13 +29,17 @@ export type WheelProps<T> = {
   className?: string; style?: CSSProperties;
 };
 
-const DRUM = 2.6;   /* drum radius in rows: rows ±2.5 from the band turn ~55° away */
+/* ------------------------------------------------------------------------------------------------ the lens
+   One lens per group (a lone wheel has its own): a raised bar over the recessed well the rows turn in — the same
+   raised surface as the segmented control's chosen segment. It never moves: the rows move under it. */
+const GroupContext = createContext(false);
 
 export function Wheel<T>({ options, value, defaultValue, onChange, 'aria-label': label, pageStep = 5, align = 'center', onCommit, id, className, style }: WheelProps<T>) {
   const [v, setV] = useControllable<T | undefined>(value, defaultValue ?? options.find((o) => !o.disabled)?.value, onChange as (x: T | undefined) => void);
   const found = options.findIndex((o) => Object.is(o.value, v));
   const idx = found < 0 ? 0 : found;
   const sc = useRef<HTMLDivElement>(null);
+  const grouped = useContext(GroupContext);
   const [live, setLive] = useState(idx);
   const s = useRef({ timer: 0, raf: 0, dragging: false, user: false, mounted: false, typed: '', typedAt: 0, target: -1, dragged: 0, waits: 0 }).current;
   const opts = useRef(options); opts.current = options;
@@ -54,18 +59,19 @@ export function Wheel<T>({ options, value, defaultValue, onChange, 'aria-label':
     return i;
   };
 
-  /* the drum: each row near the band is placed on a cylinder — pulled toward the band, squashed and faded. Drawn on
-     the row's label, never the row: a transformed row moves its own snap area, and a smooth scroll would stop short */
+  /* rows recede with their distance from the band: smaller and fainter. Drawn on the row's label, never the row: a
+     transformed row moves its own snap area, and a smooth scroll would stop short */
   const paint = () => {
     const el = sc.current; if (!el) return;
-    /* clamped: Safari reports scrollTop past either end while an elastic bounce runs, which would bend the end rows */
-    const h = rowH(), mid = Math.max(0, Math.min(el.children.length - 1, el.scrollTop / h)), R = DRUM * h;
+    /* clamped: Safari reports scrollTop past either end while an elastic bounce runs, which would shrink the end rows */
+    const h = rowH(), mid = Math.max(0, Math.min(el.children.length - 1, el.scrollTop / h));
+    /* higher contrast: rows away from the band fade much less, so every visible row keeps readable contrast */
+    const fade = el.closest('[data-sg-theme$="-hc"]') ? 0.16 : 0.3;
     const from = Math.max(0, Math.floor(mid) - 4), to = Math.min(el.children.length - 1, Math.ceil(mid) + 4);
     for (let i = from; i <= to; i++) {
-      const row = el.children[i].firstElementChild as HTMLElement, d = i - mid;
-      const th = Math.max(-1.45, Math.min(1.45, (d * h) / R)), c = Math.cos(th);
-      row.style.transform = `translateY(${(R * Math.sin(th) - d * h).toFixed(2)}px) scaleY(${c.toFixed(3)})`;
-      row.style.opacity = (0.2 + 0.8 * c * c).toFixed(3);
+      const row = el.children[i].firstElementChild as HTMLElement, a = Math.abs(i - mid), k = Math.min(a, 2.5);
+      row.style.transform = `scale(${(1 - 0.085 * k).toFixed(4)})`;
+      row.style.opacity = (1 - fade * k).toFixed(3);
     }
   };
   const go = (i: number, smooth: boolean) => {
@@ -172,6 +178,7 @@ export function Wheel<T>({ options, value, defaultValue, onChange, 'aria-label':
   const shown = options[Math.min(live, options.length - 1)];
   return (
     <div className={cx('sg-wheel', className)} style={style} data-align={align !== 'center' ? align : undefined}>
+      {!grouped && <span className="sg-wheels__lens" aria-hidden="true" />}
       <div ref={sc} id={id} className="sg-wheel__scroller" role="spinbutton" tabIndex={0} aria-label={label}
         aria-valuenow={live} aria-valuemin={0} aria-valuemax={options.length - 1} aria-valuetext={shown?.label} onKeyDown={onKey}>
         {options.map((o, i) => (
@@ -185,7 +192,12 @@ export function Wheel<T>({ options, value, defaultValue, onChange, 'aria-label':
 
 /** Columns side by side under one selection band (a time: hour · minute · period; a month and a year). */
 export function WheelGroup({ children, rows = 5, 'aria-label': label, className, style }: { children: ReactNode; rows?: number; 'aria-label'?: string; className?: string; style?: CSSProperties }) {
-  return <div role="group" aria-label={label} className={cx('sg-wheels', className)} style={{ ...style, '--_rows': rows } as CSSProperties}>{children}</div>;
+  return (
+    <div role="group" aria-label={label} className={cx('sg-wheels', className)} style={{ ...style, '--_rows': rows } as CSSProperties}>
+      <span className="sg-wheels__lens" aria-hidden="true" />
+      <GroupContext.Provider value={true}>{children}</GroupContext.Provider>
+    </div>
+  );
 }
 
 /* ================================================================================================ Time */

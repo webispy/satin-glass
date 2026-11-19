@@ -131,9 +131,15 @@
    ============================================================================================ */
 .sg-wheels { --_row: 36px; --_rows: 5; }   /* a lone wheel falls back to the same (the group's own values reach its wheels) */
 .sg-wheels { position: relative; display: flex; justify-content: center; align-items: stretch; height: calc(var(--_row) * var(--_rows)); user-select: none; -webkit-user-select: none; }
-.sg-wheels::before, .sg-wheel:not(.sg-wheels > .sg-wheel)::before {
-  content: ""; position: absolute; left: 0; right: 0; top: calc(50% - var(--_row, 36px) / 2); height: var(--_row, 36px);
-  border-radius: var(--sg-radius-sm); background: var(--sg-fill); pointer-events: none;
+/* depth: the rows turn in a recessed well, and the lens is a still raised bar over it — the same raised surface as the
+   segmented control's chosen segment (opaque surface, sheen, lit top edge, shaded bottom edge, short shadow). Text
+   stays above both; the row in the lens is drawn in full strength, the others recede */
+.sg-wheels, .sg-wheel:not(.sg-wheels > .sg-wheel) { border-radius: var(--sg-radius-lg); background: var(--sg-fill); box-shadow: var(--sg-depth-well); }
+.sg-wheels__lens {
+  position: absolute; z-index: 0; left: 4px; right: 4px; top: calc(50% - var(--_row, 36px) / 2); height: var(--_row, 36px);
+  border-radius: calc(var(--sg-radius-lg) - 4px); pointer-events: none;
+  background-color: var(--sg-depth-raised-bg); background-image: var(--sg-depth-sheen);
+  box-shadow: var(--sg-depth-raised), 0 0 0 0.5px rgba(var(--sg-shadow-color), 0.06);
 }
 .sg-wheel { position: relative; flex: 1 1 auto; min-width: 3.2em; height: calc(var(--_row, 36px) * var(--_rows, 5)); }
 /* overscroll none: an elastic bounce past the list end would stretch the whole drum (macOS trackpad flings) */
@@ -150,10 +156,10 @@
   font-size: 20px; line-height: 24px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--sg-label); white-space: nowrap;
   scroll-snap-align: center;
 }
-.sg-wheel__label { display: block; will-change: transform, opacity; }
+.sg-wheel__label { display: block; will-change: transform, opacity; color: var(--sg-label); }
 .sg-wheel[data-align="start"] .sg-wheel__item { justify-content: flex-start; }
 .sg-wheel[data-align="end"] .sg-wheel__item { justify-content: flex-end; }
-.sg-wheel__item[data-disabled] { color: var(--sg-label-disabled); }
+.sg-wheel__item[data-disabled] .sg-wheel__label { color: var(--sg-label-disabled); }
 /* keyboard focus rings the band of the focused column */
 .sg-wheel:has(> .sg-wheel__scroller:focus-visible)::after {
   content: ""; position: absolute; z-index: 2; left: 0; right: 0; top: calc(50% - var(--_row, 36px) / 2); height: var(--_row, 36px);
@@ -165,7 +171,8 @@
 .sg-timewheel .sg-wheel--period { min-width: 4.4em; }
 .sg-timepicker-panel { position: absolute; left: 0; top: 0; padding: 12px; --_radius: var(--sg-radius-xl); outline: none; }
 .sg-time-value { font-variant-numeric: tabular-nums; }
-[data-sg-theme$="-hc"] .sg-wheels::before, [data-sg-theme$="-hc"] .sg-wheel:not(.sg-wheels > .sg-wheel)::before { box-shadow: inset 0 0 0 1.5px var(--sg-label); }
+[data-sg-theme$="-hc"] .sg-wheels__lens { box-shadow: inset 0 0 0 1.5px var(--sg-label); }
+[data-sg-theme$="-hc"] .sg-wheels, [data-sg-theme$="-hc"] .sg-wheel:not(.sg-wheels > .sg-wheel) { box-shadow: inset 0 0 0 1px var(--sg-label-secondary); }
 
 /* calendar head: the month and the year as chips, in the locale's order. An open chip wears the selection glass
    (like a selected tab) and its chevron turns over; a press sinks it like any control */
