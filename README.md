@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/brand/satin-glass-256.png" width="128" height="128" alt="Satin Glass"></p>
+
 # Satin Glass
 
 빛을 따르는 유리 재질 위에 만든 React UI 라이브러리. 디자인 토큰, 프레임워크 없는 동작 코어, React 컴포넌트, 문서·카탈로그 앱으로 이루어진 pnpm 모노레포다.
