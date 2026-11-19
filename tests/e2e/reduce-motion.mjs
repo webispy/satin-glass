@@ -3,6 +3,7 @@
 // stutter. Small state changes slide briefly in one direction with no overshoot and no stretch; anything that
 // travels, grows or bounces becomes a fade; the pointer light is off; progress indicators keep moving gently.
 // usage: node tests/e2e/reduce-motion.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+// covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
 const b = await pw[process.env.BROWSER || 'chromium'].launch();
 let failed = 0;

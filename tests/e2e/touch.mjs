@@ -4,6 +4,7 @@
 //   switch, slider, segmented control, tab bar: the drag follows the finger and lands where it is released
 //   wheel: a flick runs on with momentum and lands on a row; navigation stack: swipe from the edge to go back
 // usage: node tests/e2e/touch.mjs   (Chromium only; PORT (default 4173); Q for settings)
+// covers: controls, navigation, overlays, selection   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
 const PORT = process.env.PORT || '4173', Q = process.env.Q || '';
 const b = await pw.chromium.launch();

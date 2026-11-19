@@ -5,6 +5,7 @@
 // are skipped, a refused (controlled) value stays put, and reduced motion (?rm=1) lands just the same.
 // usage: node tests/e2e/overflow.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173, PORT=… to change;
 //        DIST=1 serves apps/docs/dist through request interception instead — no server needed)
+// covers: controls, navigation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
 import { readFile } from 'node:fs/promises';
 const engine = process.env.BROWSER || 'chromium';

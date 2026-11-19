@@ -8,6 +8,7 @@
 // The docs app bundles the library CSS into its own asset, so the asset is replaced here by the variant under
 // test followed by the docs app's own stylesheet (the same for every variant).
 // usage: node tests/e2e/css-split.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+// covers: css   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
 import { readFileSync } from 'node:fs';
 const engine = process.env.BROWSER || 'chromium';

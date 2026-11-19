@@ -1,5 +1,6 @@
 // Wheels, time and weekday pickers, the calendar's month / year wheels, and the navigation stack.
 // usage: node tests/e2e/pickers.mjs   (BROWSER=webkit|firefox; PORT (default 4173); Q for settings)
+// covers: selection, navigation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
 const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '', PORT = process.env.PORT || '4173';
 const b = await pw[engine].launch();

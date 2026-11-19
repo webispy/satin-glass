@@ -2,6 +2,7 @@
 // and refused (controlled) states, long text, touch, keyboard-only use, 320 px reflow, leftovers after many
 // open/close cycles, and an axe accessibility scan. Uses the docs "lab" page plus the regular pages.
 // usage: node tests/e2e/edge.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+// covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
 import { readFileSync } from 'node:fs';
 const engine = process.env.BROWSER || 'chromium';

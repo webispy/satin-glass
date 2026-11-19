@@ -1,5 +1,6 @@
 // Large-title app bar, breadcrumbs, skeleton and media viewer in a real browser.
 // usage: node tests/e2e/display.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173; Q for settings)
+// covers: layout, navigation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
 const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '';
 const reduced = /rm=1/.test(Q);

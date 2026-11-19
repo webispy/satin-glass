@@ -29,6 +29,8 @@
 //   E2E_JOBS=16 / E2E_MOTION_JOBS=8   how many suites run at once in phases 1 and 2
 //   E2E_ENGINES=chromium              only these engines (comma-separated) — `pnpm e2e:quick` while iterating
 //   E2E_ONLY=overflow                 only suites whose label contains this text (the timing phase is skipped then)
+//   E2E_FILES=a.mjs,b.mjs             only these suites, every engine and variant; E2E_BROAD=c.mjs: these only once,
+//                                     in Chromium. Set by `pnpm e2e:changed` (tests/e2e/changed.mjs); timing skipped
 //   E2E_VERBOSE=1                     print every suite's full output
 import { spawn } from 'node:child_process';
 import { availableParallelism } from 'node:os';
@@ -37,6 +39,8 @@ import { setTimeout as wait } from 'node:timers/promises';
 const ENGINES = (process.env.E2E_ENGINES || 'chromium,webkit,firefox').split(',').map((s) => s.trim()).filter(Boolean);
 const QUICK = !ENGINES.includes('webkit') || !ENGINES.includes('firefox');
 const ONLY = process.env.E2E_ONLY || '';
+const list = (v) => (v ? v.split(',').map((x) => x.trim()).filter(Boolean) : null);
+const FILES = list(process.env.E2E_FILES), BROAD = list(process.env.E2E_BROAD), PICKED = !!(FILES || BROAD);
 const JOBS = Math.max(1, Number(process.env.E2E_JOBS) || Math.min(16, availableParallelism() - 2));
 const MOTION_JOBS = Math.max(1, Number(process.env.E2E_MOTION_JOBS) || Math.min(8, JOBS));
 const VERBOSE = !!process.env.E2E_VERBOSE;
@@ -68,12 +72,16 @@ perEngine(motion, 'reduced motion', 'reduce-motion.mjs');
 /* finger drags with real touch input (CDP: Chromium only), in the motion phase — they follow the finger frame by frame */
 if (ENGINES.includes('chromium')) motion.push(['finger drags (touch) · chromium', 'touch.mjs', {}]);
 
-const timing = ONLY ? [] : [
+const timing = ONLY || PICKED ? [] : [
   ['performance (Chromium, CPU ×4)', 'perf.mjs', {}],
   ['progress keeps momentum across updates', 'progress-tick.mjs', {}],
   ['arrival timing per personality (informational)', 'timing.mjs', {}],
 ];
-const only = (list) => list.filter(([label]) => !ONLY || label.includes(ONLY));
+const only = (l) => l.filter(([label, file, env]) => {
+  if (ONLY && !label.includes(ONLY)) return false;
+  if (!PICKED || FILES?.includes(file)) return true;
+  return !!BROAD?.includes(file) && (env.BROWSER ?? 'chromium') === 'chromium' && !env.Q;
+});
 
 const results = [];
 const secs = (t) => `${((performance.now() - t) / 1000).toFixed(0)}s`;

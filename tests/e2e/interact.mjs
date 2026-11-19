@@ -1,4 +1,5 @@
 // Interaction checks on the docs app (vite preview on :4173). usage: node tests/e2e/interact.mjs [shotDir]
+// covers: controls, navigation, overlays, layout   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
 const chromium = pw[process.env.BROWSER || 'chromium'];
 const out = process.argv[2];

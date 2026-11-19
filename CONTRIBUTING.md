@@ -44,6 +44,12 @@ Signed-off-by: Your Name <you@example.com>
 | `release` | version bumps and the changelog entry that goes with them (`release: 0.4.0`) |
 | `treewide` | mechanical changes across everything (renames) |
 
+## Tests while working
+
+`pnpm test:changed` and `pnpm e2e:changed` run only what covers the change (see the README). A new e2e suite says
+what it covers on a `// covers: <categories>` line near its top; a new component is reached through its category
+entry in `packages/react/src/entries/`.
+
 ## Releases
 
 Versions are tagged `vX.Y.Z` on the commit `release: X.Y.Z`. The three packages move together. Before tagging,

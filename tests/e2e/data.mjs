@@ -3,6 +3,7 @@
 //   select · display: accordion · table: sort, selection, keyboard grid, sticky, states, server mode, 5,000 rows ·
 //   charts: stat, line, bar, donut · dashboard: how the parts work together, axe on every section.
 // usage: node tests/e2e/data.mjs   (BROWSER=webkit|firefox; PORT (default 4173); Q for settings)
+// covers: data, navigation, feedback, overlays, layout   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
 import { readFileSync } from 'node:fs';
 const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '', PORT = process.env.PORT || '4173';

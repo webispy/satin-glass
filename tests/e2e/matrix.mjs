@@ -4,6 +4,7 @@
 // transparency really removes blur.
 // usage: node tests/e2e/matrix.mjs [shotDir]   (BROWSER=webkit|firefox, FULL=1 for all 16 combos in other engines,
 //        SHARD=2/4 to run only every 4th combo starting at the 2nd — the runner splits the matrix this way)
+// covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
 const out = process.argv[2];
 const engine = process.env.BROWSER || 'chromium';

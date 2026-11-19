@@ -72,7 +72,11 @@ pnpm build          # tokens → core → react
 pnpm dev            # 문서 앱 (http://localhost:5173)
 pnpm test           # 단위 테스트 (Vitest)
 pnpm e2e            # 빌드 후 전체 검증: 렌더링 매트릭스, 상호작용, 동작 줄이기, 예외 상황 (3개 엔진) + 성능
+pnpm test:changed   # 바뀐 곳에 해당하는 단위 테스트만
+pnpm e2e:changed    # 바뀐 곳에 해당하는 e2e 묶음만 (--dry: 고른 것만 보기, --base <ref>: 비교 기준)
 ```
+
+`e2e:changed`는 바뀐 파일을 범주로 바꿔(컴포넌트는 범주 진입점과 import 관계, CSS는 파일 이름, 문서 페이지는 보여 주는 범주), 그 범주를 다루는 묶음(각 파일의 `// covers:` 줄)을 세 엔진에서 돌린다. 렌더링 매트릭스·예외 상황·동작 줄이기는 Chromium에서 한 번 돌린다. 토큰, 코어 동작, foundation처럼 모든 범주가 기대는 것이나 범주를 알 수 없는 파일이 바뀌면 전체를 돌린다. 기준은 브랜치에서는 main과의 분기점, main에서는 커밋하지 않은 변경이다. 릴리스 전에는 전체 `pnpm e2e`를 돌린다.
 
 문서 앱은 URL로 표시 설정을 받는다(`?mode=dark&hc=1&rt=1&rm=1&motion=calm`). 예외 상황을 모아 둔 `#/lab` 페이지가 있다.
 
