@@ -3,8 +3,7 @@
    Dense but calm: hairlines instead of boxes, tabular figures, colour only where it means something.
    ============================================================================================ */
 /* ---------------------------------------------------------------- Stat */
-.sg-stat { position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 18px 20px; border-radius: var(--sg-radius-xl); background: var(--sg-surface); box-shadow: var(--sg-shadow-sm); overflow: hidden; }
-[data-sg-theme$="-hc"] .sg-stat { box-shadow: inset 0 0 0 1px var(--sg-separator-strong); }
+.sg-stat { position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 18px 20px; border-radius: var(--sg-radius-lg); background: var(--sg-surface); box-shadow: var(--sg-shadow-sm), var(--sg-surface-outline); overflow: hidden; }
 .sg-stat__head { display: flex; align-items: center; gap: 8px; color: var(--sg-label-secondary); font-size: 14px; line-height: 20px; font-weight: 560; }
 .sg-stat__icon { display: grid; place-items: center; width: 22px; height: 22px; color: var(--sg-accent-text); }
 .sg-stat__icon svg { width: 18px; height: 18px; }
@@ -62,14 +61,13 @@
 .sg-sparkline svg { display: block; overflow: visible; }
 .sg-sparkline__line { fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1; }
 /* in-cell marks */
-.sg-barmeter { position: relative; display: inline-block; height: 4px; border-radius: var(--sg-radius-full); background: var(--sg-fill-strong); overflow: hidden; vertical-align: middle; flex: none; --_c: var(--sg-label-secondary); }
+.sg-barmeter { position: relative; display: inline-block; height: 4px; border-radius: var(--sg-radius-full); background: var(--sg-fill-strong); box-shadow: var(--sg-depth-inset); overflow: hidden; vertical-align: middle; flex: none; --_c: var(--sg-label-secondary); }
 .sg-barmeter[data-tone="accent"] { --_c: var(--sg-accent); }
 .sg-barmeter[data-tone="success"] { --_c: var(--sg-success); }
 .sg-barmeter[data-tone="warning"] { --_c: var(--sg-warning); }
 .sg-barmeter[data-tone="danger"] { --_c: var(--sg-danger); }
 .sg-barmeter[data-tone="info"] { --_c: var(--sg-info, var(--sg-accent)); }
 .sg-barmeter__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--_c); transform-origin: left center; }
-[data-sg-theme$="-hc"] .sg-barmeter { box-shadow: inset 0 0 0 1px var(--sg-separator-strong); }
 .sg-interval { position: relative; display: inline-block; height: 14px; vertical-align: middle; flex: none; --_c: var(--sg-label-secondary); }
 .sg-interval[data-tone="accent"] { --_c: var(--sg-accent); }
 .sg-interval__track { position: absolute; left: 0; right: 0; top: 6.5px; height: 1px; background: var(--sg-separator-strong); }

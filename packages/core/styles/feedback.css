@@ -3,7 +3,7 @@
    ============================================================================================ */
 /* ---------------------------------------------------------------- Banner */
 .sg-banner {
-  display: flex; align-items: flex-start; gap: 12px; padding: 12px 12px 12px 14px; border-radius: var(--sg-radius-md);
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 12px 12px 14px; border-radius: var(--sg-radius-lg);   /* an inline surface: the card role */
   background: var(--_bg); color: var(--sg-label); overflow: hidden; --_bg: var(--sg-info-soft); --_fg: var(--sg-info-text);
 }
 .sg-banner--success { --_bg: var(--sg-success-soft); --_fg: var(--sg-success-text); }

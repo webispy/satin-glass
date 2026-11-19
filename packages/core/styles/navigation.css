@@ -230,7 +230,7 @@ a.sg-crumb__item:active, button.sg-crumb__item:active { background: var(--sg-fil
 .sg-pagination__step svg { width: 18px; height: 18px; }
 @media (hover: hover) { .sg-pagination__page:hover, .sg-pagination__step:hover:not(:disabled) { background: var(--sg-fill); } }
 .sg-pagination__page:active, .sg-pagination__step:active:not(:disabled) { background: var(--sg-fill-strong); }   /* touch: the press is the feedback */
-.sg-pagination__page[aria-current="page"] { background: var(--sg-accent); color: var(--sg-on-accent); font-weight: 650; }
+.sg-pagination__page[aria-current="page"] { background: var(--sg-accent); background-image: var(--sg-depth-sheen-accent); box-shadow: var(--sg-depth-raised-accent); color: var(--sg-on-accent); font-weight: 650; }   /* the chosen page: an accent bead (8.2) */
 .sg-pagination__page:focus-visible, .sg-pagination__step:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-pagination__step:disabled { color: var(--sg-label-disabled); cursor: default; }
 .sg-pagination__gap { display: inline-block; min-width: var(--_slot); text-align: center; color: var(--sg-label-tertiary); }

@@ -77,15 +77,19 @@ ok('JS: the nearest setting decides (inner false, outer true, none → system)',
       <span class="sg-switch__knob" id="knobL" style="position:static;display:block;width:20px;height:20px"></span></div>
       <div data-sg-theme="dark"><span class="sg-switch__knob" id="knobD" style="position:static;display:block;width:20px;height:20px"></span></div>
       <div data-sg-theme="light-hc"><div class="sg-tabbar__indicator" id="ind" style="position:static;display:block;width:20px;height:20px"></div></div>
-      <div data-sg-theme="light"><div class="sg-tabbar__indicator" id="ind0" style="position:static;display:block;width:20px;height:20px"></div></div>`);
+      <div data-sg-theme="light"><div class="sg-tabbar__indicator" id="ind0" style="position:static;display:block;width:20px;height:20px"></div></div>
+      <div data-sg-theme="light-hc"><div class="sg-card" id="cardH" style="width:40px;height:20px"></div><ul class="sg-list" id="listH"></ul><div class="sg-stat" id="statH"></div></div>
+      <div data-sg-theme="light"><div class="sg-card" id="cardL" style="width:40px;height:20px"></div></div>`);
     const cs = (id) => getComputedStyle(document.getElementById(id));
     const v = (id, k) => cs(id).getPropertyValue(k).trim();
     const out = { menu: cs('menu').boxShadow, sheet: cs('sheet').boxShadow, md: v('menu', '--sg-shadow-md'), lg: v('menu', '--sg-shadow-lg'),
-      knobL: cs('knobL').backgroundImage, knobD: cs('knobD').backgroundImage, ind: cs('ind').boxShadow, ind0: cs('ind0').boxShadow };
+      knobL: cs('knobL').backgroundImage, knobD: cs('knobD').backgroundImage, ind: cs('ind').boxShadow, ind0: cs('ind0').boxShadow,
+      cardH: cs('cardH').boxShadow, listH: cs('listH').boxShadow, statH: cs('statH').boxShadow, cardL: cs('cardL').boxShadow };
     host.remove(); return out;
   });
   ok('depth: dense glass that floats (a menu) casts the floating shadow, an overlay (a sheet) the larger one', r.menu !== r.sheet && /48px/.test(r.sheet) && !/48px/.test(r.menu), `${r.menu.slice(0, 50)}… / ${r.sheet.slice(0, 50)}…`);
   ok('depth: a handle (switch knob) stays light in dark themes too', r.knobL === r.knobD && /255, 255, 255/.test(r.knobD), r.knobD.slice(0, 60));
+  ok('depth: surfaces (card, list group, stat) get a 1 px edge in high contrast, and not otherwise', [r.cardH, r.listH, r.statH].every((x) => /inset/.test(x) && /1px/.test(x)) && !/inset 0px 0px 0px 1px/.test(r.cardL), `${r.cardH.slice(-50)} / ${r.cardL.slice(-50)}`);
   ok('depth: a flat selection on glass (tab bar) gets an outline in high contrast only', /1\.5px/.test(r.ind) && !/1\.5px/.test(r.ind0), `${r.ind} / ${r.ind0}`);
 }
 

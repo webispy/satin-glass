@@ -63,6 +63,8 @@ depth.push(decl('depth-raised-edge', '0 0 0 0.5px rgba(var(--sg-shadow-color), c
 depth.push(decl('shadow-edge', '-1px 0 0 var(--sg-separator), -16px 0 32px rgba(var(--sg-shadow-color), calc(0.08 * var(--sg-shadow-strength)))'));
 /* a flat selection on glass (tab bar, sidebar): no outline normally; in high contrast its tint gives way to one */
 depth.push(decl('selection-outline', '0 0 0 0 transparent'));
+/* a surface (level 1: card, stat, list group) has its own edge in high contrast */
+depth.push(decl('surface-outline', '0 0 0 0 transparent'));
 out.push(':root, [data-sg-theme] {', ...depth, '}');
 out.push('[data-sg-theme^="dark"] {', decl('depth-raised-bg', 'var(--sg-fill-strong)'), '}');
 out.push('@media (prefers-color-scheme: dark) {', '  :root:not([data-sg-theme]) {', '  ' + decl('depth-raised-bg', 'var(--sg-fill-strong)'), '  }', '}');
@@ -73,6 +75,7 @@ const hcDepth = [
   decl('depth-raised', 'inset 0 0 0 1.5px var(--sg-label)'), decl('depth-raised-accent', 'inset 0 0 0 1.5px var(--sg-label)'),
   decl('depth-sheen', 'none'), decl('depth-sheen-accent', 'none'),
   decl('selection-outline', 'inset 0 0 0 1.5px var(--sg-label)'),
+  decl('surface-outline', 'inset 0 0 0 1px var(--sg-separator-strong)'),
   decl('depth-raised-edge', '0 0 0 0 transparent'),
 ];
 out.push('[data-sg-theme$="-hc"] {', ...hcDepth, '}');
