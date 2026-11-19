@@ -35,17 +35,19 @@ export function Showcase() {
     <article className="docs__page">
       <header>
         <Text variant="display">쇼케이스</Text>
-        <Text variant="callout" tone="secondary" style={{ marginTop: 8 }}>컴포넌트를 실제 앱처럼 조합한 화면. 스크롤, 탭 바 끌기, 카드 길게 누르기, 메뉴와 시트를 모두 써 볼 수 있습니다.</Text>
+        <Text variant="callout" tone="secondary" style={{ marginTop: 8 }}>컴포넌트를 실제 앱처럼 조합한 휴대폰 화면. 스크롤, 탭 바 끌기, 카드 길게 누르기, 메뉴와 시트를 모두 써 볼 수 있습니다. 떠 있는 유리 바는 한 화면에 하나만 둡니다 — 아래 탭 바가 떠 있으므로 위 바는 화면에 붙은 불투명 바(attached)입니다. 데스크톱·정보가 많은 화면의 기본 구성은 ‘대시보드’ 예제를 보세요(내용은 불투명 카드, 유리는 떠오르는 메뉴·팝오버·토스트에만).</Text>
       </header>
       <div style={{ display: 'grid', placeItems: 'center', padding: '12px 0 40px' }}>
         <div className="phone">
           <div className="phone__screen" ref={setScroller}>
             <div className="places">
-              <AppBar scrollTarget={scroller} transparentAtTop title="둘러보기"
-                leading={<IconButton variant="glass" icon={<Settings2 />} label="설정" onClick={() => setSettings(true)} />}
+              {/* one floating glass bar per screen: the tab bar floats at the bottom, so the top bar is attached
+                  (opaque, flush with the edge) — design-language.md 8.4 */}
+              <AppBar scrollTarget={scroller} attached title="둘러보기"
+                leading={<IconButton variant="plain" icon={<Settings2 />} label="설정" onClick={() => setSettings(true)} />}
                 trailing={<span style={{ display: 'inline-flex', gap: 8 }}>
-                  <IconButton variant="glass" icon={<Search />} label="검색" onClick={() => setSearch(true)} />
-                  <IconButton ref={moreBtn} variant="glass" icon={<MoreHorizontal />} label="더 보기" onClick={() => setMenu((v) => !v)} />
+                  <IconButton variant="plain" icon={<Search />} label="검색" onClick={() => setSearch(true)} />
+                  <IconButton ref={moreBtn} variant="plain" icon={<MoreHorizontal />} label="더 보기" onClick={() => setMenu((v) => !v)} />
                 </span>} />
               <Photo scene={hero} className="places__hero">
                 <div className="places__hero-cap"><Text variant="title-1" style={{ color: '#fff' }}>{PLACES[hero].name}</Text><Text variant="subhead" style={{ color: '#fff', opacity: 0.9 }}>오늘의 추천 · {PLACES[hero].dist}</Text></div>

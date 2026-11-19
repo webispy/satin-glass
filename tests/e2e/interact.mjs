@@ -286,9 +286,10 @@ await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(600);
   }));
   ok('toasts: when one leaves, the rest glide into place', flip.end < flip.y0 - 20 && flip.between >= 3, JSON.stringify(flip));
 }
-await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(700);
+/* the app bar demo that is see-through at the top (the showcase's top bar is attached: one floating bar per screen) */
+await p.goto(`http://localhost:4173/${Q}#/display`); await p.waitForTimeout(700);
 {
-  const bgs = await sampleAfter(`({ act: () => document.querySelector('.phone__screen').scrollTo(0, 400), read: () => parseFloat(getComputedStyle(document.querySelector('.phone .sg-appbar__bar')).backgroundColor.split(',')[3] || '1') })`, 500);
+  const bgs = await sampleAfter(`({ act: () => document.querySelector('.phone__screen[data-scroll="largetitle"]').scrollTo(0, 400), read: () => parseFloat(getComputedStyle(document.querySelector('.phone__screen[data-scroll="largetitle"] .sg-appbar__bar')).backgroundColor.split(',')[3] || '1') })`, 500);
   const mid = bgs.filter((a) => a > 0.02 && a < 0.98).length;
   if (/rt=1/.test(Q)) ok('app bar (reduce transparency): solid from the start — nothing to see through', bgs.every((a) => a > 0.98), `alphas ${[...new Set(bgs.map((a) => a.toFixed(2)))].join(',')}`);
   else ok('app bar: the glass fades in when content scrolls under it', mid >= 3, `frames in between ${mid}`);

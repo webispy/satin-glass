@@ -70,7 +70,7 @@ body { background: var(--sg-bg); }
 
 /* showcase app */
 .places { padding: 0 0 140px; }
-.places__hero { height: 300px; margin-top: -80px; }
+.places__hero { height: 260px; }   /* below the attached top bar, not under it */
 .places__hero-cap { position: absolute; left: 20px; bottom: 18px; z-index: 2; color: #fff; text-shadow: 0 1px 12px rgba(0,0,0,.25); }
 .places__section { padding: 22px 16px 0; display: flex; flex-direction: column; gap: 12px; }
 .places__cards { display: flex; gap: 12px; overflow-x: auto; padding: 2px 16px 8px; margin: 0 -16px; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; scrollbar-width: none; }

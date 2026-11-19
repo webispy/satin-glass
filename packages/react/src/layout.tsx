@@ -81,10 +81,13 @@ export type AppBarProps = Omit<HTMLAttributes<HTMLElement>, 'title'> & {
   transparentAtTop?: boolean;
   /** scroll container to watch (defaults to window) */
   scrollTarget?: HTMLElement | null;
+  /** flush with the top edge as an opaque surface (no glass): for dense web screens, or when another glass bar
+      already floats on the screen (one floating bar per screen reads best; design-language.md 8.4) */
+  attached?: boolean;
 };
 
-export const AppBar = forwardRef<HTMLElement, AppBarProps>(function AppBar({ title, leading, trailing, largeTitle, transparentAtTop, scrollTarget, className, children, ...rest }, ref) {
-  const lightRef = useGlassLight();
+export const AppBar = forwardRef<HTMLElement, AppBarProps>(function AppBar({ title, leading, trailing, largeTitle, transparentAtTop, scrollTarget, attached, className, children, ...rest }, ref) {
+  const lightRef = useGlassLight(!attached);
   const header = useRef<HTMLElement>(null), bar = useRef<HTMLDivElement>(null), large = useRef<HTMLHeadingElement>(null);
   /* Scroll-linked, written straight to the DOM (no React render per scroll event):
      --_p  0 → 1 while the large title slides under the bar: the large title fades out as the small one rises in,
@@ -114,8 +117,8 @@ export const AppBar = forwardRef<HTMLElement, AppBarProps>(function AppBar({ tit
   }, [scrollTarget, largeTitle]);
   return (
     <>
-      <header ref={mergeRefs(ref, header)} className={cx('sg-appbar', className)} data-large={largeTitle || undefined} data-transparent-top={transparentAtTop || undefined} data-at-top="" {...rest}>
-        <div ref={mergeRefs(bar, lightRef)} className={cx('sg-appbar__bar', glassClass('regular'))}>
+      <header ref={mergeRefs(ref, header)} className={cx('sg-appbar', attached && 'sg-appbar--attached', className)} data-large={largeTitle || undefined} data-transparent-top={(transparentAtTop && !attached) || undefined} data-at-top="" {...rest}>
+        <div ref={mergeRefs(bar, lightRef)} className={cx('sg-appbar__bar', attached ? 'sg-appbar__bar--solid' : glassClass('regular'))}>
           <div className="sg-appbar__leading">{leading}</div>
           <h1 className="sg-appbar__title">{title}</h1>
           <div className="sg-appbar__trailing">{trailing}</div>

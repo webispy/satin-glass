@@ -4,8 +4,8 @@
 //   · at most six large blurred surfaces visible at once (a side over 120 px: bars, panels, sheets — the cost is the
 //     blurred area; perf.mjs holds 60 fps at CPU x4 with five glass cards and the sidebar). Small glass (buttons,
 //     chips, page dots) is free to repeat as long as it does not stack
-// Checked at a desktop and a phone width, on the pages as they open, with the showcase scrolled (its app bar turns
-// to glass and its glass buttons must flatten) and with a menu and a dialog open. A surface counts as blurred when
+// Checked at a desktop and a phone width, on the pages as they open, with the showcase scrolled and with a menu and
+// a dialog open; the flattening itself is checked on a fixture (glass button in a glass panel, and in a clear bar). A surface counts as blurred when
 // its computed backdrop-filter has a blur above 0.
 // usage: node tests/e2e/blur-budget.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
 // covers: css, foundation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
@@ -43,7 +43,23 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
 }
 
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
-/* the showcase scrolled: its app bar is glass now, its glass buttons share it */
+/* glass inside glass draws flat (a fixture: no docs page needs it any more) — and an app bar still clear at the
+   top of the page lets its glass buttons keep their own glass */
+await p.goto('http://localhost:4173/?mode=light#/overview'); await p.waitForTimeout(500);
+{
+  const r = await p.evaluate(() => {
+    const host = document.createElement('div');
+    host.innerHTML = `<div class="sg-glass" id="outer" style="width:200px;height:80px"><button class="sg-button sg-button--glass sg-glass" id="inner">x</button></div>
+      <header class="sg-appbar" data-transparent-top="" data-at-top=""><div class="sg-appbar__bar sg-glass"><button class="sg-button sg-button--glass sg-glass" id="clear">x</button></div></header>`;
+    document.querySelector('.sg-root').appendChild(host);
+    const f = (id) => { const cs = getComputedStyle(document.getElementById(id)); return cs.backdropFilter || cs.webkitBackdropFilter || 'none'; };
+    const out = { outer: f('outer'), inner: f('inner'), clear: f('clear') };
+    host.remove(); return out;
+  });
+  ok('glass inside glass draws flat (no blur of its own)', /blur\([1-9]/.test(r.outer) && r.inner === 'none', JSON.stringify(r));
+  ok('glass in an app bar still clear at the top keeps its own glass', /blur\([1-9]/.test(r.clear), JSON.stringify(r));
+}
+/* the showcase scrolled */
 await p.goto('http://localhost:4173/?mode=light#/showcase'); await p.waitForTimeout(600);
 await p.locator('.phone__screen').evaluate((el) => { el.scrollTop = 400; }); await p.waitForTimeout(700);
 judge('showcase scrolled', await measure(p));
