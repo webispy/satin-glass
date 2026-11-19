@@ -1,5 +1,5 @@
 /* Overlay helpers: anchored placement, the "bloom" open/close motion, focus management and a layer stack. */
-import { animate, prefersReducedMotion, type SpringName } from './motion';
+import { animate, motionFor, prefersReducedMotion, type SpringName } from './motion';
 /* springs named here resolve against the panel's motion personality (nearest [data-sg-motion]) */
 
 /* ---------------------------------------------------------------- placement */
@@ -39,8 +39,12 @@ export function bloomIn(panel: HTMLElement, origin: { x: number; y: number }, fr
   panel.getAnimations().forEach((a) => a.cancel());
   panel.style.transformOrigin = `${origin.x}px ${origin.y}px`;
   if (prefersReducedMotion(panel)) return fade(panel, 0, 1, 140);   /* no growing: a short fade */
-  const [sx, sy] = typeof from === 'number' ? [from, from] : from;
-  const a = animate(panel, [{ transform: `scale(${sx}, ${sy})` }, { transform: 'scale(1)' }], spring);
+  /* how far it unfolds follows the personality (its squash; lively as given): calm opens from closer to full size,
+     playful from further away — with the pop spring's own overshoot, the three read clearly apart */
+  const k = motionFor(panel).squash / 0.14, reach = 0.45 + 0.55 * k;
+  const grow = (f: number) => Math.max(0.15, 1 - (1 - f) * reach);
+  const [sx, sy] = (typeof from === 'number' ? [from, from] : from).map(grow);
+  const a = animate(panel, [{ transform: `scale(${sx.toFixed(3)}, ${sy.toFixed(3)})` }, { transform: 'scale(1)' }], spring);
   const o = panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: spring === 'pop' ? 70 : 120, easing: 'linear', fill: 'both' });
   const content = panel.querySelector<HTMLElement>('[data-sg-content]');
   if (content) animate(content, [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], 'snappy', { delay: spring === 'pop' ? 25 : 40 });

@@ -210,7 +210,7 @@ export type Motion = Record<SpringName, SpringParams> & { squash: number; gel: n
 export const motions: Record<MotionName, Motion> = {
   calm: {
     snappy: { response: 0.26, damping: 0.86 }, smooth: { response: 0.36, damping: 1 }, bouncy: { response: 0.42, damping: 0.72 },
-    gentle: { response: 0.5, damping: 1 }, pop: { response: 0.3, damping: 0.64 }, squash: 0, gel: 0, lag: 0,
+    gentle: { response: 0.5, damping: 1 }, pop: { response: 0.26, damping: 0.9 }, squash: 0, gel: 0, lag: 0,
   },
   lively: {
     snappy: { response: 0.28, damping: 0.7 }, smooth: { response: 0.4, damping: 0.72 }, bouncy: { response: 0.44, damping: 0.62 },
@@ -218,7 +218,7 @@ export const motions: Record<MotionName, Motion> = {
   },
   playful: {
     snappy: { response: 0.3, damping: 0.6 }, smooth: { response: 0.4, damping: 0.68 }, bouncy: { response: 0.46, damping: 0.56 },
-    gentle: { response: 0.52, damping: 0.78 }, pop: { response: 0.32, damping: 0.54 }, squash: 0.22, gel: 0.2, lag: 0.12,
+    gentle: { response: 0.52, damping: 0.78 }, pop: { response: 0.34, damping: 0.46 }, squash: 0.22, gel: 0.2, lag: 0.12,
   },
 };
 export const defaultMotion: MotionName = 'lively';

@@ -158,7 +158,10 @@ await go('selection');
     const room = await p.evaluate(() => document.documentElement.scrollHeight - innerHeight - scrollY);
     const way = room > 400 ? 1 : -1;
     if (way < 0 && (await p.evaluate(() => scrollY)) < 400) await p.setViewportSize({ width: 1280, height: 480 });
-    await open(); await p.waitForTimeout(600);
+    await open(); await p.waitForTimeout(150);
+    /* wait for the bloom to finish (playful overshoots and settles later than the others) */
+    await p.evaluate((sel) => Promise.all((document.querySelector(sel)?.getAnimations({ subtree: true }) ?? []).map((a) => a.finished.catch(() => {}))), panelSel);
+    await p.waitForTimeout(50);
     const o0 = await offset(panelSel, anchorLoc);
     for (let i = 0; i < 4; i++) { await p.mouse.move(1180, 300); await p.mouse.wheel(0, way * 50); await p.waitForTimeout(50); }
     await p.waitForTimeout(250);
