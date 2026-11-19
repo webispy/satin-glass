@@ -552,7 +552,8 @@ export function Tab(_: TabProps): null { return null; }
 export type TabBarProps = Omit<HTMLAttributes<HTMLElement>, 'onChange' | 'defaultValue'> & {
   value?: string; defaultValue?: string; onChange?: (v: string) => void;
   children: ReactElement<TabProps> | ReactElement<TabProps>[];
-  /** a separate glass button beside the bar (e.g. search) */
+  /** an action at the end of the bar, after a hairline (e.g. search): a TabBarAction. It is not a tab, so the
+      selection never travels to it */
   action?: ReactNode;
   /** the selection can be dragged across the tabs and lands where it is released (off by default: a tap selects) */
   draggable?: boolean;
@@ -581,15 +582,19 @@ export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ val
             </button>
           ))}
         </div>
+        {action && <><span className="sg-tabbar__divider" aria-hidden="true" />{action}</>}
       </div>
-      {action}
     </nav>
   );
 });
 
-/** The glass button that sits beside a TabBar. */
-export const TabBarAction = forwardRef<HTMLButtonElement, Omit<IconButtonProps, 'variant'>>(function TabBarAction({ className, ...rest }, ref) {
-  return <IconButton ref={ref} variant="glass" className={cx('sg-tabbar__action', className)} {...rest} />;
+/** An action in a TabBar's `action` slot: an icon at the end of the bar, on the same glass, pressed like a tab. */
+export const TabBarAction = forwardRef<HTMLButtonElement, Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & { icon: ReactNode; label: string }>(function TabBarAction({ icon, label, className, ...rest }, ref) {
+  return (
+    <button ref={ref} type="button" aria-label={label} title={label} className={cx('sg-tabbar__action', className)} {...rest}>
+      <span className="sg-tabbar__icon" aria-hidden="true">{icon}</span>
+    </button>
+  );
 });
 
 /* ================================================================================================ TextField */

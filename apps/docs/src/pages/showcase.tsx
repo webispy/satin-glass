@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   AppBar, Badge, Button, Chip, ContextMenu, Glass, IconButton, List, ListItem, ListSection, Menu, MenuItem, MenuSeparator, PageControl,
-  Popover, SearchField, SegmentedControl, Sheet, Slider, Stack, Switch, Tab, TabBar, TabBarAction, Text, useToast,
+  Popover, SearchField, SegmentedControl, Sheet, Slider, Stack, Switch, Tab, TabBar, Text, useToast,
 } from '@satin-glass/react';
 import { Bookmark, Compass, Heart, Home, Info, Map, MoreHorizontal, Plus, Search, Settings2, Share, Trash2, User, Mountain, Waves, Tent, Building2 } from 'lucide-react';
 import { Photo, sceneTint } from '../shared';
@@ -43,7 +43,10 @@ export function Showcase() {
             <div className="places">
               <AppBar scrollTarget={scroller} transparentAtTop title="둘러보기"
                 leading={<IconButton variant="glass" icon={<Settings2 />} label="설정" onClick={() => setSettings(true)} />}
-                trailing={<IconButton ref={moreBtn} variant="glass" icon={<MoreHorizontal />} label="더 보기" onClick={() => setMenu((v) => !v)} />} />
+                trailing={<span style={{ display: 'inline-flex', gap: 8 }}>
+                  <IconButton variant="glass" icon={<Search />} label="검색" onClick={() => setSearch(true)} />
+                  <IconButton ref={moreBtn} variant="glass" icon={<MoreHorizontal />} label="더 보기" onClick={() => setMenu((v) => !v)} />
+                </span>} />
               <Photo scene={hero} className="places__hero">
                 <div className="places__hero-cap"><Text variant="title-1" style={{ color: '#fff' }}>{PLACES[hero].name}</Text><Text variant="subhead" style={{ color: '#fff', opacity: 0.9 }}>오늘의 추천 · {PLACES[hero].dist}</Text></div>
                 <div style={{ position: 'absolute', right: 16, bottom: 18, zIndex: 2 }}>
@@ -94,7 +97,7 @@ export function Showcase() {
           </div>
           <div className="phone__fade" />
           <div className="phone__bottom">
-            <TabBar value={tab} onChange={setTab} aria-label="메인" action={<TabBarAction icon={<Search />} label="검색" onClick={() => setSearch(true)} />}>
+            <TabBar value={tab} onChange={setTab} aria-label="메인">
               <Tab value="home" label="홈" icon={<Home />} />
               <Tab value="map" label="지도" icon={<Map />} />
               <Tab value="saved" label="저장" icon={<Bookmark />} badge={<Badge>2</Badge>} />

@@ -42,8 +42,15 @@ ok('tab drag: release selects the tab under it', (await tabs.nth(0).getAttribute
 await tabs.nth(1).focus(); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(400);
 ok('tab keyboard: arrow keys move the selection', (await tabs.nth(1).getAttribute('aria-selected')) === 'true' || (await tabs.nth(2).getAttribute('aria-selected')) === 'true');
 
-const rad = async (sel) => parseFloat(await p.locator(sel).first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius));
-ok('tab bar: the search button has the same corner radius as the bar', (await rad('.sg-tabbar__action')) === (await rad('.sg-tabbar__bar')), `${await rad('.sg-tabbar__action')} / ${await rad('.sg-tabbar__bar')}`);
+/* the action slot: inside the bar's glass, after a hairline; pressing it is not choosing a tab */
+{
+  const act = bar.locator('.sg-tabbar__action'), selBefore = await tabs.evaluateAll((t) => t.findIndex((x) => x.getAttribute('aria-selected') === 'true'));
+  const inside = await act.evaluate((a) => a.parentElement.classList.contains('sg-tabbar__bar') && a.previousElementSibling?.classList.contains('sg-tabbar__divider'));
+  await p.waitForTimeout(700);   /* the drop from the previous check has settled */
+  const i0 = await ind.boundingBox(); await act.click(); await p.waitForTimeout(500); const i1 = await ind.boundingBox();
+  const selAfter = await tabs.evaluateAll((t) => t.findIndex((x) => x.getAttribute('aria-selected') === 'true'));
+  ok('tab bar: the action sits inside the bar after a hairline; pressing it leaves the selection where it is', inside && selAfter === selBefore && Math.abs(i1.x - i0.x) < 1, `inside ${inside}, tab ${selBefore} -> ${selAfter}`);
+}
 
 await p.goto('http://localhost:4173/#/buttons'); await p.waitForTimeout(500);
 const gh = (await p.locator('.sg-button-group').first().boundingBox()).height, ih = (await p.locator('.demo--media .sg-button--glass.sg-button--icon').first().boundingBox()).height;
