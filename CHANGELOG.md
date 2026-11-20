@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.0 — unreleased
+
+New components for screens that show and choose data: a meter, a group of people, a timeline, a side drawer and a combobox, and a recipe for the filter row above a table.
+
+### New
+- **`Meter`** (data): a value within a known range (storage, a quota, a score), `role="meter"`. The track is a groove and the fill is flat from the inline start. `low` / `high` / `optimum` rate the value the way `<meter>` does (success, warning, danger), and `status` says it in words. An invalid value shows a localised "unavailable". It changes at once: the value comes from data, not a hand.
+- **`AvatarGroup`** (controls): overlapping portraits parted by a ring in the colour they sit on (`--sg-avatar-ring`), and +N for the rest (`max`, `total` for a server count); +N is a button with `onMoreClick`, which gets the event so a popover can anchor to it.
+- **`Timeline`, `TimelineItem`** (layout): an ordered list on a connecting line. Steps (`status`: done / current / upcoming, `aria-current="step"`, status read aloud via `labels.status`) and events (`tone`, `icon`) are separate in the type.
+- **`Drawer`** (overlays): a modal panel from a side edge (`side` is logical), named by a title or an aria-label. It enters on the gentle spring, follows a drag toward its edge 1:1 and leaves past a third of its width or on a flick.
+- **`Combobox`** (selection): a text field whose suggestions narrow as you type, for one value (WAI-ARIA editable combobox with list autocomplete). Server search with `filter="none"`, `inputValue` / `onInputChange`, `getOptionText`, `loading`; the typed part is emphasised; IME composition is left alone.
+- **FilterBar recipe** on the tables page: search, filter selects and toggle chips in a named group, with the applied count and one clear.
+
+### Changed
+- A modal layer (dialog, sheet, action sheet, media viewer, drawer) hides the rest of the page from assistive technology (`aria-hidden`); layers opened above it and live regions stay reachable. Anchored menus, even with a scrim, do not.
+- `Avatar` shows the initials when its picture fails to load.
+
+### Fixed
+- Search fields showed the browser's own clear button beside the field's.
+
 ## 0.4.0 — 2026-11-20
 
 The library gets its own name and its foundations: six design principles, a satin glass material, depth by part, corners from one source, focus, contrast and settings that hold everywhere, and checks that keep the CSS to these rules. It ships per category, and the wheel, calendar, action sheet and tab bar are redrawn in that language.
