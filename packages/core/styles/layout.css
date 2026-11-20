@@ -135,19 +135,18 @@
 .sg-accordion__trigger:disabled { color: var(--sg-label-disabled); cursor: default; }
 .sg-accordion__title { flex: 1; min-width: 0; }
 .sg-accordion__meta { font-size: 13px; font-weight: 450; color: var(--sg-label-secondary); }
-.sg-accordion__chevron { flex: none; width: 18px; height: 18px; color: var(--sg-label-secondary); transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+/* the chevron turns with the region's spring (script); at rest the open state holds it */
+.sg-accordion__chevron { flex: none; width: 18px; height: 18px; color: var(--sg-label-secondary); }
 .sg-accordion__item[data-open] .sg-accordion__chevron { transform: rotate(180deg); }
 /* the one layout animation here: the region unfolds (grid rows 0fr → 1fr) so the content below makes room */
-.sg-accordion__region { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--sg-spring-smooth-duration) var(--sg-spring-smooth); }
-.sg-accordion__item[data-open] .sg-accordion__region { grid-template-rows: 1fr; }
-.sg-accordion__clip { min-height: 0; overflow: hidden; }
-.sg-accordion__content { padding: 0 4px 16px; opacity: 0; transform: translateY(-4px); transition: opacity var(--sg-duration-base) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
-.sg-accordion__item[data-open] .sg-accordion__content { opacity: 1; transform: none; transition-delay: 40ms; }
-[data-sg-reduce-motion="true"] .sg-accordion__region { transition: none; }
-[data-sg-reduce-motion="true"] .sg-accordion__content { transform: none; transition: opacity var(--sg-duration-fast) ease; }
+/* the region's height runs on a spring (script) and rests at auto when open, 0 when closed; the content is shown and
+   covered by it, with no motion of its own. Reduced motion: the height changes at once, the content fades in */
+.sg-accordion__region { height: 0; overflow: hidden; }
+.sg-accordion__item[data-open] .sg-accordion__region { height: auto; }
+.sg-accordion__content { padding: 0 4px 16px; }
+[data-sg-reduce-motion="true"] .sg-accordion__item[data-open] .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease both; }
 @media (prefers-reduced-motion: reduce) {
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-accordion__region { transition: none; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-accordion__content { transform: none; transition: opacity var(--sg-duration-fast) ease; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-accordion__item[data-open] .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease both; }
 }
 
 /* ============================================================================================

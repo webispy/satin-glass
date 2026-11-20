@@ -76,6 +76,15 @@ export function Display() {
               { value: 'ship', title: '배송', meta: '평일 오후 2시 마감', content: <Text variant="subhead" tone="secondary" as="p">오후 2시까지 결제한 주문은 그날 보내요. 제주와 섬 지역은 하루 이틀 더 걸려요.</Text> },
               { value: 'return', title: '교환과 반품', content: <Text variant="subhead" tone="secondary" as="p">받은 날부터 7일 안에 신청할 수 있어요. 단순 변심이면 왕복 배송비가 들어요.</Text> },
               { value: 'gift', title: '선물 포장', meta: '2,000원', content: <Text variant="subhead" tone="secondary" as="p">주문서에서 고를 수 있어요. 메시지 카드는 무료예요.</Text> },
+              { value: 'size', title: '사이즈 안내', meta: '긴 내용', content: (
+                <Stack gap={2}>
+                  <Text variant="subhead" tone="secondary" as="p">몸에 꼭 맞는 옷을 기준으로 재요. 두 사이즈 사이라면 큰 쪽을 권해요.</Text>
+                  {([['S', '가슴 88–92 · 허리 72–76 · 엉덩이 90–94'], ['M', '가슴 94–98 · 허리 78–82 · 엉덩이 96–100'], ['L', '가슴 100–104 · 허리 84–88 · 엉덩이 102–106'], ['XL', '가슴 106–110 · 허리 90–94 · 엉덩이 108–112'], ['2XL', '가슴 112–116 · 허리 96–100 · 엉덩이 114–118']] as const).map(([k, v]) => (
+                    <Text key={k} variant="subhead" as="p"><b>{k}</b> · {v} cm</Text>
+                  ))}
+                  <Text variant="footnote" tone="secondary" as="p">린넨과 니트는 처음 세탁하면 2–3% 줄 수 있어요. 소매 길이는 모델 사진 아래의 실측표를 함께 보세요.</Text>
+                </Stack>
+              ) },
               { value: 'bulk', title: '대량 주문', disabled: true, content: null },
             ]} />
           </Demo>
