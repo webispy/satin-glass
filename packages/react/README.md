@@ -23,6 +23,6 @@ export function App() {
 
 Components are also exported by category (`@satin-glass/react/controls`, `/data`, …) with matching stylesheets (`@satin-glass/react/css/<category>.css`, `foundation.css` first). `styles.layer.css` puts everything in `@layer satin-glass`.
 
-See the [repository README](https://github.com/webispy/satin-glass#readme) for the category table and which stylesheets each category needs.
+See the [docs](https://webispy.github.io/satin-glass/) for every component, and the [repository README](https://github.com/webispy/satin-glass#readme) for the category table and which stylesheets each category needs.
 
 Licensed under [Apache-2.0](LICENSE).

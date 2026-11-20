@@ -2,7 +2,7 @@
 
 # Satin Glass
 
-**English** · [한국어](README.ko.md)
+**English** · [한국어](README.ko.md) · [Docs](https://webispy.github.io/satin-glass/)
 
 A React UI library built on a glass material that follows the light: frosted, grained translucency, a fixed top light and a soft sheen under the pointer, with motion that stretches and sticks. It is a pnpm monorepo of design tokens, a framework-free behaviour core, React components, and a docs and catalogue app.
 

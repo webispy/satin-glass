@@ -2,7 +2,7 @@
 
 # Satin Glass
 
-[English](README.md) · **한국어**
+[English](README.md) · **한국어** · [문서](https://webispy.github.io/satin-glass/)
 
 빛을 따르는 유리 재질 위에 만든 React UI 라이브러리. 결이 있는 반투명 유리, 위에서 오는 고정된 빛, 포인터 아래 은은한 광택, 늘어났다 달라붙는 모션이 특징이다. 디자인 토큰, 프레임워크 없는 동작 코어, React 컴포넌트, 문서·카탈로그 앱으로 이루어진 pnpm 모노레포다.
 

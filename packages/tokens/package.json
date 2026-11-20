@@ -3,7 +3,7 @@
   "version": "0.4.0",
   "description": "Design tokens for Satin Glass: an OKLCH palette, four themes (light, dark and two high-contrast), spacing, radius, type and motion springs, as CSS variables and TypeScript values.",
   "keywords": ["design-tokens", "css-variables", "oklch", "theme", "high-contrast", "satin-glass"],
-  "homepage": "https://github.com/webispy/satin-glass#readme",
+  "homepage": "https://webispy.github.io/satin-glass/",
   "bugs": { "url": "https://github.com/webispy/satin-glass/issues" },
   "repository": { "type": "git", "url": "git+https://github.com/webispy/satin-glass.git", "directory": "packages/tokens" },
   "author": "Inho Oh",
