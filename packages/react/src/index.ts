@@ -15,6 +15,7 @@ export * from './feedback';
 export * from './pagination';
 export * from './stat';
 export * from './charts';
+export * from './meter';
 export * from './tag';
 export * from './accordion';
 export * from './table';

@@ -1,7 +1,7 @@
 /* Charts and figures: KPI stats, line / area, bars, donut, sparklines and the small marks that live in table cells. */
 import { useState } from 'react';
 import {
-  BarChart, BarMeter, Button, DonutChart, IntervalPlot, LineChart, SegmentedControl, Sparkline, Stack, Stat, Text,
+  BarChart, BarMeter, Button, DonutChart, IntervalPlot, LineChart, Meter, SegmentedControl, Slider, Sparkline, Stack, Stat, Text,
 } from '@satin-glass/react';
 import { CircleDollarSign, MousePointerClick, RotateCcw, ShoppingBag } from 'lucide-react';
 import { Demo, Page, Section } from '../shared';
@@ -16,11 +16,36 @@ export function ChartsPage() {
   return (
     <Page title="차트와 지표" intro="직접 그린 SVG 차트입니다. 계열 색은 테마 토큰(--sg-chart-1…6)을 쓰고, 네 테마 모두 카드 위에서 3:1 이상의 대비를 지킵니다. 키보드로 점을 옮기면 값을 읽어 주고, 전체 데이터는 화면에 보이지 않는 표로도 제공합니다.">
       <Stats />
+      <Meters />
       <Lines />
       <Bars />
       <Donut />
       <Small />
     </Page>
+  );
+}
+
+function Meters() {
+  const [used, setUsed] = useState(37.4);
+  const left = (50 - used).toFixed(1);
+  const storage = used >= 45 ? '거의 다 찼어요' : used >= 30 ? `${left} GB 남았어요 · 정리하면 좋아요` : `${left} GB 남았어요`;
+  return (
+    <Section title="미터 (Meter)" intro="정해진 범위 안의 값입니다. 저장 공간, 할당량, 점수처럼 끝이 정해진 양을 보여 주고, 작업이 끝을 향해 가는 진행(Progress)과는 다릅니다. 막대는 값이 다니는 홈이고, 채움은 시작 쪽부터 평평하게 찹니다. low · high · optimum을 주면 HTML의 meter처럼 구간에 따라 색이 정해지고(좋음 · 아쉬움 · 나쁨), 그 뜻은 status 문구로도 알려 줍니다. 값은 데이터가 바꾸는 것이라 움직임 없이 바로 바뀝니다.">
+      <div className="grid grid--2">
+        <Demo col data-demo="meter">
+          <Meter label="저장 공간" value={used} max={50} low={30} high={45} optimum={0} format={(v) => `${v.toFixed(1)} GB / 50 GB`} status={storage} />
+          <Meter label="이번 달 API 호출" value={8200} max={10000} format={(v) => `${v.toLocaleString('ko-KR')} / 10,000`} />
+          <Meter label="고객 만족도" value={4.3} min={1} max={5} low={3} high={4} optimum={5} format={(v) => `${v.toFixed(1)} / 5`} status="좋아요 · 지난달보다 0.2 올랐어요" />
+          <Meter label="배터리" size="sm" value={18} low={20} high={80} optimum={100} status="충전이 필요해요" />
+          <Meter label="응답 시간 목표" value={Number.NaN} labels={{ unavailable: '알 수 없음' }} status="측정 중이에요" />
+        </Demo>
+        <Demo col data-demo="meter-bands">
+          <Text variant="subhead" tone="secondary">값을 바꾸면 구간에 따라 색과 문구가 바뀝니다 (30 GB부터 아쉬움, 45 GB부터 나쁨)</Text>
+          <Meter label="저장 공간" value={used} max={50} low={30} high={45} optimum={0} format={(v) => `${v.toFixed(1)} GB`} status={storage} />
+          <Slider aria-label="사용한 저장 공간" min={0} max={50} step={0.1} value={used} onChange={setUsed} format={(v) => `${v.toFixed(1)} GB`} />
+        </Demo>
+      </div>
+    </Section>
   );
 }
 
