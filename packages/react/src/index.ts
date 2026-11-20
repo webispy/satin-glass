@@ -18,6 +18,7 @@ export * from './charts';
 export * from './meter';
 export * from './tag';
 export * from './accordion';
+export * from './timeline';
 export * from './table';
 export * from './wheel';
 export * from './weekday';

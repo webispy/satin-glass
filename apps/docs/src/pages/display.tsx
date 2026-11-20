@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
-  Accordion, AppBar, Avatar, Breadcrumbs, Button, IconButton, List, ListItem, MediaViewer, SearchField, Skeleton, Stack, Text, useToast,
+  Accordion, AppBar, Avatar, Breadcrumbs, Button, IconButton, List, ListItem, MediaViewer, SearchField, Skeleton, Stack, Text, Timeline, TimelineItem, useToast,
 } from '@satin-glass/react';
-import { ChevronLeft, Folder, Home, Plus, Share, Star } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronLeft, Folder, Home, MessageSquare, Pencil, Plus, Share, Star, UserPlus } from 'lucide-react';
 import { Demo, Page, Photo, Section } from '../shared';
 
 const PLACES = ['한강 공원', '남산 서울타워', '북촌 한옥마을', '경복궁', '서울숲', '익선동', '성수동 카페거리', '망원 시장', '하늘공원', '덕수궁 돌담길', '청계천', '낙산 공원', '석촌 호수', '올림픽 공원', '여의도 공원', '응봉산'];
@@ -52,6 +52,21 @@ export function Display() {
             <Breadcrumbs aria-label="좁은 경로" items={[{ label: '아주 긴 이름의 상위 폴더', href: '#/display' }, { label: '또 하나의 긴 하위 폴더 이름', href: '#/display' }, { label: '마지막 문서의 아주 긴 제목' }]} />
           </div>
         </Demo>
+      </Section>
+
+      <Section title="타임라인 (Timeline)" intro="순서가 있는 일을 한 줄로 잇습니다. 주문이나 신청처럼 단계가 있으면 완료(체크) · 지금 단계(위치 점) · 예정(빈 원)을 모양으로 구별하고, 지나온 길은 강조색 선으로 그립니다. 지금 단계는 aria-current=&quot;step&quot;이고, 각 단계의 상태는 스크린 리더에 말로도 전합니다. 활동 기록처럼 일이 쌓이는 목록은 톤의 점이나 아이콘으로 표시합니다. 선은 잇기만 하고 무엇도 움직이지 않습니다.">
+        <div className="grid grid--2">
+          <Demo col data-demo="timeline-steps">
+            <Text variant="subhead" tone="secondary">주문 배송 · 단계 (버튼으로 단계를 옮겨 보세요)</Text>
+            <OrderSteps />
+          </Demo>
+          <Demo col data-demo="timeline-events">
+            <Text variant="subhead" tone="secondary">활동 기록 · 아이콘과 톤 (다음: 새 기록이 위에 추가, 이전: 최근 기록이 빠짐)</Text>
+            <EventLog />
+            <Text variant="subhead" tone="secondary">점만 · 톤</Text>
+            <DeployLog />
+          </Demo>
+        </div>
       </Section>
 
       <Section title="펼치는 구역 (Accordion)" intro="자주 보지 않는 내용을 접어 둡니다. 제목 버튼이 구역을 열고 닫고(aria-expanded), 구역은 높이를 펼치며 내용이 살짝 내려앉습니다. 하나만 열리게 하려면 multiple={false}.">
@@ -118,3 +133,63 @@ export function Display() {
     </Page>
   );
 }
+
+const ORDER_STEPS: { title: string; time?: ReactNode; description?: string }[] = [
+  { title: '주문 접수', time: <time dateTime="2026-11-18T14:02">11월 18일 14:02</time> },
+  { title: '결제 확인', time: <time dateTime="2026-11-18T14:05">11월 18일 14:05</time> },
+  { title: '상품 준비 중', description: '오늘 오후에 출고될 예정이에요.' },
+  { title: '배송 중', description: '한빛택배 · 운송장 6021-4417-0093' },
+  { title: '배송 완료', description: '도착 예정 11월 22일(토)' },
+];
+function OrderSteps() {
+  const [at, setAt] = useState(2);
+  return (
+    <>
+      <Timeline aria-label="주문 진행" labels={{ status: { done: '완료', current: '진행 중', upcoming: '예정' } }}>
+        {ORDER_STEPS.map((s, i) => <TimelineItem key={s.title} status={i < at ? 'done' : i === at ? 'current' : 'upcoming'} title={s.title} time={s.time} description={s.description} />)}
+      </Timeline>
+      <Stack direction="row" gap={2} wrap>
+        <Button size="sm" variant="neutral" disabled={at === 0} onClick={() => setAt((n) => Math.max(0, n - 1))}>이전 단계</Button>
+        <Button size="sm" variant="tinted" disabled={at === ORDER_STEPS.length - 1} onClick={() => setAt((n) => Math.min(ORDER_STEPS.length - 1, n + 1))}>다음 단계</Button>
+        <Button size="sm" variant="plain" onClick={() => setAt(0)}>처음으로</Button>
+        <Button size="sm" variant="plain" onClick={() => setAt(ORDER_STEPS.length - 1)}>끝으로</Button>
+      </Stack>
+    </>
+  );
+}
+
+type LogEntry = { id: string; title: string; time: string; description?: string; tone?: 'accent' | 'info' | 'success' | 'warning' | 'danger'; icon?: ReactNode };
+/* a log, oldest first; the demo shows the first n of it, newest at the top */
+const ACTIVITY: LogEntry[] = [
+  { id: 'draft', title: '초안 작성', time: '11월 18일', icon: <Pencil /> },
+  { id: 'invite', title: '이서윤 님 초대', time: '어제', icon: <UserPlus />, tone: 'accent' },
+  { id: 'due', title: '마감이 하루 남았어요', time: '어제', icon: <AlertTriangle />, tone: 'warning' },
+  { id: 'comments', title: '댓글 2개', time: '09:15', description: '“가격표 단위를 원으로 맞춰 주세요.”', icon: <MessageSquare />, tone: 'info' },
+  { id: 'approved', title: '검토 승인', time: '10:42', description: '박지민 님이 승인했어요.', icon: <CheckCircle2 />, tone: 'success' },
+  { id: 'published', title: '공개 게시', time: '11:05', description: '고객 공지 게시판에 올렸어요.', icon: <Share />, tone: 'accent' },
+];
+const DEPLOYS: LogEntry[] = [
+  { id: 'v030', title: '0.3.0 태그', time: '11월 19일' },
+  { id: 'ci', title: 'CI 실패: 터치 검사', time: '11월 20일', description: '합성 제스처가 전달되지 않아 건너뛰게 바꿨어요.', tone: 'danger' },
+  { id: 'v040', title: '0.4.0 배포', time: '11월 20일', tone: 'success' },
+  { id: 'fix', title: 'Safari 수정 두 건', time: '11월 20일', tone: 'info' },
+  { id: 'v050', title: '0.5.0 준비', time: '다음 주', tone: 'accent' },
+];
+function Log({ entries, start, label }: { entries: LogEntry[]; start: number; label: string }) {
+  const [n, setN] = useState(start);
+  return (
+    <>
+      <Timeline aria-label={label}>
+        {entries.slice(0, n).reverse().map((e) => (e.icon
+          ? <TimelineItem key={e.id} icon={e.icon} tone={e.tone} title={e.title} time={e.time} description={e.description} />
+          : <TimelineItem key={e.id} tone={e.tone} title={e.title} time={e.time} description={e.description} />))}
+      </Timeline>
+      <Stack direction="row" gap={2} wrap>
+        <Button size="sm" variant="neutral" disabled={n <= 1} onClick={() => setN((x) => Math.max(1, x - 1))}>이전</Button>
+        <Button size="sm" variant="tinted" disabled={n >= entries.length} onClick={() => setN((x) => Math.min(entries.length, x + 1))}>다음</Button>
+      </Stack>
+    </>
+  );
+}
+const EventLog = () => <Log entries={ACTIVITY} start={4} label="문서 활동" />;
+const DeployLog = () => <Log entries={DEPLOYS} start={3} label="배포 기록" />;

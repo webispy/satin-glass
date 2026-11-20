@@ -149,3 +149,59 @@
   .sg-root:not([data-sg-reduce-motion="false"]) .sg-accordion__region { transition: none; }
   .sg-root:not([data-sg-reduce-motion="false"]) .sg-accordion__content { transform: none; transition: opacity var(--sg-duration-fast) ease; }
 }
+
+/* ============================================================================================
+   Timeline (0.5): things in order on a line that only connects (a line, not a groove). Steps: done is a filled mark
+   with a check and the line after it is the accent (the way travelled); current is the position dot; upcoming an
+   empty ring. Events: a dot in their tone, or their icon on a soft disc. A step's look (data-look) changes by
+   transition, the check drawing in; when the current step moves the dot travels along the line (Timeline's
+   script: .sg-timeline__bead) and the lines it passes fill in the accent behind it.
+   ============================================================================================ */
+.sg-timeline { position: relative; list-style: none; margin: 0; padding: 0; --_m: 24px; }
+.sg-timeline__item { position: relative; display: grid; grid-template-columns: var(--_m) minmax(0, 1fr); column-gap: 12px; padding-bottom: 20px; --_c: var(--sg-label-secondary); }
+.sg-timeline__item:last-child { padding-bottom: 0; }
+.sg-timeline__item:not(:last-child)::before { content: ''; position: absolute; inset-inline-start: calc(var(--_m) / 2 - 1px); top: 28px; bottom: 4px; width: 2px; border-radius: var(--sg-radius-full); background: var(--sg-separator-strong); transition: background-color var(--sg-duration-fast) ease; }
+.sg-timeline__item[data-look="done"]:not(:last-child)::before { background: var(--sg-accent); }
+/* while the dot travels, the lines it runs along fill in the accent down to it (--_fill, set by script) */
+.sg-timeline__item[data-pass]:not(:last-child)::before { background: linear-gradient(var(--sg-accent) calc(var(--_fill, 0) * 100%), var(--sg-separator-strong) 0); transition: none; }
+/* ...and keep their colour when the fill gives way to it */
+.sg-timeline[data-landing] .sg-timeline__item::before, .sg-timeline[data-landing] .sg-timeline__marker::before { transition: none; }
+/* while a move is laid out (one frame), nothing in it transitions */
+.sg-timeline[data-hold] *, .sg-timeline[data-hold] *::before, .sg-timeline[data-hold] *::after { transition: none !important; }
+/* a 10 px dot ends 5 px above the line, as the 22 px marks do; the line stops 5 px before the next dot */
+.sg-timeline__item[data-look="event"]:not(:last-child)::before { top: 22px; }
+.sg-timeline__item:has(+ [data-look="event"])::before { bottom: -2px; }
+.sg-timeline__item[data-tone="accent"] { --_c: var(--sg-accent); }
+.sg-timeline__item[data-tone="info"] { --_c: var(--sg-info, var(--sg-accent)); }
+.sg-timeline__item[data-tone="success"] { --_c: var(--sg-success); }
+.sg-timeline__item[data-tone="warning"] { --_c: var(--sg-warning); }
+.sg-timeline__item[data-tone="danger"] { --_c: var(--sg-danger); }
+.sg-timeline__marker { position: relative; z-index: 1; display: grid; place-items: center; width: var(--_m); height: 24px; }
+/* steps: one ring that changes its colours, the position dot inside it, and a check that draws in */
+[data-kind="step"] > .sg-timeline__marker::after { content: ''; position: absolute; inset: 1px; border-radius: 50%; background: var(--sg-surface); box-shadow: inset 0 0 0 2px var(--sg-separator-strong); transition: background-color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease; }
+[data-kind="step"] > .sg-timeline__marker::before { content: ''; position: absolute; inset: 8px; z-index: 1; border-radius: 50%; background: var(--sg-accent); opacity: 0; transition: opacity var(--sg-duration-instant) ease; }
+[data-look="current"] > .sg-timeline__marker::after { box-shadow: inset 0 0 0 2px var(--sg-accent); }
+[data-look="current"]:not([data-arriving]) > .sg-timeline__marker::before { opacity: 1; }
+[data-look="done"] > .sg-timeline__marker::after { background: var(--sg-accent); box-shadow: inset 0 0 0 2px var(--sg-accent); }
+/* the check draws in when a step is done (an ease-out, no overshoot: a spring past the end showed loose stroke ends),
+   and fades at once when it is not any more instead of undrawing */
+.sg-timeline__check { position: relative; z-index: 1; width: 13px; height: 13px; stroke-width: 2.6; color: var(--sg-on-accent); stroke-dasharray: 20; stroke-dashoffset: 20; opacity: 0; transition: opacity var(--sg-duration-instant) ease; }
+[data-look="done"] > .sg-timeline__marker .sg-timeline__check { stroke-dashoffset: 0; opacity: 1; transition: stroke-dashoffset var(--sg-duration-base) var(--sg-ease-out); }
+/* events */
+[data-look="event"] > .sg-timeline__marker::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--_c); }
+[data-look="icon"] > .sg-timeline__marker { width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--_c) 16%, transparent); color: var(--_c); }
+[data-look="icon"] > .sg-timeline__marker svg { width: 14px; height: 14px; }
+/* the moving dot and the way travelled (placed by script) */
+.sg-timeline__bead { display: none; position: absolute; left: 0; top: 0; pointer-events: none; }
+.sg-timeline__bead { z-index: 2; width: 8px; height: 8px; border-radius: 50%; background: var(--sg-accent); }
+.sg-timeline__body { min-width: 0; padding-top: 2px; }
+.sg-timeline__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 12px; }
+.sg-timeline__title { min-width: 0; color: var(--sg-label); font-size: var(--sg-text-callout-size); line-height: 20px; font-weight: 600; transition: color var(--sg-duration-fast) ease; }
+[data-look="upcoming"] .sg-timeline__title { color: var(--sg-label-secondary); }
+.sg-timeline__time { flex: none; color: var(--sg-label-secondary); font-size: var(--sg-text-footnote-size); line-height: 20px; font-variant-numeric: tabular-nums; }
+.sg-timeline__desc { margin-top: 2px; color: var(--sg-label-secondary); font-size: var(--sg-text-subhead-size); line-height: var(--sg-text-subhead-line); }
+@media (forced-colors: active) {
+  .sg-timeline__item:not(:last-child)::before { background: CanvasText; }
+  [data-kind="step"] > .sg-timeline__marker::after { border: 2px solid CanvasText; }
+  [data-look="done"] > .sg-timeline__marker::after, [data-kind="step"] > .sg-timeline__marker::before, .sg-timeline__bead { background: Highlight; forced-color-adjust: none; }
+}

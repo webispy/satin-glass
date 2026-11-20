@@ -4,3 +4,4 @@ export { ListSection, List, type ListItemProps, ListItem } from '../layout';
 export * from '../accordion';
 export * from '../skeleton';
 export * from '../media';
+export * from '../timeline';
