@@ -189,6 +189,7 @@ await p.keyboard.press('Enter'); await p.waitForTimeout(500);
 ok('action sheet: Cancel closes', (await p.locator('.sg-actionsheet').count()) === 0);
 
 const photo = p.getByRole('button', { name: '노을 사진' });
+await photo.scrollIntoViewIfNeeded(); await p.waitForTimeout(200);   /* the page grew: it may start below the fold */
 const [px, py] = await center(photo);
 await p.mouse.move(px, py); await p.mouse.down(); await p.waitForTimeout(650); await p.mouse.up(); await p.waitForTimeout(500); await shot('context');
 ok('context menu: long press lifts the item and opens the menu', (await p.locator('.sg-lift').count()) === 1 && (await p.locator('.sg-menu').count()) === 1);
@@ -405,7 +406,8 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
   await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(600);
   await p.getByRole('button', { name: '설정', exact: true }).click(); await p.waitForTimeout(700);
   await p.locator('.sg-sheet').getByRole('switch', { name: '동작 줄이기' }).click(); await p.waitForTimeout(200);
-  const barSwitch = await p.locator('.docs__settings--bar').getByRole('switch', { name: '동작 줄이기' }).getAttribute('aria-checked');
+  /* the page under the open sheet is hidden from assistive technology (aria-hidden): reach the bar's switch anyway */
+  const barSwitch = await p.locator('.docs__settings--bar').getByRole('switch', { name: '동작 줄이기', includeHidden: true }).getAttribute('aria-checked');
   ok('showcase settings sheet: 동작 줄이기 applies to the whole app (and the top bar reflects it)', (await rootAttr()) === 'true' && barSwitch === 'true', `root ${await rootAttr()}, top bar ${barSwitch}`);
   await p.locator('.sg-sheet').getByRole('switch', { name: '동작 줄이기' }).click(); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
 }

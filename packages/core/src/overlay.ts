@@ -92,8 +92,8 @@ export function trapFocus(root: HTMLElement, initial?: HTMLElement | null): () =
   };
 }
 
-/* ---------------------------------------------------------------- layer stack (Esc order, scroll lock) */
-type Layer = { onEscape: () => void; modal: boolean };
+/* ---------------------------------------------------------------- layer stack (Esc order, scroll lock, inert page) */
+type Layer = { onEscape: () => void; modal: boolean; el: HTMLElement | null; inert: boolean };
 const stack: Layer[] = [];
 let locked = false, savedPad = '', savedOverflow = '', holds = 0;
 
@@ -111,21 +111,46 @@ function syncLock() {
     b.style.overflow = savedOverflow; b.style.paddingRight = savedPad;
   }
 }
+
+/* A modal layer hides everything under it from assistive technology (aria-modal alone is not honoured everywhere):
+   aria-hidden on every child of <body> except the portal of the top modal layer, the portals of layers opened above it
+   (a menu or a dialog opened from a drawer) and live regions (toasts must still be announced). The scrim already
+   takes the pointer and the focus trap the keyboard; aria-hidden, unlike inert, costs no style recalculation of the
+   page, so the overlay's first frame stays light. Only what this hid is given back. */
+const madeHidden = new Set<HTMLElement>();
+const hostOf = (el: HTMLElement | null) => { let e = el; while (e && e.parentElement && e.parentElement !== document.body) e = e.parentElement; return e && e.parentElement === document.body ? e : null; };
+function syncHidden() {
+  let m = -1;
+  for (let i = stack.length - 1; i >= 0; i--) if (stack[i].inert && hostOf(stack[i].el)) { m = i; break; }
+  const keep = new Set<Element>();
+  if (m >= 0) for (let i = m; i < stack.length; i++) { const h = hostOf(stack[i].el); if (h) keep.add(h); }
+  const want = new Set<HTMLElement>();
+  if (m >= 0) for (const c of Array.from(document.body.children) as HTMLElement[]) {
+    if (keep.has(c) || c.matches('script, style, link, template') || c.querySelector('[aria-live], .sg-toaster')) continue;
+    if (c.getAttribute('aria-hidden') !== 'true' || madeHidden.has(c)) want.add(c);
+  }
+  for (const c of madeHidden) if (!want.has(c)) { c.removeAttribute('aria-hidden'); madeHidden.delete(c); }
+  for (const c of want) if (!madeHidden.has(c)) { c.setAttribute('aria-hidden', 'true'); madeHidden.add(c); }
+}
 const onKeydown = (e: KeyboardEvent) => {
   if (e.key !== 'Escape' || !stack.length) return;
   e.preventDefault();
   stack[stack.length - 1].onEscape();
 };
 
-export function pushLayer(onEscape: () => void, modal: boolean): () => void {
-  const layer = { onEscape, modal };
+/** Puts an overlay on the layer stack: Escape goes to the top one, a modal one locks the page's scroll and (unless
+    `opts.inert` is false: an anchored menu that only holds the scroll) hides the rest of the page from assistive
+    technology. `el` is the
+    overlay's element (any element inside its portal). Returns the removal. */
+export function pushLayer(onEscape: () => void, modal: boolean, el: HTMLElement | null = null, opts: { inert?: boolean } = {}): () => void {
+  const layer = { onEscape, modal, el, inert: opts.inert ?? modal };
   if (!stack.length) document.addEventListener('keydown', onKeydown);
-  stack.push(layer); syncLock();
+  stack.push(layer); syncLock(); syncHidden();
   return () => {
     const i = stack.indexOf(layer);
     if (i >= 0) stack.splice(i, 1);
     if (!stack.length) document.removeEventListener('keydown', onKeydown);
-    syncLock();
+    syncLock(); syncHidden();
   };
 }
 export const topLayerCount = () => stack.length;

@@ -35,7 +35,7 @@ export function Dialog({ open, onClose, title, children, icon, tone = 'accent', 
   const { mounted } = useOverlayLifecycle(open, () => {
     const p = panel.current!;
     scrim.current?.classList.add('is-open');
-    const pop = pushLayer(() => onClose('escape'), true);
+    const pop = pushLayer(() => onClose('escape'), true, p);
     const trap = trapFocus(p);
     release.set(() => { pop(); trap(); });
     return bloomIn(p, { x: p.offsetWidth / 2, y: p.offsetHeight / 2 }, 0.9);
@@ -94,7 +94,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, heigh
     const p = panel.current!;
     swiped.current = false;
     scrim.current?.classList.add('is-open');
-    const pop = pushLayer(() => close.current('escape'), true);
+    const pop = pushLayer(() => close.current('escape'), true, p);
     const trap = trapFocus(p);
     /* drag the grabber or header down to dismiss */
     const handle = p.querySelector<HTMLElement>('[data-sg-drag]') ?? p;
@@ -253,7 +253,7 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
   const { mounted } = useOverlayLifecycle(open, () => {
     const b = box.current!;
     scrim.current?.classList.add('is-open');
-    const pop = pushLayer(() => onClose('escape'), true);
+    const pop = pushLayer(() => onClose('escape'), true, b);
     const trap = trapFocus(b, b.querySelector<HTMLElement>('[data-cancel]'));
     release.set(() => { pop(); trap(); });
     if (prefersReducedMotion(b)) return fade(b, 0, 1, 140);

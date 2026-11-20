@@ -152,7 +152,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     if (b.w !== box.w || b.h !== box.h) setBox(b);
     z.current = { s: 1, x: 0, y: 0 }; zs.current = null;
     tx.current = new Spring(-atRef.current * (b.w + GAP), 'smooth', el); paintT(-atRef.current * (b.w + GAP));
-    const pop = pushLayer(() => close.current('escape'), true);
+    const pop = pushLayer(() => close.current('escape'), true, el);
     const trap = trapFocus(el, el.querySelector<HTMLElement>('[data-sg-close]'));
     hideThumb(atRef.current);
     release.set(() => { pop(); trap(); stopZ.current(); stopT.current(); });

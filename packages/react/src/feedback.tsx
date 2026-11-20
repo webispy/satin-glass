@@ -57,7 +57,7 @@ export function Tooltip({ content, children, placement = 'top', delay = 500, dis
     t.getAnimations().forEach((x) => x.cancel());
     if (prefersReducedMotion(t)) fade(t, 0, 1, 140);
     else animate(t, [{ opacity: 0, transform: `translate(${off[0]}px, ${off[1]}px)` }, { opacity: 1, transform: 'none' }], 'snappy');
-    const pop = pushLayer(() => setOpen(false), false);
+    const pop = pushLayer(() => setOpen(false), false, t);
     const close = () => { clearTimeout(timer.current); instant.current = true; setOpen(false); };
     if (shown) shown();
     shown = close;

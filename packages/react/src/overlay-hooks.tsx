@@ -65,7 +65,8 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
     const at = place({ width: p.offsetWidth, height: p.offsetHeight }, r, placement);
     /* document coordinates (the panel is position: absolute in an anchored portal) */
     p.style.left = `${at.x + scrollX}px`; p.style.top = `${at.y + scrollY}px`; p.dataset.side = at.side;
-    const pop = pushLayer(() => close.current('escape'), !!opts.lockScroll);
+    /* an anchored panel never makes the page inert: a context menu's lifted item and scrim live in their own portal */
+    const pop = pushLayer(() => close.current('escape'), !!opts.lockScroll, p, { inert: false });
     const outside = (e: PointerEvent) => {
       if (p.contains(e.target as Node)) return;
       if (anchor instanceof HTMLElement && anchor.contains(e.target as Node)) return; /* the anchor toggles itself */
