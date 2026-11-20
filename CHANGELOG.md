@@ -1,25 +1,56 @@
 # Changelog
 
-## 0.4.0 — 진행 중 (공개 준비)
+## 0.4.0 — unreleased (first public release)
 
-### 이름 변경 (호환되지 않음)
-- 라이브러리 이름을 Glass Layer에서 **Satin Glass**로 바꿨다. 새틴 유리(산으로 부식시켜 매끄럽게 비치는 불투명 유리)에서 따왔다.
-- 패키지: `@glass-layer/tokens|core|react` → `@satin-glass/tokens|core|react`
-- CSS 접두사: 클래스 `gl-*` → `sg-*`, 변수 `--gl-*` → `--sg-*`, data 속성 `data-gl-*` → `data-sg-*`
-- 아래의 지난 기록도 새 이름과 접두사로 적었다.
+The library gets its own name and its foundations: six design principles, a satin glass material, depth by part, corners from one source, focus, contrast and settings that hold everywhere, and checks that keep the CSS to these rules. It ships per category, and the wheel, calendar, action sheet and tab bar are redrawn in that language.
 
-### 공개 준비
-- `TabBar`: 선택 표시를 끌어 옮기는 동작을 `draggable` 속성으로 켜게 바꿨다(기본은 꺼짐, 탭해서 고름). 탭 바를 옆으로 스크롤하다 잘못 끄는 일을 줄인다.
-- Apache-2.0 라이선스(`LICENSE`, `NOTICE`, 각 패키지의 `license` 필드). 특허 사용권을 명시적으로 주고, "Satin Glass" 이름(상표)은 라이선스에 포함하지 않는다.
-- 커밋 메시지 규칙(`CONTRIBUTING.md`): Linux 커널 형식, 영어.
+From this release on the changelog is in English; the entries for 0.3.0 and earlier are in Korean.
 
-### 패키지 구성
-- 패키지는 세 개 그대로다(`tokens` · `core` · `react`). 앱은 `@satin-glass/react` 하나만 설치하면 나머지가 따라온다. 버전은 셋이 같이 올린다.
-- **범주별 진입점**: `@satin-glass/react/{foundation,controls,layout,navigation,selection,overlays,feedback,data}`. 루트는 지금처럼 전부 내보낸다. 공통 코드는 청크로 나뉘어, 두 진입점을 함께 써도 같은 코드를 두 번 싣지 않는다.
-- **범주별 CSS**: `css/<범주>.css`(foundation에 토큰 포함). 같은 내용을 한 파일로 묶은 `styles.css`, 전체를 `@layer satin-glass`에 넣은 `styles.layer.css`도 있다. core와 react 양쪽에서 같은 경로로 가져올 수 있다.
-- CSS 원본을 같은 범주로 다시 묶었다(이전에는 추가된 버전별로 나뉘어 있었음). 묶기 전후로 모든 문서 페이지의 계산된 스타일이 같은지 확인했다.
-- 다른 범주의 컴포넌트를 덮어쓰던 규칙 두 곳(배너 닫기 버튼 여백, 탭 바 동작 버튼 크기·반경)이 파일 순서에 기대고 있어 선택자를 한 단계 구체적으로 바꿨다. 이제 foundation만 먼저 오면 범주 CSS의 순서는 상관없다.
-- e2e `css-split`: 범주 CSS를 거꾸로 불러온 경우, 범주마다 README 표에 적은 CSS만 불러온 경우, 레이어 판을 쓴 경우 모두 전체 파일과 계산된 스타일이 같은지 모든 문서 페이지에서 확인한다.
+### Breaking changes
+- **Renamed from Glass Layer to Satin Glass**, after satin (acid-etched) glass.
+  - Packages: `@glass-layer/tokens|core|react` → `@satin-glass/tokens|core|react`.
+  - CSS: classes `gl-*` → `sg-*`, custom properties `--gl-*` → `--sg-*`, data attributes `data-gl-*` → `data-sg-*`. The older entries below use the new names.
+- `TabBar`: dragging the selection along the bar is opt-in with `draggable` (off by default; a tap selects).
+- `TabBarAction` sits inside the bar after a hairline as an icon cell pressed like a tab, and has no `variant`.
+- `Calendar`: the title is two chips (month and year, in the locale's order) that open month and year grids; `monthPicker="wheel"` keeps the wheels. `openTo` gains `'year'`.
+- `TimePicker`: turning the wheels changes a draft; Done, Enter or a click outside commit it (`onChange` once), Cancel or Escape restore the previous time.
+- Focus is drawn as an outline (`--sg-focus-outline`, `--sg-focus-offset`); `--sg-ring` is gone. `--sg-depth-well` is gone (a wheel's column is a groove).
+- `Glass`: `variant` sets only fill and blur; `level="overlay"` casts the overlay shadow. Sheets, dialogs and action sheets are overlays; menus, popovers, list boxes, panels and toasts float.
+- The calm motion personality's bouncy spring no longer overshoots (damping 0.72 → 0.9), and the pop springs of the three personalities are spread apart.
+
+### Foundations
+- **Six principles** open the docs and `docs/design-language.md`, highest first: satin glass, two lights, surface tension, fingertip touch, small and rare delights, and smooth for everyone.
+- **Satin material**: a fine etched grain over the glass fill, and a wide, faint sheen that follows the pointer; the fixed top light keeps the form. No refraction.
+- **Depth by part**: six levels (groove, page, surface, raised, floating glass, overlay) and depth tokens declared on every theme element. Paths (rails, slots, a range's band) are grooves; what is held or chosen is raised; a handle has a light face in every theme; a chosen value is an accent bead. How a selection shows is decided by its role, each with a high-contrast form.
+- **Blur budget**, measured: glass inside glass draws flat, at most three blurred surfaces over any point and six large ones on a screen.
+- **Corners** from one source: parents declare `--_radius` and `--_nest`, children use `calc(var(--_radius) - var(--_nest))`.
+- **Focus, contrast and settings**: focus survives high contrast, selected states and forced colours; contrast is checked per state (hover, press, placeholders in fills, text on clear glass over a white photo); in high contrast depth becomes outlines from the same tokens; the nearest theme boundary decides shadows, reduced motion and reduced transparency, and portals carry the resolved settings.
+- **Tokens reach every component**: control text roles (`--sg-text-control-*`, `label`, `item`), `Stack` gaps from the spacing scale, radii, shadows and times from tokens. The motion tables in the docs are generated from the springs.
+- **One floating bar per screen**: `AppBar` takes `attached` (flush, opaque, a hairline under it); a floating tab bar goes with an attached top bar.
+
+### Components
+- New: **`RangeCalendar`** and **`DateRangePicker`** pick a start and an end on one grid (`minLength` / `maxLength`, days or nights, ISO 8601 interval in forms). The days between lie in a tinted groove whose head follows the pointer.
+- `Wheel`, `WheelGroup`, `TimeWheel`: no drum or groove; a still, raised lens that squeezes the way the rows go and pops as a row arrives; a spring pulls the nearest row in (no scroll snap); `disabled`.
+- `Calendar`: the year grid fades only where more years wait.
+- `ActionSheet`: one glass panel with menu-like rows and a quiet close row.
+- Anchored panels (popovers, menus) are clipped where the scroll area around their anchor clips it.
+- 0.3 parts follow the depth rules: the bar meter's track is a groove, the current page is an accent bead, stat cards and banners take the card radius, and cards and list groups get an edge in high contrast.
+- Menus and other blooms differ by motion personality (calm settles without overshoot, playful overshoots about 16 %).
+
+### Packaging
+- Three packages as before, versioned together; an app installs `@satin-glass/react` only.
+- **Per-category entry points**: `@satin-glass/react/{foundation,controls,layout,navigation,selection,overlays,feedback,data}`; the root still exports everything.
+- **Per-category stylesheets**: `css/<category>.css` (foundation first, then any order), `styles.css` with all of them, and `styles.layer.css` inside `@layer satin-glass`.
+- Apache-2.0 license with `LICENSE` and `NOTICE` in each package; npm metadata (description, keywords, repository, `publishConfig.access`).
+
+### Project
+- English `README.md` with a Korean `README.ko.md`, and a short README per package.
+- `CONTRIBUTING.md` (Linux kernel style commits in English, `Signed-off-by` under the DCO, `Reviewed-by` for reviewers, AI agents named with their model), `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), issue and pull request templates.
+- The icon, in the README and as the docs' favicon and logo.
+
+### Tests and tooling
+- `pnpm test:changed` and `pnpm e2e:changed` run only what covers a change; the full `pnpm e2e` still gates releases.
+- New e2e suites: `css-split`, `focus`, `settings`, `corners`, `blur-budget`, `wheel-motion`; `core/test/css-rules.test.ts` checks every stylesheet for animated properties (with an allowlist that gives a reason per exception) and for raw radii, shadows and times.
 
 ## 0.3.0 — 2026-11-19
 
