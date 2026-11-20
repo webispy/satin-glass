@@ -236,6 +236,8 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 .sg-field__adorn svg { width: 18px; height: 18px; }
 @keyframes sg-pop-in { from { opacity: 0; transform: scale(0.4); } }
 .sg-field__clear { animation: sg-pop-in var(--sg-spring-snappy-duration) var(--sg-spring-snappy) both; }
+/* a search input's own clear (WebKit / Blink) would sit beside the field's: the field draws the one */
+.sg-field__input::-webkit-search-cancel-button, .sg-field__input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
 .sg-field__clear { appearance: none; border: 0; margin: 0 -4px 0 0; padding: 0; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: none; color: var(--sg-label-tertiary); cursor: pointer; }
 @media (hover: hover) { .sg-field__clear:hover { color: var(--sg-label-secondary); } }
 .sg-field__clear svg { width: 18px; height: 18px; }
