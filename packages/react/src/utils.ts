@@ -75,3 +75,11 @@ export function useImageTint(src: string | undefined): string | undefined {
   }, [src]);
   return tint;
 }
+
+/** The one item of a roving group that takes Tab: the chosen one, or the first enabled one when the chosen one is
+    disabled (a disabled button cannot take focus, which would leave the whole group out of the tab order). */
+export function tabStop(index: number, count: number, disabled: (i: number) => boolean): number {
+  if (index >= 0 && index < count && !disabled(index)) return index;
+  for (let i = 0; i < count; i++) if (!disabled(i)) return i;
+  return -1;
+}

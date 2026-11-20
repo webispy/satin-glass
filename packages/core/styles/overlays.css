@@ -8,6 +8,9 @@
    carries them with their anchor on the compositor, with no frame of lag; only inner scroll areas need JS */
 .sg-portal.sg-portal--anchored { position: absolute; inset: 0 auto auto 0; width: 100%; height: 0; }
 .sg-portal--passthrough > .sg-scrim { pointer-events: auto; }
+/* toasts stay above every dialog (8.3): their portal is its own stacking layer, so a modal opened later in the DOM
+   cannot cover them */
+.sg-root.sg-portal.sg-portal--toasts { z-index: var(--sg-z-toast); }
 
 .sg-scrim { position: fixed; inset: 0; background: var(--sg-scrim); opacity: 0; transition: opacity var(--sg-duration-base) ease; }
 .sg-scrim--clear { background: transparent; }
@@ -61,6 +64,8 @@
   border-radius: calc(var(--_radius) - var(--_nest)); background: none; color: var(--sg-label); font-size: var(--sg-text-item-size); line-height: var(--sg-text-item-line); font-weight: var(--sg-text-item-weight); letter-spacing: var(--sg-text-item-tracking); cursor: pointer;
 }
 .sg-menu__item[data-active], .sg-menu__item:focus-visible { background: var(--sg-fill-strong); outline: var(--sg-focus-width) solid transparent; outline-offset: calc(-1 * var(--sg-focus-width)); }   /* the fill marks it; forced colours draw the outline */
+/* reached by keys, the item also takes the focus ring (inside its corners): the fill alone is what a pointer shows too */
+.sg-menu__item:focus-visible { outline-color: var(--sg-focus-ring); }
 @media (hover: hover) { .sg-menu__item:hover { background: var(--sg-fill-strong); outline: none; } }
 .sg-menu__item[aria-disabled="true"] { color: var(--sg-label-disabled); cursor: default; background: none; }
 .sg-menu__item[data-tone="danger"] { color: var(--sg-danger-text); }
@@ -90,7 +95,7 @@
 .sg-actionsheet__icon { display: inline-flex; flex: none; color: var(--sg-label-secondary); }
 .sg-actionsheet__icon svg { width: 20px; height: 20px; }
 .sg-actionsheet__label { flex: 1; min-width: 0; }
-.sg-actionsheet__action:focus-visible { background: var(--sg-fill-strong); outline: var(--sg-focus-width) solid transparent; outline-offset: calc(-1 * var(--sg-focus-width)); }
+.sg-actionsheet__action:focus-visible { background: var(--sg-fill-strong); outline: var(--sg-focus-width) solid var(--sg-focus-ring); outline-offset: calc(-1 * var(--sg-focus-width)); }
 @media (hover: hover) { .sg-actionsheet__action:hover:not(:disabled) { background: var(--sg-fill-strong); } }
 .sg-actionsheet__action:active:not(:disabled) { background: var(--sg-fill-strong); transform: scale(0.985); }
 .sg-actionsheet__action:disabled { color: var(--sg-label-disabled); cursor: default; }

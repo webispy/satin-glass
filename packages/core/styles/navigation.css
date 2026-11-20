@@ -57,7 +57,7 @@
    Tabs share the width but never get narrower than 64 px (48 px compact): with more tabs than fit, the track
    inside the glass scrolls sideways, its ends fade and the selected tab is kept in view (core/overflow.ts).
    ============================================================================================ */
-.sg-tabbar { position: relative; display: flex; align-items: flex-end; gap: 8px; padding: 0 var(--sg-size-bar-inset); pointer-events: none; }
+.sg-tabbar { position: relative; z-index: var(--sg-z-bar); display: flex; align-items: flex-end; gap: 8px; padding: 0 var(--sg-size-bar-inset); pointer-events: none; }
 .sg-tabbar > * { pointer-events: auto; }
 .sg-tabbar__bar {
   flex: 1; min-width: 0; position: relative; display: flex; height: var(--sg-size-tab-bar); padding: var(--_nest); gap: 0;   /* min-width 0: long labels truncate instead of widening the page */
@@ -227,7 +227,7 @@ a.sg-crumb__item:active, button.sg-crumb__item:active { background: var(--sg-fil
   transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), background-color var(--sg-duration-fast) ease, color var(--sg-duration-fast) ease;
 }
 /* pressed in like a button (0.965) */
-.sg-pagination__page:active, .sg-pagination__step:active:not(:disabled) { transform: scale(0.965); transition-duration: 90ms, var(--sg-duration-fast), var(--sg-duration-fast); transition-timing-function: var(--sg-ease-out); }
+.sg-pagination__page:active, .sg-pagination__step:active:not(:disabled) { transform: scale(0.965); transition-duration: var(--sg-duration-instant), var(--sg-duration-fast), var(--sg-duration-fast); transition-timing-function: var(--sg-ease-out); }
 .sg-pagination__step svg { width: 18px; height: 18px; }
 @media (hover: hover) { .sg-pagination__page:hover, .sg-pagination__step:hover:not(:disabled) { background: var(--sg-fill); } }
 .sg-pagination__page:active, .sg-pagination__step:active:not(:disabled) { background: var(--sg-fill-strong); }   /* touch: the press is the feedback */

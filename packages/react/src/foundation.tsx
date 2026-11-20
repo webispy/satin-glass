@@ -38,6 +38,8 @@ export function createTheme(t: Partial<Theme> = {}): Theme {
 
 const ThemeCtx = createContext<ResolvedTheme>({ ...createTheme(), scheme: 'light', name: 'light', reducedTransparency: false, reducedMotion: false, grooves: 'inset' });
 export const useTheme = () => useContext(ThemeCtx);
+/* whether a ThemeProvider is above: without one a portal writes no settings, so the page's own (system) ones apply */
+const ProvidedCtx = createContext(false);
 
 /* the motion personality in effect (overlays rendered in a portal read it from here) */
 const MotionCtx = createContext<MotionName | undefined>(undefined);
@@ -97,11 +99,13 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
   const rt = resolved.reducedTransparency;
   return (
     <ThemeCtx.Provider value={resolved}>
+     <ProvidedCtx.Provider value={true}>
      <MotionCtx.Provider value={motion}>
       <div ref={ref} data-sg-theme={resolved.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(resolved.reducedMotion)} data-sg-grooves={resolved.grooves} className={cx('sg-root', rt && 'sg-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
         {children}
       </div>
      </MotionCtx.Provider>
+     </ProvidedCtx.Provider>
     </ThemeCtx.Provider>
   );
 });
@@ -110,11 +114,16 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
 export function Portal({ children, className }: { children: ReactNode; className?: string }) {
   const t = useTheme();
   const motion = useMotion();
+  const provided = useContext(ProvidedCtx);
   /* synchronous host so the panel exists in the same commit (enter animations measure it in a layout effect) */
   const host = typeof document !== 'undefined' ? document.body : null;
   if (!host) return null;
   return createPortal(
-    <div className={cx('sg-root sg-portal', t.reducedTransparency && 'sg-reduce-transparency', className)} data-sg-theme={t.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(t.reducedMotion)} data-sg-grooves={t.grooves} style={tokenStyle(t.tokens)}>{children}</div>,
+    provided
+      ? <div className={cx('sg-root sg-portal', t.reducedTransparency && 'sg-reduce-transparency', className)} data-sg-theme={t.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(t.reducedMotion)} data-sg-grooves={t.grooves} style={tokenStyle(t.tokens)}>{children}</div>
+      /* no theme above: the page's own settings and the system's apply (a default light, motion-on value would
+         override prefers-color-scheme and prefers-reduced-motion) */
+      : <div className={cx('sg-root sg-portal', className)} data-sg-motion={motion}>{children}</div>,
     host,
   );
 }

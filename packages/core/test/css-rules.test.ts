@@ -28,6 +28,8 @@ function scan() {
       for (const d of body.split(';')) {
         const m = /^\s*([a-z-]+)\s*:\s*([\s\S]+)$/.exec(d); if (!m) continue;
         const prop = m[1], val = m[2].trim();
+        if (prop === 'transition-duration' || prop === 'transition-delay' || prop === 'animation-delay')
+          for (const t of val.replace(/var\([^)]*\)/g, '').match(TIME) ?? []) out.time.push({ file, selector, what: t });
         if (prop === 'transition' || prop === 'transition-property') {
           for (const part of val.split(/,(?![^(]*\))/)) {
             const p = part.trim().split(/\s+/)[0];

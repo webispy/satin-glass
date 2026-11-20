@@ -37,7 +37,9 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
   const bounds = () => {
     const items = opts.items();
     if (!items.length) return;
-    lo = items[0].offsetLeft; hi = items[items.length - 1].offsetLeft + items[items.length - 1].offsetWidth;
+    /* the first and last items, whichever side they are on (right to left, the first is rightmost) */
+    const a = items[0], z = items[items.length - 1];
+    lo = Math.min(a.offsetLeft, z.offsetLeft); hi = Math.max(a.offsetLeft + a.offsetWidth, z.offsetLeft + z.offsetWidth);
   };
   /* the width of the selected item, measured when a move starts — never per frame: reading layout every frame
      would force a synchronous layout whenever something else changes the page mid-animation (a tab switch mounting
@@ -118,9 +120,8 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
     }
     const dt = Math.max(1, now - lastT);
     vx = 0.7 * vx + 0.3 * ((x - lastX) / dt) * 1000; lastX = x; lastT = now;
-    const items = opts.items(), first = geom(0)!, last = geom(items.length - 1)!;
-    const w = geom(current)?.w ?? first.w;
-    const c = Math.min(last.r - w / 2, Math.max(first.l + w / 2, x - grab));
+    const w = geom(current)?.w ?? geom(0)!.w;
+    const c = Math.min(hi - w / 2, Math.max(lo + w / 2, x - grab));   /* between the end items, either direction */
     lead(Math.sign(vx));
     left.target = c - w / 2; right.target = c + w / 2;
     const i = indexAt(c);

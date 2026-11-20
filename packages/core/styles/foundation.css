@@ -70,7 +70,7 @@
 [data-sg-reduce-motion="true"] .sg-field__clear, [data-sg-reduce-motion="true"] .sg-button__spinner { animation-name: sg-fade-in-plain; }
 [data-sg-reduce-motion="true"] .sg-search__cancel { transform: none; }
 [data-sg-reduce-motion="true"] .sg-pressable:active, [data-sg-reduce-motion="true"] .sg-pressable.is-pressed, [data-sg-reduce-motion="true"] .sg-button:active:not(:disabled), [data-sg-reduce-motion="true"] .sg-chip:active, [data-sg-reduce-motion="true"] .sg-card--interactive:active,
-[data-sg-reduce-motion="true"] .sg-stepper__btn:active:not(:disabled), [data-sg-reduce-motion="true"] .sg-tabbar__item:active .sg-tabbar__icon,
+[data-sg-reduce-motion="true"] .sg-stepper__btn:active:not(:disabled), [data-sg-reduce-motion="true"] .sg-tabbar__item:active .sg-tabbar__icon, [data-sg-reduce-motion="true"] .sg-tabbar__action:active .sg-tabbar__icon, [data-sg-reduce-motion="true"] button.sg-avatar-group__more:active, [data-sg-reduce-motion="true"] .sg-donut__slice,
 [data-sg-reduce-motion="true"] .sg-pagination__page:active, [data-sg-reduce-motion="true"] .sg-pagination__step:active, [data-sg-reduce-motion="true"] .sg-weekday:active { transform: none !important; }
 [data-sg-reduce-motion="true"] .sg-glass::after { display: none; }
 [data-sg-reduce-motion="true"] .sg-slider.is-active .sg-slider__thumb { --_s: 1; }
@@ -84,7 +84,7 @@
   .sg-root:not([data-sg-reduce-motion="false"]) .sg-field__clear, .sg-root:not([data-sg-reduce-motion="false"]) .sg-button__spinner { animation-name: sg-fade-in-plain; }
   .sg-root:not([data-sg-reduce-motion="false"]) .sg-search__cancel { transform: none; }
   .sg-root:not([data-sg-reduce-motion="false"]) .sg-pressable:active, .sg-root:not([data-sg-reduce-motion="false"]) .sg-pressable.is-pressed, .sg-root:not([data-sg-reduce-motion="false"]) .sg-button:active:not(:disabled), .sg-root:not([data-sg-reduce-motion="false"]) .sg-chip:active, .sg-root:not([data-sg-reduce-motion="false"]) .sg-card--interactive:active,
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-stepper__btn:active:not(:disabled), .sg-root:not([data-sg-reduce-motion="false"]) .sg-tabbar__item:active .sg-tabbar__icon, .sg-root:not([data-sg-reduce-motion="false"]) .sg-pagination__page:active, .sg-root:not([data-sg-reduce-motion="false"]) .sg-pagination__step:active { transform: none !important; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-stepper__btn:active:not(:disabled), .sg-root:not([data-sg-reduce-motion="false"]) .sg-tabbar__item:active .sg-tabbar__icon, .sg-root:not([data-sg-reduce-motion="false"]) .sg-tabbar__action:active .sg-tabbar__icon, .sg-root:not([data-sg-reduce-motion="false"]) button.sg-avatar-group__more:active, .sg-root:not([data-sg-reduce-motion="false"]) .sg-donut__slice, .sg-root:not([data-sg-reduce-motion="false"]) .sg-pagination__page:active, .sg-root:not([data-sg-reduce-motion="false"]) .sg-pagination__step:active { transform: none !important; }
   .sg-root:not([data-sg-reduce-motion="false"]) .sg-glass::after { display: none; }
   .sg-root:not([data-sg-reduce-motion="false"]) .sg-slider.is-active .sg-slider__thumb { --_s: 1; }
   .sg-root:not([data-sg-reduce-motion="false"]) .sg-slider__bubble, .sg-root:not([data-sg-reduce-motion="false"]) .sg-slider.is-active .sg-slider__bubble { transform: none; }
@@ -177,11 +177,11 @@
 .sg-glass--strong { --_fill: var(--sg-glass-fill-strong); --_blur: var(--sg-blur-strong); }
 .sg-glass--subtle { --_fill: var(--sg-glass-fill-subtle); --_blur: var(--sg-blur-subtle); }
 .sg-glass--overlay { --_shadow: var(--sg-shadow-lg); }
-/* over photos and video: clear fill, white ink, a darker shaded rim; pair with .sg-dimming when the media is bright */
-.sg-glass--clear {
-  --_fill: var(--sg-glass-fill-clear); --_blur: var(--sg-blur-subtle); --_shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+/* over photos and video: clear fill, white ink, a darker shaded rim; pair with .sg-dimming when the media is bright.
+   Density only: the level (float / overlay) still sets the shadow, and high contrast keeps its solid rims */
+.sg-glass--clear { --_fill: var(--sg-glass-fill-clear); --_blur: var(--sg-blur-subtle); color: #fff; }
+.sg-root:not([data-sg-theme$="-hc"]) .sg-glass--clear, .sg-root.sg-glass--clear:not([data-sg-theme$="-hc"]) {
   --sg-glass-rim-lit: rgba(255, 255, 255, 0.55); --sg-glass-rim-shade: rgba(0, 0, 0, 0.25); --sg-glass-depth: rgba(255, 255, 255, 0.12); --sg-glass-highlight: rgba(255, 255, 255, 0.35);
-  color: #fff;
 }
 /* tinted glass: the content's colour seeps into the fill (set --sg-tint, e.g. from useImageTint) */
 .sg-glass[data-tint] { --_fill: color-mix(in oklab, var(--sg-glass-fill) 84%, var(--sg-tint, transparent)); }
@@ -190,8 +190,8 @@
 
 /* pressable glass: presses IN (a short, firm give) and the light gathers under the finger */
 .sg-pressable { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
-.sg-pressable:active, .sg-pressable.is-pressed { transform: scale(0.965); transition-duration: 90ms; transition-timing-function: var(--sg-ease-out); }
-.sg-pressable.sg-glass:active::after, .sg-pressable.sg-glass.is-pressed::after { opacity: 1; transition-duration: 60ms; }
+.sg-pressable:active, .sg-pressable.is-pressed { transform: scale(0.965); transition-duration: var(--sg-duration-instant); transition-timing-function: var(--sg-ease-out); }
+.sg-pressable.sg-glass:active::after, .sg-pressable.sg-glass.is-pressed::after { opacity: 1; transition-duration: var(--sg-duration-instant); }
 
 /* accessibility: reduce transparency → solid surfaces; increased contrast → solid 1.5px rim */
 /* the fill is decided once, through --_fill, so everything drawn from it (glass buttons, the glass search field, hover

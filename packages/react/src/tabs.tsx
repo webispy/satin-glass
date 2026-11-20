@@ -5,7 +5,7 @@
    A row of filter choices is not tabs: use chips (or a segmented control for two to five options). */
 import { useDeferredValue, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { animate, fade, prefersReducedMotion } from '@satin-glass/core';
-import { cx, useControllable, useIsoLayoutEffect, useStableId } from './utils';
+import { cx, tabStop, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { Badge, useBridge } from './controls';
 
 export type TabItem<T extends string = string> = { value: T; label: ReactNode; icon?: ReactNode; badge?: ReactNode; disabled?: boolean; content?: ReactNode };
@@ -23,6 +23,7 @@ export type TabsProps<T extends string = string> = {
 export function Tabs<T extends string = string>({ items, value, defaultValue, onChange, activation = 'auto', 'aria-label': label, className, style, panelClassName }: TabsProps<T>) {
   const [v, setV] = useControllable<T>(value, defaultValue ?? items.find((i) => !i.disabled)?.value ?? items[0]?.value, onChange);
   const index = Math.max(0, items.findIndex((i) => i.value === v));
+  const stop = tabStop(index, items.length, (i) => !!items[i].disabled);
   const list = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null), panel = useRef<HTMLDivElement>(null);
   const id = useStableId('sg-tabs');
   /* the tab itself answers at once; the panel's content (charts, tables…) renders as a transition, in slices,
@@ -62,7 +63,7 @@ export function Tabs<T extends string = string>({ items, value, defaultValue, on
         <span ref={ind} className="sg-tabs__indicator" aria-hidden="true" />
         {items.map((it, i) => (
           <button key={it.value} type="button" role="tab" id={`${id}-t${i}`} data-sg-item aria-selected={i === index}
-            aria-controls={hasPanels ? `${id}-p` : undefined} tabIndex={i === index ? 0 : -1} disabled={it.disabled}
+            aria-controls={hasPanels ? `${id}-p` : undefined} tabIndex={i === stop ? 0 : -1} disabled={it.disabled}
             className="sg-tabs__tab" onClick={() => setV(it.value)}>
             {it.icon}<span className="sg-tabs__label" data-label={typeof it.label === 'string' ? it.label : undefined}>{it.label}</span>
             {/* a count or a word becomes the library's neutral Badge (it pops in and bumps on change, as in TabBar); any other node is used as given */}

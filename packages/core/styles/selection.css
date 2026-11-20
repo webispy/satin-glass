@@ -12,7 +12,7 @@
   transition: background-color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
 .sg-check--radio .sg-check__box { border-radius: 50%; }
-.sg-check:active:not([data-disabled="true"]) .sg-check__box { transform: scale(0.9); transition-duration: 90ms; }
+.sg-check:active:not([data-disabled="true"]) .sg-check__box { transform: scale(0.9); transition-duration: var(--sg-duration-instant); }
 .sg-check__input:focus-visible + .sg-check__box { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-check__input:checked + .sg-check__box, .sg-check__input:indeterminate + .sg-check__box { background: var(--sg-accent); box-shadow: inset 0 0 0 1.5px var(--sg-accent); }
 .sg-check__input:checked:focus-visible + .sg-check__box, .sg-check__input:indeterminate:focus-visible + .sg-check__box { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
@@ -52,6 +52,7 @@
 @media (hover: hover) { .sg-select:hover:not(:disabled) { background: var(--sg-groove-hover); } }
 .sg-select:focus-visible, .sg-select[aria-expanded="true"] { outline: var(--sg-focus-width) solid transparent; outline-offset: calc(-1 * var(--sg-focus-width)); background: var(--sg-surface); box-shadow: inset 0 0 0 1.5px var(--sg-accent), 0 0 0 4px var(--sg-accent-soft); }
 .sg-field[data-invalid="true"] .sg-select { box-shadow: inset 0 0 0 1.5px var(--sg-danger); }
+.sg-field[data-invalid="true"] .sg-select:focus-visible, .sg-field[data-invalid="true"] .sg-select[aria-expanded="true"] { box-shadow: inset 0 0 0 1.5px var(--sg-danger), 0 0 0 4px var(--sg-danger-soft); }   /* as a field: focus keeps its halo in the error colour */
 .sg-select:disabled { opacity: 0.5; cursor: default; }
 .sg-select__value { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; }
 .sg-select__value > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

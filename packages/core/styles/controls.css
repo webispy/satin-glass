@@ -18,7 +18,7 @@
   color: var(--sg-accent-text); background: transparent;
   transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), background-color var(--sg-duration-fast) ease, color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease;
 }
-.sg-button:active:not(:disabled):not([aria-disabled="true"]) { transform: scale(0.965); transition-duration: 90ms, var(--sg-duration-fast), var(--sg-duration-fast), var(--sg-duration-fast); transition-timing-function: var(--sg-ease-out); }
+.sg-button:active:not(:disabled):not([aria-disabled="true"]) { transform: scale(0.965); transition-duration: var(--sg-duration-instant), var(--sg-duration-fast), var(--sg-duration-fast), var(--sg-duration-fast); transition-timing-function: var(--sg-ease-out); }
 .sg-button:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-button:disabled, .sg-button[aria-disabled="true"] { opacity: 0.42; cursor: default; }
 .sg-button svg { width: 18px; height: 18px; flex: none; }
@@ -156,7 +156,7 @@
 .sg-segmented__indicator {
   position: absolute; top: var(--_nest); bottom: var(--_nest); left: 0; width: 0; z-index: 0;
   border-radius: calc(var(--_radius) - var(--_nest));
-  background: var(--sg-depth-raised-bg);
+  background-color: var(--sg-depth-raised-bg); background-image: var(--sg-depth-sheen);   /* the raised face, as the wheel lens */
   box-shadow: var(--sg-depth-raised), var(--sg-depth-raised-edge);
   will-change: transform, width;
 }

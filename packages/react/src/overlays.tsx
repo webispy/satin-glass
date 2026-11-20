@@ -336,7 +336,8 @@ export function ContextMenu({ menu, children, previewSelector, 'aria-label': lab
   }, [state.open]);
   const close = () => {
     scrim.current?.classList.remove('is-open');
-    if (lift.current) {
+    if (lift.current && prefersReducedMotion(lift.current)) setState((s) => ({ ...s, rect: null }));   /* it never lifted */
+    else if (lift.current) {
       lift.current.animate([{ transform: 'scale(1.03)' }, { transform: 'scale(1)' }], { duration: 180, easing: 'ease-out', fill: 'both' })
         .finished.then(() => setState((s) => ({ ...s, rect: null })), () => setState((s) => ({ ...s, rect: null })));
     }
@@ -377,7 +378,7 @@ export function Toaster({ children, position = 'top' }: { children?: ReactNode; 
   return (
     <ToastCtx.Provider value={push}>
       {children}
-      <Portal className="sg-portal--passthrough">
+      <Portal className="sg-portal--passthrough sg-portal--toasts">
         <div className={cx('sg-toaster', position === 'bottom' && 'sg-toaster--bottom')} role="region" aria-label="Notifications">
           {items.map((t) => <ToastView key={t.id} t={t} edge={position} onDone={() => remove(t.id)} />)}
         </div>

@@ -4,7 +4,7 @@ import {
   type KeyboardEvent, type MouseEvent, type ReactElement, type ReactNode, type TextareaHTMLAttributes,
 } from 'react';
 import { animate, createBridge, createOverflowStrip, drag, loop, motionFor, prefersReducedMotion, Spring, springTiming, type Bridge, type OverflowStrip } from '@satin-glass/core';
-import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
+import { cx, mergeRefs, tabStop, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { glassClass, useGlassLight } from './foundation';
 import { ClearIcon, MinusIcon, PlusIcon, SearchIcon, CloseIcon } from './icons';
 
@@ -522,15 +522,16 @@ function rovingKeys(e: KeyboardEvent<HTMLElement>, count: number, current: numbe
 }
 
 export function SegmentedControl<T extends string>({ options, value, defaultValue, onChange, size = 'md', className, ...rest }: SegmentedControlProps<T>) {
-  const [v, setV] = useControllable(value, defaultValue ?? options[0]?.value, onChange);
+  const [v, setV] = useControllable(value, defaultValue ?? (options.find((o) => !o.disabled) ?? options[0])?.value, onChange);
   const box = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null);
   const index = Math.max(0, options.findIndex((o) => o.value === v));
   useBridge(box, ind, index, (i) => !options[i].disabled && setV(options[i].value));
+  const stop = tabStop(index, options.length, (i) => !!options[i].disabled);
   return (
     <div ref={box} role="radiogroup" className={cx('sg-segmented', size === 'sm' && 'sg-segmented--sm', className)} onKeyDown={(e) => rovingKeys(e, options.length, index, (i) => setV(options[i].value), (i) => !!options[i].disabled)} {...rest}>
       <span ref={ind} className="sg-segmented__indicator" aria-hidden="true" />
       {options.map((o, i) => (
-        <button key={o.value} type="button" role="radio" data-sg-item aria-checked={i === index} tabIndex={i === index ? 0 : -1} disabled={o.disabled} className="sg-segmented__item" onClick={() => setV(o.value)}>
+        <button key={o.value} type="button" role="radio" data-sg-item aria-checked={i === index} tabIndex={i === stop ? 0 : -1} disabled={o.disabled} className="sg-segmented__item" onClick={() => setV(o.value)}>
           {o.icon}<span className="sg-segmented__label" data-label={typeof o.label === 'string' ? o.label : undefined}>{o.label}</span>
         </button>
       ))}
@@ -559,11 +560,12 @@ export type TabBarProps = Omit<HTMLAttributes<HTMLElement>, 'onChange' | 'defaul
 
 export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ value, defaultValue, onChange, children, action, draggable = false, showLabels = true, className, 'aria-label': label = 'Tabs', ...rest }, ref) {
   const tabs = Children.toArray(children).filter(isValidElement).map((c) => (c as ReactElement<TabProps>).props);
-  const [v, setV] = useControllable(value, defaultValue ?? tabs[0]?.value, onChange);
+  const [v, setV] = useControllable(value, defaultValue ?? (tabs.find((t) => !t.disabled) ?? tabs[0])?.value, onChange);
   const bar = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null);
   const lightRef = useGlassLight();
   const index = Math.max(0, tabs.findIndex((t) => t.value === v));
   useBridge(bar, ind, index, (i) => !tabs[i].disabled && setV(tabs[i].value), draggable);
+  const stop = tabStop(index, tabs.length, (i) => !!tabs[i].disabled);
   return (
     <nav ref={ref} className={cx('sg-tabbar', !showLabels && 'sg-tabbar--icons', className)} aria-label={label} {...rest}>
       {/* the glass clips; the track inside scrolls when the tabs do not fit (a scrolling glass would drag its rim along) */}
@@ -571,7 +573,7 @@ export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ val
         <div ref={bar} role="tablist" className="sg-tabbar__track" onKeyDown={(e) => rovingKeys(e, tabs.length, index, (i) => setV(tabs[i].value), (i) => !!tabs[i].disabled)}>
           <span ref={ind} className="sg-tabbar__indicator" aria-hidden="true" />
           {tabs.map((t, i) => (
-            <button key={t.value} type="button" role="tab" data-sg-item aria-selected={i === index} tabIndex={i === index ? 0 : -1} disabled={t.disabled} className={cx('sg-tabbar__item', !t.icon && 'sg-tabbar__item--text')} onClick={() => setV(t.value)}>
+            <button key={t.value} type="button" role="tab" data-sg-item aria-selected={i === index} tabIndex={i === stop ? 0 : -1} disabled={t.disabled} className={cx('sg-tabbar__item', !t.icon && 'sg-tabbar__item--text')} onClick={() => setV(t.value)}>
               <span className="sg-tabbar__icon">{t.icon}{t.badge}</span>
               <span className="sg-tabbar__label">{t.label}</span>
             </button>

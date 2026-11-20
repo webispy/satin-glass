@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { useRef, useState } from 'react';
-import { Button, Switch, Slider, SegmentedControl, TextField, Dialog, Menu, MenuItem, TabBar, Tab, Stepper, ThemeProvider, createTheme, Chip } from '../src';
+import { Button, Switch, Slider, SegmentedControl, TextField, Dialog, Menu, MenuItem, TabBar, Tab, Stepper, ThemeProvider, createTheme, Chip, Portal, Tabs } from '../src';
 
 describe('Button', () => {
   it('renders variants, forwards clicks, and blocks clicks while loading', () => {
@@ -175,7 +175,8 @@ describe('ThemeProvider', () => {
     expect(container.querySelector('b')!.parentElement!.dataset.sgGrooves).toBe('inset');
     const { container: plain } = render(<ThemeProvider><span /></ThemeProvider>);
     expect((plain.firstElementChild as HTMLElement).dataset.sgGrooves).toBe('inset');
-  });});
+  });
+});
 
 describe('Overlay unmounted while open', () => {
   it('releases the scroll lock and focus trap (e.g. a route change mid-animation)', () => {
@@ -203,5 +204,36 @@ describe('Disabled slider', () => {
     const s = screen.getByRole('slider');
     fireEvent.keyDown(s, { key: 'End' });
     expect(s.getAttribute('aria-valuenow')).toBe('40');
+  });
+});
+
+describe('roving groups with a disabled first item', () => {
+  it('keep an enabled item in the tab order', () => {
+    render(<SegmentedControl aria-label="seg" options={[{ value: 'a', label: 'A', disabled: true }, { value: 'b', label: 'B' }]} />);
+    const radios = screen.getAllByRole('radio');
+    expect(radios[1].getAttribute('aria-checked')).toBe('true');
+    expect(radios.map((r) => r.tabIndex)).toEqual([-1, 0]);
+  });
+  it('keep one even when the chosen value is disabled', () => {
+    render(<TabBar aria-label="bar" value="a"><Tab value="a" label="A" disabled /><Tab value="b" label="B" /></TabBar>);
+    expect(screen.getAllByRole('tab').map((t) => t.tabIndex)).toEqual([-1, 0]);
+    render(<Tabs aria-label="tabs" value="a" items={[{ value: 'a', label: 'A', disabled: true, content: 'a' }, { value: 'b', label: 'B', content: 'b' }]} />);
+    expect(screen.getAllByRole('tab').slice(2).map((t) => t.tabIndex)).toEqual([-1, 0]);
+  });
+});
+
+describe('Portal', () => {
+  it('writes no theme settings without a ThemeProvider (the system ones apply)', () => {
+    render(<Portal><span data-testid="out" /></Portal>);
+    const host = screen.getByTestId('out').parentElement!;
+    expect(host.hasAttribute('data-sg-reduce-motion')).toBe(false);
+    expect(host.hasAttribute('data-sg-theme')).toBe(false);
+  });
+  it('carries the resolved settings inside one', () => {
+    render(<ThemeProvider theme={createTheme({ mode: 'dark', reduceMotion: true, grooves: 'flat' })}><Portal><span data-testid="in" /></Portal></ThemeProvider>);
+    const host = screen.getByTestId('in').parentElement!;
+    expect(host.dataset.sgReduceMotion).toBe('true');
+    expect(host.dataset.sgTheme).toBe('dark');
+    expect(host.dataset.sgGrooves).toBe('flat');
   });
 });

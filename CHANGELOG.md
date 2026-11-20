@@ -21,6 +21,13 @@ New components for screens that show and choose data: a meter, a group of people
 
 ### Fixed
 - Dragging a switch toward off showed a different rail colour from the resting off rail.
+- Segmented controls, tab bars and tabs whose chosen item is disabled (or whose first item is disabled with no value) left the whole group out of the tab order; the first enabled item takes Tab now, and the default value skips disabled items.
+- Toasts could be covered by a dialog opened after them; their portal now stacks above every dialog.
+- A `Portal` with no `ThemeProvider` above wrote light, motion-on settings over the system ones (colour scheme, reduced motion).
+- Menu and action sheet rows reached by keys show the focus ring, not only the fill a pointer shows; an invalid select keeps its focus halo (in the error colour), as text fields do.
+- Right to left, the segmented, tab bar and tabs indicator stayed put or collapsed: its walls assumed the first item was leftmost.
+- Reduced motion left a few presses and lifts moving (tab bar action, +N avatar, donut slice, context menu preview); press timings and the glass press light came from raw values and use the instant token now (the CSS rule check reads `transition-duration` and delays too).
+- The tab bar sits on the bar layer (`--sg-z-bar`); the chosen segment has the raised sheen like the wheel lens; clear glass leaves the shadow to its level and keeps the solid rims in high contrast.
 - Search fields showed the browser's own clear button beside the field's.
 
 ## 0.4.0 — 2026-11-20
