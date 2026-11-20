@@ -191,10 +191,9 @@
 
 <!-- motion-table:end -->
 
-**정하는 방법:** 아래 세 가지 중 하나로 정한다.
+**정하는 방법:** 아래 두 가지로 정한다.
 - 앱 전체: `createTheme({ motion })`
-- 일부 영역: `<MotionScope motion>`
-- 컴포넌트 하나: 컴포넌트의 `motion` 속성
+- 일부 영역이나 컴포넌트 하나: `<MotionScope motion>`으로 감싼다. 컴포넌트에는 `motion` 속성이 없다(성격은 테마 수준의 설정이고, 움직임을 더할 때마다 공개 API가 늘지 않게). 감싸는 요소는 `display: contents`라 상자를 만들지 않지만 DOM 부모는 되므로, 버튼 그룹·탭 바처럼 자식 관계로 모양을 정하는 묶음은 묶음 전체를 감싼다.
 
 **적용 범위:**
 - **CSS:** `[data-sg-motion]`에 성격별 `--sg-spring-*` 값이 들어 있다.

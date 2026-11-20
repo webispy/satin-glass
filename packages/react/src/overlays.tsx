@@ -4,8 +4,7 @@ import {
 } from 'react';
 import { animate, bloomIn, bloomOut, drag, fade, focusables, longPress, place, prefersReducedMotion, pushLayer, trapFocus, type Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useIsoLayoutEffect, usePresence, useStableId } from './utils';
-import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
-import type { MotionName } from '@satin-glass/core';
+import { Portal, glassClass, useGlassLight } from './foundation';
 import { Button } from './controls';
 import { CheckIcon, InfoIcon, SuccessIcon, AlertIcon } from './icons';
 
@@ -26,10 +25,9 @@ export type DialogProps = {
   dismissible?: boolean;
   role?: 'dialog' | 'alertdialog';
   className?: string;
-  motion?: MotionName;
 };
 
-export function Dialog({ open, onClose, title, children, icon, tone = 'accent', actions, dismissible = false, role = 'alertdialog', className, motion }: DialogProps) {
+export function Dialog({ open, onClose, title, children, icon, tone = 'accent', actions, dismissible = false, role = 'alertdialog', className }: DialogProps) {
   const panel = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
   const id = useStableId('sg-dialog');
   const lightRef = useGlassLight();
@@ -49,7 +47,7 @@ export function Dialog({ open, onClose, title, children, icon, tone = 'accent', 
   if (!mounted) return null;
   const many = Children.count(actions) >= 3;
   return (
-    <MotionScope motion={motion} bare><Portal>
+    <Portal>
       <div ref={scrim} className="sg-scrim" onClick={() => dismissible && onClose('backdrop')} />
       <div className="sg-dialog-wrap">
         <div ref={mergeRefs(panel, lightRef)} role={role} aria-modal="true" aria-labelledby={`${id}-t`} aria-describedby={children ? `${id}-b` : undefined} className={cx('sg-dialog', glassClass('strong', false, 'overlay'), className)}>
@@ -61,7 +59,7 @@ export function Dialog({ open, onClose, title, children, icon, tone = 'accent', 
           </div>
         </div>
       </div>
-    </Portal></MotionScope>
+    </Portal>
   );
 }
 
@@ -80,11 +78,10 @@ export type SheetProps = {
   adaptive?: boolean;
   dismissible?: boolean;
   className?: string;
-  motion?: MotionName;
   'aria-label'?: string;
 };
 
-export function Sheet({ open, onClose, title, leading, trailing, children, size = 'auto', adaptive = true, dismissible = true, className, motion, 'aria-label': ariaLabel }: SheetProps) {
+export function Sheet({ open, onClose, title, leading, trailing, children, size = 'auto', adaptive = true, dismissible = true, className, 'aria-label': ariaLabel }: SheetProps) {
   const panel = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
   const id = useStableId('sg-sheet');
   const lightRef = useGlassLight();
@@ -135,7 +132,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
   });
   if (!mounted) return null;
   return (
-    <MotionScope motion={motion} bare><Portal>
+    <Portal>
       <div ref={scrim} className="sg-scrim" onClick={() => dismissible && onClose('backdrop')} />
       <div className={cx('sg-sheet-wrap', adaptive && 'sg-sheet-wrap--adaptive')}>
         <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined} aria-label={title ? undefined : ariaLabel} className={cx('sg-sheet', size === 'full' && 'sg-sheet--full', glassClass('strong', false, 'overlay'), className)}>
@@ -152,7 +149,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
           <div className="sg-sheet__body">{children}</div>
         </div>
       </div>
-    </Portal></MotionScope>
+    </Portal>
   );
 }
 
@@ -203,14 +200,13 @@ export type MenuProps = {
   placement?: Placement;
   children: ReactNode;
   className?: string;
-  motion?: MotionName;
   'aria-label'?: string;
   /** keep the page from scrolling while the menu is open (used by ContextMenu, whose lifted item and scrim
       are a moment of focus) */
   lockScroll?: boolean;
 };
 
-export function Menu({ open, onClose, anchor, placement = 'bottom-start', children, className, motion, lockScroll, 'aria-label': label }: MenuProps) {
+export function Menu({ open, onClose, anchor, placement = 'bottom-start', children, className, lockScroll, 'aria-label': label }: MenuProps) {
   const lightRef = useGlassLight();
   const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => {
     (p.querySelector<HTMLElement>('.sg-menu__item:not([aria-disabled="true"])') ?? p).focus({ preventScroll: true });
@@ -218,28 +214,28 @@ export function Menu({ open, onClose, anchor, placement = 'bottom-start', childr
   const ctx = useMemo<MenuCtx>(() => ({ select: (fn) => { onClose('select'); fn?.(); } }), [onClose]);
   if (!mounted) return null;
   return (
-    <MotionScope motion={motion} bare><Portal className="sg-portal--passthrough sg-portal--anchored">
+    <Portal className="sg-portal--passthrough sg-portal--anchored">
       <MenuContext.Provider value={ctx}>
         <div ref={mergeRefs(panel, lightRef)} role="menu" aria-label={label} tabIndex={-1} className={cx('sg-menu', glassClass('strong'), className)} onKeyDown={menuKeys}>
           <div data-sg-content>{children}</div>
         </div>
       </MenuContext.Provider>
-    </Portal></MotionScope>
+    </Portal>
   );
 }
 
 /* ================================================================================================ Popover */
 export type PopoverProps = Omit<MenuProps, 'aria-label' | 'lockScroll'> & { 'aria-label'?: string; 'aria-labelledby'?: string };
-export function Popover({ open, onClose, anchor, placement = 'bottom', children, className, motion, ...aria }: PopoverProps) {
+export function Popover({ open, onClose, anchor, placement = 'bottom', children, className, ...aria }: PopoverProps) {
   const lightRef = useGlassLight();
   const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => { (focusables(p)[0] ?? p).focus({ preventScroll: true }); });
   if (!mounted) return null;
   return (
-    <MotionScope motion={motion} bare><Portal className="sg-portal--passthrough sg-portal--anchored">
+    <Portal className="sg-portal--passthrough sg-portal--anchored">
       <div ref={mergeRefs(panel, lightRef)} role="dialog" tabIndex={-1} className={cx('sg-popover', glassClass('strong'), className)} {...aria}>
         <div data-sg-content>{children}</div>
       </div>
-    </Portal></MotionScope>
+    </Portal>
   );
 }
 
@@ -247,9 +243,9 @@ export function Popover({ open, onClose, anchor, placement = 'bottom', children,
 export type ActionSheetAction = { label: ReactNode; onSelect?: () => void; tone?: 'default' | 'danger'; icon?: ReactNode; disabled?: boolean };
 export type ActionSheetProps = {
   open: boolean; onClose: (reason: CloseReason) => void;
-  title?: ReactNode; message?: ReactNode; actions: ActionSheetAction[]; cancelLabel?: ReactNode; motion?: MotionName;
+  title?: ReactNode; message?: ReactNode; actions: ActionSheetAction[]; cancelLabel?: ReactNode;
 };
-export function ActionSheet({ open, onClose, title, message, actions, cancelLabel = 'Cancel', motion }: ActionSheetProps) {
+export function ActionSheet({ open, onClose, title, message, actions, cancelLabel = 'Cancel' }: ActionSheetProps) {
   const box = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
   const release = useRelease();
   const id = useStableId('sg-as');
@@ -278,7 +274,7 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
     e.preventDefault(); rows[(t + rows.length) % rows.length].focus();
   };
   return (
-    <MotionScope motion={motion} bare><Portal>
+    <Portal>
       <div ref={scrim} className="sg-scrim" onClick={() => onClose('backdrop')} />
       <div className="sg-actionsheet-wrap">
         {/* one glass panel: a heading, the actions as menu rows, and a quiet close row at the foot */}
@@ -298,7 +294,7 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
           <button type="button" data-cancel className="sg-actionsheet__action sg-actionsheet__action--cancel" onClick={() => onClose('action')}>{cancelLabel}</button>
         </div>
       </div>
-    </Portal></MotionScope>
+    </Portal>
   );
 }
 

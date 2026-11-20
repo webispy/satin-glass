@@ -4,9 +4,9 @@
    only. Reduced motion: opening, closing and paging by button or key fade; finger-driven motion still follows
    the finger and settles without overshoot. */
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Spring, animate, fade, loop, prefersReducedMotion, pushLayer, trapFocus, type MotionName } from '@satin-glass/core';
+import { Spring, animate, fade, loop, prefersReducedMotion, pushLayer, trapFocus } from '@satin-glass/core';
 import { cx, useControllable, useIsoLayoutEffect } from './utils';
-import { MotionScope, Portal, useTheme } from './foundation';
+import { Portal, useTheme } from './foundation';
 import { IconButton } from './controls';
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from './icons';
 import { useOverlayLifecycle, useRelease, type CloseReason } from './overlay-hooks';
@@ -36,13 +36,12 @@ export type MediaViewerProps = {
   'aria-label'?: string;
   labels?: { close?: string; previous?: string; next?: string };
   className?: string;
-  motion?: MotionName;
 };
 
 const GAP = 24, MAX_ZOOM = 4, DOUBLE_TAP_ZOOM = 2.5;
 type Z = { s: number; x: number; y: number };
 
-export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onIndexChange, getOrigin, actions, 'aria-label': label = 'Media viewer', labels = {}, className, motion }: MediaViewerProps) {
+export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onIndexChange, getOrigin, actions, 'aria-label': label = 'Media viewer', labels = {}, className }: MediaViewerProps) {
   const n = items.length;
   const [cur, setCur] = useControllable(index, defaultIndex, onIndexChange);
   const at = Math.min(Math.max(0, cur), Math.max(0, n - 1));
@@ -349,7 +348,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
   const item = items[at];
   const slides = [at - 1, at, at + 1].filter((i) => i >= 0 && i < n);
   return (
-    <MotionScope motion={motion} bare><Portal>
+    <Portal>
       {/* tabIndex -1: a click on the photo keeps focus in the viewer, so the keys keep working */}
       <div ref={root} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} className={cx('sg-media', className)} data-sg-theme={dark}
         data-chrome={chrome ? 'shown' : 'hidden'} data-zoomed={zoomed || undefined} onKeyDown={onKey}
@@ -393,6 +392,6 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
         {item?.caption && <div className="sg-media__caption">{item.caption}</div>}
         {item?.render && <span className="sg-visually-hidden">{item.alt}</span>}
       </div>
-    </Portal></MotionScope>
+    </Portal>
   );
 }

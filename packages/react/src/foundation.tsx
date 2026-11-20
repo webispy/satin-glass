@@ -38,15 +38,17 @@ export const useTheme = () => useContext(ThemeCtx);
 const MotionCtx = createContext<MotionName | undefined>(undefined);
 export const useMotion = () => useContext(MotionCtx);
 
-export type MotionScopeProps = { motion?: MotionName; children?: ReactNode; /** context only, no wrapper element (for portals) */ bare?: boolean };
-/** Sets the motion personality for everything inside: CSS springs via [data-sg-motion], JS springs and portals via context. */
-export function MotionScope({ motion, children, bare }: MotionScopeProps) {
+export type MotionScopeProps = { motion?: MotionName; children?: ReactNode };
+/** Sets the motion personality for everything inside: CSS springs via [data-sg-motion], JS springs and portals via
+    context. This is the one way to give part of an app, or a single component, its own personality; components take
+    no motion prop. The wrapper is display: contents but still a DOM parent, so put it around a whole group (a
+    ButtonGroup, a TabBar), not around one of its children. Without `motion` it inherits, keeping the same element so
+    toggling the override never remounts what is inside. */
+export function MotionScope({ motion, children }: MotionScopeProps) {
   const outer = useContext(MotionCtx);
-  const m = motion ?? outer;
-  if (!motion) return <>{children}</>;
   return (
-    <MotionCtx.Provider value={m}>
-      {bare ? children : <div data-sg-motion={m} style={{ display: 'contents' }}>{children}</div>}
+    <MotionCtx.Provider value={motion ?? outer}>
+      <div data-sg-motion={motion} style={{ display: 'contents' }}>{children}</div>
     </MotionCtx.Provider>
   );
 }

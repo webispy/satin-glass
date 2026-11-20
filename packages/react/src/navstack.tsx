@@ -6,7 +6,7 @@
    trailing actions) and the page's content scrolling under it. Focus moves to the new page's title on push and back
    to the row that opened it on pop. */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { animate, drag, fade, prefersReducedMotion, type MotionName } from '@satin-glass/core';
+import { animate, drag, fade, prefersReducedMotion } from '@satin-glass/core';
 import { cx, useIsoLayoutEffect } from './utils';
 import { AppBar } from './layout';
 import { Button } from './controls';
@@ -43,13 +43,12 @@ export type NavigationStackProps = {
   labels?: { back?: string };
   /** called after the depth changes */
   onDepthChange?: (depth: number) => void;
-  motion?: MotionName;
   className?: string; style?: CSSProperties;
 };
 
 const SHIFT = 0.3;   /* how far the page below drifts back */
 
-export function NavigationStack({ children, labels, onDepthChange, motion, className, style }: NavigationStackProps) {
+export function NavigationStack({ children, labels, onDepthChange, className, style }: NavigationStackProps) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [move, setMove] = useState<Move>(null);
   const [titles, setTitles] = useState<ReactNode[]>([]);
@@ -188,7 +187,7 @@ export function NavigationStack({ children, labels, onDepthChange, motion, class
 
   return (
     <NavCtx.Provider value={api}>
-      <div ref={box} className={cx('sg-nav', className)} style={style} data-sg-motion={motion} data-moving={move ? move.dir : undefined}>
+      <div ref={box} className={cx('sg-nav', className)} style={style} data-moving={move ? move.dir : undefined}>
         {layers.map((l, i) => (
           <div key={l.key} ref={(el) => { pages.current[i] = el; }} className="sg-nav__page" data-depth={i}
             data-hidden={!showing(i) || undefined} inert={i !== top || undefined} aria-hidden={i !== top || undefined}>

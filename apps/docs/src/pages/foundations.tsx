@@ -152,7 +152,7 @@ export function Motion() {
   const theme = useTheme();
   const current = theme.motion ?? 'lively';
   return (
-    <Page title="모션" intro="움직임은 이름 붙은 스프링 다섯 가지로 만들고, 그 성격(personality)을 세 가지 중에서 고릅니다. 오른쪽 위에서 앱 전체를 바꾸거나, 컴포넌트마다 motion 속성으로 따로 정할 수 있어요.">
+    <Page title="모션" intro="움직임은 이름 붙은 스프링 다섯 가지로 만들고, 그 성격(personality)을 세 가지 중에서 고릅니다. 오른쪽 위에서 앱 전체를 바꾸거나, MotionScope로 감싼 영역만 따로 정할 수 있어요.">
       <Section title="성격 비교" intro="같은 컨트롤을 세 성격으로 나란히 놓았습니다. 세그먼트·탭을 눌러 보고, 슬라이더를 빠르게 끌어 보고, 스테퍼로 뱃지 숫자를 바꿔 보세요.">
         <div className="grid grid--3">{PERSONAS.map((p) => <MotionColumn key={p.id} motion={p.id} />)}</div>
       </Section>
@@ -160,8 +160,8 @@ export function Motion() {
         <Demo col>
           <code className="code">{'createTheme({ motion: "playful" })'}</code>
           <code className="code">{'<MotionScope motion="calm">…</MotionScope>'}</code>
-          <code className="code">{'<SegmentedControl motion="playful" … />'}</code>
-          <Text variant="subhead" tone="secondary">CSS 전환은 [data-sg-motion]의 linear() 이징을 따르고, 손가락을 따르는 JS 스프링과 포털로 뜨는 메뉴·시트도 같은 성격을 씁니다. 동작 줄이기를 켜면 넘침 없이 짧게(~110ms에 90%) 끝나고, 큰 움직임은 페이드로 바뀝니다.</Text>
+          <code className="code">{'<MotionScope motion="playful"><SegmentedControl … /></MotionScope>'}</code>
+          <Text variant="subhead" tone="secondary">CSS 전환은 [data-sg-motion]의 linear() 이징을 따르고, 손가락을 따르는 JS 스프링과 포털로 뜨는 메뉴·시트도 같은 성격을 씁니다. 동작 줄이기를 켜면 넘침 없이 짧게(~110ms에 90%) 끝나고, 큰 움직임은 페이드로 바뀝니다. 컴포넌트에는 motion 속성이 없고, 하나만 바꿀 때도 MotionScope로 감쌉니다. 감싸는 요소는 화면에 상자를 만들지 않지만 DOM 부모는 되므로, 버튼 그룹이나 탭 바처럼 묶인 것은 묶음 전체를 감쌉니다.</Text>
         </Demo>
       </Section>
       <Section title={`스프링 곡선 — ${PERSONAS.find((p) => p.id === current)!.label}`} intro="굵은 선이 현재 성격, 옅은 선이 나머지 두 성격입니다.">

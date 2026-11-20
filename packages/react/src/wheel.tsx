@@ -9,9 +9,9 @@
    For assistive technology each column is a spinbutton: arrows step, PageUp / PageDown jump `pageStep` rows,
    Home / End go to the ends, typing digits or letters jumps to the first row that starts with them. */
 import { createContext, forwardRef, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { Spring, drag, loop, motionFor, motionOf, prefersReducedMotion, type MotionName, type Placement } from '@satin-glass/core';
+import { Spring, drag, loop, motionFor, motionOf, prefersReducedMotion, type Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
-import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
+import { Portal, glassClass, useGlassLight } from './foundation';
 import { Button } from './controls';
 import { useAnchored } from './overlay-hooks';
 
@@ -440,7 +440,6 @@ export type TimePickerProps = Omit<TimeWheelProps, 'rows' | 'onCommit' | 'classN
   /** the time the wheels open on while there is no value yet (default: now, rounded up to minuteStep) */
   openTo?: string;
   placement?: Placement;
-  motion?: MotionName;
   id?: string; className?: string; style?: CSSProperties;
 };
 
@@ -452,7 +451,7 @@ const ClockIcon = () => (
     panel is open; Done, Enter or a click outside takes it (onChange fires once), Cancel or Escape puts the time back
     as it was (empty, if it was). Opening without a value starts the draft at `openTo` (or now). */
 export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(function TimePicker(
-  { value, defaultValue = null, onChange, minuteStep = 1, hour12, locale = 'ko-KR', placeholder, label, helperText, error, disabled, name, openTo, placement = 'bottom-start', motion, id, className, style, 'aria-label': ariaLabel }, ref,
+  { value, defaultValue = null, onChange, minuteStep = 1, hour12, locale = 'ko-KR', placeholder, label, helperText, error, disabled, name, openTo, placement = 'bottom-start', id, className, style, 'aria-label': ariaLabel }, ref,
 ) {
   const [v, setV] = useControllable<string | null>(value, defaultValue, onChange as (x: string | null) => void);
   const [open, setOpen] = useState(false);
@@ -485,7 +484,7 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(functio
         {label && <span id={labelId} className="sg-field__label">{label}</span>}
         <button ref={mergeRefs(ref, trigger)} id={fid} type="button" className="sg-select" disabled={disabled}
           aria-haspopup="dialog" aria-expanded={open} aria-labelledby={labelId ? `${labelId} ${fid}` : undefined} aria-label={labelId ? undefined : ariaLabel ?? L.labels.choose}
-          aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined} data-sg-motion={motion}
+          aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined}
           onClick={() => { if (open) commit(); else { start(); setOpen(true); } }}>
           <span className="sg-select__value">{t ? <span className="sg-time-value">{L.format(t.h, t.m)}</span> : <span className="sg-select__placeholder">{placeholder ?? L.labels.placeholder}</span>}</span>
           <ClockIcon />
@@ -494,7 +493,7 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(functio
       </div>
       {name && <input type="hidden" name={name} value={v ?? ''} />}
       {mounted && (
-        <MotionScope motion={motion} bare><Portal className="sg-portal--passthrough sg-portal--anchored">
+        <Portal className="sg-portal--passthrough sg-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : L.labels.choose} tabIndex={-1} className={cx('sg-timepicker-panel', glassClass('strong'))}>
             <div data-sg-content>
               <TimeWheel value={draft} onChange={setDraft} minuteStep={minuteStep} hour12={hour12} locale={locale} onCommit={commit} />
@@ -504,7 +503,7 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(functio
               </div>
             </div>
           </div>
-        </Portal></MotionScope>
+        </Portal>
       )}
     </>
   );

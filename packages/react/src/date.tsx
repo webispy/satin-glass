@@ -9,9 +9,9 @@
    by one band whose head rides a spring: it follows the pointer while the end is chosen and runs a touch past the
    end when it is picked, which the end day then takes (stretch, then stick). */
 import { createContext, forwardRef, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { Spring, animate, fade, loop, motionFor, prefersReducedMotion, type MotionName, type Placement } from '@satin-glass/core';
+import { Spring, animate, fade, loop, motionFor, prefersReducedMotion, type Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
-import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
+import { Portal, glassClass, useGlassLight } from './foundation';
 import { IconButton } from './controls';
 import { Wheel, WheelGroup } from './wheel';
 import { useAnchored } from './overlay-hooks';
@@ -58,12 +58,11 @@ export type CalendarProps = {
   openTo?: 'day' | 'month' | 'year';
   /** how the month and year are picked: grids (default) or wheels */
   monthPicker?: 'grid' | 'wheel';
-  motion?: MotionName;
   className?: string; style?: CSSProperties; 'aria-label'?: string;
 };
 
 export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calendar(
-  { value, defaultValue = null, onChange, min, max, isDateDisabled, locale = 'ko-KR', weekStartsOn = 0, autoFocus, defaultMonth, openTo = 'day', monthPicker = 'grid', motion, className, style, 'aria-label': ariaLabel }, ref,
+  { value, defaultValue = null, onChange, min, max, isDateDisabled, locale = 'ko-KR', weekStartsOn = 0, autoFocus, defaultMonth, openTo = 'day', monthPicker = 'grid', className, style, 'aria-label': ariaLabel }, ref,
 ) {
   const [v, setV] = useControllable<Date | null>(value, defaultValue, onChange as (d: Date | null) => void);
   const range = useContext(RangeContext);
@@ -260,7 +259,7 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   useEffect(() => () => bandEng.current?.stop?.(), []);
 
   return (
-    <div ref={mergeRefs(ref, root)} className={cx('sg-calendar', className)} style={style} data-sg-motion={motion}>
+    <div ref={mergeRefs(ref, root)} className={cx('sg-calendar', className)} style={style}>
       <div className="sg-calendar__head">
         {/* the title for assistive technology (and the grid's label); the chips are what you see */}
         <h2 id={titleId} className="sg-visually-hidden" aria-live="polite">{fmt.title.format(month)}</h2>
@@ -477,7 +476,7 @@ const CalendarIcon = () => (
 
 /** A field that opens a Calendar in an anchored panel; choosing a day closes it and returns focus to the field. */
 export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(function DatePicker(
-  { value, defaultValue = null, onChange, placeholder, label, helperText, error, disabled, name, format, placement = 'bottom-start', locale = 'ko-KR', motion, id, className, style, 'aria-label': ariaLabel, ...calendar }, ref,
+  { value, defaultValue = null, onChange, placeholder, label, helperText, error, disabled, name, format, placement = 'bottom-start', locale = 'ko-KR', id, className, style, 'aria-label': ariaLabel, ...calendar }, ref,
 ) {
   const [v, setV] = useControllable<Date | null>(value, defaultValue, onChange as (d: Date | null) => void);
   const [open, setOpen] = useState(false);
@@ -500,7 +499,7 @@ export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(functio
         {label && <span id={labelId} className="sg-field__label">{label}</span>}
         <button ref={mergeRefs(ref, trigger)} id={fid} type="button" className="sg-select" disabled={disabled}
           aria-haspopup="dialog" aria-expanded={open} aria-labelledby={labelId ? `${labelId} ${fid}` : undefined} aria-label={labelId ? undefined : ariaLabel ?? t.choose}
-          aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined} data-sg-motion={motion}
+          aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined}
           onClick={() => setOpen((o) => !o)}>
           <span className="sg-select__value">{v ? <span>{fmt(v)}</span> : <span className="sg-select__placeholder">{placeholder ?? t.placeholder}</span>}</span>
           <CalendarIcon />
@@ -509,13 +508,13 @@ export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(functio
       </div>
       {name && <input type="hidden" name={name} value={v ? toISODate(v) : ''} />}
       {mounted && (
-        <MotionScope motion={motion} bare><Portal className="sg-portal--passthrough sg-portal--anchored">
+        <Portal className="sg-portal--passthrough sg-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : t.choose} tabIndex={-1} className={cx('sg-datepicker-panel', glassClass('strong'))}>
             <div data-sg-content>
-              <Calendar {...calendar} locale={locale} motion={motion} value={v} onChange={(d) => { setV(d); setOpen(false); }} />
+              <Calendar {...calendar} locale={locale} value={v} onChange={(d) => { setV(d); setOpen(false); }} />
             </div>
           </div>
-        </Portal></MotionScope>
+        </Portal>
       )}
     </>
   );
@@ -607,7 +606,7 @@ export type DateRangePickerProps = Omit<RangeCalendarProps, 'status' | 'onPartia
 /** A field that opens a RangeCalendar. Choosing the end closes it with the new range; Escape or a click outside
     before then leaves the range as it was. */
 export const DateRangePicker = forwardRef<HTMLButtonElement, DateRangePickerProps>(function DateRangePicker(
-  { value, defaultValue = null, onChange, placeholder, label, helperText, error, disabled, name, format, placement = 'bottom-start', locale = 'ko-KR', motion, unit = 'days', id, className, style, 'aria-label': ariaLabel, ...range }, ref,
+  { value, defaultValue = null, onChange, placeholder, label, helperText, error, disabled, name, format, placement = 'bottom-start', locale = 'ko-KR', unit = 'days', id, className, style, 'aria-label': ariaLabel, ...range }, ref,
 ) {
   const [v, setV] = useControllable<DateRange | null>(value, defaultValue, onChange as (r: DateRange | null) => void);
   const [open, setOpen] = useState(false);
@@ -631,7 +630,7 @@ export const DateRangePicker = forwardRef<HTMLButtonElement, DateRangePickerProp
         {label && <span id={labelId} className="sg-field__label">{label}</span>}
         <button ref={mergeRefs(ref, trigger)} id={fid} type="button" className="sg-select" disabled={disabled}
           aria-haspopup="dialog" aria-expanded={open} aria-labelledby={labelId ? `${labelId} ${fid}` : undefined} aria-label={labelId ? undefined : ariaLabel ?? t.chooseRange}
-          aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined} data-sg-motion={motion}
+          aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined}
           onClick={() => setOpen((o) => !o)}>
           <span className="sg-select__value">{v
             ? <><span>{text(v)}</span><span className="sg-select__meta">{length(v)}</span></>
@@ -642,14 +641,14 @@ export const DateRangePicker = forwardRef<HTMLButtonElement, DateRangePickerProp
       </div>
       {name && <input type="hidden" name={name} value={v ? `${toISODate(v.start)}/${toISODate(v.end)}` : ''} />}
       {mounted && (
-        <MotionScope motion={motion} bare><Portal className="sg-portal--passthrough sg-portal--anchored">
+        <Portal className="sg-portal--passthrough sg-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : t.chooseRange} tabIndex={-1} className={cx('sg-datepicker-panel', glassClass('strong'))}>
             <div data-sg-content>
-              <RangeCalendar {...range} unit={unit} locale={locale} motion={motion} value={v}
+              <RangeCalendar {...range} unit={unit} locale={locale} value={v}
                 onChange={(r) => { setV(r); window.setTimeout(() => setOpen(false), 260); /* let the band fill before it closes */ }} />
             </div>
           </div>
-        </Portal></MotionScope>
+        </Portal>
       )}
     </>
   );

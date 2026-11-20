@@ -2,9 +2,9 @@
    aria-activedescendant. Opens with ↓ ↑ Enter Space or by typing; ↑↓ Home End PageUp PageDown move; Enter, Space,
    Tab or Alt+↑ choose; Esc or a click outside closes without change. The panel blooms from the button. */
 import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import type { MotionName, Placement } from '@satin-glass/core';
+import type { Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useStableId } from './utils';
-import { MotionScope, Portal, glassClass, useGlassLight } from './foundation';
+import { Portal, glassClass, useGlassLight } from './foundation';
 import { useAnchored } from './overlay-hooks';
 import { CheckIcon, ChevronDownIcon } from './icons';
 
@@ -27,7 +27,6 @@ export type SelectProps<T extends string = string> = {
       'filter' — a compact pill that reads "label value ▾" (toolbars and filter bars) */
   variant?: 'field' | 'inline' | 'filter';
   placement?: Placement;
-  motion?: MotionName;
   id?: string; className?: string; style?: CSSProperties; 'aria-label'?: string;
 };
 
@@ -38,7 +37,7 @@ const isGroup = <T extends string>(x: SelectOption<T> | SelectGroup<T>): x is Se
 const textOf = <T extends string>(o: SelectOption<T>) => (o.textValue ?? (typeof o.label === 'string' ? o.label : String(o.value))).toLocaleLowerCase();
 
 export const Select = forwardRef(function Select<T extends string = string>(
-  { options, value, defaultValue = null, onChange, placeholder = 'Select…', label, helperText, error, disabled, name, variant = 'field', placement = 'bottom-start', motion, id, className, style, 'aria-label': ariaLabel }: SelectProps<T>,
+  { options, value, defaultValue = null, onChange, placeholder = 'Select…', label, helperText, error, disabled, name, variant = 'field', placement = 'bottom-start', id, className, style, 'aria-label': ariaLabel }: SelectProps<T>,
   ref: React.Ref<HTMLButtonElement>,
 ) {
   const [v, setV] = useControllable<T | null>(value, defaultValue, onChange as (v: T | null) => void);
@@ -157,7 +156,6 @@ export const Select = forwardRef(function Select<T extends string = string>(
       aria-invalid={invalid || undefined}
       aria-describedby={help ? `${fid}-help` : undefined}
       disabled={disabled}
-      data-sg-motion={motion}
       className={cx('sg-select', variant === 'inline' && 'sg-select--inline', variant === 'filter' && 'sg-select--filter', variant !== 'inline' ? className : undefined)}
       style={variant !== 'inline' ? style : undefined}
       onClick={() => (open ? setOpen(false) : openAt(selectedIndex >= 0 ? selectedIndex : enabled[0]))}
@@ -183,7 +181,7 @@ export const Select = forwardRef(function Select<T extends string = string>(
       )}
       {name && <input type="hidden" name={name} value={v ?? ''} />}
       {mounted && (
-        <MotionScope motion={motion} bare><Portal className="sg-portal--passthrough sg-portal--anchored">
+        <Portal className="sg-portal--passthrough sg-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} id={listId} role="listbox" aria-labelledby={labelId} aria-label={labelId ? undefined : ariaLabel} tabIndex={-1}
             className={cx('sg-listbox', glassClass('strong'))}>
             <div data-sg-content>
@@ -195,7 +193,7 @@ export const Select = forwardRef(function Select<T extends string = string>(
               ) : renderOption(x)))}
             </div>
           </div>
-        </Portal></MotionScope>
+        </Portal>
       )}
     </>
   );

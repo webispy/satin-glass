@@ -4,7 +4,7 @@
    activation="manual"), Home/End; each tab controls its panel. Panels slide in from the side you moved toward.
    A row of filter choices is not tabs: use chips (or a segmented control for two to five options). */
 import { useDeferredValue, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { animate, fade, prefersReducedMotion, type MotionName } from '@satin-glass/core';
+import { animate, fade, prefersReducedMotion } from '@satin-glass/core';
 import { cx, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { Badge, useBridge } from './controls';
 
@@ -15,13 +15,12 @@ export type TabsProps<T extends string = string> = {
   /** auto: arrow keys select; manual: arrow keys move focus, Enter/Space select */
   activation?: 'auto' | 'manual';
   'aria-label'?: string;
-  motion?: MotionName;
   className?: string; style?: CSSProperties;
   /** class for the panel (when items carry content) */
   panelClassName?: string;
 };
 
-export function Tabs<T extends string = string>({ items, value, defaultValue, onChange, activation = 'auto', 'aria-label': label, motion, className, style, panelClassName }: TabsProps<T>) {
+export function Tabs<T extends string = string>({ items, value, defaultValue, onChange, activation = 'auto', 'aria-label': label, className, style, panelClassName }: TabsProps<T>) {
   const [v, setV] = useControllable<T>(value, defaultValue ?? items.find((i) => !i.disabled)?.value ?? items[0]?.value, onChange);
   const index = Math.max(0, items.findIndex((i) => i.value === v));
   const list = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null), panel = useRef<HTMLDivElement>(null);
@@ -58,7 +57,7 @@ export function Tabs<T extends string = string>({ items, value, defaultValue, on
   };
   const cur = items[shown] ?? items[index];
   return (
-    <div className={cx('sg-tabs', className)} style={style} data-sg-motion={motion}>
+    <div className={cx('sg-tabs', className)} style={style}>
       <div ref={list} role="tablist" aria-label={label} className="sg-tabs__list" onKeyDown={onKey}>
         <span ref={ind} className="sg-tabs__indicator" aria-hidden="true" />
         {items.map((it, i) => (

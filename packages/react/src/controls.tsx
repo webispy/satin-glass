@@ -3,7 +3,7 @@ import {
   type ButtonHTMLAttributes, type CSSProperties, type ElementType, type HTMLAttributes, type InputHTMLAttributes,
   type KeyboardEvent, type ReactElement, type ReactNode, type TextareaHTMLAttributes,
 } from 'react';
-import { animate, createBridge, createOverflowStrip, drag, loop, motionFor, prefersReducedMotion, Spring, springTiming, type Bridge, type MotionName, type OverflowStrip } from '@satin-glass/core';
+import { animate, createBridge, createOverflowStrip, drag, loop, motionFor, prefersReducedMotion, Spring, springTiming, type Bridge, type OverflowStrip } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { glassClass, useGlassLight } from './foundation';
 import { ClearIcon, MinusIcon, PlusIcon, SearchIcon, CloseIcon } from './icons';
@@ -77,10 +77,9 @@ export type SwitchProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChang
   defaultChecked?: boolean;
   onChange?: (checked: boolean) => void;
   size?: 'sm' | 'md';
-  motion?: MotionName;
 };
 
-export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch({ checked, defaultChecked = false, onChange, size = 'md', motion, className, disabled, onClick, ...rest }, ref) {
+export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch({ checked, defaultChecked = false, onChange, size = 'md', className, disabled, onClick, ...rest }, ref) {
   const [on, setOn] = useControllable(checked, defaultChecked, onChange);
   const el = useRef<HTMLButtonElement>(null);
   const dragged = useRef(false);
@@ -236,7 +235,6 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
       type="button"
       role="switch"
       aria-checked={on}
-      data-sg-motion={motion}
       disabled={disabled}
       className={cx('sg-switch', size === 'sm' && 'sg-switch--sm', pressed && 'is-pressed', draggingSw && 'is-dragging', className)}
       onClick={(e) => {
@@ -266,12 +264,10 @@ export type SliderProps = Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'def
   /** text in the bubble and for screen readers */
   format?: (value: number) => string;
   showValue?: boolean;
-  /** motion personality for this control (default: the theme's) */
-  motion?: MotionName;
 };
 
 export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
-  { value, defaultValue = 0, onChange, onChangeEnd, min = 0, max = 100, step = 1, disabled, format = (v) => String(v), showValue = true, motion, className, style, ...rest }, ref,
+  { value, defaultValue = 0, onChange, onChangeEnd, min = 0, max = 100, step = 1, disabled, format = (v) => String(v), showValue = true, className, style, ...rest }, ref,
 ) {
   const [v, setV] = useControllable(value, defaultValue, onChange);
   const el = useRef<HTMLDivElement>(null);
@@ -391,7 +387,6 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
       tabIndex={disabled ? -1 : 0}
       aria-valuemin={min} aria-valuemax={max} aria-valuenow={v} aria-valuetext={format(v)}
       aria-disabled={disabled || undefined}
-      data-sg-motion={motion}
       className={cx('sg-slider', active && 'is-active', className)}
       style={style}
       onKeyDown={onKey}
@@ -407,9 +402,9 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
 /* ================================================================================================ Stepper */
 export type StepperProps = Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'defaultValue'> & {
   value?: number; defaultValue?: number; onChange?: (v: number) => void;
-  min?: number; max?: number; step?: number; format?: (v: number) => ReactNode; label?: string; motion?: MotionName;
+  min?: number; max?: number; step?: number; format?: (v: number) => ReactNode; label?: string;
 };
-export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper({ value, defaultValue = 0, onChange, min = -Infinity, max = Infinity, step = 1, format = (v) => v, label = 'Value', motion, className, ...rest }, ref) {
+export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper({ value, defaultValue = 0, onChange, min = -Infinity, max = Infinity, step = 1, format = (v) => v, label = 'Value', className, ...rest }, ref) {
   const [v, setV] = useControllable(value, defaultValue, onChange);
   const vr = useRef(v); vr.current = v;            /* latest value, for hold-to-repeat */
   /* direction of the last change, for the roll: up when increasing, down when decreasing */
@@ -442,7 +437,7 @@ export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper
   const stop = () => { clearTimeout(timer.current.t); clearInterval(timer.current.i); };
   useEffect(() => stop, []);
   return (
-    <div ref={mergeRefs(ref, root)} role="group" aria-label={label} data-sg-motion={motion} className={cx('sg-stepper', className)} {...rest}>
+    <div ref={mergeRefs(ref, root)} role="group" aria-label={label} className={cx('sg-stepper', className)} {...rest}>
       <button type="button" className="sg-stepper__btn" aria-label={`Decrease ${label}`} disabled={v <= min} onClick={() => bump(-step)} onPointerDown={hold(-step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><MinusIcon /></button>
       <span className="sg-stepper__value" aria-live="polite">
         {leaving.map((l) => (
@@ -461,7 +456,6 @@ export type SegmentedControlProps<T extends string> = Omit<HTMLAttributes<HTMLDi
   options: SegmentOption<T>[];
   value?: T; defaultValue?: T; onChange?: (v: T) => void;
   size?: 'sm' | 'md';
-  motion?: MotionName;
   'aria-label'?: string;
 };
 
@@ -527,13 +521,13 @@ function rovingKeys(e: KeyboardEvent<HTMLElement>, count: number, current: numbe
   items[next]?.focus();
 }
 
-export function SegmentedControl<T extends string>({ options, value, defaultValue, onChange, size = 'md', motion, className, ...rest }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({ options, value, defaultValue, onChange, size = 'md', className, ...rest }: SegmentedControlProps<T>) {
   const [v, setV] = useControllable(value, defaultValue ?? options[0]?.value, onChange);
   const box = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null);
   const index = Math.max(0, options.findIndex((o) => o.value === v));
   useBridge(box, ind, index, (i) => !options[i].disabled && setV(options[i].value));
   return (
-    <div ref={box} role="radiogroup" data-sg-motion={motion} className={cx('sg-segmented', size === 'sm' && 'sg-segmented--sm', className)} onKeyDown={(e) => rovingKeys(e, options.length, index, (i) => setV(options[i].value), (i) => !!options[i].disabled)} {...rest}>
+    <div ref={box} role="radiogroup" className={cx('sg-segmented', size === 'sm' && 'sg-segmented--sm', className)} onKeyDown={(e) => rovingKeys(e, options.length, index, (i) => setV(options[i].value), (i) => !!options[i].disabled)} {...rest}>
       <span ref={ind} className="sg-segmented__indicator" aria-hidden="true" />
       {options.map((o, i) => (
         <button key={o.value} type="button" role="radio" data-sg-item aria-checked={i === index} tabIndex={i === index ? 0 : -1} disabled={o.disabled} className="sg-segmented__item" onClick={() => setV(o.value)}>
@@ -558,11 +552,10 @@ export type TabBarProps = Omit<HTMLAttributes<HTMLElement>, 'onChange' | 'defaul
   /** the selection can be dragged across the tabs and lands where it is released (off by default: a tap selects) */
   draggable?: boolean;
   compact?: boolean;
-  motion?: MotionName;
   'aria-label'?: string;
 };
 
-export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ value, defaultValue, onChange, children, action, draggable = false, compact, motion, className, 'aria-label': label = 'Tabs', ...rest }, ref) {
+export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ value, defaultValue, onChange, children, action, draggable = false, compact, className, 'aria-label': label = 'Tabs', ...rest }, ref) {
   const tabs = Children.toArray(children).filter(isValidElement).map((c) => (c as ReactElement<TabProps>).props);
   const [v, setV] = useControllable(value, defaultValue ?? tabs[0]?.value, onChange);
   const bar = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null);
@@ -570,7 +563,7 @@ export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ val
   const index = Math.max(0, tabs.findIndex((t) => t.value === v));
   useBridge(bar, ind, index, (i) => !tabs[i].disabled && setV(tabs[i].value), draggable);
   return (
-    <nav ref={ref} data-sg-motion={motion} className={cx('sg-tabbar', compact && 'sg-tabbar--compact', className)} aria-label={label} {...rest}>
+    <nav ref={ref} className={cx('sg-tabbar', compact && 'sg-tabbar--compact', className)} aria-label={label} {...rest}>
       {/* the glass clips; the track inside scrolls when the tabs do not fit (a scrolling glass would drag its rim along) */}
       <div ref={lightRef} className={cx('sg-tabbar__bar', glassClass('regular'))}>
         <div ref={bar} role="tablist" className="sg-tabbar__track" onKeyDown={(e) => rovingKeys(e, tabs.length, index, (i) => setV(tabs[i].value), (i) => !!tabs[i].disabled)}>
@@ -759,7 +752,7 @@ export function CardHeader({ title, description, actions, level = 3, className, 
 }
 
 /* ================================================================================================ Progress */
-export function Progress({ value, max = 100, size = 'md', label = 'Progress', motion, className }: { value?: number; max?: number; size?: 'sm' | 'md'; label?: string; motion?: MotionName; className?: string }) {
+export function Progress({ value, max = 100, size = 'md', label = 'Progress', className }: { value?: number; max?: number; size?: 'sm' | 'md'; label?: string; className?: string }) {
   const indeterminate = value === undefined;
   const p = indeterminate ? 0 : Math.min(1, Math.max(0, value / max));
   const el = useRef<HTMLDivElement>(null);
@@ -778,7 +771,7 @@ export function Progress({ value, max = 100, size = 'md', label = 'Progress', mo
   }, [p, indeterminate]);
   useEffect(() => () => { eng.current?.stop?.(); }, []);
   return (
-    <div ref={el} role="progressbar" data-sg-motion={motion} aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={indeterminate ? undefined : value}
+    <div ref={el} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={indeterminate ? undefined : value}
       className={cx('sg-progress', size === 'sm' && 'sg-progress--sm', indeterminate && 'sg-progress--indeterminate', className)}>
       <span className="sg-progress__bar" />
     </div>
@@ -789,9 +782,9 @@ export function Progress({ value, max = 100, size = 'md', label = 'Progress', mo
 export type PageControlProps = Omit<HTMLAttributes<HTMLDivElement>, 'onChange'> & {
   count: number; page?: number; defaultPage?: number; onChange?: (p: number) => void;
   /** glass capsule behind the dots */
-  glass?: boolean; onMedia?: boolean; label?: string; motion?: MotionName;
+  glass?: boolean; onMedia?: boolean; label?: string;
 };
-export const PageControl = forwardRef<HTMLDivElement, PageControlProps>(function PageControl({ count, page, defaultPage = 0, onChange, glass, onMedia, label = 'Page', motion, className, ...rest }, ref) {
+export const PageControl = forwardRef<HTMLDivElement, PageControlProps>(function PageControl({ count, page, defaultPage = 0, onChange, glass, onMedia, label = 'Page', className, ...rest }, ref) {
   const [p, setP] = useControllable(page, defaultPage, onChange);
   const el = useRef<HTMLDivElement>(null);
   const lightRef = useGlassLight(Boolean(glass));
@@ -811,7 +804,7 @@ export const PageControl = forwardRef<HTMLDivElement, PageControlProps>(function
     });
   }, [setP]);
   return (
-    <div ref={mergeRefs(ref, el, glass ? lightRef : undefined)} role="group" aria-label={label} tabIndex={0} data-sg-motion={motion}
+    <div ref={mergeRefs(ref, el, glass ? lightRef : undefined)} role="group" aria-label={label} tabIndex={0}
       className={cx('sg-pagecontrol', glass && cx('sg-pagecontrol--glass', glassClass(onMedia ? 'clear' : 'regular')), onMedia && 'sg-pagecontrol--on-media', className)}
       onKeyDown={(e) => { if (e.key === 'ArrowRight' && p < count - 1) { e.preventDefault(); setP(p + 1); } if (e.key === 'ArrowLeft' && p > 0) { e.preventDefault(); setP(p - 1); } }}
       {...rest}>

@@ -16,6 +16,7 @@ From this release on the changelog is in English; the entries for 0.3.0 and earl
 - `TimePicker`: turning the wheels changes a draft; Done, Enter or a click outside commit it (`onChange` once), Cancel or Escape restore the previous time.
 - Focus is drawn as an outline (`--sg-focus-outline`, `--sg-focus-offset`); `--sg-ring` is gone. `--sg-depth-well` is gone (a wheel's column is a groove).
 - `Glass`: `variant` sets only fill and blur; `level="overlay"` casts the overlay shadow. Sheets, dialogs and action sheets are overlays; menus, popovers, list boxes, panels and toasts float.
+- Components no longer take a `motion` prop (21 of them had one). The motion personality is set for the app with `createTheme({ motion })` and for a part of it, or a single component, with `<MotionScope motion>`; open panels follow it through their portal. `MotionScope` drops `bare` and keeps the same element when `motion` is unset.
 - The calm motion personality's bouncy spring no longer overshoots (damping 0.72 → 0.9), and the pop springs of the three personalities are spread apart.
 
 ### Foundations
