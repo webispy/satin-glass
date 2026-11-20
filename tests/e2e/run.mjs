@@ -77,6 +77,8 @@ perEngine(motion, 'selection components', 'selection.mjs');
 variants(motion, 'selection components', 'selection.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 perEngine(motion, 'wheels, time & weekdays, navigation stack', 'pickers.mjs');
 perEngine(motion, 'wheel lens motion (squeeze, knocks, pop)', 'wheel-motion.mjs');
+perEngine(motion, 'date ranges', 'range.mjs');
+variants(motion, 'date ranges', 'range.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 variants(motion, 'wheels, time & weekdays, navigation stack', 'pickers.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 perEngine(motion, 'reduced motion', 'reduce-motion.mjs');
 /* finger drags with real touch input (CDP: Chromium only), in the motion phase — they follow the finger frame by frame */

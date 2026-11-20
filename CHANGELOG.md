@@ -54,7 +54,7 @@ From this release on the changelog is in English; the entries for 0.3.0 and earl
 
 ### Tests and tooling
 - `pnpm test:changed` and `pnpm e2e:changed` run only what covers a change; the full `pnpm e2e` still gates releases.
-- New e2e suites: `css-split`, `focus`, `settings`, `corners`, `blur-budget`, `wheel-motion`; `core/test/css-rules.test.ts` checks every stylesheet for animated properties (with an allowlist that gives a reason per exception) and for raw radii, shadows and times.
+- New e2e suites: `css-split`, `focus`, `settings`, `corners`, `blur-budget`, `wheel-motion`, `range`; `core/test/css-rules.test.ts` checks every stylesheet for animated properties (with an allowlist that gives a reason per exception) and for raw radii, shadows and times.
 
 ## 0.3.0 — 2026-11-19
 
