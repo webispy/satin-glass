@@ -38,16 +38,18 @@
 .sg-choice[aria-disabled="true"] { opacity: 0.42; cursor: default; }
 @media (hover: hover) { .sg-choice[aria-disabled="true"]:hover { background: none; } }
 
-/* ---- Select: a field-like button (or an inline one, for list rows) and a listbox panel ---- */
+/* ---- Select: a field-like button (or an inline one, for list rows) and a listbox panel. The trigger holds a form
+   field's value, so it is a groove like a text field beside it (8.1: a value typed or chosen goes into a groove); the
+   chevrons, or the pickers' calendar and clock, say it opens ---- */
 .sg-select {
   appearance: none; border: 0; margin: 0; font: inherit; text-align: left; cursor: pointer;
   position: relative; display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;
   height: 44px; padding: 0 10px 0 12px; border-radius: var(--sg-radius-md);
-  background: var(--sg-fill); color: var(--sg-label); font-size: 16px;
-  box-shadow: inset 0 0 0 1px transparent;
+  background: var(--sg-groove-soft); color: var(--sg-label); font-size: 16px;
+  box-shadow: var(--sg-depth-inset);
   transition: background-color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease;
 }
-@media (hover: hover) { .sg-select:hover:not(:disabled) { background: var(--sg-fill-hover); } }
+@media (hover: hover) { .sg-select:hover:not(:disabled) { background: var(--sg-groove-hover); } }
 .sg-select:focus-visible, .sg-select[aria-expanded="true"] { outline: var(--sg-focus-width) solid transparent; outline-offset: calc(-1 * var(--sg-focus-width)); background: var(--sg-surface); box-shadow: inset 0 0 0 1.5px var(--sg-accent), 0 0 0 4px var(--sg-accent-soft); }
 .sg-field[data-invalid="true"] .sg-select { box-shadow: inset 0 0 0 1.5px var(--sg-danger); }
 .sg-select:disabled { opacity: 0.5; cursor: default; }
@@ -57,7 +59,7 @@
 .sg-select__placeholder { color: var(--sg-label-tertiary); }
 .sg-select__chevrons { flex: none; width: 18px; height: 18px; color: var(--sg-label-secondary); }
 /* inline: sits in a list row's trailing slot — accent text, no field chrome */
-.sg-select--inline { width: auto; height: 32px; padding: 0 6px 0 8px; gap: 4px; background: none; color: var(--sg-accent-text); font-size: 15px; border-radius: var(--sg-radius-sm); }
+.sg-select--inline { width: auto; height: 32px; padding: 0 6px 0 8px; gap: 4px; background: none; box-shadow: none; color: var(--sg-accent-text); font-size: 15px; border-radius: var(--sg-radius-sm); }
 .sg-select--inline .sg-select__chevrons { color: inherit; width: 16px; height: 16px; }
 @media (hover: hover) { .sg-select--inline:hover:not(:disabled) { background: var(--sg-fill); } }
 .sg-select--inline:focus-visible, .sg-select--inline[aria-expanded="true"] { background: var(--sg-fill); outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }

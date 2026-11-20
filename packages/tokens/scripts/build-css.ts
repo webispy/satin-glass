@@ -41,9 +41,9 @@ out.push(':root {', ...root, '}');
 /* shadows read the theme's shadow colour and strength, so they are declared with the depth tokens on every theme
    element (a var() is resolved where the property is declared: on :root alone, a dark island kept light shadows) */
 const depth = [
-  decl('shadow-sm', '0 1px 2px rgba(var(--sg-shadow-color), calc(0.06 * var(--sg-shadow-strength))), 0 2px 8px rgba(var(--sg-shadow-color), calc(0.05 * var(--sg-shadow-strength)))'),
-  decl('shadow-md', '0 1px 3px rgba(var(--sg-shadow-color), calc(0.07 * var(--sg-shadow-strength))), 0 8px 24px rgba(var(--sg-shadow-color), calc(0.1 * var(--sg-shadow-strength)))'),
-  decl('shadow-lg', '0 2px 6px rgba(var(--sg-shadow-color), calc(0.08 * var(--sg-shadow-strength))), 0 20px 48px rgba(var(--sg-shadow-color), calc(0.16 * var(--sg-shadow-strength)))'),
+  decl('shadow-sm', '0 1px 2px rgba(var(--sg-shadow-color), calc(0.06 * var(--sg-shadow-strength))), 0 2px 8px rgba(var(--sg-shadow-color), calc(0.05 * var(--sg-shadow-strength))), var(--sg-lit-edge)'),
+  decl('shadow-md', '0 1px 3px rgba(var(--sg-shadow-color), calc(0.07 * var(--sg-shadow-strength))), 0 8px 24px rgba(var(--sg-shadow-color), calc(0.1 * var(--sg-shadow-strength))), var(--sg-lit-edge)'),
+  decl('shadow-lg', '0 2px 6px rgba(var(--sg-shadow-color), calc(0.08 * var(--sg-shadow-strength))), 0 20px 48px rgba(var(--sg-shadow-color), calc(0.16 * var(--sg-shadow-strength))), var(--sg-lit-edge)'),
   decl('depth-inset', 'inset 0 1px 2px rgba(var(--sg-shadow-color), calc(0.14 * var(--sg-shadow-strength))), inset 0 0 0 0.5px rgba(var(--sg-shadow-color), calc(0.05 * var(--sg-shadow-strength)))'),
   decl('depth-raised', '0 1px 2px rgba(var(--sg-shadow-color), calc(0.12 * var(--sg-shadow-strength))), 0 3px 8px -2px rgba(var(--sg-shadow-color), calc(0.14 * var(--sg-shadow-strength))), inset 0 1px 0 var(--sg-glass-rim-lit), inset 0 -1px 0 var(--sg-glass-rim-shade)'),
   decl('depth-raised-accent', '0 1px 2px color-mix(in oklab, var(--sg-accent) 45%, transparent), 0 3px 8px -4px color-mix(in oklab, var(--sg-accent) 55%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(0, 0, 0, 0.12)'),   /* a short shadow, not a glow: beads come in rows (weekdays) */
@@ -53,6 +53,9 @@ const depth = [
 /* the raised surface itself: the plain surface in light themes; in dark ones a lighter tint, so a raised thing reads
    lighter than what it sits on (the segmented control's chosen segment, the wheel lens) */
 depth.push(decl('depth-raised-bg', 'var(--sg-surface)'));
+/* the fixed top light on what stands up (surfaces, floating and overlay glass, through the shadow tokens): nothing in
+   light themes, where the shadow tells the height; on a dark page, where shadows hardly show, a lit top edge does */
+depth.push(decl('lit-edge', '0 0 0 0 transparent'));
 /* a handle that rides a rail (switch knob, slider thumb) stays light in every theme: it must stand apart from both
    the empty rail and the accent fill under it (see design-language.md 8. 깊이와 레이어, 손잡이); high contrast
    outlines it through --sg-depth-raised */
@@ -66,8 +69,17 @@ depth.push(decl('selection-outline', '0 0 0 0 transparent'));
 /* a surface (level 1: card, stat, list group) has its own edge in high contrast */
 depth.push(decl('surface-outline', '0 0 0 0 transparent'));
 out.push(':root, [data-sg-theme] {', ...depth, '}');
-out.push('[data-sg-theme^="dark"] {', decl('depth-raised-bg', 'var(--sg-fill-strong)'), '}');
-out.push('@media (prefers-color-scheme: dark) {', '  :root:not([data-sg-theme]) {', '  ' + decl('depth-raised-bg', 'var(--sg-fill-strong)'), '  }', '}');
+/* dark: what stands up is lit on its top edge, and a groove is shaded deep inside its top, with a lit lip at the bottom
+   and a faint rim (the light inset shadow alone vanished, and the groove's lighter tint read as raised) */
+const darkDepth = [
+  decl('depth-raised-bg', 'var(--sg-fill-strong)'),
+  decl('lit-edge', 'inset 0 1px 0 rgba(255, 255, 255, 0.07)'),
+  /* the rim keeps a groove's edge where it cannot be darker than what it is cut into (straight into the page) */
+  decl('depth-inset', 'inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(255, 255, 255, 0.08), inset 0 1px 2px rgba(0, 0, 0, 0.55), inset 0 2px 6px rgba(0, 0, 0, 0.28)'),
+];
+out.push('[data-sg-theme="dark"] {', ...darkDepth, '}');
+out.push('[data-sg-theme="dark-hc"] {', decl('depth-raised-bg', 'var(--sg-fill-strong)'), '}');
+out.push('@media (prefers-color-scheme: dark) {', '  :root:not([data-sg-theme]) {', ...darkDepth.map((d) => '  ' + d), '  }', '}');
 /* high contrast: depth turns into outlines, so every groove, knob and chosen thing keeps a visible edge (3:1 for
    non-text) through the same tokens — no component needs its own high-contrast rule */
 const hcDepth = [
@@ -127,6 +139,8 @@ pairs.push(['accent-on-soft', 'accent-soft@surface', 4.5], ['danger-on-soft', 'd
    page background, white text on clear glass over a white photo */
 pairs.push(['on-accent', 'accent-hover', 4.5], ['on-accent', 'accent-pressed', 4.5],
   ['label-secondary', 'fill@bg', 4.5], ['label-secondary', 'fill@surface', 4.5], ['label-secondary', 'fill@bg-grouped', 4.5],
+  /* a placeholder in a field, whose trough is the soft groove */
+  ['label-secondary', 'groove-soft@bg', 4.5], ['label-secondary', 'groove-soft@surface', 4.5], ['label-secondary', 'groove-soft@bg-grouped', 4.5],
   ['#ffffff', 'glass-fill-clear@#ffffff', 4.5]);
 /* high contrast only: the outline a groove or field gets is non-text and must reach 3:1 against the page */
 const hcOnly = new Set(['separator-strong/bg']);

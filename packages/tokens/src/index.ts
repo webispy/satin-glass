@@ -28,6 +28,11 @@ const light = {
   'fill': rgba(p.slate[500], 0.1),
   'fill-strong': rgba(p.slate[500], 0.17),
   'fill-hover': rgba(p.slate[500], 0.14),
+  /* a groove's own ground (rails; fields, segmented and stepper troughs): the fills in light themes; on a dark page a
+     groove is darker than what it is cut into, so it reads as cut in, not as a lighter raised plate */
+  'groove': rgba(p.slate[500], 0.17),
+  'groove-soft': rgba(p.slate[500], 0.1),
+  'groove-hover': rgba(p.slate[500], 0.14),
   'accent': p.iris[600],
   'accent-hover': p.iris[700],
   'accent-pressed': p.iris[800],
@@ -70,9 +75,10 @@ type Semantic = typeof light;
 
 const dark: Semantic = {
   'bg': ink(0.165),
-  'bg-elevated': ink(0.215),
+  /* a surface stands a clear step above the page: shadows hardly show on a dark page, so height is told by light */
+  'bg-elevated': ink(0.245),
   'bg-grouped': ink(0.135),
-  'surface': ink(0.215),
+  'surface': ink(0.245),
   'label': p.slate[50],
   'label-secondary': p.slate[300],
   'label-tertiary': p.slate[400],
@@ -82,6 +88,9 @@ const dark: Semantic = {
   'fill': rgba(p.slate[400], 0.14),
   'fill-strong': rgba(p.slate[400], 0.24),
   'fill-hover': rgba(p.slate[400], 0.19),
+  'groove': 'rgba(0, 0, 0, 0.32)',
+  'groove-soft': 'rgba(0, 0, 0, 0.24)',
+  'groove-hover': 'rgba(0, 0, 0, 0.16)',
   'accent': p.iris[600],
   'accent-hover': p.iris[700],     /* hover and press darken: white text keeps 4.5:1 (a lighter hover fell to 3.45) */
   'accent-pressed': p.iris[800],
@@ -96,8 +105,9 @@ const dark: Semantic = {
   'info': p.azure[500], 'info-soft': rgba(p.azure[400], 0.18), 'info-text': p.azure[300],
   'focus-ring': p.iris[400],
   'scrim': 'rgba(0, 0, 0, 0.5)',
-  'glass-fill': 'rgba(34, 36, 50, 0.52)',
-  'glass-fill-strong': 'rgba(30, 32, 44, 0.74)',
+  /* glass sits higher than surfaces, so it is lighter than them too (dark glass on a dimmed page did not lift) */
+  'glass-fill': 'rgba(44, 47, 64, 0.56)',
+  'glass-fill-strong': 'rgba(48, 51, 68, 0.8)',
   'glass-fill-subtle': 'rgba(40, 42, 58, 0.36)',
   'glass-fill-clear': 'rgba(24, 26, 44, 0.6)',   /* over media: white text keeps 4.5:1 even on a white photo */
   'glass-rim-lit': 'rgba(255, 255, 255, 0.24)',
@@ -125,6 +135,7 @@ const lightHc: Semantic = {
   'separator-strong': p.slate[800],
   'fill': rgba(p.slate[700], 0.14),
   'fill-strong': rgba(p.slate[700], 0.24),
+  'groove': rgba(p.slate[700], 0.24), 'groove-soft': rgba(p.slate[700], 0.14),
   'accent': p.iris[800], 'accent-hover': p.iris[900], 'accent-pressed': p.iris[950], 'accent-text': p.iris[800], 'accent-on-soft': p.iris[900],
   'danger-fill': p.ruby[800], 'danger-on-soft': p.ruby[900],
   'danger-text': p.ruby[800], 'success-text': p.jade[800], 'info-text': p.azure[800], 'warning-text': p.amber[900],

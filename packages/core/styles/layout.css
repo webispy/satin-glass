@@ -27,7 +27,7 @@
 .sg-list-section { display: flex; flex-direction: column; gap: 6px; }
 .sg-list-section__header { margin: 0; padding: 0 16px; font-size: 13px; line-height: 18px; font-weight: 620; color: var(--sg-label-secondary); }
 .sg-list-section__footer { margin: 0; padding: 0 16px; font-size: 12px; line-height: 16px; color: var(--sg-label-secondary); }
-.sg-list { margin: 0; padding: 0; list-style: none; border-radius: var(--sg-radius-lg); background: var(--sg-surface); box-shadow: var(--sg-surface-outline); overflow: hidden; }
+.sg-list { margin: 0; padding: 0; list-style: none; border-radius: var(--sg-radius-lg); background: var(--sg-surface); box-shadow: var(--sg-surface-outline), var(--sg-lit-edge); overflow: hidden; }
 .sg-list--plain { background: none; border-radius: 0; box-shadow: none; }
 .sg-list-item { position: relative; display: flex; align-items: center; gap: 12px; min-height: var(--sg-size-row); padding: 8px 16px; color: var(--sg-label); }
 /* every row is an li.sg-list-row; separators hang off the li so they work for plain and pressable rows alike */

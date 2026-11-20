@@ -61,7 +61,7 @@
 .sg-sparkline svg { display: block; overflow: visible; }
 .sg-sparkline__line { fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1; }
 /* in-cell marks */
-.sg-barmeter { position: relative; display: inline-block; height: 4px; border-radius: var(--sg-radius-full); background: var(--sg-fill-strong); box-shadow: var(--sg-depth-inset); overflow: hidden; vertical-align: middle; flex: none; --_c: var(--sg-label-secondary); }
+.sg-barmeter { position: relative; display: inline-block; height: 4px; border-radius: var(--sg-radius-full); background: var(--sg-groove); box-shadow: var(--sg-depth-inset); overflow: hidden; vertical-align: middle; flex: none; --_c: var(--sg-label-secondary); }
 .sg-barmeter[data-tone="accent"] { --_c: var(--sg-accent); }
 .sg-barmeter[data-tone="success"] { --_c: var(--sg-success); }
 .sg-barmeter[data-tone="warning"] { --_c: var(--sg-warning); }
@@ -79,7 +79,7 @@
 .sg-meter__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
 .sg-meter__label { min-width: 0; color: var(--sg-label); font-size: var(--sg-text-label-size); line-height: var(--sg-text-label-line); font-weight: var(--sg-text-label-weight); letter-spacing: var(--sg-text-label-tracking); }
 .sg-meter__value { flex: none; color: var(--sg-label-secondary); font-size: var(--sg-text-footnote-size); line-height: var(--sg-text-footnote-line); font-weight: 560; font-variant-numeric: tabular-nums; }
-.sg-meter__track { position: relative; height: 8px; border-radius: var(--sg-radius-full); background: var(--sg-fill-strong); box-shadow: var(--sg-depth-inset); overflow: hidden; }
+.sg-meter__track { position: relative; height: 8px; border-radius: var(--sg-radius-full); background: var(--sg-groove); box-shadow: var(--sg-depth-inset); overflow: hidden; }
 .sg-meter--sm .sg-meter__track { height: 4px; }
 .sg-meter__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--_c); transform-origin: left center; }
 .sg-meter__fill:dir(rtl) { transform-origin: right center; }
