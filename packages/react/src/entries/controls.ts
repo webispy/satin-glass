@@ -4,5 +4,5 @@ export {
   type SwitchProps, Switch, type SliderProps, Slider, type StepperProps, Stepper,
   type SegmentOption, type SegmentedControlProps, SegmentedControl, useBridge,
   type TextFieldProps, type TextAreaFieldProps, TextField, type SearchFieldProps, SearchField,
-  type ChipProps, Chip, Badge, BadgeAnchor, Avatar, Progress, type PageControlProps, PageControl,
+  type ChipProps, Chip, Badge, BadgeAnchor, type AvatarProps, Avatar, type AvatarGroupProps, AvatarGroup, Progress, type PageControlProps, PageControl,
 } from '../controls';

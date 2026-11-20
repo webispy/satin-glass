@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import {
-  ActionSheet, AppBar, Avatar, Badge, BadgeAnchor, Button, ButtonGroup, Card, CardBody, Chip, ContextMenu, Dialog, Glass,
+  ActionSheet, AppBar, Avatar, AvatarGroup, Badge, BadgeAnchor, Button, ButtonGroup, Card, CardBody, Chip, ContextMenu, Dialog, Glass,
   ChoiceList, IconButton, List, ListItem, ListSection, Menu, MenuItem, MenuLabel, MenuSeparator, NavigationPage, NavigationStack, PageControl, Pagination, Popover, Progress, SearchField,
   SegmentedControl, Sheet, Sidebar, SidebarItem, SidebarSection, Slider, Spinner, Stack, Stepper, Switch, Tab, TabBar, TabBarAction,
   Tabs, Text, TextField, useNavigation, useToast,
@@ -300,7 +300,45 @@ export function Lists() {
           </Demo>
         </Stack>
       </div>
+      <AvatarGroups />
     </Page>
+  );
+}
+
+const TEAM = ['김하늘', 'Lee Sora', '박지민', 'Choi Yuna', '정다온', 'Han Jiwoo', '오세린', 'Kang Minho'];
+function AvatarGroups() {
+  const [open, setOpen] = useState(false);
+  const anchor = useRef<HTMLElement | null>(null);
+  const groupLabels = { group: (n: number) => `참여자 ${n}명`, more: (n: number) => `나머지 ${n}명` };
+  return (
+    <Section title="아바타 묶음 (AvatarGroup)" intro="여러 사람을 겹친 얼굴로 보여 주고, 나머지는 +N으로 줄입니다. 묶음은 '참여자 8명'처럼 인원으로 읽히고, 보이는 사람은 각자 이름으로 읽힙니다. 얼굴 사이는 놓인 바탕색의 고리로 나눕니다(--sg-avatar-ring, 기본은 카드 바탕). 사람 목록은 내용이라 움직이지 않습니다. +N에 할 일이 있으면 버튼이 되어, 누르면 전체 목록을 띄울 수 있어요.">
+      <div className="grid grid--2">
+        <Demo col data-demo="avatar-group">
+          <Stack direction="row" gap={4} align="center" wrap>
+            <AvatarGroup labels={groupLabels}>{TEAM.map((n) => <Avatar key={n} name={n} />)}</AvatarGroup>
+            <Text variant="subhead" tone="secondary">8명 · 4명까지 보이고 +4</Text>
+          </Stack>
+          <Stack direction="row" gap={4} align="center" wrap>
+            <AvatarGroup labels={groupLabels} max={3} total={128} onMoreClick={(e) => { anchor.current = e.currentTarget; setOpen(true); }}>
+              {TEAM.slice(0, 5).map((n) => <Avatar key={n} name={n} />)}
+            </AvatarGroup>
+            <Text variant="subhead" tone="secondary">서버가 알려 준 128명 · +N을 누르면 목록</Text>
+          </Stack>
+          <Stack direction="row" gap={4} align="center" wrap>
+            <AvatarGroup labels={groupLabels} size={24}>{TEAM.slice(0, 3).map((n) => <Avatar key={n} name={n} />)}</AvatarGroup>
+            <AvatarGroup labels={groupLabels} size={40} max={5}>{TEAM.map((n) => <Avatar key={n} name={n} />)}</AvatarGroup>
+          </Stack>
+          <Popover open={open} onClose={() => setOpen(false)} anchor={anchor.current} aria-label="참여자 전체">
+            <List>{TEAM.map((n) => <ListItem key={n} leading={<Avatar name={n} size={28} />} plainLeading title={n} />)}</List>
+          </Popover>
+        </Demo>
+        <Demo col data-demo="avatar-group-page" style={{ background: 'var(--sg-bg)', ['--sg-avatar-ring' as string]: 'var(--sg-bg)' }}>
+          <Text variant="subhead" tone="secondary">페이지 바탕 위에서는 고리도 페이지 색으로 (--sg-avatar-ring: var(--sg-bg))</Text>
+          <AvatarGroup labels={groupLabels} max={6}>{[...TEAM.slice(0, 2).map((n) => <Avatar key={n} name={n} />), <Avatar key="img" name="Seo Yerin" src="/no-such-photo.jpg" />, ...TEAM.slice(2, 5).map((n) => <Avatar key={n} name={n} />)]}</AvatarGroup>
+          <Text variant="footnote" tone="secondary">셋째 사람은 사진을 불러오지 못해 이니셜로 대신합니다.</Text>
+        </Demo>
+      </div>
+    </Section>
   );
 }
 

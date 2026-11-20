@@ -1,7 +1,7 @@
 import {
-  Children, forwardRef, isValidElement, useEffect, useRef, useState,
+  Children, cloneElement, forwardRef, isValidElement, useEffect, useRef, useState,
   type ButtonHTMLAttributes, type CSSProperties, type ElementType, type HTMLAttributes, type InputHTMLAttributes,
-  type KeyboardEvent, type ReactElement, type ReactNode, type TextareaHTMLAttributes,
+  type KeyboardEvent, type MouseEvent, type ReactElement, type ReactNode, type TextareaHTMLAttributes,
 } from 'react';
 import { animate, createBridge, createOverflowStrip, drag, loop, motionFor, prefersReducedMotion, Spring, springTiming, type Bridge, type OverflowStrip } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
@@ -716,14 +716,59 @@ export function BadgeAnchor({ badge, children }: { badge: ReactNode; children: R
 }
 
 const AVATAR_HUES = ['iris', 'azure', 'teal', 'jade', 'amber', 'coral', 'rose', 'orchid'];
-export function Avatar({ name = '', src, size = 40, className, style }: { name?: string; src?: string; size?: number; className?: string; style?: CSSProperties }) {
+export type AvatarProps = { name?: string; src?: string; size?: number; className?: string; style?: CSSProperties };
+/** A person's picture, or their initials on a colour picked from the name. A picture that fails to load falls back
+    to the initials. */
+export function Avatar({ name = '', src, size = 40, className, style }: AvatarProps) {
   const initials = name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   const hue = AVATAR_HUES[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_HUES.length];
+  const [broken, setBroken] = useState<string | null>(null);
+  const showImg = !!src && broken !== src;
   return (
     <span className={cx('sg-avatar', className)} role="img" aria-label={name || undefined}
       style={{ '--_s': `${size}px`, '--_bg': `var(--sg-${hue}-200)`, '--_fg': `var(--sg-${hue}-800)`, '--_fg-hc': `var(--sg-${hue}-950)`, ...style } as CSSProperties}>
-      {src ? <img src={src} alt="" /> : initials}
+      {showImg ? <img src={src} alt="" onError={() => setBroken(src!)} /> : initials}
     </span>
+  );
+}
+
+/* AvatarGroup (0.5): overlapping portraits and a "+N" for the rest. Each portrait keeps its name; the group is named
+   by the count. +N is text, or a button when there is something to open (a list of everyone in a Popover). The
+   portraits are flat and part from each other with a ring in the colour they sit on (--sg-avatar-ring, default the
+   surface). Nothing moves: the roster is content. */
+export type AvatarGroupProps = {
+  /** <Avatar /> elements */
+  children: ReactNode;
+  /** how many portraits to show before +N (default 4) */
+  max?: number;
+  /** how many people there are, when that is more than the portraits given (a count from the server) */
+  total?: number;
+  /** px, given to every portrait (default 32) */
+  size?: number;
+  /** +N becomes a button; anchor a Popover to event.currentTarget */
+  onMoreClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  labels?: { group?: (count: number) => string; more?: (hidden: number) => string };
+  'aria-label'?: string;
+  className?: string; style?: CSSProperties;
+};
+export function AvatarGroup({ children, max = 4, total, size = 32, onMoreClick, labels, 'aria-label': ariaLabel, className, style }: AvatarGroupProps) {
+  const portraits = Children.toArray(children).filter(isValidElement) as ReactElement<AvatarProps>[];
+  const shown = portraits.slice(0, Math.max(0, Math.floor(Number.isFinite(max) ? max : 4)));
+  const count = Math.max(Math.floor(Number.isFinite(total) ? total! : 0), portraits.length);
+  const hidden = Math.max(0, count - shown.length);
+  const more = labels?.more?.(hidden) ?? `${hidden} more`;
+  /* the circle holds two digits; the name keeps the real count */
+  const shownMore = hidden > 99 ? '99+' : `+${hidden}`;
+  return (
+    <div role="group" aria-label={ariaLabel ?? labels?.group?.(count) ?? `${count} ${count === 1 ? 'person' : 'people'}`}
+      className={cx('sg-avatar-group', className)} style={{ '--_s': `${size}px`, ...style } as CSSProperties}>
+      {shown.map((a, i) => cloneElement(a, { key: a.key ?? i, size }))}
+      {hidden > 0 && (onMoreClick
+        /* the name starts with what is shown ("+3", "99+") and goes on with the full count: a name that does not
+           contain the visible text fails "label in name" (speech control says what it sees) */
+        ? <button type="button" className="sg-avatar-group__more" onClick={onMoreClick}>{shownMore}<span className="sg-visually-hidden">{`, ${more}`}</span></button>
+        : <span className="sg-avatar-group__more" role="img" aria-label={more}>{shownMore}</span>)}
+    </div>
   );
 }
 
