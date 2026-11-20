@@ -83,6 +83,8 @@ perEngine(motion, 'wheels, time & weekdays, navigation stack', 'pickers.mjs');
 perEngine(motion, 'wheel lens motion (squeeze, knocks, pop)', 'wheel-motion.mjs');
 perEngine(motion, 'date ranges', 'range.mjs');
 variants(motion, 'date ranges', 'range.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
+perEngine(motion, '0.5 components', 'v05.mjs');
+variants(motion, '0.5 components', 'v05.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 variants(motion, 'wheels, time & weekdays, navigation stack', 'pickers.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 perEngine(motion, 'reduced motion', 'reduce-motion.mjs');
 /* finger drags with real touch input (CDP: Chromium only), in the motion phase — they follow the finger frame by frame */
@@ -105,7 +107,7 @@ const only = (l) => l.filter(([label, file, env]) => {
    engines a third longer); every runner computes the same split */
 const EST = { 'css-split.mjs': 126, 'focus.mjs': 174, 'edge.mjs': 102, 'overflow.mjs': 101, 'matrix.mjs': 67, 'interact.mjs': 59, 'data.mjs': 57,
   'corners.mjs': 51, 'reduce-motion.mjs': 49, 'pickers.mjs': 37, 'wheel-motion.mjs': 33, 'display.mjs': 32, 'selection.mjs': 28,
-  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'settings.mjs': 4 };
+  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'settings.mjs': 4 };
 const SHARD = /^(\d+)\/(\d+)$/.exec(process.env.E2E_SHARD || '');
 const est = ([, file, env]) => (EST[file] ?? 60) * ((env.BROWSER ?? 'chromium') === 'chromium' ? 1 : 1.3);
 let mine = null;
