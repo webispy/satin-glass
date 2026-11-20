@@ -144,9 +144,9 @@
 .sg-accordion__region { height: 0; overflow: hidden; }
 .sg-accordion__item[data-open] .sg-accordion__region { height: auto; }
 .sg-accordion__content { padding: 0 4px 16px; }
-[data-sg-reduce-motion="true"] .sg-accordion__item[data-open] .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease both; }
+[data-sg-reduce-motion="true"] .sg-accordion__item[data-open] .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease backwards; }
 @media (prefers-reduced-motion: reduce) {
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-accordion__item[data-open] .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease both; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-accordion__item[data-open] .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease backwards; }
 }
 
 /* ============================================================================================

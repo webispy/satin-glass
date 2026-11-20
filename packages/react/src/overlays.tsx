@@ -332,7 +332,7 @@ export function ContextMenu({ menu, children, previewSelector, 'aria-label': lab
   useIsoLayoutEffect(() => {
     if (!state.open || !lift.current) return;
     scrim.current?.classList.add('is-open');
-    if (!prefersReducedMotion(lift.current)) animate(lift.current, [{ transform: 'scale(1)' }, { transform: 'scale(1.03)' }], 'bouncy');
+    if (!prefersReducedMotion(lift.current)) animate(lift.current, [{ transform: 'scale(1)' }, { transform: 'scale(1.03)' }], 'bouncy', { fill: 'both' });   /* held lifted while open */
   }, [state.open]);
   const close = () => {
     scrim.current?.classList.remove('is-open');

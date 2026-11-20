@@ -68,7 +68,7 @@ export function bloomIn(panel: HTMLElement, origin: { x: number; y: number }, fr
   const grow = (f: number) => Math.max(0.15, 1 - (1 - f) * reach);
   const [sx, sy] = (typeof from === 'number' ? [from, from] : from).map(grow);
   const a = animate(panel, [{ transform: `scale(${sx.toFixed(3)}, ${sy.toFixed(3)})` }, { transform: 'scale(1)' }], spring);
-  const o = panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: spring === 'pop' ? 70 : 120, easing: 'linear', fill: 'both' });
+  const o = panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: spring === 'pop' ? 70 : 120, easing: 'linear', fill: 'backwards' });
   const content = panel.querySelector<HTMLElement>('[data-sg-content]');
   if (content) animate(content, [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], 'snappy', { delay: spring === 'pop' ? 25 : 40 });
   return Promise.all([a.finished, o.finished]).then(() => undefined, () => undefined);
@@ -84,7 +84,8 @@ export function bloomOut(panel: HTMLElement, to: number | [number, number] = 0.9
 }
 
 export function fade(el: HTMLElement, a: number, b: number, ms: number) {
-  return el.animate([{ opacity: a }, { opacity: b }], { duration: ms, fill: 'both' }).finished.then(() => undefined, () => undefined);
+  /* fading out holds the end (the element is about to go); fading in lets go, as animate() does */
+  return el.animate([{ opacity: a }, { opacity: b }], { duration: ms, fill: b === 0 ? 'both' : 'backwards' }).finished.then(() => undefined, () => undefined);
 }
 
 /* ---------------------------------------------------------------- focus */
@@ -93,8 +94,23 @@ export const focusables = (root: HTMLElement) =>
   Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null || el === document.activeElement);
 
 /** Moves focus into `root` and keeps Tab inside it. Returns a release function that restores focus. */
+/* Safari does not focus a button that is clicked, so a layer opened by a click found the page itself focused and gave
+   focus back to nothing on close. The control last pressed stands in for it (a moment ago, and still in the page). */
+let pressed: { el: HTMLElement; at: number } | null = null;
+if (typeof document !== 'undefined') {
+  document.addEventListener('pointerdown', (e) => {
+    const el = (e.target as Element | null)?.closest?.<HTMLElement>('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    pressed = el ? { el, at: performance.now() } : null;
+  }, true);
+}
+const opener = (): HTMLElement | null => {
+  const a = document.activeElement as HTMLElement | null;
+  if (a && a !== document.body) return a;
+  return pressed && document.contains(pressed.el) && performance.now() - pressed.at < 3000 ? pressed.el : a;
+};
+
 export function trapFocus(root: HTMLElement, initial?: HTMLElement | null): () => void {
-  const before = document.activeElement as HTMLElement | null;
+  const before = opener();
   const first = initial ?? root.querySelector<HTMLElement>('[data-autofocus]') ?? focusables(root)[0] ?? root;
   if (first === root && !root.hasAttribute('tabindex')) root.tabIndex = -1;
   first.focus({ preventScroll: true });

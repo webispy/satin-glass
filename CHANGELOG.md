@@ -24,6 +24,8 @@ New components for screens that show and choose data: a meter, a group of people
 - Design language: the navigation stack names `smooth` (quick, for back-and-forth); sheets drag by their grabber and action sheets do not; the sidebar changes its tint in place while the tab bar's travels; the last breadcrumb is marked by weight and colour; chosen-value markers (date beads, the wheel lens) stay raised inside glass picker panels.
 
 ### Fixed
+- In Safari, a layer opened by a click (dialog, sheet, drawer) gave focus back to nothing on close, since Safari does not focus a clicked button; the control last pressed stands in for it.
+- Finished animations held their end values: each kept its own compositing layer (a source of Safari afterimages) and masked later inline style or class changes on the same property. `animate()` and the CSS entrances now let go once done (`fill: backwards`), as does `fade()` fading in; only exits and the navigation stack's pages and the lifted preview hold their end.
 - The drawer closed on a spring; it leaves on the same short ease-in as the sheet, from wherever it is. The remaining literal timings (navigation fades, the lifted preview's return, the range band, a picker closing after a choice) are named in core `timing` / `easing`.
 - Right to left, the navigation stack slid pages in from the wrong side and cast its edge shadow on the wrong edge (new `--sg-shadow-edge-end`), and the bar meter filled from the left. RTL rules also match a `[dir="rtl"]` ancestor, since bundlers rewrite `:dir()` into a language list.
 - A cancelled swipe back returns on `smooth`, as other returns to place do.

@@ -99,7 +99,7 @@ body { background: var(--sg-bg); }
 }
 
 /* content arriving after a skeleton */
-.fade-in { animation: docs-fade-in 220ms ease both; }
+.fade-in { animation: docs-fade-in 220ms ease backwards; }
 @keyframes docs-fade-in { from { opacity: 0; } }
 [data-sg-reduce-motion="true"] .fade-in { animation-duration: 140ms; }
 

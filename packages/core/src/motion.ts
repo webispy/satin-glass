@@ -89,6 +89,10 @@ export function springTiming(s: SpringName | SpringParams, el?: Element | null):
 }
 
 /** element.animate with a spring; resolves when finished (or immediately if cancelled). */
+/* fill 'backwards' by default: the first frame holds through a delay, and once finished the animation lets go, so the
+   element's own style (where nearly every motion ends) shows again. A finished fill kept its own compositing layer
+   (Safari drew afterimages from it) and masked any later inline style or class change on the same property. Pass
+   fill 'both' or 'forwards' only to hold an end state that is not the element's own until something removes it. */
 export function animate(el: Element, keyframes: Keyframe[], spring: SpringName | SpringParams, extra: KeyframeAnimationOptions = {}): Animation {
-  return el.animate(keyframes, { fill: 'both', ...springTiming(spring, el), ...extra });
+  return el.animate(keyframes, { fill: 'backwards', ...springTiming(spring, el), ...extra });
 }

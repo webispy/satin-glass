@@ -53,7 +53,7 @@
 .sg-button[data-tone="danger"] { --sg-accent: var(--sg-danger-fill); --sg-accent-hover: color-mix(in oklab, var(--sg-danger-fill), #000 12%); --sg-accent-pressed: color-mix(in oklab, var(--sg-danger-fill), #000 22%); --sg-accent-soft: var(--sg-danger-soft); --sg-accent-text: var(--sg-danger-text); --sg-accent-on-soft: var(--sg-danger-on-soft); }
 .sg-button[data-tone="neutral"] { --sg-accent-text: var(--sg-label); }
 /* loading: the label fades out as the spinner fades in (no hard swap) */
-.sg-button__spinner { position: absolute; inset: 0; display: grid; place-items: center; animation: sg-fade-in var(--sg-duration-base) var(--sg-ease-out) both; }
+.sg-button__spinner { position: absolute; inset: 0; display: grid; place-items: center; animation: sg-fade-in var(--sg-duration-base) var(--sg-ease-out) backwards; }
 .sg-button > :not(.sg-button__spinner) { transition: opacity var(--sg-duration-fast) ease; }
 .sg-button[data-loading="true"] > :not(.sg-button__spinner) { opacity: 0; }
 @keyframes sg-fade-in { from { opacity: 0; transform: scale(0.6); } }
@@ -203,8 +203,8 @@
 .sg-stepper__value { position: relative; display: grid; min-width: 40px; height: 32px; padding: 0 4px; overflow: hidden; text-align: center; font-size: 15px; line-height: 32px; font-weight: 650; font-variant-numeric: tabular-nums;
   -webkit-mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent); }
 .sg-stepper__value > span { grid-area: 1 / 1; }
-.sg-stepper__value > [data-roll="up"] { animation: sg-roll-in-up var(--sg-spring-snappy-duration) var(--sg-spring-snappy) both; }
-.sg-stepper__value > [data-roll="down"] { animation: sg-roll-in-down var(--sg-spring-snappy-duration) var(--sg-spring-snappy) both; }
+.sg-stepper__value > [data-roll="up"] { animation: sg-roll-in-up var(--sg-spring-snappy-duration) var(--sg-spring-snappy) backwards; }
+.sg-stepper__value > [data-roll="down"] { animation: sg-roll-in-down var(--sg-spring-snappy-duration) var(--sg-spring-snappy) backwards; }
 .sg-stepper__value > [data-leave="up"] { animation: sg-roll-out-up var(--sg-duration-base) var(--sg-ease-in) both; }
 .sg-stepper__value > [data-leave="down"] { animation: sg-roll-out-down var(--sg-duration-base) var(--sg-ease-in) both; }
 @keyframes sg-roll-in-up { from { transform: translateY(100%); } to { transform: none; } }
@@ -235,7 +235,7 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 .sg-field__adorn { display: inline-flex; color: var(--sg-label-tertiary); }
 .sg-field__adorn svg { width: 18px; height: 18px; }
 @keyframes sg-pop-in { from { opacity: 0; transform: scale(0.4); } }
-.sg-field__clear { animation: sg-pop-in var(--sg-spring-snappy-duration) var(--sg-spring-snappy) both; }
+.sg-field__clear { animation: sg-pop-in var(--sg-spring-snappy-duration) var(--sg-spring-snappy) backwards; }   /* entrances let go once done (a held fill keeps its own layer): leaving ones hold, they are about to go */
 /* a search input's own clear (WebKit / Blink) would sit beside the field's: the field draws the one */
 .sg-field__input::-webkit-search-cancel-button, .sg-field__input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
 .sg-field__clear { appearance: none; border: 0; margin: 0 -4px 0 0; padding: 0; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: none; color: var(--sg-label-tertiary); cursor: pointer; }

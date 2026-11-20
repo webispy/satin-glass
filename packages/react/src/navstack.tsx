@@ -67,6 +67,9 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
   const shade = (i: number) => layer(i)?.querySelector<HTMLElement>(':scope > .sg-nav__shade') ?? null;
   const focusTitle = (i: number) => layer(i)?.querySelector<HTMLElement>('[data-sg-nav-title]')?.focus({ preventScroll: true });
   const width = () => box.current?.clientWidth || 360;
+  /* the pages hold where a move ends until done() clears them in the same task: let go at the finish and the page
+     below flashed back over the screen for a frame */
+  const HOLD = { fill: 'both' } as const;
   const clear = (...els: (HTMLElement | null)[]) => { for (const el of els) el?.getAnimations().forEach((a) => a.cancel()); };
 
   const push = useCallback((node: ReactNode) => {
@@ -101,9 +104,9 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
     /* a fling carries on at its own speed: the spring starts with the finger's velocity folded into its distance */
     void vx;
     const p = Promise.all([
-      animate(a, [{ transform: tx(dx) }, { transform: tx(W) }], 'smooth').finished,
-      animate(b, [{ transform: tx(-W * SHIFT + dx * SHIFT) }, { transform: 'translateX(0px)' }], 'smooth').finished,
-      sh ? animate(sh, [{ opacity: 1 - dx / W }, { opacity: 0 }], 'smooth').finished : Promise.resolve(),
+      animate(a, [{ transform: tx(dx) }, { transform: tx(W) }], 'smooth', HOLD).finished,
+      animate(b, [{ transform: tx(-W * SHIFT + dx * SHIFT) }, { transform: 'translateX(0px)' }], 'smooth', HOLD).finished,
+      sh ? animate(sh, [{ opacity: 1 - dx / W }, { opacity: 0 }], 'smooth', HOLD).finished : Promise.resolve(),
     ]);
     p.then(done, done);
   }, []);
@@ -134,9 +137,9 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
     if (!a || !b) { done(); return; }
     if (prefersReducedMotion(a)) { fade(a, 0, 1, timing.pageIn).then(done); return; }
     Promise.all([
-      animate(a, [{ transform: tx(W) }, { transform: 'translateX(0px)' }], 'smooth').finished,
-      animate(b, [{ transform: 'translateX(0px)' }, { transform: tx(-W * SHIFT) }], 'smooth').finished,
-      sh ? animate(sh, [{ opacity: 0 }, { opacity: 1 }], 'smooth').finished : Promise.resolve(),
+      animate(a, [{ transform: tx(W) }, { transform: 'translateX(0px)' }], 'smooth', HOLD).finished,
+      animate(b, [{ transform: 'translateX(0px)' }, { transform: tx(-W * SHIFT) }], 'smooth', HOLD).finished,
+      sh ? animate(sh, [{ opacity: 0 }, { opacity: 1 }], 'smooth', HOLD).finished : Promise.resolve(),
     ]).then(done, done);
   }, [move]);
 
@@ -170,9 +173,9 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
         /* not far enough: back into place */
         const back = () => { clear(a, b, sh); setMove(null); busy.current = false; };
         Promise.all([
-          a ? animate(a, [{ transform: tx(x0) }, { transform: 'translateX(0px)' }], 'smooth').finished : null,
-          b ? animate(b, [{ transform: tx(-W * SHIFT + x0 * SHIFT) }, { transform: tx(-W * SHIFT) }], 'smooth').finished : null,
-          sh ? animate(sh, [{ opacity: 1 - x0 / W }, { opacity: 1 }], 'smooth').finished : null,
+          a ? animate(a, [{ transform: tx(x0) }, { transform: 'translateX(0px)' }], 'smooth', HOLD).finished : null,
+          b ? animate(b, [{ transform: tx(-W * SHIFT + x0 * SHIFT) }, { transform: tx(-W * SHIFT) }], 'smooth', HOLD).finished : null,
+          sh ? animate(sh, [{ opacity: 1 - x0 / W }, { opacity: 1 }], 'smooth', HOLD).finished : null,
         ]).then(back, back);
       },
     });
