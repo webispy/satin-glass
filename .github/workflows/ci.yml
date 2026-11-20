@@ -34,13 +34,17 @@ jobs:
       - run: pnpm test
 
   e2e:
-    name: e2e (${{ github.event.inputs.engines || 'chromium' }})
-    needs: check
+    name: e2e ${{ matrix.shard }}/4 (${{ github.event.inputs.engines || 'chromium' }})
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     env:
       E2E_ENGINES: ${{ github.event.inputs.engines || 'chromium' }}
       E2E_TIMING: '0'
+      E2E_SHARD: ${{ matrix.shard }}/4
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

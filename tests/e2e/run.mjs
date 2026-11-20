@@ -36,6 +36,8 @@
 //                                     in Chromium. Set by `pnpm e2e:changed` (tests/e2e/changed.mjs); timing skipped
 //   E2E_VERBOSE=1                     print every suite's full output
 //   E2E_TIMING=0                      skip the timing phase (performance, momentum, arrival timing): CI
+//   E2E_SHARD=2/4                     run only the 2nd of 4 shares of the suites (CI: one share per runner)
+//   E2E_LIST=1                        print the suites that would run, with their estimated time, and stop
 import { spawn } from 'node:child_process';
 import { availableParallelism } from 'node:os';
 import { setTimeout as wait } from 'node:timers/promises';
@@ -62,7 +64,8 @@ sharded(checks, 'render matrix', 'matrix.mjs', (b) => (b === 'chromium' ? 4 : 2)
 perEngine(checks, 'data components & dashboard', 'data.mjs');
 perEngine(checks, 'settings decide at the nearest boundary', 'settings.mjs');
 /* the cascade is the same in every engine: the per-category stylesheet check runs once, in Chromium */
-if (ENGINES.includes('chromium')) checks.push(['stylesheets split by category · chromium', 'css-split.mjs', {}]);
+/* the longest suite, in three parts by page so they can run side by side */
+if (ENGINES.includes('chromium')) for (let i = 1; i <= 3; i++) checks.push([`stylesheets split by category · chromium ${i}/3`, 'css-split.mjs', { E2E_PART: `${i}/3` }]);
 /* nested corners stay concentric (design-language.md 9): a static layout check, once, in Chromium */
 if (ENGINES.includes('chromium')) checks.push(['concentric corners · chromium', 'corners.mjs', {}]);
 perEngine(checks, 'blur budget', 'blur-budget.mjs');
@@ -97,6 +100,25 @@ const only = (l) => l.filter(([label, file, env]) => {
   return !!BROAD?.includes(file) && (env.BROWSER ?? 'chromium') === 'chromium' && !env.Q;
 });
 
+/* E2E_SHARD=k/n: this machine runs the k-th of n shares (CI runs the shares on separate runners). Suites go,
+   longest first, to the share with the least so far, by the time each took on a CI runner (Chromium; other
+   engines a third longer); every runner computes the same split */
+const EST = { 'css-split.mjs': 126, 'focus.mjs': 174, 'edge.mjs': 102, 'overflow.mjs': 101, 'matrix.mjs': 67, 'interact.mjs': 59, 'data.mjs': 57,
+  'corners.mjs': 51, 'reduce-motion.mjs': 49, 'pickers.mjs': 37, 'wheel-motion.mjs': 33, 'display.mjs': 32, 'selection.mjs': 28,
+  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'settings.mjs': 4 };
+const SHARD = /^(\d+)\/(\d+)$/.exec(process.env.E2E_SHARD || '');
+const est = ([, file, env]) => (EST[file] ?? 60) * ((env.BROWSER ?? 'chromium') === 'chromium' ? 1 : 1.3);
+let mine = null;
+if (SHARD) {
+  const k = +SHARD[1], n = +SHARD[2], load = Array(n).fill(0);
+  mine = new Set();
+  for (const s of [...only(checks), ...only(motion)].sort((a, b) => est(b) - est(a))) {
+    const i = load.indexOf(Math.min(...load)); load[i] += est(s);
+    if (i === k - 1) mine.add(s[0]);
+  }
+}
+const share = (l) => (mine ? l.filter((s) => mine.has(s[0])) : l);
+
 const results = [];
 const secs = (t) => `${((performance.now() - t) / 1000).toFixed(0)}s`;
 const run = ([label, file, env], record = true) => new Promise((res) => {
@@ -124,14 +146,22 @@ const phase = async (name, list, n) => {
   console.log(`\n##### ${name} done in ${secs(t)}`);
 };
 
+if (process.env.E2E_LIST) {
+  /* E2E_LIST=1: print what would run (with the estimates), start nothing */
+  const l = [...share(only(checks)), ...share(only(motion))];
+  for (const x of l) console.log(`${String(Math.round(est(x))).padStart(4)}s  ${x[0]}`);
+  console.log(`${l.length} suites, ~${Math.round(l.reduce((t, x) => t + est(x), 0))}s of suite time`);
+  process.exit(0);
+}
 const preview = spawn('npx', ['vite', 'preview', '--port', '4173', '--strictPort'], { cwd: new URL('../../apps/docs/', import.meta.url), stdio: 'ignore' });
 const t0 = performance.now();
 try {
   await wait(1500);
   console.log(`engines: ${ENGINES.join(', ')}`);
-  await phase('1/3 checks', only(checks), JOBS);
-  await phase('2/3 motion', only(motion), MOTION_JOBS);
-  if (timing.length) {
+  if (SHARD) console.log(`shard ${SHARD[1]} of ${SHARD[2]}: ${mine.size} suites`);
+  await phase('1/3 checks', share(only(checks)), JOBS);
+  await phase('2/3 motion', share(only(motion)), MOTION_JOBS);
+  if (timing.length && (!SHARD || SHARD[1] === '1')) {
     console.log('\n##### 3/3 timing: one at a time');
     await wait(5000);
     for (const s of timing) {

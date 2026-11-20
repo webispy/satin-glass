@@ -7,7 +7,7 @@
 //   3. styles.layer.css  vs  styles.css (the layered build draws the same)
 // The docs app bundles the library CSS into its own asset, so the asset is replaced here by the variant under
 // test followed by the docs app's own stylesheet (the same for every variant).
-// usage: node tests/e2e/css-split.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+// usage: node tests/e2e/css-split.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173; E2E_PART=i/n for a slice of the pages)
 // covers: css   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
 import { readFileSync } from 'node:fs';
@@ -19,7 +19,10 @@ const CATS = ['foundation', 'controls', 'layout', 'navigation', 'selection', 'ov
 export const DEPS = { controls: [], layout: [], navigation: [], selection: ['controls', 'overlays'], overlays: [], feedback: [], data: ['controls', 'selection'] };
 const cat = Object.fromEntries(CATS.map((c) => [c, dist(`css/${c}.css`)]));
 const full = dist('styles.css'), layered = dist('styles.layer.css');
-const PAGES = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'lab'];
+const ALL_PAGES = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'lab'];
+/* E2E_PART=i/n: every n-th page from the i-th (the runner splits this, the longest suite, into parts) */
+const [PART, PARTS] = (process.env.E2E_PART || '1/1').split('/').map(Number);
+const PAGES = ALL_PAGES.filter((_, i) => i % PARTS === PART - 1);
 const QS = ['?mode=light&rm=1', '?mode=dark&hc=1&rm=1'];
 
 const b = await pw[engine].launch();
