@@ -68,6 +68,7 @@
 .sg-barmeter[data-tone="danger"] { --_c: var(--sg-danger); }
 .sg-barmeter[data-tone="info"] { --_c: var(--sg-info, var(--sg-accent)); }
 .sg-barmeter__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--_c); transform-origin: left center; }
+.sg-barmeter__fill:dir(rtl), [dir="rtl"] .sg-barmeter__fill { transform-origin: right center; }
 /* Meter (0.5): a value within a known range. The track is a groove (the path the value runs along), the fill flat,
    from the inline start; it changes at once (data, not a hand). Label and value above, the status line below */
 .sg-meter { display: grid; gap: 6px; min-width: 120px; --_c: var(--sg-accent); }
@@ -82,7 +83,7 @@
 .sg-meter__track { position: relative; height: 8px; border-radius: var(--sg-radius-full); background: var(--sg-groove); box-shadow: var(--sg-depth-inset); overflow: hidden; }
 .sg-meter--sm .sg-meter__track { height: 4px; }
 .sg-meter__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--_c); transform-origin: left center; }
-.sg-meter__fill:dir(rtl) { transform-origin: right center; }
+.sg-meter__fill:dir(rtl), [dir="rtl"] .sg-meter__fill { transform-origin: right center; }
 .sg-meter__status { color: var(--sg-label-secondary); font-size: var(--sg-text-caption-size); line-height: var(--sg-text-caption-line); font-weight: var(--sg-text-caption-weight); }
 @media (forced-colors: active) {
   .sg-meter__track { border: 1px solid CanvasText; }

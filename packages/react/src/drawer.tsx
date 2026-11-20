@@ -6,7 +6,7 @@
    third of its width, or flicked) or settles back on the smooth spring. Reduced motion: it fades in place and does
    not follow the drag. `side` is logical: 'end' is the right edge in a left-to-right page, the left in RTL. */
 import { useRef, type CSSProperties, type ReactNode } from 'react';
-import { animate, drag, fade, prefersReducedMotion, pushLayer, trapFocus, timing } from '@satin-glass/core';
+import { animate, drag, fade, prefersReducedMotion, pushLayer, trapFocus, timing, easing } from '@satin-glass/core';
 import { cx, mergeRefs, useStableId } from './utils';
 import { Portal, glassClass, useGlassLight } from './foundation';
 import { IconButton } from './controls';
@@ -89,7 +89,8 @@ export function Drawer({ open, onClose, side = 'end', title, leading, trailing, 
     const from = p.style.transform || 'none';
     p.getAnimations().forEach((a) => a.cancel());
     if (prefersReducedMotion(p)) return fade(p, 1, 0, timing.leave);
-    return animate(p, [{ transform: from }, { transform: offscreen(p) }], 'smooth').finished.then(() => undefined, () => undefined);
+    /* an exit: a short ease-in from wherever it is (a release mid-drag too), like the sheet */
+    return p.animate([{ transform: from }, { transform: offscreen(p) }], { duration: timing.sheetOut, easing: easing.exit, fill: 'both' }).finished.then(() => undefined, () => undefined);
   });
   if (!mounted) return null;
   const w = typeof width === 'number' ? `${width}px` : width;

@@ -43,12 +43,17 @@ export const timing = {
   /** an action sheet, shorter, slides down */ actionSheetOut: 220,
   /** a toast lifts away */ toastOut: 200,
   /** the media viewer returns to its thumbnail */ mediaReturn: 260,
+  /** a navigation page, reduced motion: appears / leaves (a whole screen, a little slower than a panel) */ pageIn: 180, pageOut: 160,
+  /** a lifted preview settles back into the page */ liftReturn: 180,
+  /** a picker closes this long after a choice, so the choice is seen landing */ closeAfterChoice: 260,
+  /** the range band fades in after the month's slide */ bandIn: 200, bandInDelay: 120,
 } as const;
 /** the curves those exits use */
 export const easing = {
   /** leaving: starts slow, accelerates away */ exit: 'cubic-bezier(0.4, 0, 1, 1)',
   /** folding into an anchor: sharper */ fold: 'cubic-bezier(0.5, 0, 0.75, 0.25)',
   /** a shape returning to a place on the page */ move: 'cubic-bezier(0.3, 0, 0.2, 1)',
+  /** settling back without a spring */ settle: 'ease-out',
 } as const;
 
 /** The panel grows out of its anchor (per-axis start scale: it unfolds away from the anchor) with an overshoot;

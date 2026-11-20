@@ -338,7 +338,7 @@ export function ContextMenu({ menu, children, previewSelector, 'aria-label': lab
     scrim.current?.classList.remove('is-open');
     if (lift.current && prefersReducedMotion(lift.current)) setState((s) => ({ ...s, rect: null }));   /* it never lifted */
     else if (lift.current) {
-      lift.current.animate([{ transform: 'scale(1.03)' }, { transform: 'scale(1)' }], { duration: 180, easing: 'ease-out', fill: 'both' })
+      lift.current.animate([{ transform: 'scale(1.03)' }, { transform: 'scale(1)' }], { duration: timing.liftReturn, easing: easing.settle, fill: 'both' })
         .finished.then(() => setState((s) => ({ ...s, rect: null })), () => setState((s) => ({ ...s, rect: null })));
     }
     setState((s) => ({ ...s, open: false }));

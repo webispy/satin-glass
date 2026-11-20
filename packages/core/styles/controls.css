@@ -61,11 +61,11 @@
 /* a glass group: one shared glass, plain buttons inside (no glass on glass) */
 /* the group is exactly as tall as a standalone button of its size and shares its corner radius;
    the buttons inside shrink by the 3 px inset and keep a concentric radius */
-.sg-button-group { --_gh: var(--sg-size-control-md); --_gr: var(--sg-radius-md); display: inline-flex; align-items: center; height: var(--_gh); padding: 3px; gap: 2px; --_radius: var(--_gr); border-radius: var(--_gr); }
+.sg-button-group { --_gh: var(--sg-size-control-md); --_gr: var(--sg-radius-md); --_nest: 3px; display: inline-flex; align-items: center; height: var(--_gh); padding: var(--_nest); gap: 2px; --_radius: var(--_gr); border-radius: var(--_gr); }
 .sg-button-group--sm { --_gh: var(--sg-size-control-sm); --_gr: var(--sg-radius-sm); }
-.sg-button-group--lg { --_gh: var(--sg-size-control-lg); --_gr: var(--sg-radius-lg); }
-.sg-button-group > .sg-button { --_h: calc(var(--_gh) - 6px); border-radius: calc(var(--_gr) - 3px); }
-.sg-button-group > .sg-button--icon { width: calc(var(--_gh) - 6px); }
+.sg-button-group--lg { --_gh: var(--sg-size-control-lg); }   /* buttons are 12 at every size (9.) */
+.sg-button-group > .sg-button { --_h: calc(var(--_gh) - 2 * var(--_nest)); border-radius: calc(var(--_radius) - var(--_nest)); }
+.sg-button-group > .sg-button--icon { width: calc(var(--_gh) - 2 * var(--_nest)); }
 @media (hover: hover) { .sg-button-group > .sg-button:hover:not(:disabled) { background: var(--sg-fill); } }
 .sg-button-group--vertical { flex-direction: column; height: auto; }
 
@@ -265,9 +265,10 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
   transition: background-color var(--sg-duration-fast) ease, color var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
 @media (hover: hover) { .sg-chip:hover { background: var(--sg-fill-hover); } }
-.sg-chip:active { transform: scale(0.96); }
+.sg-chip:active { transform: scale(0.965); }
 .sg-chip:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-chip[aria-pressed="true"], .sg-chip[aria-checked="true"] { background: var(--sg-accent-soft); color: var(--sg-accent-on-soft); }
+[data-sg-theme$="-hc"] .sg-chip[aria-pressed="true"], [data-sg-theme$="-hc"] .sg-chip[aria-checked="true"] { box-shadow: var(--sg-selection-outline); }   /* chosen: an outline, not the tint alone */
 .sg-chip { max-width: 100%; }
 .sg-chip__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .sg-chip svg { width: 16px; height: 16px; }
@@ -298,7 +299,7 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 .sg-avatar-group__more { appearance: none; border: 0; margin: 0; padding: 0; font: inherit; flex: none; display: inline-grid; place-items: center; width: var(--_s); height: var(--_s); border-radius: 50%; background: linear-gradient(var(--sg-fill-strong), var(--sg-fill-strong)), var(--sg-avatar-ring, var(--sg-surface)); color: var(--sg-label); font-size: calc(var(--_s) * 0.36); font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 button.sg-avatar-group__more { cursor: pointer; transition: background-color var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
 @media (hover: hover) { button.sg-avatar-group__more:hover { background: linear-gradient(var(--sg-fill-hover), var(--sg-fill-hover)), var(--sg-avatar-ring, var(--sg-surface)); } }
-button.sg-avatar-group__more:active { transform: scale(0.94); }
+button.sg-avatar-group__more:active { transform: scale(0.9); }   /* a small round target, as a day or a weekday */
 button.sg-avatar-group__more:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); position: relative; z-index: 1; }
 
 /* ============================================================================================

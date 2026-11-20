@@ -64,6 +64,7 @@ depth.push(decl('depth-handle-bg', 'linear-gradient(180deg, #ffffff, #f3f4f8)'))
 depth.push(decl('depth-raised-edge', '0 0 0 0.5px rgba(var(--sg-shadow-color), calc(0.06 * var(--sg-shadow-strength)))'));
 /* a page pushed over another (navigation stack): a hairline and a soft shadow on its leading edge */
 depth.push(decl('shadow-edge', '-1px 0 0 var(--sg-separator), -16px 0 32px rgba(var(--sg-shadow-color), calc(0.08 * var(--sg-shadow-strength)))'));
+depth.push(decl('shadow-edge-end', '1px 0 0 var(--sg-separator), 16px 0 32px rgba(var(--sg-shadow-color), calc(0.08 * var(--sg-shadow-strength)))'));   /* the same, right to left */
 /* a flat selection on glass (tab bar, sidebar): no outline normally; in high contrast its tint gives way to one */
 depth.push(decl('selection-outline', '0 0 0 0 transparent'));
 /* a surface (level 1: card, stat, list group) has its own edge in high contrast */

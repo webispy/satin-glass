@@ -172,6 +172,7 @@ a.sg-crumb__item:active, button.sg-crumb__item:active { background: var(--sg-fil
 .sg-nav__page[data-hidden] { visibility: hidden; }
 /* the page coming in casts a soft edge on the one it covers (clipped away when it rests at 0) */
 .sg-nav__page:not([data-depth="0"]) { box-shadow: var(--sg-shadow-edge); }
+.sg-nav:dir(rtl) .sg-nav__page:not([data-depth="0"]), [dir="rtl"] .sg-nav .sg-nav__page:not([data-depth="0"]) { box-shadow: var(--sg-shadow-edge-end); }   /* right to left the page comes from the left: its edge is on the right */
 .sg-nav[data-moving] .sg-nav__page { will-change: transform; }
 .sg-nav__scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }   /* a sideways finger is the stack's (swipe back), not the browser's */
 .sg-nav__shade { position: absolute; inset: 0; z-index: calc(var(--sg-z-bar) + 1); background: var(--sg-scrim); opacity: 0; pointer-events: none; }
@@ -225,10 +226,10 @@ a.sg-crumb__item:active, button.sg-crumb__item:active { background: var(--sg-fil
   appearance: none; border: 0; margin: 0; font: inherit; min-width: var(--_slot); height: var(--sg-size-control-sm); padding: 0 8px; border-radius: var(--sg-radius-sm);
   background: none; color: var(--sg-label); font-size: 14px; font-weight: 560; font-variant-numeric: tabular-nums; cursor: pointer;
   display: inline-grid; place-items: center; -webkit-tap-highlight-color: transparent;
-  transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), background-color var(--sg-duration-fast) ease, color var(--sg-duration-fast) ease;
+  transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), background-color var(--sg-duration-fast) ease, color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease;   /* the bead's shadow fades with its colour instead of popping */
 }
 /* pressed in like a button (0.965) */
-.sg-pagination__page:active, .sg-pagination__step:active:not(:disabled) { transform: scale(0.965); transition-duration: var(--sg-duration-instant), var(--sg-duration-fast), var(--sg-duration-fast); transition-timing-function: var(--sg-ease-out); }
+.sg-pagination__page:active, .sg-pagination__step:active:not(:disabled) { transform: scale(0.965); transition-duration: var(--sg-duration-instant), var(--sg-duration-fast), var(--sg-duration-fast), var(--sg-duration-fast); transition-timing-function: var(--sg-ease-out); }
 .sg-pagination__step svg { width: 18px; height: 18px; }
 @media (hover: hover) { .sg-pagination__page:hover, .sg-pagination__step:hover:not(:disabled) { background: var(--sg-fill); } }
 .sg-pagination__page:active, .sg-pagination__step:active:not(:disabled) { background: var(--sg-fill-strong); }   /* touch: the press is the feedback */

@@ -24,6 +24,11 @@ New components for screens that show and choose data: a meter, a group of people
 - Design language: the navigation stack names `smooth` (quick, for back-and-forth); sheets drag by their grabber and action sheets do not; the sidebar changes its tint in place while the tab bar's travels; the last breadcrumb is marked by weight and colour; chosen-value markers (date beads, the wheel lens) stay raised inside glass picker panels.
 
 ### Fixed
+- The drawer closed on a spring; it leaves on the same short ease-in as the sheet, from wherever it is. The remaining literal timings (navigation fades, the lifted preview's return, the range band, a picker closing after a choice) are named in core `timing` / `easing`.
+- Right to left, the navigation stack slid pages in from the wrong side and cast its edge shadow on the wrong edge (new `--sg-shadow-edge-end`), and the bar meter filled from the left. RTL rules also match a `[dir="rtl"]` ancestor, since bundlers rewrite `:dir()` into a language list.
+- A cancelled swipe back returns on `smooth`, as other returns to place do.
+- High contrast: a chosen chip gets the selection outline, and the current month or year keeps its stronger outline.
+- Presses press by size: chips 0.965 like buttons, the +N avatar 0.9 like days and weekdays. Large button groups take the control radius, and their inner corners follow `--_nest`. The current page's bead fades its shadow in with its colour.
 - Unchecking a checkbox undrew its tick on a bouncing spring that outlived the box's colour and, at its end, wrapped the dash into a speck. The tick now fades with the box; it draws only on the way in, and its draw stays inside the dash so the overshoot never opens a gap.
 - Dragging a switch toward off showed a different rail colour from the resting off rail.
 - Segmented controls, tab bars and tabs whose chosen item is disabled (or whose first item is disabled with no value) left the whole group out of the tab order; the first enabled item takes Tab now, and the default value skips disabled items.

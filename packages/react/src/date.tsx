@@ -254,7 +254,7 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     };
     if (fresh || newStart) {
       e.stop?.(); e.stop = null; e.H.jump(tintTo); paint(runsAt(tintTo));
-      if (monthMoved) layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 120, fill: 'backwards' });   /* after the month's slide */
+      if (monthMoved) layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: timing.bandIn, delay: timing.bandInDelay, fill: 'backwards' });   /* after the month's slide */
       if (newStart && was && !reduced) seat(startD);
       return;
     }
@@ -650,7 +650,7 @@ export const DateRangePicker = forwardRef<HTMLButtonElement, DateRangePickerProp
           <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : t.chooseRange} tabIndex={-1} className={cx('sg-datepicker-panel', glassClass('strong'))}>
             <div data-sg-content>
               <RangeCalendar {...range} unit={unit} locale={locale} value={v}
-                onChange={(r) => { setV(r); window.setTimeout(() => setOpen(false), 260); /* let the band fill before it closes */ }} />
+                onChange={(r) => { setV(r); window.setTimeout(() => setOpen(false), timing.closeAfterChoice); /* let the band fill before it closes */ }} />
             </div>
           </div>
         </Portal>

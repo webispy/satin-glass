@@ -6,7 +6,7 @@
    trailing actions) and the page's content scrolling under it. Focus moves to the new page's title on push and back
    to the row that opened it on pop. */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { animate, drag, fade, prefersReducedMotion } from '@satin-glass/core';
+import { animate, drag, fade, prefersReducedMotion, timing } from '@satin-glass/core';
 import { cx, useIsoLayoutEffect } from './utils';
 import { AppBar } from './layout';
 import { Button } from './controls';
@@ -53,6 +53,9 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
   const [move, setMove] = useState<Move>(null);
   const [titles, setTitles] = useState<ReactNode[]>([]);
   const box = useRef<HTMLDivElement>(null);
+  /* right to left the stack mirrors: pages come in from the left and the swipe starts at the right edge */
+  const side = () => (box.current && getComputedStyle(box.current).direction === 'rtl' ? -1 : 1);
+  const tx = (v: number) => `translateX(${(v * side()).toFixed(2)}px)`;
   const pages = useRef<(HTMLDivElement | null)[]>([]);
   const keySeq = useRef(0);
   const busy = useRef(false);
@@ -94,12 +97,12 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
       refocus.current = { el: e?.from ?? null, page: to };
     };
     if (!a || !b) { done(); return; }
-    if (prefersReducedMotion(a)) { clear(b, sh); fade(a, 1, 0, 160).then(done); return; }
+    if (prefersReducedMotion(a)) { clear(b, sh); fade(a, 1, 0, timing.pageOut).then(done); return; }
     /* a fling carries on at its own speed: the spring starts with the finger's velocity folded into its distance */
     void vx;
     const p = Promise.all([
-      animate(a, [{ transform: `translateX(${dx}px)` }, { transform: `translateX(${W}px)` }], 'smooth').finished,
-      animate(b, [{ transform: `translateX(${-W * SHIFT + dx * SHIFT}px)` }, { transform: 'translateX(0px)' }], 'smooth').finished,
+      animate(a, [{ transform: tx(dx) }, { transform: tx(W) }], 'smooth').finished,
+      animate(b, [{ transform: tx(-W * SHIFT + dx * SHIFT) }, { transform: 'translateX(0px)' }], 'smooth').finished,
       sh ? animate(sh, [{ opacity: 1 - dx / W }, { opacity: 0 }], 'smooth').finished : Promise.resolve(),
     ]);
     p.then(done, done);
@@ -129,10 +132,10 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
     };
     focusTitle(top);
     if (!a || !b) { done(); return; }
-    if (prefersReducedMotion(a)) { fade(a, 0, 1, 180).then(done); return; }
+    if (prefersReducedMotion(a)) { fade(a, 0, 1, timing.pageIn).then(done); return; }
     Promise.all([
-      animate(a, [{ transform: `translateX(${W}px)` }, { transform: 'translateX(0px)' }], 'smooth').finished,
-      animate(b, [{ transform: 'translateX(0px)' }, { transform: `translateX(${-W * SHIFT}px)` }], 'smooth').finished,
+      animate(a, [{ transform: tx(W) }, { transform: 'translateX(0px)' }], 'smooth').finished,
+      animate(b, [{ transform: 'translateX(0px)' }, { transform: tx(-W * SHIFT) }], 'smooth').finished,
       sh ? animate(sh, [{ opacity: 0 }, { opacity: 1 }], 'smooth').finished : Promise.resolve(),
     ]).then(done, done);
   }, [move]);
@@ -146,30 +149,30 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
       start: (i) => {
         if (i.event.pointerType === 'mouse' || busy.current || st.current.entries.length === 0) return false;
         const r = el.getBoundingClientRect();
-        if (i.x - r.left > 28) return false;
+        if ((side() > 0 ? i.x - r.left : r.right - i.x) > 28) return false;
         W = r.width; x0 = 0;
         return undefined;
       },
       move: (i) => {
         const top = st.current.entries.length;
         if (!busy.current) { busy.current = true; setMove({ dir: 'drag', top }); }
-        x0 = Math.max(0, Math.min(W, i.dx));
+        x0 = Math.max(0, Math.min(W, i.dx * side()));
         const a = layer(top), b = layer(top - 1), sh = shade(top - 1);
-        if (a) a.style.transform = `translateX(${x0}px)`;
-        if (b) b.style.transform = `translateX(${-W * SHIFT + x0 * SHIFT}px)`;
+        if (a) a.style.transform = tx(x0);
+        if (b) b.style.transform = tx(-W * SHIFT + x0 * SHIFT);
         if (sh) sh.style.opacity = String(1 - x0 / W);
       },
       end: (i, cancelled) => {
         if (st.current.move?.dir !== 'drag') return;
         const top = st.current.entries.length, a = layer(top), b = layer(top - 1), sh = shade(top - 1);
         for (const e of [a, b, sh]) if (e) { e.style.transform = ''; e.style.opacity = ''; }
-        if (!cancelled && (x0 > W * 0.4 || (i.vx > 500 && x0 > 16))) { popFrom(x0, i.vx); return; }
+        if (!cancelled && (x0 > W * 0.4 || (i.vx * side() > 500 && x0 > 16))) { popFrom(x0, i.vx * side()); return; }
         /* not far enough: back into place */
         const back = () => { clear(a, b, sh); setMove(null); busy.current = false; };
         Promise.all([
-          a ? animate(a, [{ transform: `translateX(${x0}px)` }, { transform: 'translateX(0px)' }], 'snappy').finished : null,
-          b ? animate(b, [{ transform: `translateX(${-W * SHIFT + x0 * SHIFT}px)` }, { transform: `translateX(${-W * SHIFT}px)` }], 'snappy').finished : null,
-          sh ? animate(sh, [{ opacity: 1 - x0 / W }, { opacity: 1 }], 'snappy').finished : null,
+          a ? animate(a, [{ transform: tx(x0) }, { transform: 'translateX(0px)' }], 'smooth').finished : null,
+          b ? animate(b, [{ transform: tx(-W * SHIFT + x0 * SHIFT) }, { transform: tx(-W * SHIFT) }], 'smooth').finished : null,
+          sh ? animate(sh, [{ opacity: 1 - x0 / W }, { opacity: 1 }], 'smooth').finished : null,
         ]).then(back, back);
       },
     });

@@ -272,6 +272,7 @@
 .sg-calendar__cell[aria-selected="true"]::before { opacity: 1; transform: none; }
 .sg-calendar__cell[aria-disabled="true"] { color: var(--sg-label-disabled); cursor: default; }
 [data-sg-theme$="-hc"] .sg-calendar__cell { box-shadow: inset 0 0 0 1px var(--sg-label-secondary); }
+[data-sg-theme$="-hc"] .sg-calendar__cell[data-current] { box-shadow: inset 0 0 0 1.5px var(--sg-label); }   /* the current month / year keeps its stronger outline */
 [data-sg-reduce-motion="true"] .sg-calendar__cell, [data-sg-reduce-motion="true"] .sg-calendar__cell::before, [data-sg-reduce-motion="true"] .sg-calendar__chip { transform: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .sg-root:not([data-sg-reduce-motion="false"]) .sg-calendar__cell, .sg-root:not([data-sg-reduce-motion="false"]) .sg-calendar__cell::before, .sg-root:not([data-sg-reduce-motion="false"]) .sg-calendar__chip { transform: none !important; }
