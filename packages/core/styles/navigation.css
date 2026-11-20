@@ -133,7 +133,8 @@
   transition: background-color var(--sg-duration-instant) ease;
 }
 @media (hover: hover) { .sg-sidebar__item:hover { background: var(--sg-fill); } }
-.sg-sidebar__item:active { background: var(--sg-fill-strong); }
+/* the press is a light fill, and none on the current item: a tap went grey, then blue, then the old item went out */
+.sg-sidebar__item:active:not([aria-current="page"]) { background: var(--sg-fill); }
 .sg-sidebar__item[aria-current="page"] { background: var(--sg-glass-selection); color: var(--sg-accent-text); font-weight: 620; box-shadow: var(--sg-selection-outline); }
 .sg-sidebar__item:focus-visible { outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); }
 .sg-sidebar__item svg { width: 18px; height: 18px; flex: none; }

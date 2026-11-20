@@ -13,6 +13,9 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* iOS paints its own grey flash over whatever is tapped; every control here shows its own press, so the flash only
+     doubles it (it is inherited: portals are .sg-root too) */
+  -webkit-tap-highlight-color: transparent;
   /* (no "tnum" here: font-feature-settings beats font-variant-numeric, and a "tnum" 0 inherited everywhere turned
      off the tabular figures that tables, stats, charts and pagination ask for) */
   font-feature-settings: "ss06";
