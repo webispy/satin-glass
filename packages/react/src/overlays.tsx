@@ -72,8 +72,8 @@ export type SheetProps = {
   leading?: ReactNode;
   trailing?: ReactNode;
   children?: ReactNode;
-  /** 'auto' fits the content; 'full' takes most of the screen */
-  size?: 'auto' | 'full';
+  /** 'auto' fits the content; 'full' takes the available height */
+  height?: 'auto' | 'full';
   /** centred dialog on wide screens */
   adaptive?: boolean;
   dismissible?: boolean;
@@ -81,7 +81,7 @@ export type SheetProps = {
   'aria-label'?: string;
 };
 
-export function Sheet({ open, onClose, title, leading, trailing, children, size = 'auto', adaptive = true, dismissible = true, className, 'aria-label': ariaLabel }: SheetProps) {
+export function Sheet({ open, onClose, title, leading, trailing, children, height = 'auto', adaptive = true, dismissible = true, className, 'aria-label': ariaLabel }: SheetProps) {
   const panel = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
   const id = useStableId('sg-sheet');
   const lightRef = useGlassLight();
@@ -135,7 +135,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, size 
     <Portal>
       <div ref={scrim} className="sg-scrim" onClick={() => dismissible && onClose('backdrop')} />
       <div className={cx('sg-sheet-wrap', adaptive && 'sg-sheet-wrap--adaptive')}>
-        <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined} aria-label={title ? undefined : ariaLabel} className={cx('sg-sheet', size === 'full' && 'sg-sheet--full', glassClass('strong', false, 'overlay'), className)}>
+        <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined} aria-label={title ? undefined : ariaLabel} className={cx('sg-sheet', height === 'full' && 'sg-sheet--full', glassClass('strong', false, 'overlay'), className)}>
           <div data-sg-drag>
             <div className="sg-sheet__grabber" aria-hidden="true" />
             {(title || leading || trailing) && (

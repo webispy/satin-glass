@@ -178,7 +178,7 @@ function Orders() {
         </div>
         <DataTable<Order> aria-label="주문" rows={rows} rowKey={(o) => o.id} columns={ORDER_COLUMNS} manualSort sort={sort} onSortChange={(s) => { setSort(s); setPage(1); }}
           selectable selected={sel} onSelectedChange={setSel} rowCount={found.length} density="compact" labels={{ ...TABLE_LABELS, selectRow: (o) => `주문 ${o.id} 선택` }}
-          empty={<EmptyState compact icon={<PackageSearch />} title="조건에 맞는 주문이 없어요" description={q ? `‘${q}’로 찾은 주문이 없어요.` : '다른 상태나 경로를 골라 보세요.'} actions={<Button size="sm" variant="neutral" onClick={reset}>필터 지우기</Button>} />} />
+          empty={<EmptyState size="sm" icon={<PackageSearch />} title="조건에 맞는 주문이 없어요" description={q ? `‘${q}’로 찾은 주문이 없어요.` : '다른 상태나 경로를 골라 보세요.'} actions={<Button size="sm" variant="neutral" onClick={reset}>필터 지우기</Button>} />} />
         {found.length > PAGE && (
           <div className="dash__pager">
             <Text variant="footnote" tone="secondary" as="span">{num(found.length)}건 중 {num((page - 1) * PAGE + 1)}–{num(Math.min(page * PAGE, found.length))}</Text>
@@ -221,7 +221,7 @@ function Products({ lowOnly, setLowOnly }: { lowOnly: boolean; setLowOnly: (v: b
         </div>
         <DataTable<Product> aria-label="상품" rows={rows} rowKey={(p) => p.id} columns={cols} pinnedRows={live.length ? [totals] : []} defaultSort={{ key: 'sold', dir: 'desc' }} maxHeight={520}
           rowState={(p) => (p.paused ? { muted: true } : undefined)} labels={TABLE_LABELS}
-          empty={<EmptyState compact icon={<PackageSearch />} title="조건에 맞는 상품이 없어요" actions={<Button size="sm" variant="neutral" onClick={() => { setCats([]); setLowOnly(false); }}>필터 지우기</Button>} />} />
+          empty={<EmptyState size="sm" icon={<PackageSearch />} title="조건에 맞는 상품이 없어요" actions={<Button size="sm" variant="neutral" onClick={() => { setCats([]); setLowOnly(false); }}>필터 지우기</Button>} />} />
       </CardBody>
       <Sheet open={open !== null} onClose={() => setOpen(null)} title={open?.name} aria-label="상품 정보">
         {open && <ProductDetail p={open} />}

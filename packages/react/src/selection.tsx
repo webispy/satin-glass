@@ -8,7 +8,7 @@ import { cx, mergeRefs, useControllable, useStableId } from './utils';
 import { CheckIcon } from './icons';
 
 /* ================================================================================================ Checkbox */
-export type CheckboxProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'onChange' | 'checked' | 'defaultChecked'> & {
+export type CheckboxProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size' | 'onChange' | 'checked' | 'defaultChecked'> & {
   checked?: boolean;
   defaultChecked?: boolean;
   /** shows a dash; the checked value is unchanged (e.g. "select all" with some selected) */
@@ -64,7 +64,7 @@ export function RadioGroup({ value, defaultValue, onChange, name, label, disable
   );
 }
 
-export type RadioProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'name' | 'value' | 'checked' | 'onChange'> & { value: string; label?: ReactNode; description?: ReactNode };
+export type RadioProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size' | 'name' | 'value' | 'checked' | 'onChange'> & { value: string; label?: ReactNode; description?: ReactNode };
 export const Radio = forwardRef<HTMLInputElement, RadioProps>(function Radio({ value, label, description, className, style, disabled, id, ...rest }, ref) {
   const ctx = useContext(RadioContext);
   if (!ctx) throw new Error('Radio must be inside a RadioGroup');

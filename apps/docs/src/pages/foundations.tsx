@@ -131,7 +131,7 @@ function MotionColumn({ motion }: { motion: MotionName }) {
       <div className="sg-card" style={{ padding: 16, borderRadius: 'var(--sg-radius-lg)', display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
         <div><Text variant="headline">{p.label}</Text><Text variant="footnote" tone="secondary">{p.note}</Text></div>
         <SegmentedControl size="sm" aria-label={`${motion} 세그먼트`} value={seg} onChange={setSeg} options={[{ value: 'walk', label: '도보', icon: <Footprints /> }, { value: 'bike', label: '자전거', icon: <Bike /> }, { value: 'car', label: '차', icon: <Car /> }]} />
-        <TabBar compact value={tab} onChange={setTab} aria-label={`${motion} 탭`} style={{ padding: 0 }}>
+        <TabBar showLabels={false} value={tab} onChange={setTab} aria-label={`${motion} 탭`} style={{ padding: 0 }}>
           <Tab value="home" label="홈" icon={<Home />} /><Tab value="map" label="지도" icon={<Map />} /><Tab value="saved" label="저장" icon={<Bookmark />} badge={<Badge>{n}</Badge>} /><Tab value="me" label="나" icon={<User />} />
         </TabBar>
         <div className="label-row"><Text variant="subhead">스위치</Text><Switch checked={sw} onChange={setSw} aria-label={`${motion} 스위치`} /></div>

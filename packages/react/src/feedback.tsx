@@ -152,14 +152,15 @@ export type EmptyStateProps = {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
-  compact?: boolean;
+  /** 'sm': less padding, for an empty state inside a table or a card */
+  size?: 'sm' | 'md';
   className?: string; style?: CSSProperties;
 };
 
 /** What to show where content would be: what is missing and what to do about it. */
-export function EmptyState({ icon, title, description, actions, compact, className, style }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, actions, size = 'md', className, style }: EmptyStateProps) {
   return (
-    <div className={cx('sg-empty', compact && 'sg-empty--compact', className)} style={style}>
+    <div className={cx('sg-empty', size === 'sm' && 'sg-empty--sm', className)} style={style}>
       {icon && <div className="sg-empty__icon" aria-hidden="true">{icon}</div>}
       <div className="sg-empty__title">{title}</div>
       {description && <div className="sg-empty__desc">{description}</div>}

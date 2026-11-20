@@ -132,7 +132,7 @@ export function Showcase() {
           </List></ListSection>
         </Stack>
       </Sheet>
-      <Sheet open={search} onClose={() => { setSearch(false); setQ(''); }} size="full" aria-label="검색">
+      <Sheet open={search} onClose={() => { setSearch(false); setQ(''); }} height="full" aria-label="검색">
         <Stack gap={4}>
           <SearchField value={q} onChange={(e) => setQ(e.target.value)} onClear={() => setQ('')} placeholder="장소 검색" autoFocus />
           <List>{found.map((p) => <ListItem key={p.name} title={p.name} subtitle={p.dist} chevron onClick={() => { setHero(p.scene % 4); setSearch(false); setQ(''); }} />)}</List>

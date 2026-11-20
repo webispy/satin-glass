@@ -93,8 +93,10 @@ export function Lab() {
           <div data-lab="many-tabs-300-action" style={{ maxWidth: 300 }}>
             <TabBar draggable defaultValue="home" aria-label="많은 탭 300 검색" action={<TabBarAction icon={<Search />} label="검색" />}>{manyTabs().slice(0, 7)}</TabBar>
           </div>
-          <Text variant="footnote" tone="secondary">탭 9개 · 300px · 아이콘만(compact)</Text>
-          <div data-lab="many-tabs-300-compact" style={{ maxWidth: 300 }}><TabBar draggable compact defaultValue="home" aria-label="많은 탭 300 아이콘만">{manyTabs()}</TabBar></div>
+          <Text variant="footnote" tone="secondary">탭 9개 · 300px · 아이콘만(showLabels={false})</Text>
+          <div data-lab="many-tabs-300-compact" style={{ maxWidth: 300 }}><TabBar draggable showLabels={false} defaultValue="home" aria-label="많은 탭 300 아이콘만">{manyTabs()}</TabBar></div>
+          <Text variant="footnote" tone="secondary">아이콘만 · 아이콘 없는 탭은 라벨을 보임</Text>
+          <div data-lab="tabs-icons-text" style={{ maxWidth: 300 }}><TabBar showLabels={false} defaultValue="home" aria-label="아이콘만, 글자 탭 하나">{[<Tab key="home" value="home" label="홈" icon={<Home />} />, <Tab key="map" value="map" label="지도" icon={<Map />} />, <Tab key="more" value="more" label="더보기" />]}</TabBar></div>
         </Demo>
       </Section>
 

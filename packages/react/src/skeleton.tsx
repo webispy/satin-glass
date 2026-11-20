@@ -6,22 +6,22 @@ import { cx, useIsoLayoutEffect } from './utils';
 
 const SWEEP_MS = 1600;
 
-export type SkeletonProps = {
-  variant?: 'text' | 'circle' | 'rect';
+type Box = { width?: number | string; height?: number | string; radius?: number | string };
+export type SkeletonProps = { className?: string; style?: CSSProperties } & (
   /** text: number of lines (the last one is shorter) */
-  lines?: number;
-  width?: number | string;
-  height?: number | string;
-  /** circle: diameter */
-  size?: number;
-  radius?: number | string;
-  className?: string;
-  style?: CSSProperties;
-};
+  | ({ variant?: 'text'; lines?: number } & Box)
+  | ({ variant: 'rect' } & Box)
+  /** circle: diameter in px */
+  | { variant: 'circle'; size?: number }
+);
 
 const len = (v: number | string | undefined) => (typeof v === 'number' ? `${v}px` : v);
 
-export function Skeleton({ variant = 'text', lines = 1, width, height, size = 40, radius, className, style }: SkeletonProps) {
+export function Skeleton(props: SkeletonProps) {
+  const { variant = 'text', className, style } = props;
+  const lines = props.variant === 'circle' || props.variant === 'rect' ? 1 : props.lines ?? 1;
+  const { width, height, radius } = props.variant === 'circle' ? ({} as Box) : props;
+  const size = props.variant === 'circle' ? props.size ?? 40 : 40;
   const ref = useRef<HTMLSpanElement>(null);
   /* every skeleton on the page shares one clock, so the light sweeps them together */
   useIsoLayoutEffect(() => { ref.current?.style.setProperty('--_sync', `${-(performance.now() % SWEEP_MS)}ms`); }, []);

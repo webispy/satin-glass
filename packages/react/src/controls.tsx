@@ -551,11 +551,13 @@ export type TabBarProps = Omit<HTMLAttributes<HTMLElement>, 'onChange' | 'defaul
   action?: ReactNode;
   /** the selection can be dragged across the tabs and lands where it is released (off by default: a tap selects) */
   draggable?: boolean;
-  compact?: boolean;
+  /** false: icons only in a shorter bar; the labels stay for screen readers, and a tab without an icon keeps
+      its label visible */
+  showLabels?: boolean;
   'aria-label'?: string;
 };
 
-export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ value, defaultValue, onChange, children, action, draggable = false, compact, className, 'aria-label': label = 'Tabs', ...rest }, ref) {
+export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ value, defaultValue, onChange, children, action, draggable = false, showLabels = true, className, 'aria-label': label = 'Tabs', ...rest }, ref) {
   const tabs = Children.toArray(children).filter(isValidElement).map((c) => (c as ReactElement<TabProps>).props);
   const [v, setV] = useControllable(value, defaultValue ?? tabs[0]?.value, onChange);
   const bar = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null);
@@ -563,13 +565,13 @@ export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ val
   const index = Math.max(0, tabs.findIndex((t) => t.value === v));
   useBridge(bar, ind, index, (i) => !tabs[i].disabled && setV(tabs[i].value), draggable);
   return (
-    <nav ref={ref} className={cx('sg-tabbar', compact && 'sg-tabbar--compact', className)} aria-label={label} {...rest}>
+    <nav ref={ref} className={cx('sg-tabbar', !showLabels && 'sg-tabbar--icons', className)} aria-label={label} {...rest}>
       {/* the glass clips; the track inside scrolls when the tabs do not fit (a scrolling glass would drag its rim along) */}
       <div ref={lightRef} className={cx('sg-tabbar__bar', glassClass('regular'))}>
         <div ref={bar} role="tablist" className="sg-tabbar__track" onKeyDown={(e) => rovingKeys(e, tabs.length, index, (i) => setV(tabs[i].value), (i) => !!tabs[i].disabled)}>
           <span ref={ind} className="sg-tabbar__indicator" aria-hidden="true" />
           {tabs.map((t, i) => (
-            <button key={t.value} type="button" role="tab" data-sg-item aria-selected={i === index} tabIndex={i === index ? 0 : -1} disabled={t.disabled} className="sg-tabbar__item" onClick={() => setV(t.value)}>
+            <button key={t.value} type="button" role="tab" data-sg-item aria-selected={i === index} tabIndex={i === index ? 0 : -1} disabled={t.disabled} className={cx('sg-tabbar__item', !t.icon && 'sg-tabbar__item--text')} onClick={() => setV(t.value)}>
               <span className="sg-tabbar__icon">{t.icon}{t.badge}</span>
               <span className="sg-tabbar__label">{t.label}</span>
             </button>
@@ -597,6 +599,7 @@ type FieldBase = {
   clearable?: boolean; onClear?: () => void;
   fieldClassName?: string;
 };
+/** `size` here is the native input attribute (the width in characters), not the design scale */
 export type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & FieldBase & { multiline?: false };
 export type TextAreaFieldProps = TextareaHTMLAttributes<HTMLTextAreaElement> & FieldBase & { multiline: true };
 

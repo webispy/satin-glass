@@ -113,11 +113,11 @@
 .sg-tabbar__action svg { width: 24px; height: 24px; }
 /* compact: icons only */
 /* the label stays in the accessibility tree (visually hidden), so a tab's name is its label (+ badge) as in the full bar */
-.sg-tabbar--compact .sg-tabbar__label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.sg-tabbar--compact .sg-tabbar__bar { height: 52px; }
-.sg-tabbar--compact .sg-tabbar__track { --_tab-min: 48px; }
-.sg-tabbar--compact .sg-tabbar__action { width: 44px; }
-.sg-tabbar--compact .sg-tabbar__divider { margin-block: 10px; }
+.sg-tabbar--icons .sg-tabbar__item:not(.sg-tabbar__item--text) .sg-tabbar__label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.sg-tabbar--icons .sg-tabbar__bar { height: 52px; }
+.sg-tabbar--icons .sg-tabbar__track { --_tab-min: 48px; }
+.sg-tabbar--icons .sg-tabbar__action { width: 44px; }
+.sg-tabbar--icons .sg-tabbar__divider { margin-block: 10px; }
 
 /* ============================================================================================
    Sidebar (tablet / desktop): a glass column inset from the window edge

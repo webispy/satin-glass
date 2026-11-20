@@ -34,13 +34,13 @@ export function FeedbackPage() {
         </Demo>
       </Section>
 
-      <Section title="빈 상태" intro="내용이 있어야 할 자리가 비었을 때, 무엇이 비었고 무엇을 하면 되는지 알려 줍니다. 표나 카드 안에서는 compact로 작게 씁니다.">
+      <Section title="빈 상태" intro="내용이 있어야 할 자리가 비었을 때, 무엇이 비었고 무엇을 하면 되는지 알려 줍니다. 표나 카드 안에서는 size=&quot;sm&quot;으로 작게 씁니다.">
         <div className="grid grid--2">
           <Demo center data-demo="empty">
             <EmptyState icon={<Inbox />} title="아직 주문이 없어요" description="상품을 공개하면 들어온 주문이 여기에 쌓여요." actions={<><Button size="sm">상품 공개하기</Button><Button size="sm" variant="neutral">도움말</Button></>} />
           </Demo>
-          <Demo center data-demo="empty-compact">
-            <EmptyState compact icon={<PackageSearch />} title="‘린넨 셔츠’와 맞는 상품이 없어요" description="띄어쓰기나 다른 이름으로 찾아보세요." actions={<Button size="sm" variant="plain">검색어 지우기</Button>} />
+          <Demo center data-demo="empty-sm">
+            <EmptyState size="sm" icon={<PackageSearch />} title="‘린넨 셔츠’와 맞는 상품이 없어요" description="띄어쓰기나 다른 이름으로 찾아보세요." actions={<Button size="sm" variant="plain">검색어 지우기</Button>} />
           </Demo>
         </div>
       </Section>

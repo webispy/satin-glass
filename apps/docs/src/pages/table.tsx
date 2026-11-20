@@ -125,7 +125,7 @@ function States() {
           <Switch aria-label="빈 결과 보기" checked={emptyOn} onChange={setEmptyOn} /><Text variant="subhead" as="span">결과 없음</Text>
         </Stack>
         <DataTable<Product> aria-label="불러오는 상품 목록" rows={rows} rowKey={(p) => p.id} columns={[name, category, price, stock]} loading={loading} labels={TABLE_LABELS}
-          empty={<EmptyState compact icon={<PackageSearch />} title="조건에 맞는 상품이 없어요" description="필터를 줄이거나 다른 이름으로 찾아보세요." actions={<Button size="sm" variant="neutral" onClick={() => setEmptyOn(false)}>필터 지우기</Button>} />} />
+          empty={<EmptyState size="sm" icon={<PackageSearch />} title="조건에 맞는 상품이 없어요" description="필터를 줄이거나 다른 이름으로 찾아보세요." actions={<Button size="sm" variant="neutral" onClick={() => setEmptyOn(false)}>필터 지우기</Button>} />} />
       </Demo>
     </Section>
   );

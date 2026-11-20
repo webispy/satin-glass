@@ -189,6 +189,12 @@ const atWidth = async (vw) => {
   const o2 = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   ok(`lab @${vw}: still no sideways page scroll after all the interaction`, o2 <= 0, `overflow ${o2}px`);
   if (vw === 1280) {
+    /* showLabels={false}: icon tabs hide their label from sight but keep it as the name; a tab without an icon shows it */
+    await p.goto(U('lab')); await settle(p, 700);
+    const il = await p.evaluate(() => [...document.querySelectorAll('[data-lab="tabs-icons-text"] .sg-tabbar__item')].map((it) => ({
+      icon: !!it.querySelector('svg'), w: it.querySelector('.sg-tabbar__label').getBoundingClientRect().width, name: it.textContent.trim() })));
+    ok('icons-only tab bar: icon tabs hide their label, the tab without an icon shows it, every tab keeps its name',
+      il.length === 3 && il.filter((t) => t.icon).every((t) => t.w <= 1) && il.filter((t) => !t.icon).every((t) => t.w > 10) && il.every((t) => t.name.length > 0), JSON.stringify(il));
     /* the regular few-item controls still share the width equally (unchanged look) */
     await p.goto(U('navigation')); await settle(p, 700);
     const eq = await p.evaluate(() => { const ws = [...document.querySelector('.docs__page .sg-tabbar__track').querySelectorAll('.sg-tabbar__item')].map((t) => t.getBoundingClientRect().width); return { spread: Math.max(...ws) - Math.min(...ws), scroll: (() => { const t = document.querySelector('.docs__page .sg-tabbar__track'); return t.scrollWidth - t.clientWidth; })() }; });

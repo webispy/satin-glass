@@ -28,7 +28,7 @@
 
 /* ---------------------------------------------------------------- Empty state */
 .sg-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 40px 24px; color: var(--sg-label); }
-.sg-empty--compact { padding: 20px 16px; }
+.sg-empty--sm { padding: 20px 16px; }
 .sg-empty__icon { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 8px; border-radius: 50%; background: var(--sg-fill); color: var(--sg-label-secondary); }
 .sg-empty__icon svg { width: 26px; height: 26px; }
 .sg-empty__title { font-size: 17px; line-height: 22px; font-weight: 650; }
