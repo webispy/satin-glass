@@ -232,6 +232,7 @@ function DepthSection() {
         <li><b>색이 아니라 빛으로</b> — 층은 밝은 윗변, 그늘, 그림자로 구분합니다. 홈만 채움 틴트(회색 기운)를 갖고, 볼록과 표면은 불투명, 유리는 뒤를 비춥니다.</li>
         <li><b>움직임은 층을 바꾸지 않음</b> — 늘어나고 달라붙는 물방울, 피어남은 같은 층 안에서 일어납니다. 층이 바뀌는 것은 덮개가 열릴 때뿐입니다.</li>
         <li><b>고대비</b> — 깊이 토큰이 윤곽선이 됩니다: 홈과 입력란 1px, 손잡이와 고른 것 1.5px.</li>
+        <li><b>홈 모양</b> — <code className="code">{'createTheme({ grooves: "flat" })'}</code>이면 홈이 안쪽 그늘 없는 평평한 틴트가 됩니다. 바뀌는 것은 홈뿐입니다(위 설정 막대의 오목·평면).</li>
         <li className="rules__tokens">토큰: <code className="code">--sg-depth-inset</code> <code className="code">--sg-depth-raised</code> <code className="code">--sg-depth-raised-bg</code> <code className="code">--sg-depth-raised-accent</code> <code className="code">--sg-depth-sheen</code> <code className="code">--sg-depth-sheen-accent</code> · 그림자 <code className="code">--sg-shadow-sm / md / lg</code> · 유리 <code className="code">Glass variant</code></li>
       </ul>
     </Section>

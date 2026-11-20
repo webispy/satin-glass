@@ -1,11 +1,12 @@
 /* Display settings shared by the docs chrome and the showcase's own settings sheet. */
 import { createContext, useContext, type ReactNode } from 'react';
-import { List, ListItem, ListSection, SegmentedControl, Stack, Switch, type ThemeMode } from '@satin-glass/react';
+import { List, ListItem, ListSection, SegmentedControl, Stack, Switch, type GrooveStyle, type ThemeMode } from '@satin-glass/react';
 import type { MotionName } from '@satin-glass/tokens';
 
 export type DisplaySettings = {
   mode: ThemeMode; setMode: (v: ThemeMode) => void;
   motion: MotionName; setMotion: (v: MotionName) => void;
+  grooves: GrooveStyle; setGrooves: (v: GrooveStyle) => void;
   hc: boolean; setHc: (v: boolean) => void;
   rm: boolean; setRm: (v: boolean) => void;
   rt: boolean; setRt: (v: boolean) => void;
@@ -16,6 +17,7 @@ export const useDisplaySettings = () => useContext(Ctx)!;
 
 const MODES = [{ value: 'light' as const, label: '라이트' }, { value: 'dark' as const, label: '다크' }, { value: 'system' as const, label: '시스템' }];
 const MOTIONS = [{ value: 'calm' as const, label: '차분' }, { value: 'lively' as const, label: '생동' }, { value: 'playful' as const, label: '경쾌' }];
+const GROOVES = [{ value: 'inset' as const, label: '오목' }, { value: 'flat' as const, label: '평면' }];
 
 /** One row, for a wide toolbar. */
 export function DisplaySettingsBar() {
@@ -24,6 +26,7 @@ export function DisplaySettingsBar() {
     <>
       <SegmentedControl size="sm" aria-label="화면 모드" value={s.mode} onChange={s.setMode} options={MODES} />
       <SegmentedControl size="sm" aria-label="모션" value={s.motion} onChange={s.setMotion} options={MOTIONS} />
+      <SegmentedControl size="sm" aria-label="홈" value={s.grooves} onChange={s.setGrooves} options={GROOVES} />
       <label>고대비 <Switch size="sm" checked={s.hc} onChange={s.setHc} aria-label="고대비" /></label>
       <label>동작 줄이기 <Switch size="sm" checked={s.rm} onChange={s.setRm} aria-label="동작 줄이기" /></label>
       <label>투명도 줄이기 <Switch size="sm" checked={s.rt} onChange={s.setRt} aria-label="투명도 줄이기" /></label>
@@ -40,6 +43,7 @@ export function DisplaySettingsList({ header = '화면' }: { header?: string }) 
         <Stack gap={3} style={{ padding: '0 4px' }}>
           <SegmentedControl aria-label="화면 모드" value={s.mode} onChange={s.setMode} options={MODES} />
           <SegmentedControl aria-label="모션" value={s.motion} onChange={s.setMotion} options={MOTIONS} />
+          <SegmentedControl aria-label="홈" value={s.grooves} onChange={s.setGrooves} options={GROOVES} />
         </Stack>
       </ListSection>
       <ListSection footer="원격 데스크톱(VDI)이나 화면 공유 중에는 동작 줄이기와 투명도 줄이기를 함께 켜면 끊김이 줄어요.">

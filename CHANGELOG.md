@@ -10,13 +10,17 @@ New components for screens that show and choose data: a meter, a group of people
 - **`Timeline`, `TimelineItem`** (layout): an ordered list on a connecting line. Steps (`status`: done / current / upcoming, `aria-current="step"`, status read aloud via `labels.status`) and events (`tone`, `icon`) are separate in the type.
 - **`Drawer`** (overlays): a modal panel from a side edge (`side` is logical), named by a title or an aria-label. It enters on the gentle spring, follows a drag toward its edge 1:1 and leaves past a third of its width or on a flick.
 - **`Combobox`** (selection): a text field whose suggestions narrow as you type, for one value (WAI-ARIA editable combobox with list autocomplete). Server search with `filter="none"`, `inputValue` / `onInputChange`, `getOptionText`, `loading`; the typed part is emphasised; IME composition is left alone.
+- **`createTheme({ grooves })`**: `'inset'` (default) cuts level −1 parts in (rails, fields, segmented and stepper troughs); `'flat'` draws the same parts as a flat tint. Only the grooves change. A nested theme inherits the setting unless it sets its own, and high contrast keeps the groove outline either way.
 - **FilterBar recipe** on the tables page: search, filter selects and toggle chips in a named group, with the applied count and one clear.
 
 ### Changed
+- Dark themes tell height by light: surfaces and glass step lighter than the page, raised and floating things get a lit top edge (`--sg-lit-edge`), and grooves are darker than their surroundings with a faint rim (`--sg-groove`, `--sg-groove-soft`, `--sg-groove-hover`).
+- `Select` and the date, range and time picker triggers are grooves like the text fields beside them (they hold a form value). Inline and filter selects stay flat.
 - A modal layer (dialog, sheet, action sheet, media viewer, drawer) hides the rest of the page from assistive technology (`aria-hidden`); layers opened above it and live regions stay reachable. Anchored menus, even with a scrim, do not.
 - `Avatar` shows the initials when its picture fails to load.
 
 ### Fixed
+- Dragging a switch toward off showed a different rail colour from the resting off rail.
 - Search fields showed the browser's own clear button beside the field's.
 
 ## 0.4.0 — 2026-11-20

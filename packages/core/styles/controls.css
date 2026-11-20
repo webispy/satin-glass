@@ -87,7 +87,7 @@
   transition: background-color var(--sg-duration-base) var(--sg-ease-out);
 }
 .sg-switch[aria-checked="true"], .sg-switch[data-drag="on"] { background: var(--sg-accent); }
-.sg-switch[data-drag="off"] { background: var(--sg-fill-strong); }
+.sg-switch[data-drag="off"] { background: var(--sg-groove); }
 .sg-switch:disabled { opacity: 0.42; cursor: default; }
 .sg-switch:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-switch__thumb {

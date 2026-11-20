@@ -92,6 +92,12 @@ const hcDepth = [
 ];
 out.push('[data-sg-theme$="-hc"] {', ...hcDepth, '}');
 out.push('@media (prefers-contrast: more) {', '  :root:not([data-sg-theme]) {', ...hcDepth.map((l) => '  ' + l), '  }', '}');
+/* grooves: 'flat' (createTheme({ grooves })): level −1 parts become a flat tint, the fills each theme already has, with
+   no inset. Declared on the theme element (both attributes on one element), so the fills resolve in that theme and a
+   nested island redeclares its own. High contrast keeps the groove's outline: a thin rail needs its 3:1 edge */
+const flat = [decl('groove', 'var(--sg-fill-strong)'), decl('groove-soft', 'var(--sg-fill)'), decl('groove-hover', 'var(--sg-fill-hover)'), decl('depth-inset', '0 0 0 0 transparent')];
+out.push('[data-sg-theme][data-sg-grooves="flat"] {', ...flat, '}');
+out.push('[data-sg-theme$="-hc"][data-sg-grooves="flat"] {', decl('depth-inset', 'inset 0 0 0 1px var(--sg-separator-strong)'), '}');
 for (const [name, m] of Object.entries(motions)) out.push(`[data-sg-motion="${name}"] {`, ...motionDecls(m), '}');
 /* reduced motion wins over any personality inside it, up to the nearest area that says "false" (@scope's lower
    bound): the nearest setting decides, as it does for the JS springs (prefersReducedMotion). ThemeProvider and

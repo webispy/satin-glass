@@ -162,7 +162,20 @@ describe('ThemeProvider', () => {
     expect(root.dataset.sgTheme).toBe('dark-hc');
     expect(root.style.getPropertyValue('--sg-accent')).toBe('#0a7');
   });
-});
+  it('draws grooves inset by default; a nested theme inherits flat unless it sets its own', () => {
+    const { container } = render(
+      <ThemeProvider theme={createTheme({ grooves: 'flat' })}>
+        <ThemeProvider theme={createTheme({ mode: 'dark' })}><i /></ThemeProvider>
+        <ThemeProvider theme={createTheme({ grooves: 'inset' })}><b /></ThemeProvider>
+      </ThemeProvider>,
+    );
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.dataset.sgGrooves).toBe('flat');
+    expect(container.querySelector('i')!.parentElement!.dataset.sgGrooves).toBe('flat');
+    expect(container.querySelector('b')!.parentElement!.dataset.sgGrooves).toBe('inset');
+    const { container: plain } = render(<ThemeProvider><span /></ThemeProvider>);
+    expect((plain.firstElementChild as HTMLElement).dataset.sgGrooves).toBe('inset');
+  });});
 
 describe('Overlay unmounted while open', () => {
   it('releases the scroll lock and focus trap (e.g. a route change mid-animation)', () => {

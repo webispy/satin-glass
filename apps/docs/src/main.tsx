@@ -2,7 +2,7 @@ import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@satin-glass/react/styles.css';
 import './docs.css';
-import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, IconButton, Popover, Toaster, type ThemeMode } from '@satin-glass/react';
+import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, IconButton, Popover, Toaster, type GrooveStyle, type ThemeMode } from '@satin-glass/react';
 import { DisplaySettingsProvider, DisplaySettingsBar, DisplaySettingsList } from './settings';
 import type { MotionName } from '@satin-glass/tokens';
 import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical, ListChecks, GalleryVerticalEnd, LayoutDashboard, Table2, ChartLine, MessageSquareWarning, X } from 'lucide-react';
@@ -54,18 +54,19 @@ function useNarrow(query = '(max-width: 900px)') {
 
 function App() {
   const page = useHash();
-  /* initial display settings can come from the URL (?mode=dark&hc=1&rt=1&rm=1&motion=calm) — used by the test matrix */
+  /* initial display settings can come from the URL (?mode=dark&hc=1&rt=1&rm=1&motion=calm&grooves=flat) — used by the test matrix */
   const q = new URLSearchParams(location.search);
   const [mode, setMode] = useState<ThemeMode>((q.get('mode') as ThemeMode) || 'system');
   const [hc, setHc] = useState(q.get('hc') === '1');
   const [rt, setRt] = useState(q.get('rt') === '1');
   const [rm, setRm] = useState(q.get('rm') === '1');
   const [motion, setMotion] = useState<MotionName>((q.get('motion') as MotionName) || 'lively');
+  const [grooves, setGrooves] = useState<GrooveStyle>(q.get('grooves') === 'flat' ? 'flat' : 'inset');
   const [navOpen, setNavOpen] = useState(false);
   const [setOpen, setSetOpen] = useState(false);
   const [setBtn, setSetBtn] = useState<HTMLButtonElement | null>(null);
-  const display = { mode, setMode, motion, setMotion, hc, setHc, rm, setRm, rt, setRt };
-  const theme = useMemo(() => createTheme({ mode, contrast: hc ? 'more' : 'standard', reduceTransparency: rt, reduceMotion: rm ? true : 'system', motion }), [mode, hc, rt, rm, motion]);
+  const display = { mode, setMode, motion, setMotion, grooves, setGrooves, hc, setHc, rm, setRm, rt, setRt };
+  const theme = useMemo(() => createTheme({ mode, contrast: hc ? 'more' : 'standard', reduceTransparency: rt, reduceMotion: rm ? true : 'system', motion, grooves }), [mode, hc, rt, rm, motion, grooves]);
   const current = PAGES.find((p) => p.id === page) ?? PAGES[0];
   const Current = current.el;
   useEffect(() => { scrollTo(0, 0); setNavOpen(false); }, [page]);
