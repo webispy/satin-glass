@@ -61,6 +61,14 @@ await p.goto(`http://localhost:${PORT}/${Q}#/selection`); await wait(900);
   ok('range calendar: the second pick is the end; the band is drawn and the days between are selected',
     (await pressed(rc)).join() === `${s},${e}` && band === 'start:true mid:true end:true' && endName.includes('오는 날'), `${band} | ${endName}`);
   ok('range calendar: the line tells the span and its length in nights', (await status()).endsWith('2박 3일'), await status());
+  /* each strip of the band sits on its row: its middle within 2 px of the row's middle (Safari once drew every strip
+     a row low) */
+  const off = await rc.evaluate((root) => {
+    const strips = [...root.querySelectorAll('.sg-calendar__bands > *')].filter((e) => e.style.display !== 'none').map((e) => { const r = e.getBoundingClientRect(); return r.top + r.height / 2; });
+    const rows = [...root.querySelectorAll('tbody tr')].filter((tr) => tr.querySelector('td[data-band]')).map((tr) => { const r = tr.getBoundingClientRect(); return r.top + r.height / 2; });
+    return strips.length && strips.length === rows.length ? Math.max(...strips.map((y, i) => Math.abs(y - rows[i]))) : -1;
+  });
+  ok('range calendar: each strip of the band lies on its own row', off >= 0 && off <= 2, `${off.toFixed(1)} px off`);
 
   /* a complete range: the next pick starts again; an earlier day than the start starts over from there */
   await dayIn(rc, plus(d0, 2)).click(); await wait(200);

@@ -199,7 +199,12 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     const layer = bands.current, tb = body.current, table = tb?.parentElement as HTMLElement | undefined;
     if (!range || !layer || !tb || !table || view !== 'day') return;
     const cell = tb.rows[0]?.cells[0]?.offsetWidth || 40, W = cell * 7, pool = layer.children as HTMLCollectionOf<HTMLElement>;
-    const rowY = Array.from(tb.rows, (r) => table.offsetTop + tb.offsetTop + r.offsetTop + (r.offsetHeight - 36) / 2);
+    /* a row's top within the table, from where the engine draws it: offsetTop of a row means different things here
+       (the body is positioned, as it slides between months: Blink measures rows from the body, WebKit from the table,
+       and Gecko skips the table in the chain), and adding the body's offset by hand drew every strip a row low in
+       Safari. The table may be scaled (a picker's panel blooming), so the drawn distance is divided by its scale. */
+    const tr = table.getBoundingClientRect(), k = tr.height / (table.offsetHeight || 1) || 1;
+    const rowY = Array.from(tb.rows, (r) => table.offsetTop + (r.getBoundingClientRect().top - tr.top) / k + (r.offsetHeight - 36) / 2);
     const idx = (d: Date) => Math.round((d.getTime() - start.getTime()) / 864e5);
     const Lx = (i: number) => i * cell + 2, Rx = (i: number) => (i + 1) * cell - 2;
     type Run = [number, number, 'soft' | 'faint'];
