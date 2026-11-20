@@ -92,7 +92,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
   /* ---- the thumb: two edges on JS springs (like the tab bar's drop), so a retarget mid-flight keeps its speed.
      A tap retargets three times (press reach → toggle → release); CSS transitions restarted from rest each time,
      which is what made the switch feel slower than everything else. ---- */
-  const eng = useRef<{ L: Spring; R: Spring; W: number; T: number; pad: number; reach: number; stop: (() => void) | null; squashed: boolean; wall: 'l' | 'r' | null } | null>(null);
+  const eng = useRef<{ L: Spring; R: Spring; W: number; T: number; pad: number; reach: number; stop: (() => void) | null; squashed: boolean; wall: 'l' | 'r' | null; knock?: (() => void) | null } | null>(null);
   const geom = () => {
     const b = el.current!, cs = getComputedStyle(b), th = b.querySelector<HTMLElement>('.sg-switch__thumb')!;
     return { W: b.clientWidth, T: th.offsetHeight, pad: parseFloat(cs.getPropertyValue('--_pad')) || 2, reach: parseFloat(cs.getPropertyValue('--_reach')) || 6 };
@@ -116,14 +116,24 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
     if (!b || !knob || prefersReducedMotion(b)) return;
     const s = motionFor(b).squash;
     if (s <= 0) return;
+    /* one knock on the personality's pop spring: the knob is pressed against the wall (narrower, a little taller)
+       and springs back, swinging past round as far as the pop overshoots. Anchored at the wall, so the knob never
+       leaves the rail. The push is sized so the deepest press is squash × 1.1 of its width (lively ≈ 15%). */
+    const e = eng.current;
+    e?.knock?.();
     knob.style.transformOrigin = side === 'r' ? 'right center' : 'left center';
-    knob.animate([
-      { transform: 'scale(1, 1)' },
-      { transform: `scale(${1 - s * 1.1}, ${1 + s * 0.35})`, offset: 0.28 },
-      { transform: `scale(${1 + s * 0.4}, ${1 - s * 0.15})`, offset: 0.6 },
-      { transform: `scale(${1 - s * 0.12}, 1)`, offset: 0.82 },
-      { transform: 'scale(1, 1)' },
-    ], { duration: 300, easing: 'ease-out' });
+    const { response, damping: z } = motionFor(b).pop, w = (2 * Math.PI) / response;
+    const reachPeak = z < 1 ? Math.exp(-(z / Math.sqrt(1 - z * z)) * Math.atan(Math.sqrt(1 - z * z) / z)) : Math.exp(-1);
+    const C = new Spring(0, 'pop', b); C.velocity = (s * 1.1 * w) / reachPeak;
+    const paint = () => { knob.style.transform = `scale(${(1 - C.value).toFixed(4)}, ${(1 + C.value * 0.32).toFixed(4)})`; };
+    const off = loop((dt) => {
+      C.step(dt); paint();
+      /* settled in scale units (the spring's own test is for pixels) */
+      if (Math.abs(C.value) > 0.001 || Math.abs(C.velocity) > 0.02) return;
+      knob.style.transform = ''; if (e) e.knock = null;
+      return false;
+    });
+    if (e) e.knock = () => { off(); knob.style.transform = ''; e.knock = null; };
   };
   const run = () => {
     const e = eng.current;
@@ -174,7 +184,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
     const isOn = onRef.current;
     eng.current = { L: new Spring(isOn ? g.W - g.pad - g.T : g.pad, 'snappy', b), R: new Spring(isOn ? g.W - g.pad : g.pad + g.T, 'snappy', b), ...g, stop: null, squashed: true, wall: null };
     render();
-    return () => { eng.current?.stop?.(); eng.current = null; };
+    return () => { eng.current?.stop?.(); eng.current?.knock?.(); eng.current = null; };
   }, []);
   const firstOn = useRef(true);
   useIsoLayoutEffect(() => { if (firstOn.current) { firstOn.current = false; return; } go(true); }, [on]);
