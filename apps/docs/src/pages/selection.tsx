@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  Button, Calendar, Checkbox, ChoiceList, DatePicker, DateRangePicker, RangeCalendar, type DateRange, List, ListItem, ListSection, Radio, RadioGroup, Select, Stack, Switch, Text, TimePicker, TimeWheel,
+  Avatar, Button, Calendar, Checkbox, ChoiceList, Combobox, DatePicker, DateRangePicker, RangeCalendar, type DateRange, List, ListItem, ListSection, Radio, RadioGroup, Select, Stack, Switch, Text, TimePicker, TimeWheel,
   WeekdayPicker, describeWeekdays, useToast,
 } from '@satin-glass/react';
 import { Bike, Car, Footprints, Train, Moon, Sun, Monitor, Wifi, Bell, MapPin } from 'lucide-react';
 import { Demo, Page, Section } from '../shared';
+import { PRODUCTS } from '../data';
 
 const AMENITIES = [['parking', '주차장'], ['pets', '반려동물 동반'], ['toilet', '화장실'], ['night', '야간 개방']] as const;
 
@@ -135,6 +136,8 @@ export function Selection() {
         </div>
       </Section>
 
+      <Combos />
+
       <Section title="기간" intro="시작과 끝, 두 날짜를 고릅니다. 첫 번째로 누른 날이 시작, 두 번째가 끝이에요. 끝을 고르는 동안에는 시작부터 포인터(또는 키보드 포커스)가 있는 날까지 홈 안의 옅은 띠가 스프링을 타고 따라 흐르고, 끝을 고르면 끝 날짜의 구슬이 가운데에서 차오릅니다. 시작보다 앞선 날이나 닿을 수 없는 날(최대 길이를 넘거나, 중간에 고를 수 없는 날이 끼어 있는 경우)을 누르면 그 날부터 다시 시작해요. 아래 줄은 지금 무엇을 고를 차례인지와 기간의 길이(‘2박 3일’ 또는 ‘3일’)를 알려 줍니다.">
         <div className="grid grid--2">
           <Demo col data-demo="range">
@@ -178,5 +181,49 @@ export function Selection() {
         </div>
       </Section>
     </Page>
+  );
+}
+
+const CITIES = [
+  { label: '수도권', options: [{ value: 'seoul', label: '서울' }, { value: 'incheon', label: '인천' }, { value: 'suwon', label: '수원' }, { value: 'seongnam', label: '성남' }, { value: 'goyang', label: '고양' }, { value: 'yongin', label: '용인' }] },
+  { label: '충청 · 강원', options: [{ value: 'daejeon', label: '대전' }, { value: 'sejong', label: '세종' }, { value: 'cheongju', label: '청주' }, { value: 'chuncheon', label: '춘천' }, { value: 'gangneung', label: '강릉' }] },
+  { label: '영남', options: [{ value: 'busan', label: '부산' }, { value: 'daegu', label: '대구' }, { value: 'ulsan', label: '울산' }, { value: 'pohang', label: '포항' }, { value: 'gyeongju', label: '경주' }, { value: 'changwon', label: '창원' }] },
+  { label: '호남 · 제주', options: [{ value: 'gwangju', label: '광주' }, { value: 'jeonju', label: '전주' }, { value: 'yeosu', label: '여수' }, { value: 'mokpo', label: '목포', disabled: true }, { value: 'jeju', label: '제주' }, { value: 'seogwipo', label: '서귀포' }] },
+];
+const PEOPLE = [['jimin', '박지민', '디자인'], ['sora', 'Lee Sora', '프론트엔드'], ['haneul', '김하늘', '제품'], ['yuna', 'Choi Yuna', '데이터'], ['daon', '정다온', '백엔드']] as const;
+const COMBO_LABELS = { empty: '맞는 항목이 없어요', loading: '찾는 중…', clear: '지우기', toggle: '목록 보기' };
+
+function Combos() {
+  const [city, setCity] = useState<string | null>('busan');
+  const [owner, setOwner] = useState<string | null>(null);
+  /* a server search: the options come already filtered, a moment later */
+  const [q, setQ] = useState('');
+  const [product, setProduct] = useState<string | null>(null);
+  const [found, setFound] = useState(PRODUCTS.slice(0, 8));
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setBusy(true);
+    const t = setTimeout(() => { const k = q.trim(); setFound(PRODUCTS.filter((x) => !k || x.name.includes(k)).slice(0, 8)); setBusy(false); }, 450);
+    return () => clearTimeout(t);
+  }, [q]);
+  return (
+    <Section title="콤보박스 (Combobox)" intro="입력하면 맞는 항목만 남는 목록입니다. 포커스는 입력란에 둔 채 ↑↓로 옮기고 Enter로 고르며, 입력한 부분은 항목에서 밑줄로 보여 줘요. Esc를 누르거나 다른 곳으로 옮기면 이미 고른 값의 이름으로 돌아가고, 입력란을 비우고 떠나면 값이 지워집니다. 한글처럼 글자를 조합하는 동안에는 Enter와 화살표를 입력기에 맡깁니다. 목록은 셀렉트와 같은 패널에서 피어나고, 거를 때는 줄만 바뀝니다. 서버에서 거르는 목록은 filter=&quot;none&quot;으로 받은 그대로 보여 주고, 찾는 중과 결과 없음은 목록 밖의 상태 줄로 알려요.">
+      <div className="grid grid--2">
+        <Demo col data-demo="combobox">
+          <Combobox label="도시" placeholder="도시 이름" options={CITIES} value={city} onChange={setCity} labels={COMBO_LABELS} helperText="목포는 지금 고를 수 없어요" name="city" />
+          <Combobox label="담당자" placeholder="이름 또는 팀" value={owner} onChange={setOwner} labels={COMBO_LABELS}
+            options={PEOPLE.map(([value, name, team]) => ({ value, label: name, description: team, icon: <Avatar name={name} size={24} /> }))}
+            filter={(o, t) => `${o.label} ${o.description}`.toLocaleLowerCase().includes(t.toLocaleLowerCase())} />
+          <Combobox label="사용할 수 없음" options={CITIES} defaultValue="seoul" disabled labels={COMBO_LABELS} />
+        </Demo>
+        <Demo col data-demo="combobox-server">
+          <Combobox label="상품 찾기" placeholder="상품 이름" labels={COMBO_LABELS} filter="none" loading={busy}
+            inputValue={q} onInputChange={(t) => setQ(t)} value={product} onChange={setProduct}
+            getOptionText={(id) => PRODUCTS.find((x) => x.id === id)?.name ?? id}
+            options={found.map((x) => ({ value: x.id, label: x.name, description: `${x.price.toLocaleString('ko-KR')}원` }))} />
+          <Text variant="footnote" tone="secondary">{product ? `고른 상품: ${PRODUCTS.find((x) => x.id === product)?.name}` : '고른 상품 없음'} · 서버 검색을 흉내 내 0.45초 뒤에 결과가 와요.</Text>
+        </Demo>
+      </div>
+    </Section>
   );
 }

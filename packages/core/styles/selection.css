@@ -80,6 +80,17 @@
 .sg-option[aria-selected="true"] .sg-option__check { visibility: visible; }
 .sg-listbox__group { padding: 8px 10px 4px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--sg-label-tertiary); }
 .sg-listbox__group:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--sg-separator); padding-top: 10px; }
+/* Combobox (0.5): a text field whose suggestions narrow as you type, in Select's panel and rows. The chevron opens
+   the list without taking focus; the typed part of a suggestion is emphasised; loading and "no results" are a
+   status line under the rows, outside the listbox */
+.sg-combobox__toggle { appearance: none; border: 0; margin: 0 -6px 0 0; padding: 0; flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--sg-radius-full); background: none; color: var(--sg-label-secondary); cursor: pointer; }
+.sg-combobox__toggle svg { width: 16px; height: 16px; transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+.sg-combobox__toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+@media (hover: hover) { .sg-combobox__toggle:hover:not(:disabled) { background: var(--sg-fill); } }
+.sg-combobox__toggle:disabled { cursor: default; opacity: 0.5; }
+.sg-option__match { background: none; color: inherit; font-weight: 700; text-decoration: underline; text-decoration-color: var(--sg-accent); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.sg-combobox__status { padding: 10px 12px; color: var(--sg-label-secondary); font-size: var(--sg-text-footnote-size); line-height: var(--sg-text-footnote-line); }
+.sg-combobox__status[data-hidden] { display: none; }
 
 /* ---- Calendar ---- */
 /* a chosen day, month or year is a raised accent bead (depth tokens: a sheen, a lit top edge, an accent shadow) */
