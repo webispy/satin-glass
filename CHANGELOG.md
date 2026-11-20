@@ -18,6 +18,8 @@ New components for screens that show and choose data: a meter, a group of people
 - `Select` and the date, range and time picker triggers are grooves like the text fields beside them (they hold a form value). Inline and filter selects stay flat.
 - A modal layer (dialog, sheet, action sheet, media viewer, drawer) hides the rest of the page from assistive technology (`aria-hidden`); layers opened above it and live regions stay reachable. Anchored menus, even with a scrim, do not.
 - `Avatar` shows the initials when its picture fails to load.
+- Exits (sheet, action sheet, toast, anchored panels, media viewer) and the reduced-motion stand-in fades take their times and curves from named values in core (`timing`, `easing`), unchanged in pace. A dismissed banner fades without shrinking, then closes the gap.
+- Design language: the navigation stack names `smooth` (quick, for back-and-forth); sheets drag by their grabber and action sheets do not; the sidebar changes its tint in place while the tab bar's travels; the last breadcrumb is marked by weight and colour; chosen-value markers (date beads, the wheel lens) stay raised inside glass picker panels.
 
 ### Fixed
 - Dragging a switch toward off showed a different rail colour from the resting off rail.

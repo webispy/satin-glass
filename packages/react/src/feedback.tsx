@@ -3,7 +3,7 @@ import {
   cloneElement, isValidElement, useEffect, useRef, useState,
   type CSSProperties, type ReactElement, type ReactNode, type Ref,
 } from 'react';
-import { animate, fade, place, prefersReducedMotion, pushLayer, type Placement } from '@satin-glass/core';
+import { animate, fade, place, prefersReducedMotion, pushLayer, type Placement, timing } from '@satin-glass/core';
 import { cx, mergeRefs, useIsoLayoutEffect, usePresence, useStableId } from './utils';
 import { Portal } from './foundation';
 import { IconButton } from './controls';
@@ -55,7 +55,7 @@ export function Tooltip({ content, children, placement = 'top', delay = 500, dis
     t.style.left = `${at.x + scrollX}px`; t.style.top = `${at.y + scrollY}px`; t.dataset.side = at.side;
     const off = { top: [0, 4], bottom: [0, -4], left: [4, 0], right: [-4, 0] }[at.side];
     t.getAnimations().forEach((x) => x.cancel());
-    if (prefersReducedMotion(t)) fade(t, 0, 1, 140);
+    if (prefersReducedMotion(t)) fade(t, 0, 1, timing.appear);
     else animate(t, [{ opacity: 0, transform: `translate(${off[0]}px, ${off[1]}px)` }, { opacity: 1, transform: 'none' }], 'snappy');
     const pop = pushLayer(() => setOpen(false), false, t);
     const close = () => { clearTimeout(timer.current); instant.current = true; setOpen(false); };
@@ -68,7 +68,7 @@ export function Tooltip({ content, children, placement = 'top', delay = 500, dis
     const t = tip.current;
     if (!t || instant.current) { instant.current = false; done(); return; }
     let alive = true;
-    fade(t, 1, 0, 110).then(() => { if (alive) done(); });
+    fade(t, 1, 0, timing.leave).then(() => { if (alive) done(); });
     return () => { alive = false; };
   }, [closing]);
   if (!isValidElement(children)) return children;
@@ -121,10 +121,10 @@ export function Banner({ tone = 'info', title, children, icon, actions, onDismis
     const d = el.current;
     if (!d) { setGone(true); onDismiss?.(); return; }
     const done = () => { setGone(true); onDismiss?.(); };
-    if (prefersReducedMotion(d)) { fade(d, 1, 0, 110).then(done); return; }
+    if (prefersReducedMotion(d)) { fade(d, 1, 0, timing.leave).then(done); return; }
     /* fade first, then close the gap (height is the one layout property animated here: one short-lived element) */
     const h = d.offsetHeight;
-    d.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(0.98)' }], { duration: 140, easing: 'ease-in', fill: 'forwards' }).finished
+    d.animate([{ opacity: 1 }, { opacity: 0 }], { duration: timing.appear, easing: 'ease-in', fill: 'forwards' }).finished
       .then(() => animate(d, [{ height: `${h}px`, marginBottom: getComputedStyle(d).marginBottom }, { height: '0px', marginBottom: '0px' }], { response: 0.26, damping: 1 }, { fill: 'forwards' }).finished)   /* the gap closes on a short critically-damped spring: a height must not overshoot */
       .then(done, done);
   };

@@ -9,7 +9,7 @@
    by one band whose head rides a spring: it follows the pointer while the end is chosen and runs a touch past the
    end when it is picked, which the end day then takes (stretch, then stick). */
 import { createContext, forwardRef, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { Spring, animate, fade, loop, motionFor, prefersReducedMotion, type Placement } from '@satin-glass/core';
+import { Spring, animate, fade, loop, motionFor, prefersReducedMotion, type Placement, timing } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { Portal, glassClass, useGlassLight } from './foundation';
 import { IconButton } from './controls';
@@ -107,7 +107,7 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   useIsoLayoutEffect(() => {
     if (firstView.current) { firstView.current = false; return; }
     const b = viewBox.current; if (!b) return;
-    if (prefersReducedMotion(b)) { fade(b, 0, 1, 140); return; }
+    if (prefersReducedMotion(b)) { fade(b, 0, 1, timing.appear); return; }
     const o = opener.current;
     if (view !== 'day' && o) {
       const r = b.getBoundingClientRect(), c = o.getBoundingClientRect();
@@ -131,7 +131,7 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     const b = body.current;
     if (!b || sameMonth(prev, month)) return;
     const dir = ymd(month) > ymd(prev) ? 1 : -1;
-    if (prefersReducedMotion(b)) { fade(b, 0, 1, 140); return; }
+    if (prefersReducedMotion(b)) { fade(b, 0, 1, timing.appear); return; }
     animate(b, [{ transform: `translateX(${dir * 28}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }], 'smooth');
   }, [month]);
 

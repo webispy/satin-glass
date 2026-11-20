@@ -33,12 +33,30 @@ export function place(size: { width: number; height: number }, anchor: DOMRect, 
 }
 
 /* ---------------------------------------------------------------- bloom (compositor-only: transform + opacity) */
+/** Fixed timings, for what does not ride a spring: exits (they leave on a short ease-in and never bounce) and the
+    reduced-motion fades that stand in for movement. Named here so every component shares them (design-language 3.). */
+export const timing = {
+  /** a reduced-motion stand-in appears in place */ appear: 140,
+  /** and leaves */ leave: 110,
+  /** an anchored panel folds back toward its anchor */ fold: 160,
+  /** a sheet slides down off the screen */ sheetOut: 260,
+  /** an action sheet, shorter, slides down */ actionSheetOut: 220,
+  /** a toast lifts away */ toastOut: 200,
+  /** the media viewer returns to its thumbnail */ mediaReturn: 260,
+} as const;
+/** the curves those exits use */
+export const easing = {
+  /** leaving: starts slow, accelerates away */ exit: 'cubic-bezier(0.4, 0, 1, 1)',
+  /** folding into an anchor: sharper */ fold: 'cubic-bezier(0.5, 0, 0.75, 0.25)',
+  /** a shape returning to a place on the page */ move: 'cubic-bezier(0.3, 0, 0.2, 1)',
+} as const;
+
 /** The panel grows out of its anchor (per-axis start scale: it unfolds away from the anchor) with an overshoot;
     its content settles a beat later. Cancels a running exit, so re-opening mid-close just turns around. */
 export function bloomIn(panel: HTMLElement, origin: { x: number; y: number }, from: number | [number, number] = 0.55, spring: SpringName = 'bouncy'): Promise<void> {
   panel.getAnimations().forEach((a) => a.cancel());
   panel.style.transformOrigin = `${origin.x}px ${origin.y}px`;
-  if (prefersReducedMotion(panel)) return fade(panel, 0, 1, 140);   /* no growing: a short fade */
+  if (prefersReducedMotion(panel)) return fade(panel, 0, 1, timing.appear);   /* no growing: a short fade */
   /* how far it unfolds follows the personality (its squash; lively as given): calm opens from closer to full size,
      playful from further away — with the pop spring's own overshoot, the three read clearly apart */
   const k = motionFor(panel).squash / 0.14, reach = 0.45 + 0.55 * k;
@@ -52,11 +70,11 @@ export function bloomIn(panel: HTMLElement, origin: { x: number; y: number }, fr
 }
 
 /** Folds back toward the anchor: quick ease-in, gone in ~150 ms. */
-export function bloomOut(panel: HTMLElement, to: number | [number, number] = 0.9, duration = 160): Promise<void> {
-  if (prefersReducedMotion(panel)) { panel.getAnimations().forEach((a) => a.cancel()); return fade(panel, 1, 0, 110); }
+export function bloomOut(panel: HTMLElement, to: number | [number, number] = 0.9, duration: number = timing.fold): Promise<void> {
+  if (prefersReducedMotion(panel)) { panel.getAnimations().forEach((a) => a.cancel()); return fade(panel, 1, 0, timing.leave); }
   panel.getAnimations().forEach((a) => a.cancel());
   const [sx, sy] = typeof to === 'number' ? [to, to] : to;
-  const a = panel.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: `scale(${sx}, ${sy})`, opacity: 0 }], { duration, easing: 'cubic-bezier(0.5, 0, 0.75, 0.25)', fill: 'both' });
+  const a = panel.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: `scale(${sx}, ${sy})`, opacity: 0 }], { duration, easing: easing.fold, fill: 'both' });
   return a.finished.then(() => undefined, () => undefined);
 }
 

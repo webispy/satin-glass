@@ -4,7 +4,7 @@
    only. Reduced motion: opening, closing and paging by button or key fade; finger-driven motion still follows
    the finger and settles without overshoot. */
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Spring, animate, fade, loop, prefersReducedMotion, pushLayer, trapFocus } from '@satin-glass/core';
+import { Spring, animate, fade, loop, prefersReducedMotion, pushLayer, trapFocus, timing, easing } from '@satin-glass/core';
 import { cx, useControllable, useIsoLayoutEffect } from './utils';
 import { Portal, useTheme } from './foundation';
 import { IconButton } from './controls';
@@ -113,7 +113,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     if (how === 'key' && reduced) {
       /* a large movement: fade the new item in place */
       stopT.current(); tx.current?.jump(-i * pitch); paintT(-i * pitch);
-      requestAnimationFrame(() => { const l = layer(i); if (l) fade(l, 0, 1, 140); });
+      requestAnimationFrame(() => { const l = layer(i); if (l) fade(l, 0, 1, timing.appear); });
     } else trackTo(i, velocity);
     setCur(i);
   };
@@ -158,7 +158,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     release.set(() => { pop(); trap(); stopZ.current(); stopT.current(); });
     const l = layer()!;
     backdrop.current!.style.opacity = '';
-    if (prefersReducedMotion(el)) return fade(el, 0, 1, 140);
+    if (prefersReducedMotion(el)) return fade(el, 0, 1, timing.appear);
     const from = originTransform(atRef.current);
     fade(backdrop.current!, 0, 1, 220);
     el.querySelectorAll<HTMLElement>('.sg-media__bar, .sg-media__caption, .sg-media__nav').forEach((x) => fade(x, 0, 1, 200));
@@ -179,7 +179,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
       const a = document.activeElement;
       if (t && document.contains(t) && (!a || a === document.body || !el.isConnected || el.contains(a) || a === before)) t.focus({ preventScroll: true });
     };
-    if (prefersReducedMotion(el)) return fade(el, 1, 0, 110).then(restore);
+    if (prefersReducedMotion(el)) return fade(el, 1, 0, timing.leave).then(restore);
     const l = layer(), f = frame();
     el.querySelectorAll<HTMLElement>('.sg-media__bar, .sg-media__caption, .sg-media__nav').forEach((x) => fade(x, +getComputedStyle(x).opacity, 0, 120));
     const bd = backdrop.current!;
@@ -187,9 +187,9 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     if (!l) return fade(el, 1, 0, 160).then(restore);
     const now = getComputedStyle(l).transform;
     const start = now && now !== 'none' ? now : 'none';
-    if (f && f.style.transform) f.animate([{ transform: f.style.transform }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(0.3, 0, 0.2, 1)', fill: 'both' });
+    if (f && f.style.transform) f.animate([{ transform: f.style.transform }, { transform: 'none' }], { duration: 220, easing: easing.move, fill: 'both' });
     const to = originTransform(atRef.current);
-    if (to) return l.animate([{ transform: start }, { transform: to }], { duration: 260, easing: 'cubic-bezier(0.3, 0, 0.2, 1)', fill: 'both' }).finished.then(restore, restore);
+    if (to) return l.animate([{ transform: start }, { transform: to }], { duration: timing.mediaReturn, easing: easing.move, fill: 'both' }).finished.then(restore, restore);
     return l.animate([{ transform: start, opacity: 1 }, { transform: `${start === 'none' ? '' : start} scale(0.94)`, opacity: 0 }], { duration: 180, easing: 'ease-in', fill: 'both' }).finished.then(restore, restore);
   });
   useEffect(() => () => { if (hiddenThumb.current) hiddenThumb.current.style.visibility = ''; }, []);

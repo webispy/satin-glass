@@ -8,7 +8,7 @@
    velocity when the data changes again mid-way. With reduced motion a chart fades in (140 ms) and data changes
    land at once. */
 import { startTransition, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { Spring, animate, fade, loop, motionFor, prefersReducedMotion } from '@satin-glass/core';
+import { Spring, animate, fade, loop, motionFor, prefersReducedMotion, timing } from '@satin-glass/core';
 import { cx, useIsoLayoutEffect, useStableId, type Tone } from './utils';
 
 /* ------------------------------------------------------------------------------------------------ shared */
@@ -115,7 +115,7 @@ function useDrawIn(ref: React.RefObject<SVGGElement | null>, deps: unknown[] = [
   useIsoLayoutEffect(() => {
     const g = ref.current;
     if (!g) return;
-    if (prefersReducedMotion(g)) { fade(g as unknown as HTMLElement, 0, 1, 140); return; }
+    if (prefersReducedMotion(g)) { fade(g as unknown as HTMLElement, 0, 1, timing.appear); return; }
     /* the pace of the personality's 'gentle', never overshooting (a stroke drawn past its end would leave a gap) */
     const draw = { response: motionFor(g).gentle.response, damping: 1 };
     g.querySelectorAll<SVGPathElement>('[data-draw]').forEach((p, i) => { animate(p, [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], draw, { delay: i * 60, fill: 'backwards' }); });
@@ -320,7 +320,7 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
   useIsoLayoutEffect(() => {
     const el = g.current;
     if (!el || measured === null) return;
-    if (prefersReducedMotion(el)) { fade(el as unknown as HTMLElement, 0, 1, 140); return; }
+    if (prefersReducedMotion(el)) { fade(el as unknown as HTMLElement, 0, 1, timing.appear); return; }
     el.querySelectorAll<SVGRectElement>('rect[data-bar]').forEach((r) => {
       const i = +(r.dataset.i ?? 0);
       animate(r, [{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], 'bouncy', { delay: Math.min(i * 28, 300), fill: 'backwards' });
@@ -405,7 +405,7 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
   useIsoLayoutEffect(() => {
     const el = svg.current?.querySelector<SVGGElement>('g[data-rings]');
     if (!el) return;
-    if (prefersReducedMotion(el)) { fade(el as unknown as HTMLElement, 0, 1, 140); return; }
+    if (prefersReducedMotion(el)) { fade(el as unknown as HTMLElement, 0, 1, timing.appear); return; }
     animate(el, [{ transform: 'rotate(-60deg) scale(0.86)', opacity: 0 }, { transform: 'none', opacity: 1 }], 'smooth', { fill: 'backwards' });
   }, []);
   const r = size / 2 - 6, ri = r - thickness, c = size / 2, gap = data.length > 1 ? 0.012 : 0;

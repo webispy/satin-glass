@@ -2,7 +2,7 @@ import {
   Children, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
   type HTMLAttributes, type KeyboardEvent, type ReactElement, type ReactNode,
 } from 'react';
-import { animate, bloomIn, bloomOut, drag, fade, focusables, longPress, place, prefersReducedMotion, pushLayer, trapFocus, type Placement } from '@satin-glass/core';
+import { animate, bloomIn, bloomOut, drag, fade, focusables, longPress, place, prefersReducedMotion, pushLayer, trapFocus, type Placement, timing, easing } from '@satin-glass/core';
 import { cx, mergeRefs, useIsoLayoutEffect, usePresence, useStableId } from './utils';
 import { Portal, glassClass, useGlassLight } from './foundation';
 import { Button } from './controls';
@@ -117,7 +117,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, heigh
     });
     release.set(() => { pop(); trap(); off(); });
     if (wide()) return bloomIn(p, { x: p.offsetWidth / 2, y: p.offsetHeight / 2 }, 0.94);
-    if (prefersReducedMotion(p)) return fade(p, 0, 1, 140);   /* reduced: appears in place */
+    if (prefersReducedMotion(p)) return fade(p, 0, 1, timing.appear);   /* reduced: appears in place */
     return animate(p, [{ transform: 'translateY(calc(100% + 24px))' }, { transform: 'none' }], 'gentle').finished.then(() => undefined, () => undefined);
   }, () => {
     release.run();
@@ -127,8 +127,8 @@ export function Sheet({ open, onClose, title, leading, trailing, children, heigh
     if (wide() && !swiped.current) return bloomOut(p, 0.96);
     const from = p.style.transform || 'none';
     p.getAnimations().forEach((a) => a.cancel());
-    if (prefersReducedMotion(p)) return fade(p, 1, 0, 110);
-    return p.animate([{ transform: from }, { transform: 'translateY(calc(100% + 24px))' }], { duration: 260, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' }).finished.then(() => undefined, () => undefined);
+    if (prefersReducedMotion(p)) return fade(p, 1, 0, timing.leave);
+    return p.animate([{ transform: from }, { transform: 'translateY(calc(100% + 24px))' }], { duration: timing.sheetOut, easing: easing.exit, fill: 'both' }).finished.then(() => undefined, () => undefined);
   });
   if (!mounted) return null;
   return (
@@ -256,13 +256,13 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
     const pop = pushLayer(() => onClose('escape'), true, b);
     const trap = trapFocus(b, b.querySelector<HTMLElement>('[data-cancel]'));
     release.set(() => { pop(); trap(); });
-    if (prefersReducedMotion(b)) return fade(b, 0, 1, 140);
+    if (prefersReducedMotion(b)) return fade(b, 0, 1, timing.appear);
     return animate(b, [{ transform: 'translateY(calc(100% + 24px))' }, { transform: 'none' }], 'smooth').finished.then(() => undefined, () => undefined);
   }, () => {
     release.run();
     scrim.current?.classList.remove('is-open');
-    if (prefersReducedMotion(box.current)) return fade(box.current!, 1, 0, 110);
-    return box.current!.animate([{ transform: 'none' }, { transform: 'translateY(calc(100% + 24px))' }], { duration: 220, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' }).finished.then(() => undefined, () => undefined);
+    if (prefersReducedMotion(box.current)) return fade(box.current!, 1, 0, timing.leave);
+    return box.current!.animate([{ transform: 'none' }, { transform: 'translateY(calc(100% + 24px))' }], { duration: timing.actionSheetOut, easing: easing.exit, fill: 'both' }).finished.then(() => undefined, () => undefined);
   });
   if (!mounted) return null;
   /* arrows move between the rows like a menu (Tab still works); Home / End go to the ends */
@@ -397,12 +397,12 @@ function ToastView({ t, edge, onDone }: { t: ToastItem; edge: 'top' | 'bottom'; 
     leaving.current = true;
     const from = el.current.style.transform || 'none';
     const reduced = prefersReducedMotion(el.current);
-    el.current.animate(reduced ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: from, opacity: 1 }, { transform: `translateY(${sign * 24}px) scale(0.96)`, opacity: 0 }], { duration: reduced ? 140 : 200, easing: 'cubic-bezier(0.4,0,1,1)', fill: 'both' })
+    el.current.animate(reduced ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: from, opacity: 1 }, { transform: `translateY(${sign * 24}px) scale(0.96)`, opacity: 0 }], { duration: reduced ? timing.appear : timing.toastOut, easing: easing.exit, fill: 'both' })
       .finished.then(onDone, onDone);
   }, [onDone, sign]);
   useIsoLayoutEffect(() => {
     const e = el.current!;
-    if (prefersReducedMotion(e)) fade(e, 0, 1, 140);
+    if (prefersReducedMotion(e)) fade(e, 0, 1, timing.appear);
     else animate(e, [{ transform: `translateY(${sign * 28}px) scale(0.94)`, opacity: 0 }, { transform: 'none', opacity: 1 }], 'bouncy');
     const timer = window.setTimeout(leave, t.duration ?? 4000);
     /* swipe toward the edge to dismiss */

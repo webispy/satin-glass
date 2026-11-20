@@ -4,7 +4,7 @@
    activation="manual"), Home/End; each tab controls its panel. Panels slide in from the side you moved toward.
    A row of filter choices is not tabs: use chips (or a segmented control for two to five options). */
 import { useDeferredValue, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { animate, fade, prefersReducedMotion } from '@satin-glass/core';
+import { animate, fade, prefersReducedMotion, timing } from '@satin-glass/core';
 import { cx, tabStop, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { Badge, useBridge } from './controls';
 
@@ -38,7 +38,7 @@ export function Tabs<T extends string = string>({ items, value, defaultValue, on
     const p = panel.current, dir = Math.sign(shown - prev.current);
     prev.current = shown;
     if (!p || !dir) return;
-    if (prefersReducedMotion(p)) { fade(p, 0, 1, 140); return; }
+    if (prefersReducedMotion(p)) { fade(p, 0, 1, timing.appear); return; }
     animate(p, [{ opacity: 0, transform: `translateX(${dir * 12}px)` }, { opacity: 1, transform: 'none' }], 'snappy');
   }, [shown]);
   const enabled = items.map((it, i) => (it.disabled ? -1 : i)).filter((i) => i >= 0);
