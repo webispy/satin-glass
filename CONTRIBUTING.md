@@ -27,7 +27,10 @@ Signed-off-by: Your Name <you@example.com>
 - **Body**: wrapped at 72 columns, after one blank line. Say why first: what was wrong or missing, as the user or
   the next maintainer would see it. Then what the change does about it, at the level of decisions, not a list of
   edited files. Mention what was verified and how when it is not obvious (engines, e2e suites, measurements).
-- **Trailers**: `Signed-off-by:` (`git commit -s`) on every commit; `Co-Authored-By:` for co-authors;
+- **Trailers**: `Signed-off-by:` (`git commit -s`) on every commit, certifying the
+  [Developer Certificate of Origin](https://developercertificate.org/); `Co-Authored-By:` for co-authors;
+  `Reviewed-by:` for each reviewer whose findings the change acts on, people or AI agents (name the model:
+  `Reviewed-by: Codex gpt-6.2-sol <noreply@openai.com>`);
   `Fixes: <12-char sha> ("subject")` when fixing an earlier commit; `Link:` for an issue or discussion.
 - **One logical change per commit**, and every commit builds and passes its tests, so `git bisect` works. No
   "WIP" or "fix typo in previous commit" commits on the main branch: fold them in before merging.
@@ -40,6 +43,7 @@ Signed-off-by: Your Name <you@example.com>
 | `react` | `packages/react`; `react/<component>` for one component (`react/wheel`, `react/tabbar`) |
 | `docs` | `apps/docs` and `docs/` |
 | `e2e` | `tests/e2e` |
+| `github` | `.github`: issue and pull request templates, workflows |
 | `build` | package layout, bundling, workspace and tooling |
 | `release` | version bumps and the changelog entry that goes with them (`release: 0.4.0`) |
 | `treewide` | mechanical changes across everything (renames) |
