@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 — unreleased (first public release)
+## 0.4.0 — 2026-11-20
 
 The library gets its own name and its foundations: six design principles, a satin glass material, depth by part, corners from one source, focus, contrast and settings that hold everywhere, and checks that keep the CSS to these rules. It ships per category, and the wheel, calendar, action sheet and tab bar are redrawn in that language.
 

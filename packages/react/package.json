@@ -1,6 +1,6 @@
 {
   "name": "@satin-glass/react",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "React components on satin glass: frosted, grained translucency, a fixed top light and a soft sheen, with motion that stretches and sticks.",
   "keywords": ["react", "ui", "components", "design-system", "glass", "accessibility", "data-table", "charts", "satin-glass"],
   "homepage": "https://github.com/webispy/satin-glass#readme",
