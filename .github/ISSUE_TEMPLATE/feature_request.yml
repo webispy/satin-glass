@@ -1,0 +1,20 @@
+name: Feature request
+description: A component, option or behaviour the library does not have yet
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you are trying to build
+      description: The screen or task, and what is missing or hard today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind
+      description: An API sketch, a reference from another library, or how it should look and move.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do now instead

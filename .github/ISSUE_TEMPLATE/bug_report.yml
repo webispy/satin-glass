@@ -1,0 +1,45 @@
+name: Bug report
+description: Something looks or behaves wrong
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead. A screenshot or a short recording helps with visual and motion problems.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A minimal example (code, a docs page and the settings in its URL, or a sandbox link).
+      placeholder: |
+        1. Open the docs page #/selection?mode=dark&rm=1
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "@satin-glass/react 0.4.0"
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Browser, OS and device
+      placeholder: Safari 26 on iOS 26, iPhone; Chrome 140 on Windows 11 with a mouse
+    validations:
+      required: true
+  - type: checkboxes
+    id: settings
+    attributes:
+      label: Display settings in effect
+      options:
+        - label: Dark mode
+        - label: High contrast
+        - label: Reduce motion
+        - label: Reduce transparency
+        - label: A motion personality other than the default (calm or playful)
