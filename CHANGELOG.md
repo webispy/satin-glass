@@ -15,6 +15,7 @@ New components for screens that show and choose data: a meter, a group of people
 
 ### Changed
 - Dark themes tell height by light: surfaces and glass step lighter than the page, raised and floating things get a lit top edge (`--sg-lit-edge`), and grooves are darker than their surroundings with a faint rim (`--sg-groove`, `--sg-groove-soft`, `--sg-groove-hover`).
+- Charts move their scale, gridlines, ticks and marks together on one progress when the data or the visible series change (the personality's smooth pace, no overshoot); leaving ticks fade out, new ones fade in. A resize redraws at once. The switch's knock against the end of its rail runs on the personality's pop spring instead of fixed keyframes.
 - Filled buttons are flat (the accent marks the main action; raised is for handles and the chosen value), and large buttons take the control radius, 12. Banners and outlined cards get the dark top light and their high-contrast outline; an interactive card brightens a little on hover instead of lifting. In high contrast the tab bar, sidebar and open calendar chip mark the selection by outline alone.
 - `Select` and the date, range and time picker triggers are grooves like the text fields beside them (they hold a form value). Inline and filter selects stay flat.
 - A modal layer (dialog, sheet, action sheet, media viewer, drawer) hides the rest of the page from assistive technology (`aria-hidden`); layers opened above it and live regions stay reachable. Anchored menus, even with a scrim, do not.

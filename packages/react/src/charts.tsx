@@ -94,6 +94,50 @@ function useTween(target: number[], el: React.RefObject<Element | null>, key: st
   return shown;
 }
 
+/** One transition for a whole chart's change: the scale, the gridlines and ticks, and the marks all move together
+    from what is shown to the new state, on one progress that runs 0 → 1 at the personality's smooth pace without
+    overshooting (a scale that swung past would misread the data mid-way). Values are in data units, so a resize
+    redraws at once instead of tweening pixels. A change mid-way starts from what is shown. At once the first time,
+    when the shape changes, and with reduced motion. `from` is the state the transition started from. */
+function useMorph(target: number[], el: React.RefObject<Element | null>): { now: number[]; from: number[]; p: number } {
+  const key = target.join(',');
+  const st = useRef<{ from: number[]; to: number[]; P: Spring | null; stop: (() => void) | null }>({ from: target, to: target, P: null, stop: null });
+  const [, paint] = useState(0);
+  const lerp = (a: number[], b: number[], t: number) => b.map((v, i) => (a[i] ?? v) + (v - (a[i] ?? v)) * t);
+  const p = st.current.P ? Math.min(1, Math.max(0, st.current.P.value)) : 1;
+  useIsoLayoutEffect(() => {
+    const m = st.current, shownNow = lerp(m.from, m.to, m.P ? Math.min(1, Math.max(0, m.P.value)) : 1);
+    if (m.to.join(',') === key) return;
+    if (m.to.length !== target.length || prefersReducedMotion(el.current) || !el.current) {
+      m.stop?.(); m.stop = null; m.P = null; m.from = m.to = target; paint((n) => n + 1);
+      return;
+    }
+    m.from = shownNow; m.to = target;
+    m.P = new Spring(0, { response: motionFor(el.current).smooth.response, damping: 1 });
+    m.P.target = 1;
+    paint((n) => n + 1);
+    m.stop ??= loop((dt) => {
+      const P = m.P; if (!P) { m.stop = null; return false; }
+      P.step(dt);
+      /* settled in progress units (the spring's own test is for pixels) */
+      if (Math.abs(1 - P.value) < 0.001 && Math.abs(P.velocity) < 0.01) { m.P = null; m.from = m.to; m.stop = null; paint((n) => n + 1); return false; }
+      paint((n) => n + 1);
+    });
+  }, [key]);
+  useEffect(() => () => { st.current.stop?.(); }, []);
+  const m = st.current;
+  return { now: m.P ? lerp(m.from, m.to, p) : m.to, from: m.from, p: m.P ? p : 1 };
+}
+
+/** Gridlines and their labels while the scale moves: the new ticks fade in, the old ones fade out, all placed on the
+    scale as it is now. */
+function tickLayer(next: number[], prev: number[], p: number): { t: number; o: number }[] {
+  const all = new Map<number, number>();
+  for (const t of next) all.set(t, prev.includes(t) ? 1 : p);
+  if (p < 1) for (const t of prev) if (!all.has(t)) all.set(t, 1 - p);
+  return [...all].map(([t, o]) => ({ t, o }));
+}
+
 /** Monotone cubic path through points (no overshoot between data points: a smooth line never invents a peak). */
 function pathOf(pts: [number, number][], smooth: boolean): string {
   if (!pts.length) return '';
@@ -229,10 +273,12 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
   const left = yAxisWidth(ticks.map(fmt));
   const iw = Math.max(10, width - left - M.right), ih = height - M.top - M.bottom;
   const X = (i: number) => left + (data.length <= 1 ? iw / 2 : (i / (data.length - 1)) * iw);
-  const Y = (v: number) => M.top + ih - ((v - y0) / (y1 - y0 || 1)) * ih;
-  /* tween the drawn y positions (per series × point), keyed on the data and what is visible */
-  const target = series.flatMap((s) => data.map((d) => (typeof d[s.key] === 'number' ? Y(d[s.key] as number) : Y(y0))));
-  const ys = useTween(target, box, target.map((v) => v.toFixed(1)).join(','));
+  /* the scale and every point (per series × point, in data units) move as one (useMorph) */
+  const morph = useMorph([y0, y1, ...series.flatMap((s) => data.map((d) => (typeof d[s.key] === 'number' ? (d[s.key] as number) : y0)))], box);
+  const [sy0, sy1] = morph.now, [py0, py1] = morph.from;
+  const Y = (v: number) => M.top + ih - ((v - sy0) / (sy1 - sy0 || 1)) * ih;
+  const ys = morph.now.slice(2).map(Y);
+  const prevTicks = py0 === y0 && py1 === y1 ? ticks : niceTicks(py0, py1, Math.max(2, Math.round(height / 56))).filter((t) => t >= py0 && t <= py1);
   useDrawIn(g, [measured !== null]);
   const step = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor(iw / 72))));
   const onMove = (e: React.PointerEvent) => {
@@ -253,7 +299,7 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
           <defs>{series.map((s, i) => (
             <linearGradient key={s.key} id={`${gid}-${i}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={s.color ?? COLOR(i)} stopOpacity="0.22" /><stop offset="1" stopColor={s.color ?? COLOR(i)} stopOpacity="0" /></linearGradient>
           ))}</defs>
-          {ticks.map((t) => <g key={t}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{fmt(t)}</text></g>)}
+          {tickLayer(ticks, prevTicks, morph.p).map(({ t, o }) => <g key={t} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{fmt(t)}</text></g>)}
           {/* every step-th label, plus the last one when it does not crowd its neighbour */}
           {data.map((d, i) => (i % step === 0 || (i === data.length - 1 && i % step >= step / 2)) ? (
             <text key={i} className="sg-chart__tick" x={X(i)} y={height - 6} textAnchor={i === 0 ? 'start' : i === data.length - 1 ? 'end' : 'middle'}>{xFormat(String(d[x]))}</text>
@@ -265,7 +311,7 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
               const line = pathOf(pts, curve === 'smooth');
               return (
                 <g key={s.key} style={{ color: s.color ?? COLOR(si) }}>
-                  {area && <path data-fade d={`${line}L${X(data.length - 1)},${Y(Math.max(y0, 0))}L${X(0)},${Y(Math.max(y0, 0))}Z`} fill={`url(#${gid}-${si})`} />}
+                  {area && <path data-fade d={`${line}L${X(data.length - 1)},${Y(Math.max(sy0, 0))}L${X(0)},${Y(Math.max(sy0, 0))}Z`} fill={`url(#${gid}-${si})`} />}
                   <path data-draw className="sg-chart__line" d={line} pathLength={1} />
                 </g>
               );
@@ -304,18 +350,21 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
   const iw = Math.max(10, width - left - M.right), ih = height - M.top - M.bottom;
   const band = iw / Math.max(1, data.length), pad = Math.min(band * 0.28, 18);
   const inner = band - pad;
-  const Y = (v: number) => M.top + ih - (v / (top || 1)) * ih;
-  /* bar geometry, tweened (y, height per series × category) */
-  const geom: number[] = [];
+  /* the scale's top and every bar (base and end per series × category, in data units) move as one (useMorph) */
+  const ends: number[] = [];
   data.forEach((d) => {
     let acc = 0;
     series.forEach((s) => {
       const v = hidden.has(s.key) ? 0 : Math.max(0, num(d, s.key));
-      if (stacked) { geom.push(Y(acc + v), Y(acc) - Y(acc + v)); acc += v; }
-      else geom.push(Y(v), Y(0) - Y(v));
+      if (stacked) { ends.push(acc, acc + v); acc += v; } else ends.push(0, v);
     });
   });
-  const gv = useTween(geom, box, geom.map((v) => v.toFixed(1)).join(','));
+  const morph = useMorph([top, ...ends], box);
+  const sTop = morph.now[0], pTop = morph.from[0];
+  const Y = (v: number) => M.top + ih - (v / (sTop || 1)) * ih;
+  const gv: number[] = [];
+  for (let j = 1; j < morph.now.length; j += 2) { const a = morph.now[j], b2 = morph.now[j + 1]; gv.push(Y(b2), Y(a) - Y(b2)); }
+  const prevTicks = pTop === top ? ticks : niceTicks(0, pTop || 1, Math.max(2, Math.round(height / 56))).filter((t) => t <= pTop);
   /* entrance: bars rise from the baseline, one category after another */
   useIsoLayoutEffect(() => {
     const el = g.current;
@@ -344,7 +393,7 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
         onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }}>
         {measured === null ? <div style={{ height }} /> : <svg width={width} height={height} aria-hidden="true">
           {active !== null && <rect className="sg-chart__band" x={left + active * band} y={M.top} width={band} height={ih} rx={6} />}
-          {ticks.map((t) => <g key={t}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{fmt(t)}</text></g>)}
+          {tickLayer(ticks, prevTicks, morph.p).map(({ t, o }) => <g key={t} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{fmt(t)}</text></g>)}
           {data.map((d, i) => (i % step === 0 ? <text key={i} className="sg-chart__tick" x={left + i * band + band / 2} y={height - 6} textAnchor="middle">{xFormat(String(d[x]))}</text> : null))}
           <g ref={g}>
             {data.map((_, i) => series.map((s, si) => {
