@@ -37,6 +37,11 @@ jobs:
     name: e2e ${{ matrix.shard }}/4 (${{ github.event.inputs.engines || 'chromium' }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # browsers and their system libraries come with the image (installing them took from 20 s to over 4 min);
+    # keep the tag in step with the playwright version in package.json
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --ipc=host
     strategy:
       fail-fast: false
       matrix:
@@ -45,6 +50,7 @@ jobs:
       E2E_ENGINES: ${{ github.event.inputs.engines || 'chromium' }}
       E2E_TIMING: '0'
       E2E_SHARD: ${{ matrix.shard }}/4
+      HOME: /root
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -53,6 +59,5 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps ${E2E_ENGINES//,/ }
       - run: pnpm build && pnpm --filter docs build
       - run: node tests/e2e/run.mjs
