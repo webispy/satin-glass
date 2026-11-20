@@ -22,6 +22,7 @@ New components for screens that show and choose data: a meter, a group of people
 - Design language: the navigation stack names `smooth` (quick, for back-and-forth); sheets drag by their grabber and action sheets do not; the sidebar changes its tint in place while the tab bar's travels; the last breadcrumb is marked by weight and colour; chosen-value markers (date beads, the wheel lens) stay raised inside glass picker panels.
 
 ### Fixed
+- Unchecking a checkbox undrew its tick on a bouncing spring that outlived the box's colour and, at its end, wrapped the dash into a speck. The tick now fades with the box; it draws only on the way in, and its draw stays inside the dash so the overshoot never opens a gap.
 - Dragging a switch toward off showed a different rail colour from the resting off rail.
 - Segmented controls, tab bars and tabs whose chosen item is disabled (or whose first item is disabled with no value) left the whole group out of the tab order; the first enabled item takes Tab now, and the default value skips disabled items.
 - Toasts could be covered by a dialog opened after them; their portal now stacks above every dialog.

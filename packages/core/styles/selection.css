@@ -18,9 +18,12 @@
 .sg-check__input:checked:focus-visible + .sg-check__box, .sg-check__input:indeterminate:focus-visible + .sg-check__box { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 /* the tick is drawn (stroke-dashoffset) on the snappy spring */
 .sg-check__mark { width: 16px; height: 16px; color: var(--sg-on-accent); fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-.sg-check__tick { stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+/* the tick draws in on the snappy spring, and only on the way in: unchecked it fades with the box (undrawing on a
+   spring outlived the box's colour and, past its end, wrapped the dash round into a speck), then resets unseen. The
+   offsets sit 3 inside the dash (the tick is 13.2 long): the spring's overshoot never opens a gap at its start */
+.sg-check__tick { stroke-dasharray: 20; stroke-dashoffset: 23; opacity: 0; transition: opacity var(--sg-duration-fast) ease, stroke-dashoffset 0s linear var(--sg-duration-fast); }
 .sg-check__dash { opacity: 0; transform: scaleX(0.3); transform-origin: center; transition: opacity var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
-.sg-check__input:checked:not(:indeterminate) + .sg-check__box .sg-check__tick { stroke-dashoffset: 0; }
+.sg-check__input:checked:not(:indeterminate) + .sg-check__box .sg-check__tick { stroke-dashoffset: 3; opacity: 1; transition: opacity 0s, stroke-dashoffset var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
 .sg-check__input:indeterminate + .sg-check__box .sg-check__dash { opacity: 1; transform: none; }
 /* radio: an inner dot grows on the snappy spring */
 .sg-check__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sg-on-accent); transform: scale(0); transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }

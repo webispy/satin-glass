@@ -14,7 +14,7 @@ const DIR = new URL('../styles/', import.meta.url);
 const allow = JSON.parse(readFileSync(new URL('./css-allowlist.json', import.meta.url), 'utf8')) as Record<'animate' | 'radius' | 'shadow' | 'time', { selector: string; property?: string; value?: string; reason: string }[]>;
 const FREE = new Set(['transform', 'translate', 'scale', 'rotate', 'opacity']);
 const PAINT = new Set(['color', 'background-color', 'background', 'border-color', 'outline-color', 'box-shadow', 'fill', 'stroke', 'stroke-dashoffset']);
-const TIME = /(?<![\w-])\d+(\.\d+)?m?s\b/g;
+const TIME = /(?<![\w.-])(?!0+(\.0+)?m?s\b)\d+(\.\d+)?m?s\b/g;   /* a zero time is an instant switch, not a duration */
 
 type Hit = { file: string; selector: string; what: string };
 function scan() {
