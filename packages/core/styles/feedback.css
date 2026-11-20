@@ -5,6 +5,7 @@
 .sg-banner {
   display: flex; align-items: flex-start; gap: 12px; padding: 12px 12px 12px 14px; border-radius: var(--sg-radius-lg);   /* an inline surface: the card role */
   background: var(--_bg); color: var(--sg-label); overflow: hidden; --_bg: var(--sg-info-soft); --_fg: var(--sg-info-text);
+  box-shadow: var(--sg-surface-outline), var(--sg-lit-edge);   /* a surface: its own edge in high contrast, the top light in dark */
 }
 .sg-banner--success { --_bg: var(--sg-success-soft); --_fg: var(--sg-success-text); }
 .sg-banner--warning { --_bg: var(--sg-warning-soft); --_fg: var(--sg-warning-text); }

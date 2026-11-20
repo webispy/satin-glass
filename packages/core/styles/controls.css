@@ -26,13 +26,13 @@
 .sg-button > span:not(.sg-button__spinner) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .sg-button--sm { --_h: var(--sg-size-control-sm); padding: 0 12px; border-radius: var(--sg-radius-sm); font-size: var(--sg-text-control-sm-size); line-height: var(--sg-text-control-sm-line); font-weight: var(--sg-text-control-sm-weight); letter-spacing: var(--sg-text-control-sm-tracking); gap: 6px; }
 .sg-button--sm svg { width: 16px; height: 16px; }
-.sg-button--lg { --_h: var(--sg-size-control-lg); padding: 0 20px; border-radius: var(--sg-radius-lg); font-size: var(--sg-text-control-lg-size); line-height: var(--sg-text-control-lg-line); font-weight: var(--sg-text-control-lg-weight); letter-spacing: var(--sg-text-control-lg-tracking); }
+.sg-button--lg { --_h: var(--sg-size-control-lg); padding: 0 20px; font-size: var(--sg-text-control-lg-size); line-height: var(--sg-text-control-lg-line); font-weight: var(--sg-text-control-lg-weight); letter-spacing: var(--sg-text-control-lg-tracking); }
 .sg-button--lg svg { width: 20px; height: 20px; }
 .sg-button--block { display: flex; width: 100%; }
 .sg-button--icon { padding: 0; width: var(--_h); }
 .sg-button--round { border-radius: var(--sg-radius-full); }
 
-.sg-button--filled { background: var(--sg-accent); color: var(--sg-on-accent); box-shadow: var(--sg-depth-raised-accent); }   /* the accent bead's short shadow and lit edge (8.1) */
+.sg-button--filled { background: var(--sg-accent); color: var(--sg-on-accent); }   /* flat: the accent says it is the main action; raised is for handles and the chosen value (8.1) */
 @media (hover: hover) { .sg-button--filled:hover:not(:disabled) { background: var(--sg-accent-hover); } }
 .sg-button--filled:active:not(:disabled) { background: var(--sg-accent-pressed); }
 .sg-button--tinted { background: var(--sg-accent-soft); color: var(--sg-accent-on-soft); }

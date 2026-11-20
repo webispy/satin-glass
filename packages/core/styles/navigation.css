@@ -82,6 +82,7 @@
 }
 /* while held, the drop is a little denser */
 .sg-tabbar__track[data-sg-pressing] .sg-tabbar__indicator { background: color-mix(in oklab, var(--sg-glass-selection), var(--sg-accent) 10%); }
+[data-sg-theme$="-hc"] .sg-tabbar__track[data-sg-pressing] .sg-tabbar__indicator { background: transparent; }   /* high contrast: the outline alone, held or not (8.2) */
 .sg-tabbar__item {
   position: relative; z-index: 1; flex: 1 0 0; min-width: var(--_tab-min); appearance: none; border: 0; margin: 0; padding: 0; background: none; font: inherit;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;

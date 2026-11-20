@@ -142,7 +142,7 @@ const lightHc: Semantic = {
   'focus-ring': '#000000',
   'glass-fill': '#ffffff', 'glass-fill-strong': '#ffffff', 'glass-fill-subtle': '#ffffff', 'glass-fill-clear': 'rgba(0, 0, 0, 0.72)',
   'glass-rim-lit': '#000000', 'glass-rim-shade': '#000000', 'glass-rim-mid': '#000000', 'glass-rim-width': '1.5px', 'glass-grain': 'none', 'glass-depth': 'rgba(255, 255, 255, 0)', 'glass-highlight': 'rgba(255, 255, 255, 0)',
-  'glass-selection': rgba(p.iris[700], 0.16),
+  'glass-selection': 'transparent',   /* high contrast: the selection outline replaces the tint (8.2) */
   'chart-1': p.iris[800], 'chart-2': p.teal[800], 'chart-3': p.coral[800], 'chart-4': p.azure[900], 'chart-5': p.orchid[800], 'chart-6': p.jade[900],
   'chart-grid': rgba(p.slate[900], 0.22),
 };
@@ -162,7 +162,7 @@ const darkHc: Semantic = {
   'focus-ring': '#ffffff',
   'glass-fill': '#000000', 'glass-fill-strong': '#000000', 'glass-fill-subtle': '#000000', 'glass-fill-clear': 'rgba(0, 0, 0, 0.78)',
   'glass-rim-lit': '#ffffff', 'glass-rim-shade': '#ffffff', 'glass-rim-mid': '#ffffff', 'glass-rim-width': '1.5px', 'glass-grain': 'none', 'glass-depth': 'rgba(255, 255, 255, 0)', 'glass-highlight': 'rgba(255, 255, 255, 0)',
-  'glass-selection': rgba(p.iris[300], 0.3),
+  'glass-selection': 'transparent',   /* high contrast: the selection outline replaces the tint (8.2) */
   'chart-1': p.iris[300], 'chart-2': p.teal[200], 'chart-3': p.coral[300], 'chart-4': p.azure[200], 'chart-5': p.orchid[300], 'chart-6': p.jade[200],
   'chart-grid': 'rgba(255, 255, 255, 0.24)',
 };
