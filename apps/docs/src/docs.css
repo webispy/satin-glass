@@ -188,3 +188,7 @@ body { background: var(--sg-bg); }
 @media (max-width: 560px) { .corner-table { grid-template-columns: auto minmax(0, 1fr); } .corner-table > span:nth-child(3n) { grid-column: 1 / -1; color: var(--sg-label-secondary); margin-bottom: 4px; } }
 
 
+
+/* the FilterBar recipe (tables page): one wrapping row; the applied count and clear sit at its end */
+.filterbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.filterbar__applied { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: auto; }
