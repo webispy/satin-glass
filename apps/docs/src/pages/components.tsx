@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import {
-  ActionSheet, AppBar, Avatar, AvatarGroup, Badge, BadgeAnchor, Button, ButtonGroup, Card, CardBody, Chip, ContextMenu, Dialog, Glass,
+  ActionSheet, AppBar, Avatar, AvatarGroup, Badge, Drawer, Select, BadgeAnchor, Button, ButtonGroup, Card, CardBody, Chip, ContextMenu, Dialog, Glass,
   ChoiceList, IconButton, List, ListItem, ListSection, Menu, MenuItem, MenuLabel, MenuSeparator, NavigationPage, NavigationStack, PageControl, Pagination, Popover, Progress, SearchField,
   SegmentedControl, Sheet, Sidebar, SidebarItem, SidebarSection, Slider, Spinner, Stack, Stepper, Switch, Tab, TabBar, TabBarAction,
   Tabs, Text, TextField, useNavigation, useToast,
@@ -305,6 +305,45 @@ export function Lists() {
   );
 }
 
+function Drawers() {
+  const [filters, setFilters] = useState(false);
+  const [nav, setNav] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [sort, setSort] = useState<string | null>('new');
+  const [open24, setOpen24] = useState(true);
+  const [kinds, setKinds] = useState<string[]>(['cafe']);
+  return (
+    <Section title="서랍 (Drawer)" intro="화면 옆 가장자리에서 들어오는 패널입니다. 목록 옆의 필터, 자세히 보기, 짧은 입력처럼 지금 화면을 떠나지 않고 할 일에 씁니다. 늘 모달이라 뒤 화면은 손이 닿지 않고 스크린 리더에서도 숨겨지며(aria-hidden), 닫으면 연 버튼으로 포커스가 돌아갑니다. 가장자리 쪽으로 끌면 손가락을 그대로 따라오고, 3분의 1을 넘기거나 튕기면 그 자리에서 나가며, 덜 끌면 제자리로 돌아옵니다. side는 글 방향을 따라 'end'(기본, 왼쪽에서 오른쪽으로 쓰는 화면의 오른쪽)와 'start'입니다. 계속 보이는 옆 영역은 Sidebar를 씁니다.">
+      <Demo data-demo="drawer">
+        <Button variant="filled" onClick={() => setFilters(true)}>필터 열기</Button>
+        <Button variant="tinted" onClick={() => setNav(true)}>메뉴 (start)</Button>
+      </Demo>
+      <Drawer open={filters} onClose={() => setFilters(false)} title="필터" labels={{ close: '닫기' }}
+        trailing={<Button size="sm" variant="plain" onClick={() => { setSort('new'); setOpen24(true); setKinds(['cafe']); }}>초기화</Button>}>
+        <Stack gap={5}>
+          <Select label="정렬" value={sort} onChange={setSort} options={[{ value: 'new', label: '최신순' }, { value: 'near', label: '가까운 순' }, { value: 'star', label: '별점 높은 순' }]} />
+          <ChoiceList aria-label="종류" multiple value={kinds} onChange={setKinds} options={[{ value: 'cafe', label: '카페' }, { value: 'food', label: '음식점' }, { value: 'park', label: '공원' }]} />
+          <ListItem title="24시간 영업" trailing={<Switch checked={open24} onChange={setOpen24} aria-label="24시간 영업" />} />
+          <Button variant="tinted" tone="danger" onClick={() => setConfirm(true)}>저장한 필터 삭제…</Button>
+          <Button variant="filled" onClick={() => setFilters(false)}>결과 보기</Button>
+        </Stack>
+      </Drawer>
+      <Drawer open={nav} onClose={() => setNav(false)} side="start" title="둘러보기" labels={{ close: '닫기' }}>
+        <List>
+          <ListItem leading={<Home />} tileColor="var(--sg-azure-500)" title="홈" onClick={() => setNav(false)} />
+          <ListItem leading={<Map />} tileColor="var(--sg-jade-500)" title="지도" onClick={() => setNav(false)} />
+          <ListItem leading={<Bookmark />} tileColor="var(--sg-amber-500)" title="저장한 장소" onClick={() => setNav(false)} />
+          <ListItem leading={<Settings />} tileColor="var(--sg-iris-500)" title="설정" onClick={() => setNav(false)} />
+        </List>
+      </Drawer>
+      <Dialog open={confirm} onClose={() => setConfirm(false)} icon={<Trash2 />} tone="danger" title="저장한 필터를 지울까요?"
+        actions={<><Button variant="neutral" onClick={() => setConfirm(false)}>취소</Button><Button variant="filled" tone="danger" onClick={() => setConfirm(false)}>삭제</Button></>}>
+        서랍 위에 뜬 대화상자입니다. 이때는 서랍도 뒤로 물러나 닿지 않아요.
+      </Dialog>
+    </Section>
+  );
+}
+
 const TEAM = ['김하늘', 'Lee Sora', '박지민', 'Choi Yuna', '정다온', 'Han Jiwoo', '오세린', 'Kang Minho'];
 function AvatarGroups() {
   const [open, setOpen] = useState(false);
@@ -401,6 +440,7 @@ export function Overlays() {
           </Sheet>
         </Demo>
       </Section>
+      <Drawers />
       <Section title="컨텍스트 메뉴 · 토스트" intro="길게 누르거나 오른쪽 클릭(키보드: Shift+F10)하면 항목이 떠오르고 메뉴가 옆에 나타납니다.">
         <Demo>
           <ContextMenu aria-label="사진" menu={<>

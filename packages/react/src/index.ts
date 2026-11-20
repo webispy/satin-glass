@@ -2,6 +2,7 @@ export * from './foundation';
 export * from './controls';
 export * from './layout';
 export * from './overlays';
+export * from './drawer';
 export * from './icons';
 export { useControllable, useImageTint, cx, type Tone } from './utils';
 export * from './selection';

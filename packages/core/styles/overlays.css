@@ -127,3 +127,17 @@
 }
 [data-sg-theme$="-hc"] :is(.sg-tooltip, .sg-chart__tip) { box-shadow: var(--sg-shadow-md), 0 0 0 1.5px var(--sg-label); }
 .sg-tooltip { position: absolute; z-index: 1; max-width: min(300px, calc(100vw - 16px)); padding: 6px 10px; font-weight: 500; pointer-events: auto; overflow-wrap: anywhere; }
+
+/* Drawer (0.5): a modal panel from a side edge — level-4 glass over the scrim, the sheet's corners, its own scroller.
+   It floats 8 px in from the screen's edges like the sheet; the wrap places it on its logical side. */
+.sg-drawer-wrap { position: fixed; inset: 0; display: flex; justify-content: flex-end; padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); pointer-events: none; }
+.sg-drawer-wrap[data-side="start"] { justify-content: flex-start; }
+.sg-drawer {
+  pointer-events: auto; position: relative; width: min(var(--_w, 360px), 100%); height: 100%;
+  display: flex; flex-direction: column; --_radius: var(--sg-radius-2xl);
+  will-change: transform; touch-action: pan-y;
+}
+.sg-drawer__header { flex: none; display: flex; align-items: center; gap: 4px; min-height: 56px; padding: 10px 10px 6px 20px; }
+.sg-drawer__header:dir(rtl) { padding: 10px 20px 6px 10px; }
+.sg-drawer__title { flex: 1; min-width: 0; margin: 0; font-size: 17px; line-height: 24px; font-weight: 700; }
+.sg-drawer__body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px 20px 20px; }
