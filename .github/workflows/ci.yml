@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      engines:
+        description: Browser engines for e2e (comma-separated)
+        default: chromium,webkit,firefox
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Build, typecheck, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  e2e:
+    name: e2e (${{ github.event.inputs.engines || 'chromium' }})
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      E2E_ENGINES: ${{ github.event.inputs.engines || 'chromium' }}
+      E2E_TIMING: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps ${E2E_ENGINES//,/ }
+      - run: pnpm build && pnpm --filter docs build
+      - run: node tests/e2e/run.mjs

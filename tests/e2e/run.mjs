@@ -35,6 +35,7 @@
 //   E2E_FILES=a.mjs,b.mjs             only these suites, every engine and variant; E2E_BROAD=c.mjs: these only once,
 //                                     in Chromium. Set by `pnpm e2e:changed` (tests/e2e/changed.mjs); timing skipped
 //   E2E_VERBOSE=1                     print every suite's full output
+//   E2E_TIMING=0                      skip the timing phase (performance, momentum, arrival timing): CI
 import { spawn } from 'node:child_process';
 import { availableParallelism } from 'node:os';
 import { setTimeout as wait } from 'node:timers/promises';
@@ -84,7 +85,8 @@ perEngine(motion, 'reduced motion', 'reduce-motion.mjs');
 /* finger drags with real touch input (CDP: Chromium only), in the motion phase — they follow the finger frame by frame */
 if (ENGINES.includes('chromium')) motion.push(['finger drags (touch) · chromium', 'touch.mjs', {}]);
 
-const timing = ONLY || PICKED ? [] : [
+/* E2E_TIMING=0: skip the timing phase (CI runners are shared machines; their timings say little) */
+const timing = ONLY || PICKED || process.env.E2E_TIMING === '0' ? [] : [
   ['performance (Chromium, CPU ×4)', 'perf.mjs', {}],
   ['progress keeps momentum across updates', 'progress-tick.mjs', {}],
   ['arrival timing per personality (informational)', 'timing.mjs', {}],
