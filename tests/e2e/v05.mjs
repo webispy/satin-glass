@@ -150,13 +150,16 @@ await go('overlays');
   await p.keyboard.press('Backquote'); await wait(900);
   const con = p.getByRole('dialog', { name: '콘솔' }), cb = await con.boundingBox();
   ok('drawer (top): the ` key opens the console at the top edge, the full width, focus in its prompt', cb && cb.y < 24 && cb.width > 1200 && await focused() === '명령', `y ${cb && Math.round(cb.y)} w ${cb && Math.round(cb.width)} focus ${await focused()}`);
-  /* its header is at the top of the screen, so it is flicked up rather than dragged far (reduced motion: no drag) */
+  /* its header is at the top of the screen, with little room to drag up: shrink it to its least height with the grip
+     first, then a slow drag of the header past 30 % of that puts it away (no flick speed to depend on; reduced
+     motion: no drag) */
   if (!/rm=1/.test(Q)) {
-    const hb = await con.locator('.sg-drawer__header').boundingBox();
-    await p.mouse.move(hb.x + 300, hb.y + hb.height - 6); await p.mouse.down();
-    await p.mouse.move(hb.x + 300, hb.y + 2, { steps: 2 });   /* a quick flick: two moves ~15 ms apart, over 900 px/s */
+    await con.getByRole('separator', { name: '콘솔 크기' }).focus(); await p.keyboard.press('Home'); await wait(150);
+    const hb = await con.locator('.sg-drawer__header').boundingBox(), small = (await con.boundingBox()).height;
+    await p.mouse.move(hb.x + 300, hb.y + hb.height - 4); await p.mouse.down();
+    for (let k = 1; k <= 10; k++) { await p.mouse.move(hb.x + 300, hb.y + hb.height - 4 - k * 5); await wait(40); }
     await p.mouse.up(); await wait(900);
-    ok('drawer (top): flicking its header up puts it away', !(await con.isVisible().catch(() => false)));
+    ok('drawer (top): dragging its header up past a third of its height puts it away', !(await con.isVisible().catch(() => false)), `height ${Math.round(small)}`);
   } else { await p.keyboard.press('Escape'); await wait(600); }
   await p.locator('[data-demo="drawer"] button', { hasText: '로그 보기' }).click(); await wait(900);
   const lg = p.getByRole('dialog', { name: '배포 로그' }), lb = await lg.boundingBox();
