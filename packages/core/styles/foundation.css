@@ -207,3 +207,13 @@
   .sg-glass::before, .sg-glass::after { display: none; }
 }
 /* reduced motion: see base.css */
+
+/* ---------------------------------------------------------------- scrollbars inside panels
+   Where scrollbars always show (a mouse on Windows, macOS set to always), the browser's own drew a grey bar on a white
+   groove inside the glass. Panels' scroll areas get a thin one with no groove, its thumb a faint tint shown while the
+   pointer is over the area (scrolling on a trackpad, the pointer is there); high contrast draws it solid. No
+   ::-webkit-scrollbar fallback: in a Safari without scrollbar-color it would replace the overlay scrollbar with one
+   that always takes room, trackpad or not; that Safari keeps its own. */
+.sg-sidebar__scroll, .sg-dialog__scroll, .sg-sheet__body, .sg-drawer__body, .sg-menu > [data-sg-content], .sg-listbox > [data-sg-content] { --_scroll-thumb: color-mix(in oklab, var(--sg-label) 24%, transparent); scrollbar-width: thin; scrollbar-color: transparent transparent; }
+[data-sg-theme$="-hc"] :is(.sg-sidebar__scroll, .sg-dialog__scroll, .sg-sheet__body, .sg-drawer__body, .sg-menu > [data-sg-content], .sg-listbox > [data-sg-content]) { --_scroll-thumb: var(--sg-label-secondary); }
+@media (hover: hover) { .sg-sidebar__scroll:hover, .sg-dialog__scroll:hover, .sg-sheet__body:hover, .sg-drawer__body:hover, .sg-menu > [data-sg-content]:hover, .sg-listbox > [data-sg-content]:hover { scrollbar-color: var(--_scroll-thumb) transparent; } }
