@@ -141,7 +141,7 @@ const composite = (fill: string, under: string) => {
   const u = [1, 3, 5].map((i) => parseInt(under.slice(i, i + 2), 16));
   return '#' + [1, 2, 3].map((i, k) => Math.round(+m[i] * a + u[k] * (1 - a)).toString(16).padStart(2, '0')).join('');
 };
-pairs.push(['accent-on-soft', 'accent-soft@surface', 4.5], ['danger-on-soft', 'danger-soft@surface', 4.5], ['#ffffff', 'danger-fill', 4.5]);
+pairs.push(['accent-on-soft', 'accent-soft@surface', 4.5], ['danger-on-soft', 'danger-soft@surface', 4.5], ['#ffffff', 'danger-fill', 4.5], ['#ffffff', 'badge-fill', 4.5]);
 /* states and composited backgrounds: a filled button hovered and pressed, a placeholder inside a field on each
    page background, white text on clear glass over a white photo */
 pairs.push(['on-accent', 'accent-hover', 4.5], ['on-accent', 'accent-pressed', 4.5],

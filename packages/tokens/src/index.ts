@@ -46,6 +46,7 @@ const light = {
   'danger': p.ruby[600], 'danger-soft': rgba(p.ruby[500], 0.12), 'danger-text': p.ruby[600], 'danger-on-soft': p.ruby[700],
   /* filled danger surfaces with white text (badges, destructive filled buttons) */
   'danger-fill': p.ruby[600],
+  'badge-fill': p.ruby[600],   /* a count on an icon */
   'info': p.azure[600], 'info-soft': rgba(p.azure[500], 0.13), 'info-text': p.azure[700],
   'focus-ring': p.iris[500],
   'scrim': rgba(p.slate[950], 0.3),
@@ -102,6 +103,7 @@ const dark: Semantic = {
   'warning': p.amber[400], 'warning-soft': rgba(p.amber[400], 0.18), 'warning-text': p.amber[300],
   'danger': p.ruby[500], 'danger-soft': rgba(p.ruby[400], 0.18), 'danger-text': p.ruby[300], 'danger-on-soft': p.ruby[200],
   'danger-fill': p.ruby[600],
+  'badge-fill': p.ruby[700],   /* a step calmer on a dark bar: the light theme's red glared there */
   'info': p.azure[500], 'info-soft': rgba(p.azure[400], 0.18), 'info-text': p.azure[300],
   'focus-ring': p.iris[400],
   'scrim': 'rgba(0, 0, 0, 0.5)',
@@ -137,7 +139,7 @@ const lightHc: Semantic = {
   'fill-strong': rgba(p.slate[700], 0.24),
   'groove': rgba(p.slate[700], 0.24), 'groove-soft': rgba(p.slate[700], 0.14),
   'accent': p.iris[800], 'accent-hover': p.iris[900], 'accent-pressed': p.iris[950], 'accent-text': p.iris[800], 'accent-on-soft': p.iris[900],
-  'danger-fill': p.ruby[800], 'danger-on-soft': p.ruby[900],
+  'danger-fill': p.ruby[800], 'danger-on-soft': p.ruby[900], 'badge-fill': p.ruby[800],
   'danger-text': p.ruby[800], 'success-text': p.jade[800], 'info-text': p.azure[800], 'warning-text': p.amber[900],
   'focus-ring': '#000000',
   'glass-fill': '#ffffff', 'glass-fill-strong': '#ffffff', 'glass-fill-subtle': '#ffffff', 'glass-fill-clear': 'rgba(0, 0, 0, 0.72)',
@@ -157,7 +159,7 @@ const darkHc: Semantic = {
   'separator': p.slate[400],
   'separator-strong': p.slate[200],
   'accent': p.iris[800], 'accent-hover': p.iris[900], 'accent-pressed': p.iris[950], 'accent-text': p.iris[200], 'accent-on-soft': p.iris[100],
-  'danger-fill': p.ruby[800], 'danger-on-soft': p.ruby[100],
+  'danger-fill': p.ruby[800], 'danger-on-soft': p.ruby[100], 'badge-fill': p.ruby[800],
   'danger-text': p.ruby[200], 'success-text': p.jade[200], 'info-text': p.azure[200], 'warning-text': p.amber[200],
   'focus-ring': '#ffffff',
   'glass-fill': '#000000', 'glass-fill-strong': '#000000', 'glass-fill-subtle': '#000000', 'glass-fill-clear': 'rgba(0, 0, 0, 0.78)',

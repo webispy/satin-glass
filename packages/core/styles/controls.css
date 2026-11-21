@@ -282,7 +282,7 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 .sg-chip--static { cursor: default; }
 .sg-chip--static:active { transform: none; }
 
-.sg-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--sg-radius-full); background: var(--sg-danger-fill); color: #fff; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.sg-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--sg-radius-full); background: var(--sg-badge-fill); color: #fff; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
 .sg-badge--accent { background: var(--sg-accent); color: var(--sg-on-accent); }
 .sg-badge--neutral { background: var(--sg-fill-strong); color: var(--sg-label); }
 .sg-badge--dot { min-width: 8px; width: 8px; height: 8px; padding: 0; }
