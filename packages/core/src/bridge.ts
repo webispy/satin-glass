@@ -5,6 +5,7 @@
    Only the indicator (a plain fill, no backdrop filter) is touched per frame, inside a contained container.
    Gesture state goes on data attributes (not classes) so a framework re-render never strips it mid-gesture. */
 import { Spring, loop, motionFor } from './motion';
+import { glide } from './overflow';
 
 export type BridgeOptions = {
   items: () => HTMLElement[];
@@ -97,10 +98,44 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
   /* in the items' (content) coordinates: + scrollLeft, for a track that scrolls sideways (core/overflow.ts) */
   const localX = (ev: PointerEvent) => ev.clientX - container.getBoundingClientRect().left - container.clientLeft + container.scrollLeft;
 
+  /* more items than fit: a press anywhere but on the selection (or anywhere, where the drop is not draggable) browses
+     the strip instead of moving the drop. Touch and pen pan natively (touch-action, controls.css); a mouse pans by
+     hand, 1:1, stopping where it is let go, and the click it ends with selects nothing. */
+  let pan: { id: number; x0: number; s0: number; on: boolean; lx: number; lt: number; v: number } | null = null;
+  const panMove = (ev: PointerEvent) => {
+    if (!pan || ev.pointerId !== pan.id) return;
+    const dx = ev.clientX - pan.x0;
+    if (!pan.on) { if (Math.abs(dx) < 6) return; pan.on = true; container.toggleAttribute('data-sg-panning', true); }
+    container.scrollLeft = pan.s0 - dx;
+    /* the pointer's speed (px/s, smoothed), for the fling on release */
+    const dt = Math.max(1, ev.timeStamp - pan.lt);
+    pan.v = 0.6 * pan.v + 0.4 * ((ev.clientX - pan.lx) / dt) * 1000; pan.lx = ev.clientX; pan.lt = ev.timeStamp;
+  };
+  const panEnd = (ev: PointerEvent) => {
+    if (!pan || ev.pointerId !== pan.id) return;
+    if (pan.on) {
+      swallow = true; setTimeout(() => { swallow = false; }, 0);
+      /* let go while moving: the strip coasts on (logical: toward the end is the pointer moving back); after a pause, it stays */
+      const rtl = getComputedStyle(container).direction === 'rtl' ? -1 : 1;
+      if (ev.timeStamp - pan.lt < 80) glide(container).fling(-pan.v * rtl);
+    }
+    pan = null; container.removeAttribute('data-sg-panning');
+    removeEventListener('pointermove', panMove, true); removeEventListener('pointerup', panEnd, true); removeEventListener('pointercancel', panEnd, true);
+  };
   const onDown = (ev: PointerEvent) => {
-    if (!opts.draggable || ev.button !== 0) return;
+    if (ev.button !== 0) return;
     const item = (ev.target as HTMLElement).closest('[data-sg-item]') as HTMLElement | null;
     if (!item || !container.contains(item)) return;
+    const overflowing = container.scrollWidth > container.clientWidth + 1;
+    if (overflowing && (!opts.draggable || item !== opts.items()[current])) {
+      if (ev.pointerType === 'mouse') {
+        glide(container).stop();   /* a press catches a coasting strip */
+        pan = { id: ev.pointerId, x0: ev.clientX, s0: container.scrollLeft, on: false, lx: ev.clientX, lt: ev.timeStamp, v: 0 };
+        addEventListener('pointermove', panMove, true); addEventListener('pointerup', panEnd, true); addEventListener('pointercancel', panEnd, true);
+      }
+      return;
+    }
+    if (!opts.draggable) return;
     pressed = true; dragging = false; pid = ev.pointerId; bounds();
     startX = lastX = localX(ev); lastT = performance.now(); vx = 0;
     const g = geom(current);
@@ -163,6 +198,7 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
     refresh: () => { if (current >= 0) moveTo(current, false); },
     destroy() {
       stop?.(); ro?.disconnect();
+      removeEventListener('pointermove', panMove, true); removeEventListener('pointerup', panEnd, true); removeEventListener('pointercancel', panEnd, true);
       container.removeEventListener('pointerdown', onDown);
       container.removeEventListener('pointermove', onMove);
       container.removeEventListener('pointerup', onUp);

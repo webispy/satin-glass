@@ -187,6 +187,8 @@
 .sg-segmented[data-sg-more-start], .sg-tabbar__track[data-sg-more-start] { --_fade-s: 24px; }
 .sg-segmented[data-sg-more-end], .sg-tabbar__track[data-sg-more-end] { --_fade-e: 24px; }
 :is(.sg-segmented, .sg-tabbar__track):is([data-sg-more-start], [data-sg-more-end]) > [data-sg-item]:is([aria-checked="true"], [aria-selected="true"]) { touch-action: pan-y; }
+/* a mouse browsing an overflowing strip (bridge.ts) */
+[data-sg-panning], [data-sg-panning] > [data-sg-item] { cursor: grabbing; user-select: none; }
 .sg-segmented--sm .sg-segmented__item { font-size: 13px; }
 
 /* ============================================================================================

@@ -2,7 +2,8 @@
 // At 1280 / 390 / 320 px: the page never scrolls sideways, every item keeps a usable size and its accessible name,
 // is reachable and selectable by tap and by keyboard, the droplet indicator lands exactly on the selection after
 // taps, keys and drags (also from a scrolled track), and the selected item is scrolled into view. Disabled items
-// are skipped, a refused (controlled) value stays put, and reduced motion (?rm=1) lands just the same.
+// are skipped, a refused (controlled) value stays put, and reduced motion (?rm=1) lands just the same. What is hidden
+// can be browsed without choosing: the wheel scrolls the strip sideways, a mouse drag off the selection pans it.
 // usage: node tests/e2e/overflow.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173, PORT=… to change;
 //        DIST=1 serves apps/docs/dist through request interception instead — no server needed)
 // covers: controls, navigation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
@@ -211,7 +212,62 @@ const reduced = async () => {
   await p.context().close();
 };
 
-await Promise.all([...[1280, 390, 320].map(atWidth), reduced()]);
+/* browsing what is hidden, without choosing: a mouse wheel scrolls the strip sideways and hands over to the page at
+   the end; a mouse drag that does not start on the selection pans the strip 1:1 and selects nothing; a click still
+   selects */
+const browse = async () => {
+  const p = await newPage({ viewport: { width: 1280, height: 900 } });
+  await p.goto(U('lab')); await settle(p, 900);
+  for (const id of ['many-seg-360', 'many-tabs-360']) {
+    const t = p.locator(`[data-lab="${id}"] :is(.sg-segmented, .sg-tabbar__track)`).first();
+    await t.scrollIntoViewIfNeeded(); await settle(p, 300);
+    const st = () => t.evaluate((e) => ({ sl: Math.round(e.scrollLeft), max: e.scrollWidth - e.clientWidth,
+      sel: [...e.querySelectorAll('[data-sg-item]')].findIndex((x) => x.getAttribute('aria-checked') === 'true' || x.getAttribute('aria-selected') === 'true') }));
+    await t.evaluate((e) => { e.scrollLeft = 0; }); await settle(p, 100);
+    const bx = await t.boundingBox(), y0 = await p.evaluate(() => scrollY);
+    await p.mouse.move(bx.x + bx.width / 2, bx.y + bx.height / 2);
+    await p.mouse.wheel(0, 100); await settle(p, 200);
+    const one = await st(), y1 = await p.evaluate(() => scrollY);
+    for (let k = 0; k < 30; k++) await p.mouse.wheel(0, 100);
+    await settle(p, 300);
+    const end = await st(), y2 = await p.evaluate(() => scrollY);
+    ok(`${id}: the mouse wheel scrolls the strip sideways, and one gesture that reaches the end stays there (the page does not take over mid-gesture)`, one.sl > 0 && y1 === y0 && end.sl >= end.max - 1 && y2 === y0, `first ${one.sl} (page ${y1 - y0}), end ${end.sl}/${end.max} (page ${y2 - y0})`);
+    /* after a pause, a new turn at the end scrolls the page */
+    await settle(p, 400);
+    for (let k = 0; k < 3; k++) await p.mouse.wheel(0, 100);
+    await settle(p, 300);
+    const y3 = await p.evaluate(() => scrollY);
+    ok(`${id}: after a pause, the next turn at the end scrolls the page`, y3 > y2, `page ${y2 - y0} → ${y3 - y0}`);
+    /* a gesture that started on the page keeps scrolling the page when the strip passes under the pointer */
+    await t.evaluate((e) => { e.scrollLeft = 0; }); await t.scrollIntoViewIfNeeded(); await settle(p, 500);
+    const b3 = await t.boundingBox();
+    await p.mouse.move(b3.x + b3.width / 2, b3.y - 60);
+    await p.mouse.wheel(0, 60); await p.mouse.move(b3.x + b3.width / 2, b3.y + b3.height / 2);
+    const s4 = (await st()).sl, y4 = await p.evaluate(() => scrollY);
+    await p.mouse.wheel(0, 60); await p.mouse.wheel(0, 60); await settle(p, 300);
+    const s5 = (await st()).sl, y5 = await p.evaluate(() => scrollY);
+    ok(`${id}: a wheel gesture that started on the page keeps scrolling the page over the strip`, s5 === s4 && y5 > y4, `strip ${s4} → ${s5}, page ${y4} → ${y5}`);
+    /* the page was scrolled far by the wheel checks: bring the strip back and wait until the page is still */
+    await t.evaluate((e) => { e.scrollLeft = e.scrollWidth; e.scrollIntoView({ block: 'center', behavior: 'instant' }); }); await settle(p, 300);
+    const b2 = await t.boundingBox(), before = await st();
+    const items = t.locator('[data-sg-item]');
+    /* start on an item that is not the selection: the leftmost one in view */
+    const startX = await items.evaluateAll((els, x) => { const s = els.find((e) => { const r = e.getBoundingClientRect(); return r.left >= x && e.getAttribute('aria-checked') !== 'true' && e.getAttribute('aria-selected') !== 'true'; }); const r = s.getBoundingClientRect(); return r.left + r.width / 2; }, b2.x);
+    await p.mouse.move(startX, b2.y + b2.height / 2); await p.mouse.down();
+    await p.mouse.move(startX + 220, b2.y + b2.height / 2, { steps: 8 }); await p.mouse.up();
+    const atRelease = (await st()).sl;
+    await settle(p, 1200);
+    const after = await st();
+    ok(`${id}: a mouse drag off the selection pans the strip and chooses nothing (not even the item it ends on)`, after.sl < before.sl - 150 && after.sel === before.sel, `scroll ${before.sl} → ${after.sl}, selection ${before.sel} → ${after.sel}`);
+    ok(`${id}: let go while moving, it coasts on and comes to rest (a fling)`, after.sl < atRelease - 20 || after.sl === 0, `at release ${atRelease} → at rest ${after.sl}`);
+    const k = after.sel === 1 ? 2 : 1;
+    await items.nth(k).click(); await settle(p, 400);
+    ok(`${id}: a click still chooses`, (await st()).sel === k);
+  }
+  await p.context().close();
+};
+
+await Promise.all([...[1280, 390, 320].map(atWidth), reduced(), browse()]);
 
 ok('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 await b.close();
