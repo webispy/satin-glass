@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 — unreleased
+## 0.5.0 — 2026-11-21
 
 New components for screens that show and choose data (a meter, a group of people, a timeline, a drawer from any edge, a combobox, and a recipe for the filter row above a table); a theme setting for flat grooves; depth that reads in dark themes; motion reworked where it did not answer the hand (accordion, timeline, charts, switch, checkbox, media viewer, overflowing strips); and a consistency pass over every component against the design language, which fixed focus, stacking, right-to-left and reduced-motion faults and a Safari afterimage source.
 

@@ -6,7 +6,7 @@
 
 A React UI library built on a glass material that follows the light: frosted, grained translucency, a fixed top light and a soft sheen under the pointer, with motion that stretches and sticks. It is a pnpm monorepo of design tokens, a framework-free behaviour core, React components, and a docs and catalogue app.
 
-> Status: **0.4.0**, the first public release. Changes are in [`CHANGELOG.md`](CHANGELOG.md).
+> Status: **0.5.0**. Changes are in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Packages
 
