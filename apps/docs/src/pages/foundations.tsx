@@ -312,9 +312,10 @@ export function Material() {
             </div>
           </Photo>
         </div>
-        <div className="label-row" style={{ marginTop: 10, maxWidth: 420 }}><Text variant="subhead">regular에 배경 색 스며들게 하기 (tint)</Text><Switch checked={tinted} onChange={setTinted} aria-label="regular에 배경 색 스며들게 하기" /></div>
-        <div style={{ marginTop: 14 }}>
-          <SegmentedControl aria-label="배경" value={scene} onChange={setScene} options={[0, 1, 2, 3, 4, 5].map((i) => ({ value: String(i), label: `장면 ${i + 1}` }))} />
+        {/* the two controls of the demo in one row under it: the background on the left, the tint on the right */}
+        <div className="material-controls">
+          <SegmentedControl size="sm" aria-label="배경 장면" value={scene} onChange={setScene} options={[0, 1, 2, 3, 4, 5].map((i) => ({ value: String(i), label: `장면 ${i + 1}` }))} />
+          <span className="material-controls__tint"><Text variant="subhead" tone="secondary">regular에 배경 색 스며들게 하기 (tint)</Text><Switch checked={tinted} onChange={setTinted} aria-label="regular에 배경 색 스며들게 하기" /></span>
         </div>
       </Section>
       <DepthSection />

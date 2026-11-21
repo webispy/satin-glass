@@ -6,13 +6,15 @@ body { background: var(--sg-bg); }
 .docs__nav { position: sticky; top: 0; height: 100vh; padding: 12px; }
 .docs__nav .sg-sidebar { height: 100%; width: 100%; }
 .docs__brand { display: flex; align-items: center; gap: 10px; padding: 8px 10px 6px; }
-.docs__logo { display: block; width: 30px; height: 30px; flex: none; }   /* assets/brand: the Satin Glass icon */
-.docs__brand b { font-size: 17px; letter-spacing: -0.01em; }
-.docs__brand small { display: block; font-size: 12px; color: var(--sg-label-tertiary); font-weight: 500; }
+.docs__brand > div { display: flex; flex-direction: column; }   /* two lines, 20 + 16: as tall as the logo, so their middles meet */
+.docs__logo { display: block; width: 36px; height: 36px; flex: none; }   /* assets/brand: the Satin Glass icon */
+.docs__brand b { font-size: 17px; line-height: 20px; letter-spacing: -0.01em; }
+.docs__brand small { display: block; font-size: 12px; line-height: 16px; color: var(--sg-label-tertiary); font-weight: 500; }
 .docs__main { min-width: 0; }
 .docs__top { position: sticky; top: 0; z-index: 30; display: flex; justify-content: flex-end; gap: 12px; padding: 12px 24px 0; pointer-events: none; }
 .docs__top > * { pointer-events: auto; }
-.docs__settings { display: flex; align-items: center; gap: 14px; padding: 6px 8px 6px 14px; --_radius: calc(12px + 8px); border-radius: var(--_radius);   /* concentric with the capsule switch at its end (12 + 8) */ font-size: 13px; font-weight: 560; color: var(--sg-label-secondary); }
+.docs__settings { display: flex; align-items: center; gap: 14px; --_radius: var(--sg-radius-full); border-radius: var(--_radius); padding: 6px 9px 6px 6px;   /* a capsule, concentric at both ends (design-language 9.2): the segmented controls are capsules here (30 tall: 15 + 6 = 21) and the switch at the far end sits 9 from every edge (12 + 9 = 21) */ font-size: 13px; font-weight: 560; color: var(--sg-label-secondary); }
+.docs__settings .sg-segmented { --_radius: var(--sg-radius-full); }
 .docs__settings label { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .docs__settings-btn { display: none; }
 @media (max-width: 1240px) {
@@ -21,14 +23,14 @@ body { background: var(--sg-bg); }
 }
 .docs__page { max-width: 980px; margin: 0 auto; padding: 8px 32px 96px; }
 .docs__page > header { margin: 20px 0 28px; }
-.docs__page > header p { max-width: 640px; }
+.docs__page > header p { max-width: none; }
 .docs__menu-btn { display: none; }
 .docs__scrim { display: none; }
 @media (max-width: 900px) { .docs__scrim { display: block; } }
 
 .section { margin: 0 0 40px; }
 .section > h2 { margin: 0 0 4px; }
-.section > p { margin: 0 0 16px; max-width: 680px; }
+.section > p { margin: 0 0 16px; }   /* as wide as the demos under it */
 .section > .demo + .demo, .section > .demo + .rules, .section > .rules + .demo { margin-top: 16px; }   /* panels never touch */
 .demo { position: relative; border-radius: var(--sg-radius-xl); background: var(--sg-surface); box-shadow: inset 0 0 0 1px var(--sg-separator); padding: 28px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
 .demo--col { flex-direction: column; align-items: stretch; flex-wrap: nowrap; }   /* wrap would size the column to its widest child */
@@ -173,7 +175,7 @@ body { background: var(--sg-bg); }
 @media (max-width: 560px) { .depth-row { grid-template-columns: 22px 132px minmax(0, 1fr); gap: 10px; } .depth-groove, .depth-card { width: 96px; } }
 
 /* rules under a section: plain text, not a panel */
-.rules { margin: 4px 0 0; padding: 0 0 0 18px; display: grid; gap: 8px; max-width: 760px; font-size: 14px; line-height: 21px; color: var(--sg-label-secondary); }
+.rules { margin: 4px 0 0; padding: 0 0 0 18px; display: grid; gap: 8px; font-size: 14px; line-height: 21px; color: var(--sg-label-secondary); }
 .rules b { color: var(--sg-label); font-weight: 650; }
 .rules__tokens { list-style: none; margin-left: -18px; margin-top: 4px; font-size: 13px; }
 
@@ -203,3 +205,7 @@ body { background: var(--sg-bg); }
 .log__t { color: var(--sg-label-tertiary); }
 .log--warn { color: var(--sg-warning-text); }
 .log--error { color: var(--sg-danger-text); }
+
+/* foundations: the material demo's controls, one row under the photo (they wrap on a narrow screen) */
+.material-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-top: 14px; }
+.material-controls__tint { display: inline-flex; align-items: center; gap: 12px; }

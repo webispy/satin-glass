@@ -94,7 +94,7 @@ function App() {
           {/* a closed drawer is inert: its links are off screen and must not take Tab or a screen reader's cursor */}
           <div ref={nav} id="docs-nav" className="docs__nav" inert={(narrow && !navOpen) || undefined}>
             <Sidebar aria-label="문서">
-              <div className="docs__brand"><img className="docs__logo" src={`${import.meta.env.BASE_URL}logo-64.png`} alt="" width={30} height={30} /><div><b>Satin Glass</b><small>React UI · 0.4</small></div>
+              <div className="docs__brand"><img className="docs__logo" src={`${import.meta.env.BASE_URL}logo-64.png`} alt="" width={36} height={36} /><div><b>Satin Glass</b><small>React UI · 0.4</small></div>
                 {narrow && <IconButton ref={closeBtn} className="docs__nav-close" icon={<X />} label="메뉴 닫기" onClick={closeNav} />}</div>
               {PAGES.map((p) => {
                 const head = p.group !== group ? (group = p.group) : null;
