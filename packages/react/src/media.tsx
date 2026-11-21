@@ -127,45 +127,46 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
   useEffect(() => { if (open) hideThumb(at); }, [at]);
 
   /* ---------------------------------------------------------------- size */
-  useEffect(() => {
-    if (!open) return;
-    const on = () => { const st = stage.current; if (st) setBox({ w: st.clientWidth, h: st.clientHeight }); };
-    on(); addEventListener('resize', on);
-    return () => removeEventListener('resize', on);
-  }, [open]);
   useIsoLayoutEffect(() => { stopT.current(); tx.current?.jump(-atRef.current * pitch); paintT(-atRef.current * pitch); if (z.current.s > 1) { z.current = clampZ(z.current); paintZ(); } }, [box.w, box.h]);
 
   /* ---------------------------------------------------------------- open / close */
-  const originTransform = (i: number) => {
+  /* the photo as its thumbnail shows it: scaled to cover the thumbnail and cropped to it, corners and all (a crop of a
+     different shape, or a whole photo shrunk inside it, snapped to the thumbnail at the last frame). Clips are in the
+     layer's own coordinates: it fills the stage with the photo centred. */
+  const origin = (i: number, b = box) => {
     const t = getOrigin?.(i);
     if (!t) return null;
     const r = t.getBoundingClientRect();
     if (r.width < 2 || r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) return null;
     const { fw, fh } = fit(i);
-    const k = Math.min(r.width / fw, r.height / fh);
-    return `translate(${r.left + r.width / 2 - box.w / 2}px, ${r.top + r.height / 2 - box.h / 2}px) scale(${k})`;
+    const k = Math.max(r.width / fw, r.height / fh), vw = r.width / k, vh = r.height / k;
+    const rad = (parseFloat(getComputedStyle(t).borderTopLeftRadius) || 0) / k;
+    return {
+      transform: `translate(${(r.left + r.width / 2 - b.w / 2).toFixed(2)}px, ${(r.top + r.height / 2 - b.h / 2).toFixed(2)}px) scale(${k.toFixed(5)})`,
+      clip: `inset(${((b.h - vh) / 2).toFixed(2)}px ${((b.w - vw) / 2).toFixed(2)}px round ${rad.toFixed(2)}px)`,
+      /* the open end: the whole stage (a zoomed photo spills past its frame; nothing lies past the stage) */
+      full: 'inset(0px 0px round 0px)',
+    };
   };
   const { mounted } = useOverlayLifecycle(open, () => {
     const el = root.current!;
     swiped.current = false; setChrome(true);
+    /* lock first, then measure: the lock takes the page's scrollbar away and the stage widens */
+    const pop = pushLayer(() => close.current('escape'), true, el);
     const st = stage.current!; const b = { w: st.clientWidth, h: st.clientHeight };
     if (b.w !== box.w || b.h !== box.h) setBox(b);
     z.current = { s: 1, x: 0, y: 0 }; zs.current = null;
     tx.current = new Spring(-atRef.current * (b.w + GAP), 'smooth', el); paintT(-atRef.current * (b.w + GAP));
-    const pop = pushLayer(() => close.current('escape'), true, el);
     const trap = trapFocus(el, el.querySelector<HTMLElement>('[data-sg-close]'));
     hideThumb(atRef.current);
     release.set(() => { pop(); trap(); stopZ.current(); stopT.current(); });
     const l = layer()!;
     backdrop.current!.style.opacity = '';
     if (prefersReducedMotion(el)) return fade(el, 0, 1, timing.appear);
-    const from = originTransform(atRef.current);
+    const from = origin(atRef.current, b);
     fade(backdrop.current!, 0, 1, 220);
     el.querySelectorAll<HTMLElement>('.sg-media__bar, .sg-media__caption, .sg-media__nav').forEach((x) => fade(x, 0, 1, 200));
-    if (from) {
-      l.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 90, fill: 'backwards' });
-      return animate(l, [{ transform: from }, { transform: 'none' }], 'smooth').finished.then(() => undefined, () => undefined);
-    }
+    if (from) return animate(l, [{ transform: from.transform, clipPath: from.clip }, { transform: 'none', clipPath: from.full }], 'smooth').finished.then(() => undefined, () => undefined);
     return animate(l, [{ transform: 'scale(0.92)', opacity: 0 }, { transform: 'none', opacity: 1 }], 'smooth').finished.then(() => undefined, () => undefined);
   }, () => {
     const before = document.activeElement;
@@ -188,11 +189,22 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     const now = getComputedStyle(l).transform;
     const start = now && now !== 'none' ? now : 'none';
     if (f && f.style.transform) f.animate([{ transform: f.style.transform }, { transform: 'none' }], { duration: 220, easing: easing.move, fill: 'both' });
-    const to = originTransform(atRef.current);
-    if (to) return l.animate([{ transform: start }, { transform: to }], { duration: timing.mediaReturn, easing: easing.move, fill: 'both' }).finished.then(restore, restore);
+    const st = stage.current, to = origin(atRef.current, st ? { w: st.clientWidth, h: st.clientHeight } : box);
+    if (to) return l.animate([{ transform: start, clipPath: to.full }, { transform: to.transform, clipPath: to.clip }], { duration: timing.mediaReturn, easing: easing.move, fill: 'both' }).finished.then(restore, restore);
     return l.animate([{ transform: start, opacity: 1 }, { transform: `${start === 'none' ? '' : start} scale(0.94)`, opacity: 0 }], { duration: 180, easing: 'ease-in', fill: 'both' }).finished.then(restore, restore);
   });
   useEffect(() => () => { if (hiddenThumb.current) hiddenThumb.current.style.visibility = ''; }, []);
+  /* the stage's own size, not the window's: the scroll lock takes the page's scrollbar away (and closing gives it
+     back) without a resize event, and a box 15 px off put the photo that far from its thumbnail */
+  useEffect(() => {
+    const st = stage.current;
+    if (!open || !st) return;
+    const on = () => setBox((b) => (b.w === st.clientWidth && b.h === st.clientHeight ? b : { w: st.clientWidth, h: st.clientHeight }));
+    on();
+    if (typeof ResizeObserver === 'undefined') { addEventListener('resize', on); return () => removeEventListener('resize', on); }
+    const ro = new ResizeObserver(on); ro.observe(st);
+    return () => ro.disconnect();
+  }, [open, mounted]);
 
   /* ---------------------------------------------------------------- gestures */
   useEffect(() => {
@@ -248,7 +260,9 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
         if (Math.hypot(dx, ddy) < 8) return;
         mode = Math.abs(dx) > Math.abs(ddy) && n > 1 ? 'page' : 'dismiss';
         stopT.current(); baseT = tx.current?.value ?? -atRef.current * pitch;
-        setChrome(false);
+        /* the bars step aside only for a dismiss (the photo leaves): paging keeps them, as the buttons do — hiding
+           them per flick made them bob on every quick swipe */
+        if (mode === 'dismiss') setChrome(false);
       }
       if (mode === 'pan') {
         const { mx, my } = bounds(base.s);
@@ -279,7 +293,6 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
         const i = atRef.current;
         const next = cancelled ? i : dx < -box.w * 0.22 || vx < -500 ? i + 1 : dx > box.w * 0.22 || vx > 500 ? i - 1 : i;
         go(Math.min(n - 1, Math.max(0, next)), 'swipe', vx);
-        setChrome(true);
         return;
       }
       if (m === 'dismiss') {

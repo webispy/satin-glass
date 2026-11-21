@@ -128,7 +128,9 @@ export function Display() {
               <button key={i} ref={(el) => { thumbs.current[i] = el; }} type="button" aria-label={`${ph.caption} 크게 보기`} className="thumb"
                 style={{ border: 0, padding: 0, borderRadius: 12, overflow: 'hidden', aspectRatio: '1', cursor: 'zoom-in', position: 'relative' }}
                 onClick={() => { setAt(i); setViewer(i); }}>
-                <Photo scene={ph.scene} style={{ position: 'absolute', inset: 0 }} />
+                {/* a real thumbnail is the photo cropped to the square (object-fit: cover): draw the photo at its own
+                    shape and let the square crop it, so it is the very picture the viewer opens */}
+                <Photo scene={ph.scene} style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: ph.w >= ph.h ? `${(ph.w / ph.h) * 100}%` : '100%', height: ph.w >= ph.h ? '100%' : `${(ph.h / ph.w) * 100}%` }} />
               </button>
             ))}
           </div>
