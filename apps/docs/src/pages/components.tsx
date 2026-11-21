@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActionSheet, AppBar, Avatar, AvatarGroup, Badge, Drawer, Select, BadgeAnchor, Button, ButtonGroup, Card, CardBody, Chip, ContextMenu, Dialog, Glass,
   ChoiceList, IconButton, List, ListItem, ListSection, Menu, MenuItem, MenuLabel, MenuSeparator, NavigationPage, NavigationStack, PageControl, Pagination, Popover, Progress, SearchField,
   SegmentedControl, Sheet, Sidebar, SidebarItem, SidebarSection, Slider, Spinner, Stack, Stepper, Switch, Tab, TabBar, TabBarAction,
-  Tabs, Text, TextField, useNavigation, useToast,
+  Tabs, Text, TextField, Timeline, TimelineItem, useNavigation, useToast,
 } from '@satin-glass/react';
 import {
   Bell, Bike, Bookmark, Car, ChevronLeft, Copy, Download, Footprints, Heart, Home, Map, MoreHorizontal, Moon, Pencil, Plus, Search,
@@ -308,15 +308,32 @@ export function Lists() {
 function Drawers() {
   const [filters, setFilters] = useState(false);
   const [nav, setNav] = useState(false);
+  const [detail, setDetail] = useState(false);
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const [logs, setLogs] = useState(false);
+  /* the old games' console key: ` opens and closes it (not while typing somewhere else) */
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      if (e.key !== '`' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest('input, textarea, [contenteditable="true"]') && !t.closest('.console')) return;
+      e.preventDefault(); setConsoleOpen((v) => !v);
+    };
+    addEventListener('keydown', on);
+    return () => removeEventListener('keydown', on);
+  }, []);
   const [confirm, setConfirm] = useState(false);
   const [sort, setSort] = useState<string | null>('new');
   const [open24, setOpen24] = useState(true);
   const [kinds, setKinds] = useState<string[]>(['cafe']);
   return (
-    <Section title="서랍 (Drawer)" intro="화면 옆 가장자리에서 들어오는 패널입니다. 목록 옆의 필터, 자세히 보기, 짧은 입력처럼 지금 화면을 떠나지 않고 할 일에 씁니다. 늘 모달이라 뒤 화면은 손이 닿지 않고 스크린 리더에서도 숨겨지며(aria-hidden), 닫으면 연 버튼으로 포커스가 돌아갑니다. 가장자리 쪽으로 끌면 손가락을 그대로 따라오고, 3분의 1을 넘기거나 튕기면 그 자리에서 나가며, 덜 끌면 제자리로 돌아옵니다. side는 글 방향을 따라 'end'(기본, 왼쪽에서 오른쪽으로 쓰는 화면의 오른쪽)와 'start'입니다. 계속 보이는 옆 영역은 Sidebar를 씁니다.">
+    <Section title="서랍 (Drawer)" intro="화면 가장자리에서 들어오는 패널입니다. 옆(start · end)은 필터나 상세 보기처럼 폭을 정하고, 위·아래(top · bottom)는 콘솔이나 로그 같은 도구 패널로 화면 폭 전체에 높이를 정합니다. 아래에서 올라와 내용을 읽거나 채우는 것은 시트입니다. 목록 옆의 필터, 자세히 보기, 짧은 입력처럼 지금 화면을 떠나지 않고 할 일에 씁니다. 늘 모달이라 뒤 화면은 손이 닿지 않고 스크린 리더에서도 숨겨지며(aria-hidden), 닫으면 연 버튼으로 포커스가 돌아갑니다. 가장자리 쪽으로 끌면 손가락을 그대로 따라오고, 3분의 1을 넘기거나 튕기면 그 자리에서 나가며, 덜 끌면 제자리로 돌아옵니다. side는 글 방향을 따라 'end'(기본, 왼쪽에서 오른쪽으로 쓰는 화면의 오른쪽)와 'start'입니다. 계속 보이는 옆 영역은 Sidebar를 씁니다.">
       <Demo data-demo="drawer">
         <Button variant="filled" onClick={() => setFilters(true)}>필터 열기</Button>
         <Button variant="tinted" onClick={() => setNav(true)}>메뉴 (start)</Button>
+        <Button variant="neutral" onClick={() => setDetail(true)}>주문 상세 (넓게)</Button>
+        <Button variant="neutral" onClick={() => setConsoleOpen(true)}>콘솔 (top, ` 키)</Button>
+        <Button variant="neutral" onClick={() => setLogs(true)}>로그 보기 (bottom, 크기 조절)</Button>
       </Demo>
       <Drawer open={filters} onClose={() => setFilters(false)} title="필터" labels={{ close: '닫기' }}
         trailing={<Button size="sm" variant="plain" onClick={() => { setSort('new'); setOpen24(true); setKinds(['cafe']); }}>초기화</Button>}>
@@ -326,6 +343,41 @@ function Drawers() {
           <ListItem title="24시간 영업" trailing={<Switch checked={open24} onChange={setOpen24} aria-label="24시간 영업" />} />
           <Button variant="tinted" tone="danger" onClick={() => setConfirm(true)}>저장한 필터 삭제…</Button>
           <Button variant="filled" onClick={() => setFilters(false)}>결과 보기</Button>
+        </Stack>
+      </Drawer>
+      <Drawer open={consoleOpen} onClose={() => setConsoleOpen(false)} side="top" resizable defaultHeight={320} title="콘솔" labels={{ close: '닫기', resize: '콘솔 크기' }}>
+        <ConsoleBody />
+      </Drawer>
+      <Drawer open={logs} onClose={() => setLogs(false)} side="bottom" resizable defaultHeight={300} title="배포 로그" labels={{ close: '닫기', resize: '로그 창 크기' }}>
+        <LogBody />
+      </Drawer>
+      {/* a wide detail panel: the list stays in view beside it on a desktop, and it is the whole width on a phone */}
+      <Drawer open={detail} onClose={() => setDetail(false)} width={560} title="주문 상세" labels={{ close: '닫기' }}
+        trailing={<IconButton icon={<Share />} label="공유" variant="plain" />}>
+        <Stack gap={5}>
+          <Photo scene={2} style={{ position: 'relative', height: 180, borderRadius: 'var(--sg-radius-lg)', overflow: 'hidden' }} />
+          <Stack gap={1}>
+            <Text variant="title-3">숲길 산책 키트</Text>
+            <Text variant="subhead" tone="secondary">주문 2026-1120-0417 · 11월 20일 14:02</Text>
+          </Stack>
+          <ListSection header="결제와 배송">
+            <List>
+              <ListItem title="결제 금액" trailing={<Text variant="body" style={{ fontVariantNumeric: 'tabular-nums' }}>48,900원</Text>} />
+              <ListItem title="결제 수단" trailing={<Text variant="body" tone="secondary">카드 일시불</Text>} />
+              <ListItem title="받는 곳" subtitle="서울 성동구 왕십리로 83-21, 3층" />
+            </List>
+          </ListSection>
+          <ListSection header="진행">
+            <Timeline aria-label="배송 진행" labels={{ status: { done: '완료', current: '진행 중', upcoming: '예정' } }}>
+              <TimelineItem status="done" title="결제 확인" time="11월 20일 14:05" />
+              <TimelineItem status="current" title="배송 중" description="한빛택배 · 운송장 6021-4417-0093" />
+              <TimelineItem status="upcoming" title="배송 완료" description="도착 예정 11월 22일(토)" />
+            </Timeline>
+          </ListSection>
+          <Stack direction="row" gap={2}>
+            <Button variant="neutral" style={{ flex: 1 }}>문의하기</Button>
+            <Button variant="tinted" tone="danger" style={{ flex: 1 }} onClick={() => setConfirm(true)}>주문 취소…</Button>
+          </Stack>
         </Stack>
       </Drawer>
       <Drawer open={nav} onClose={() => setNav(false)} side="start" title="둘러보기" labels={{ close: '닫기' }}>
@@ -456,3 +508,57 @@ export function Overlays() {
   );
 }
 
+
+/* a little console for the top drawer: commands echo into a log that scrolls, newest at the bottom */
+const CONSOLE_HELP = ['help — 명령 목록', 'status — 서버 상태', 'fps — 화면 갱신 빈도', 'clear — 지우기'];
+function ConsoleBody() {
+  const [lines, setLines] = useState<string[]>(['Satin Glass 콘솔 · ` 키로 열고 닫아요', 'help 를 입력해 보세요']);
+  const [cmd, setCmd] = useState('');
+  const log = useRef<HTMLDivElement>(null);
+  useEffect(() => { log.current?.scrollTo({ top: log.current.scrollHeight }); }, [lines]);
+  const run = (c: string) => {
+    const k = c.trim().toLowerCase();
+    if (!k) return;
+    if (k === 'clear') { setLines([]); return; }
+    const out = k === 'help' ? CONSOLE_HELP : k === 'status' ? ['api 정상 · 지연 42ms', 'db 정상 · 연결 18/64'] : k === 'fps' ? [`${Math.round(55 + Math.random() * 5)} fps`] : [`알 수 없는 명령: ${k}`];
+    setLines((l) => [...l, `> ${c}`, ...out]);
+  };
+  return (
+    <div className="console">
+      <div ref={log} className="console__log" role="log" aria-live="polite">{lines.map((l, i) => <div key={i} className={l.startsWith('> ') ? 'console__cmd' : undefined}>{l}</div>)}</div>
+      <form className="console__prompt" onSubmit={(e) => { e.preventDefault(); run(cmd); setCmd(''); }}>
+        <span aria-hidden="true">&gt;</span>
+        <input aria-label="명령" value={cmd} onChange={(e) => setCmd(e.target.value)} autoComplete="off" spellCheck={false} data-autofocus />
+      </form>
+    </div>
+  );
+}
+
+/* a log for the bottom drawer: a level filter over lines that scroll */
+const LOG_LINES: { t: string; lv: 'info' | 'warn' | 'error'; m: string }[] = [
+  { t: '14:02:11', lv: 'info', m: 'build 시작 · 커밋 c132b91' },
+  { t: '14:02:13', lv: 'info', m: 'pnpm install · 캐시 사용 (412 패키지)' },
+  { t: '14:02:31', lv: 'warn', m: 'tokens: label-tertiary 대비 4.61 (기준 4.5에 가까움)' },
+  { t: '14:02:44', lv: 'info', m: 'core · react · docs 빌드 완료 (38초)' },
+  { t: '14:03:20', lv: 'error', m: 'e2e 2/4: edge cases · 시간 초과, 다시 시도' },
+  { t: '14:05:02', lv: 'info', m: 'e2e 2/4: 다시 시도해 통과' },
+  { t: '14:05:40', lv: 'info', m: 'pages 배포 · webispy.github.io/satin-glass' },
+  { t: '14:05:41', lv: 'info', m: '완료 · 3분 30초' },
+  /* a busy afternoon after it, so there is a log to grow the drawer for */
+  ...Array.from({ length: 36 }, (_, i): { t: string; lv: 'info' | 'warn' | 'error'; m: string } => {
+    const m = 6 + i, t = `14:${String(Math.floor(m / 1) % 60).padStart(2, '0')}:${String((i * 17) % 60).padStart(2, '0')}`;
+    return i % 11 === 7 ? { t, lv: 'error', m: `api 응답 502 · /orders?page=${i} · 재시도 1회` }
+      : i % 5 === 3 ? { t, lv: 'warn', m: `느린 요청 ${820 + i * 13}ms · /search?q=숲길` }
+      : { t, lv: 'info', m: `GET /places/${1000 + i * 7} 200 · ${18 + (i * 7) % 40}ms` };
+  }),
+];
+function LogBody() {
+  const [lv, setLv] = useState<'all' | 'warn' | 'error'>('all');
+  const shown = LOG_LINES.filter((l) => lv === 'all' || (lv === 'warn' ? l.lv !== 'info' : l.lv === 'error'));
+  return (
+    <div className="console">
+      <SegmentedControl size="sm" aria-label="수준" value={lv} onChange={setLv} options={[{ value: 'all', label: '전체' }, { value: 'warn', label: '경고 이상' }, { value: 'error', label: '오류' }]} style={{ alignSelf: 'flex-start' }} />
+      <div className="console__log" role="log">{shown.map((l) => <div key={l.t + l.m} className={`log--${l.lv}`}><span className="log__t">{l.t}</span> {l.m}</div>)}</div>
+    </div>
+  );
+}

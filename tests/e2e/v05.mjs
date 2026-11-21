@@ -146,6 +146,35 @@ await go('overlays');
   ok('drawer (start): comes in from the start edge', nb && nb.x < 24, `x ${nb && Math.round(nb.x)}`);
   await p.mouse.click(1200, 450); await wait(900);
   ok('drawer: a click on the scrim closes it', !(await nav.isVisible().catch(() => false)));
+  /* top and bottom: docked to the edge, the full width, dragged away by the header */
+  await p.keyboard.press('Backquote'); await wait(900);
+  const con = p.getByRole('dialog', { name: '콘솔' }), cb = await con.boundingBox();
+  ok('drawer (top): the ` key opens the console at the top edge, the full width, focus in its prompt', cb && cb.y < 24 && cb.width > 1200 && await focused() === '명령', `y ${cb && Math.round(cb.y)} w ${cb && Math.round(cb.width)} focus ${await focused()}`);
+  /* its header is at the top of the screen, so it is flicked up rather than dragged far (reduced motion: no drag) */
+  if (!/rm=1/.test(Q)) {
+    const hb = await con.locator('.sg-drawer__header').boundingBox();
+    await p.mouse.move(hb.x + 300, hb.y + hb.height - 6); await p.mouse.down();
+    await p.mouse.move(hb.x + 300, hb.y + 2, { steps: 2 });   /* a quick flick: two moves ~15 ms apart, over 900 px/s */
+    await p.mouse.up(); await wait(900);
+    ok('drawer (top): flicking its header up puts it away', !(await con.isVisible().catch(() => false)));
+  } else { await p.keyboard.press('Escape'); await wait(600); }
+  await p.locator('[data-demo="drawer"] button', { hasText: '로그 보기' }).click(); await wait(900);
+  const lg = p.getByRole('dialog', { name: '배포 로그' }), lb = await lg.boundingBox();
+  ok('drawer (bottom): docked to the bottom edge, the full width, its own height', lb && Math.abs(lb.y + lb.height - (900 - 8)) < 3 && lb.width > 1200 && Math.abs(lb.height - 300) < 2, JSON.stringify(lb && { y: Math.round(lb.y), h: Math.round(lb.height) }));
+  /* resizable: the grip is a separator; Home / End take it to its bounds, Up grows a bottom drawer */
+  const grip = lg.getByRole('separator', { name: '로그 창 크기' });
+  await grip.focus(); await p.keyboard.press('End'); await wait(100);
+  const hiH = Math.round((await lg.boundingBox()).height);
+  await p.keyboard.press('Home'); await wait(100);
+  const loH = Math.round((await lg.boundingBox()).height);
+  await p.keyboard.press('ArrowUp'); await wait(100);
+  const upH = Math.round((await lg.boundingBox()).height);
+  ok('drawer (bottom, resizable): the grip takes it to its bounds and Up grows it, and says so', hiH > 700 && loH < 200 && upH === loH + 16 && await grip.getAttribute('aria-valuenow') === String(upH), `${hiH} / ${loH} / ${upH} (aria ${await grip.getAttribute('aria-valuenow')})`);
+  await p.keyboard.press('Escape'); await wait(800);
+  ok('drawer (bottom): Escape closes it', !(await lg.isVisible().catch(() => false)));
+  await p.locator('[data-demo="drawer"] button', { hasText: '로그 보기' }).click(); await wait(900);
+  ok('drawer (bottom, resizable): it opens again at the height it was left', Math.round((await lg.boundingBox()).height) === upH);
+  await p.keyboard.press('Escape'); await wait(800);
 }
 
 /* ================================================================ Combobox */

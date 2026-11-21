@@ -137,6 +137,20 @@
    It floats 8 px in from the screen's edges like the sheet; the wrap places it on its logical side. */
 .sg-drawer-wrap { position: fixed; inset: 0; display: flex; justify-content: flex-end; padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); pointer-events: none; }
 .sg-drawer-wrap[data-side="start"] { justify-content: flex-start; }
+/* from the top or bottom: the full width, `height` tall; the header takes the drag (touch: it does not scroll the page) */
+.sg-drawer-wrap[data-side="top"], .sg-drawer-wrap[data-side="bottom"] { flex-direction: column; justify-content: flex-start; align-items: stretch; }
+.sg-drawer-wrap[data-side="bottom"] { justify-content: flex-end; }
+:is(.sg-drawer-wrap[data-side="top"], .sg-drawer-wrap[data-side="bottom"]) .sg-drawer { width: 100%; height: min(var(--_h, 50dvh), 100%); touch-action: auto; }
+:is(.sg-drawer-wrap[data-side="top"], .sg-drawer-wrap[data-side="bottom"]) .sg-drawer__header { touch-action: none; cursor: grab; }
+:is(.sg-drawer-wrap[data-side="top"], .sg-drawer-wrap[data-side="bottom"]) .sg-drawer__header:active { cursor: grabbing; }
+/* resizable: a grip on the free edge (a separator: the sheet's grabber bar, a wide hit area, the focus ring) */
+.sg-drawer__grip { position: absolute; z-index: 2; left: 50%; width: 96px; height: 20px; margin-left: -48px; display: grid; place-items: center; cursor: ns-resize; touch-action: none; border-radius: var(--sg-radius-full); }
+.sg-drawer__grip::before { content: ""; width: 38px; height: 5px; border-radius: var(--sg-radius-full); background: var(--sg-label-tertiary); opacity: 0.55; transition: opacity var(--sg-duration-fast) ease; }
+@media (hover: hover) { .sg-drawer__grip:hover::before { opacity: 0.9; } }
+.sg-drawer[data-resizing] .sg-drawer__grip::before { opacity: 0.9; }
+.sg-drawer__grip:focus-visible { outline: var(--sg-focus-outline); outline-offset: -2px; }
+.sg-drawer-wrap[data-side="bottom"] .sg-drawer__grip { top: 2px; }
+.sg-drawer-wrap[data-side="top"] .sg-drawer__grip { bottom: 2px; }
 .sg-drawer {
   pointer-events: auto; position: relative; width: min(var(--_w, 360px), 100%); height: 100%;
   display: flex; flex-direction: column; --_radius: var(--sg-radius-2xl);
