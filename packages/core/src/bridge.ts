@@ -177,11 +177,29 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
     if (commit && i >= 0 && i !== current) opts.onDragCommit?.(i);
     else moveTo(current);
   };
+  /* a finger that starts a drag of the drop (on the selection, where it is draggable): the first move decides. Sideways,
+     the page and an overflowing strip must not scroll, and touch-action alone does not hold that in every browser
+     (iOS Safari lets the strip's own scroll take a finger that starts on a pan-y child), so the move is cancelled
+     here; up or down, it is left to scroll the page. */
+  let tx0 = 0, ty0 = 0, tdecided: boolean | null = null;
+  const onTouchStart = (ev: TouchEvent) => { const t = ev.touches[0]; if (!t) return; tx0 = t.clientX; ty0 = t.clientY; tdecided = null; };
+  const onTouchMove = (ev: TouchEvent) => {
+    if (!pressed || ev.touches.length !== 1) return;
+    const t = ev.touches[0];
+    if (tdecided === null) {
+      const dx = Math.abs(t.clientX - tx0), dy = Math.abs(t.clientY - ty0);
+      if (dx < 2 && dy < 2) return;
+      tdecided = dx > dy;
+    }
+    if (tdecided && ev.cancelable) ev.preventDefault();
+  };
   const onUp = () => finish(true);
   const onCancel = () => finish(false);
   const onClick = (ev: MouseEvent) => { if (swallow) { ev.stopPropagation(); ev.preventDefault(); } };
 
   container.addEventListener('pointerdown', onDown);
+  container.addEventListener('touchstart', onTouchStart, { passive: true });
+  container.addEventListener('touchmove', onTouchMove, { passive: false });
   container.addEventListener('pointermove', onMove);
   container.addEventListener('pointerup', onUp);
   container.addEventListener('pointercancel', onCancel);
@@ -200,6 +218,8 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
       stop?.(); ro?.disconnect();
       removeEventListener('pointermove', panMove, true); removeEventListener('pointerup', panEnd, true); removeEventListener('pointercancel', panEnd, true);
       container.removeEventListener('pointerdown', onDown);
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchmove', onTouchMove);
       container.removeEventListener('pointermove', onMove);
       container.removeEventListener('pointerup', onUp);
       container.removeEventListener('pointercancel', onCancel);
