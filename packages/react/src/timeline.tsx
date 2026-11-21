@@ -36,7 +36,7 @@ const MARK = 24;   /* the marker box; its centre is where the dot sits */
 const POP_ONLY: KeyframeAnimationOptions = { fill: 'backwards' };
 
 export function Timeline({ children, labels, className, style, ...aria }: TimelineProps) {
-  const list = useRef<HTMLOListElement>(null), bead = useRef<HTMLSpanElement>(null);
+  const list = useRef<HTMLOListElement>(null), bead = useRef<HTMLLIElement>(null);
   const last = useRef<number | null>(null);
   /* items that came and went: the ones removed stay, folding away, until their row is gone */
   const kids = Children.toArray(children).filter(isValidElement) as ReactElement<TimelineItemProps>[];
@@ -197,8 +197,10 @@ export function Timeline({ children, labels, className, style, ...aria }: Timeli
   return (
     <LabelsCtx.Provider value={labels}>
       <ol ref={list} className={cx('sg-timeline', className)} style={style} {...aria}>
+        {/* the travelling dot: first, and an <li> (an <ol> holds only items), hidden from assistive technology, so the
+            last step stays :last-child (no line or gap after it) */}
+        <li ref={bead} className="sg-timeline__bead" aria-hidden="true" />
         {shown}
-        <span ref={bead} className="sg-timeline__bead" aria-hidden="true" />
       </ol>
     </LabelsCtx.Provider>
   );

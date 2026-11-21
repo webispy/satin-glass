@@ -68,7 +68,7 @@ await go('display');
   const list = p.getByRole('list', { name: '주문 진행' });
   const demo = p.locator('[data-demo="timeline-steps"]');
   const next = demo.getByRole('button', { name: '다음 단계' }), prev = demo.getByRole('button', { name: '이전 단계' });
-  const state = () => list.evaluate((ol) => [...ol.querySelectorAll(':scope > li')].map((li) => ({ s: li.dataset.status, look: li.dataset.look, cur: li.getAttribute('aria-current'), pass: li.hasAttribute('data-pass'), fill: li.style.getPropertyValue('--_fill') })));
+  const state = () => list.evaluate((ol) => [...ol.querySelectorAll(':scope > li.sg-timeline__item')].map((li) => ({ s: li.dataset.status, look: li.dataset.look, cur: li.getAttribute('aria-current'), pass: li.hasAttribute('data-pass'), fill: li.style.getPropertyValue('--_fill') })));
   const at = async () => (await state()).findIndex((x) => x.cur === 'step');
   await list.scrollIntoViewIfNeeded();
   const i0 = await at();
@@ -87,13 +87,14 @@ await go('display');
   const s = await state();
   const bad = s.filter((x) => x.look !== x.s || x.pass || x.fill);
   ok('timeline: after fast presses every mark matches its status, nothing mid-move', bad.length === 0 && s.filter((x) => x.cur === 'step').length === 1, JSON.stringify(bad).slice(0, 160));
+  ok('timeline: the last item has no line after it, and the list holds only items', await list.evaluate((ol) => { const it = [...ol.children].filter((c) => c.classList.contains('sg-timeline__item')); const last = it.at(-1); return [...ol.children].every((c) => c.tagName === 'LI') && last === ol.lastElementChild && getComputedStyle(last, '::before').content === 'none'; }));
   ok('timeline: the current step is the one between done and upcoming', s.every((x, i) => x.s === (i < (s.findIndex((y) => y.cur === 'step')) ? 'done' : i === s.findIndex((y) => y.cur === 'step') ? 'current' : 'upcoming')));
 }
 /* ================================================================ Timeline: a log that grows and shrinks */
 {
   const list = p.getByRole('list', { name: '문서 활동' });
   const demo = p.locator('[data-demo="timeline-events"]');
-  const rows = () => list.evaluate((ol) => [...ol.querySelectorAll(':scope > li')].map((li) => ({ t: li.querySelector('.sg-timeline__title')?.textContent, phase: li.dataset.phase, h: li.style.height, pb: li.style.paddingBottom })));
+  const rows = () => list.evaluate((ol) => [...ol.querySelectorAll(':scope > li.sg-timeline__item')].map((li) => ({ t: li.querySelector('.sg-timeline__title')?.textContent, phase: li.dataset.phase, h: li.style.height, pb: li.style.paddingBottom })));
   await list.scrollIntoViewIfNeeded();
   const n0 = (await rows()).length;
   await demo.getByRole('button', { name: '다음', exact: true }).first().click(); await wait(1200);
