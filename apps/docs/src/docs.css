@@ -207,4 +207,32 @@ body { background: var(--sg-bg); }
 .material-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-top: 14px; }
 .material-controls__tint { display: inline-flex; align-items: center; gap: 12px; }
 
+/* the model evaluation example */
+.eval__tablebar { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
+.eval__tablebar .sg-tabs { flex: 1 1 320px; }
+.eval__tools { display: inline-flex; align-items: center; gap: 8px; }
+.eval__tools .sg-chip, .eval__tools .sg-button { height: var(--sg-size-control-sm); }
+.eval__vendor { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.eval__swatch { flex: none; width: 9px; height: 9px; border-radius: var(--sg-radius-full); }
+.eval__score { display: inline-flex; align-items: baseline; justify-content: flex-end; gap: 4px; }
+.eval__n { font-size: 11px; font-weight: 560; color: var(--sg-warning-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.eval__ci { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; width: 100%; }
+.eval__picked { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.eval__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 16px; }
+.eval__card-body { display: flex; flex-direction: column; gap: 12px; }
+.eval__card { display: flex; flex-direction: column; }
+.eval__card-body { flex: 1; }
+.eval__card-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }   /* the actions line up along a row of cards */
+.eval__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.eval__facts div { padding: 8px 12px; border-radius: var(--sg-radius-md); background: var(--sg-fill); min-width: 0; }
+.eval__facts dt { font-size: 12px; color: var(--sg-label-secondary); }
+.eval__facts dd { margin: 2px 0 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.eval__facts small { font-size: 11px; font-weight: 450; color: var(--sg-label-secondary); }
+.eval__detail-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.eval__trace { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size: 13px; line-height: 18px; }
+.eval__trace dt { color: var(--sg-label-secondary); }
+.eval__trace dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.eval__scores { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.eval__scores li { display: grid; grid-template-columns: minmax(0, 1fr) auto 5.5em; align-items: center; gap: 10px; font-size: 14px; }
+.eval__scores li > :last-child { justify-content: flex-end; font-weight: 650; }
 .demo-start { align-self: flex-start; }

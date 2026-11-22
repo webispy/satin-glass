@@ -5,7 +5,7 @@ import './docs.css';
 import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass, IconButton, Popover, Toaster, type GrooveStyle, type ThemeMode } from '@satin-glass/react';
 import { DisplaySettingsProvider, DisplaySettingsBar, DisplaySettingsList } from './settings';
 import type { MotionName } from '@satin-glass/tokens';
-import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical, ListChecks, GalleryVerticalEnd, LayoutDashboard, Table2, ChartLine, MessageSquareWarning, X } from 'lucide-react';
+import { Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone, Menu as MenuIcon, SlidersHorizontal, FlaskConical, ListChecks, GalleryVerticalEnd, LayoutDashboard, Gauge, Table2, ChartLine, MessageSquareWarning, X } from 'lucide-react';
 import { Overview, Colors, Typography, Motion, Material } from './pages/foundations';
 import { Buttons, Inputs, Navigation, Lists, Overlays } from './pages/components';
 import { Showcase } from './pages/showcase';
@@ -13,6 +13,7 @@ import { Lab } from './pages/lab';
 import { Selection } from './pages/selection';
 import { Display } from './pages/display';
 import { Dashboard } from './pages/dashboard';
+import { Evaluation } from './pages/evaluation';
 import { TablePage } from './pages/table';
 import { ChartsPage } from './pages/charts';
 import { FeedbackPage } from './pages/feedback';
@@ -35,6 +36,7 @@ const PAGES = [
   { id: 'charts', label: '차트와 지표', icon: ChartLine, el: ChartsPage, group: '데이터' },
   { id: 'showcase', label: '쇼케이스', icon: Smartphone, el: Showcase, group: '예제' },
   { id: 'dashboard', label: '대시보드', icon: LayoutDashboard, el: Dashboard, group: '예제' },
+  { id: 'evaluation', label: '모델 평가', icon: Gauge, el: Evaluation, group: '예제' },
   { id: 'lab', label: '예외 상황 랩', icon: FlaskConical, el: Lab, group: '예제' },
 ];
 
