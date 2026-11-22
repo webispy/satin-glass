@@ -97,6 +97,21 @@
 .sg-option__match { background: none; color: inherit; font-weight: 700; text-decoration: underline; text-decoration-color: var(--sg-accent); text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .sg-combobox__status { padding: 10px 12px; color: var(--sg-label-secondary); font-size: var(--sg-text-footnote-size); line-height: var(--sg-text-footnote-line); }
 .sg-combobox__status[data-hidden] { display: none; }
+/* multiple (0.6): chips before the text; the field grows a line at a time as they wrap */
+/* --_line: one line of chips and text; the field is that plus 7 px above and below (44 px), and the clear and
+   toggle buttons sit centred on the first line */
+.sg-combobox--multi { --_line: 30px; --_pad: 7px; }
+.sg-combobox--multi .sg-field__control { height: auto; min-height: calc(var(--_line) + 2 * var(--_pad)); align-items: flex-start; padding-block: var(--_pad); }
+.sg-combobox--multi .sg-field__clear { margin-block: calc((var(--_line) - 24px) / 2); }
+.sg-combobox--multi .sg-combobox__toggle { margin-block: calc((var(--_line) - 28px) / 2); }
+.sg-combobox__values { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.sg-combobox--multi .sg-field__input { flex: 1 0 64px; height: var(--_line); }
+.sg-combobox__chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; height: 26px; padding: 0 2px 0 9px; border-radius: var(--sg-radius-full); background: var(--sg-accent-soft); color: var(--sg-accent-on-soft); font-size: 14px; line-height: 18px; font-weight: 560; }
+.sg-combobox__count { flex: none; display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: var(--sg-radius-full); background: var(--sg-accent-soft); color: var(--sg-accent-on-soft); font-size: 14px; font-weight: 560; font-variant-numeric: tabular-nums; }
+.sg-combobox__chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-combobox__chip-remove { appearance: none; border: 0; margin: 0; padding: 0; flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: var(--sg-radius-full); background: none; color: inherit; cursor: pointer; }
+.sg-combobox__chip-remove svg { width: 12px; height: 12px; }
+@media (hover: hover) { .sg-combobox__chip-remove:hover { background: color-mix(in oklab, currentColor 14%, transparent); } }
 
 /* ---- Calendar ---- */
 /* a chosen day, month or year is a raised accent bead (depth tokens: a sheen, a lit top edge, an accent shadow) */

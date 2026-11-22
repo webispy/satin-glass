@@ -1,9 +1,9 @@
 /* Data table: one table component from a plain sortable list up to thousands of rows or server paging. */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  BarMeter, Button, Chip, DataTable, EmptyState, Pagination, SearchField, SegmentedControl, Select, Stack, Switch, Tag, Text, type Column, type SortState,
+  BarMeter, Button, Chip, ColumnChooser, DataTable, FilterBar, EmptyState, Pagination, SearchField, SegmentedControl, Select, Stack, Switch, Tag, Text, type Column, type SortState,
 } from '@satin-glass/react';
-import { PackageSearch } from 'lucide-react';
+import { Columns3, PackageSearch } from 'lucide-react';
 import { Demo, Page, Section } from '../shared';
 import { CATEGORIES, ORDERS, PRODUCTS, STATUS, categoryLabel, num, won, wonShort, type Order, type Product } from '../data';
 
@@ -63,26 +63,6 @@ function Selection() {
   );
 }
 
-/* FilterBar — a recipe, not a library component: the controls are the library's own, the app owns the filter state.
-   A named group in reading order (each control keeps its own keys), wrapping when narrow, with the applied count
-   and one "clear" that resets the same criteria the count counts; focus goes back to the first control when the
-   clear button goes away. */
-function FilterBar({ children, count, onClear, labels }: { children: ReactNode; count: number; onClear: () => void; labels: { group: string; clear: string; applied: (n: number) => string } }) {
-  const box = useRef<HTMLDivElement>(null);
-  const clear = () => { onClear(); box.current?.querySelector<HTMLElement>('input, button')?.focus(); };
-  return (
-    <div ref={box} role="group" aria-label={labels.group} className="filterbar">
-      {children}
-      {count > 0 && (
-        <span className="filterbar__applied">
-          <Text variant="footnote" tone="secondary" as="span">{labels.applied(count)}</Text>
-          <Button size="sm" variant="plain" onClick={clear}>{labels.clear}</Button>
-        </span>
-      )}
-    </div>
-  );
-}
-
 function Filters() {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<string>('all');
@@ -91,10 +71,10 @@ function Filters() {
   const count = (q ? 1 : 0) + (cat !== 'all' ? 1 : 0) + (inStock ? 1 : 0) + (cheap ? 1 : 0);
   const rows = PRODUCTS.filter((p) => (!q || p.name.includes(q)) && (cat === 'all' || p.category === cat) && (!inStock || p.stock > 0) && (!cheap || p.price < 30000));
   return (
-    <Section title="필터 줄 (조합 예시)" intro="표나 목록 위의 검색 · 필터 · 적용 개수 · 초기화 줄입니다. 라이브러리 컴포넌트가 아니라 조합 예시예요: 검색란(SearchField), 알약형 셀렉트(Select variant=&quot;filter&quot;), 토글 칩(Chip)을 이름 붙은 그룹으로 묶고, 필터 상태는 앱이 가집니다. 각 컨트롤은 제 키를 그대로 쓰고 Tab은 읽는 순서대로 갑니다. 좁으면 다음 줄로 넘어가고, 초기화는 개수가 센 조건을 모두 되돌린 뒤 첫 컨트롤로 포커스를 옮겨요. 줄 자체는 움직이지 않습니다.">
+    <Section title="필터 줄 (FilterBar)" intro="표나 목록 위의 검색 · 필터 · 적용 개수 · 초기화 줄입니다. 검색란(SearchField), 알약형 셀렉트(Select variant=&quot;filter&quot;), 토글 칩(Chip)처럼 라이브러리 컨트롤을 넣으면 이름 붙은 그룹으로 묶이고, 필터 상태와 적용 개수는 앱이 셉니다. 각 컨트롤은 제 키를 그대로 쓰고 Tab은 읽는 순서대로 갑니다. 좁으면 다음 줄로 넘어가고, 초기화는 개수가 센 조건을 모두 되돌린 뒤 첫 컨트롤로 포커스를 옮겨요. 줄 자체는 움직이지 않습니다.">
       <Demo col data-demo="filterbar">
-        <FilterBar count={count} onClear={() => { setQ(''); setCat('all'); setInStock(false); setCheap(false); }}
-          labels={{ group: '상품 필터', clear: '초기화', applied: (n) => `필터 ${n}개` }}>
+        <FilterBar aria-label="상품 필터" count={count} onClear={() => { setQ(''); setCat('all'); setInStock(false); setCheap(false); }}
+          labels={{ clear: '초기화', applied: (n) => `필터 ${n}개` }}>
           <SearchField aria-label="상품 찾기" placeholder="상품 이름" value={q} onChange={(e) => setQ(e.currentTarget.value)} style={{ width: 200 }} />
           <Select variant="filter" label="분류" value={cat} onChange={setCat} options={[{ value: 'all', label: '전체' }, ...CATEGORIES.map((c) => ({ value: c.key, label: c.label }))]} />
           <Chip selected={inStock} onSelectedChange={setInStock}>재고 있음</Chip>
@@ -109,6 +89,7 @@ function Filters() {
 }
 
 function Groups() {
+  const [hidden, setHidden] = useState<string[]>(['returnRate', 'reviews']);
   const rows = PRODUCTS.filter((p) => !p.paused);
   const total = (k: 'sold' | 'revenue' | 'stock') => rows.reduce((a, p) => a + p[k], 0);
   const avg = (k: 'price' | 'rating' | 'returnRate') => rows.reduce((a, p) => a + p[k], 0) / rows.length;
@@ -130,9 +111,10 @@ function Groups() {
     { key: 'reviews', header: '후기 수', group: '후기', align: 'end', width: 84, sortable: true, firstSort: 'desc', render: (p, { pinned }) => (pinned ? '' : num(p.reviews)) },
   ];
   return (
-    <Section title="열 그룹 · 요약 행 · 고정 열" intro="이어진 열은 그룹 머리글을 함께 씁니다. 머리글 둘째 줄에는 단위나 기간을, 점선 밑줄이 있는 머리글에는 마우스를 올리거나 포커스하면 설명을 띄웁니다. 합계·평균 같은 요약 행은 정렬과 상관없이 위에 고정되고, 가로로 스크롤해도 첫 열이 남습니다.">
+    <Section title="열 그룹 · 요약 행 · 고정 열 · 열 고르기" intro="이어진 열은 그룹 머리글을 함께 씁니다. 머리글 둘째 줄에는 단위나 기간을, 점선 밑줄이 있는 머리글에는 마우스를 올리거나 포커스하면 설명을 띄웁니다. 합계·평균 같은 요약 행은 정렬과 상관없이 위에 고정되고, 가로로 스크롤해도 첫 열이 남습니다. 열이 많으면 열 고르기(ColumnChooser)로 보일 열을 정합니다: 표의 그룹대로 묶인 체크박스이고, 그룹 체크박스는 그룹 전체를 켜고 끕니다. 고정 열은 어느 행인지 알려 주므로 숨길 수 없고, 마지막 남은 열도 숨겨지지 않아요. 정렬 중인 열을 숨기면 정렬이 풀립니다.">
       <Demo col data-demo="table-groups">
-        <DataTable<Product> aria-label="상품 판매와 재고" rows={rows} rowKey={(p) => p.id} columns={cols} pinnedRows={pinned} maxHeight={420} labels={TABLE_LABELS} />
+        <ColumnChooser columns={cols} hidden={hidden} onHiddenChange={setHidden} label="열" icon={<Columns3 />} className="demo-start" labels={{ panel: '보일 열', showAll: '모두 보기' }} />
+        <DataTable<Product> aria-label="상품 판매와 재고" rows={rows} rowKey={(p) => p.id} columns={cols} hiddenColumns={hidden} pinnedRows={pinned} maxHeight={420} labels={TABLE_LABELS} />
       </Demo>
     </Section>
   );

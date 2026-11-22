@@ -2,7 +2,10 @@
    bridge), so selection travels the same way everywhere, and too many tabs scroll sideways like those do (core
    overflow strip: faded ends, the selected tab kept in view). WAI-ARIA tabs: arrow keys move (and select, unless
    activation="manual"), Home/End; each tab controls its panel. Panels slide in from the side you moved toward.
-   A row of filter choices is not tabs: use chips (or a segmented control for two to five options). */
+   A row of filter choices is not tabs: use chips (or a segmented control for two to five options).
+   variant="pill" (0.6): the tabs wrap onto as many lines as they need instead of scrolling — every section stays in
+   sight on a phone (benchmark families, report sections). A drop cannot travel between lines, so the chosen pill
+   wears the raised face itself (the chosen value is raised, 8.1) and the change is a short paint, with the press. */
 import { useDeferredValue, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { animate, fade, prefersReducedMotion, timing } from '@satin-glass/core';
 import { cx, tabStop, useControllable, useIsoLayoutEffect, useStableId } from './utils';
@@ -12,6 +15,8 @@ export type TabItem<T extends string = string> = { value: T; label: ReactNode; i
 export type TabsProps<T extends string = string> = {
   items: TabItem<T>[];
   value?: T; defaultValue?: T; onChange?: (value: T) => void;
+  /** underline (default): one line, scrolls when it overflows; pill: wraps onto more lines */
+  variant?: 'underline' | 'pill';
   /** auto: arrow keys select; manual: arrow keys move focus, Enter/Space select */
   activation?: 'auto' | 'manual';
   'aria-label'?: string;
@@ -20,7 +25,7 @@ export type TabsProps<T extends string = string> = {
   panelClassName?: string;
 };
 
-export function Tabs<T extends string = string>({ items, value, defaultValue, onChange, activation = 'auto', 'aria-label': label, className, style, panelClassName }: TabsProps<T>) {
+export function Tabs<T extends string = string>({ items, value, defaultValue, onChange, variant = 'underline', activation = 'auto', 'aria-label': label, className, style, panelClassName }: TabsProps<T>) {
   const [v, setV] = useControllable<T>(value, defaultValue ?? items.find((i) => !i.disabled)?.value ?? items[0]?.value, onChange);
   const index = Math.max(0, items.findIndex((i) => i.value === v));
   const stop = tabStop(index, items.length, (i) => !!items[i].disabled);
@@ -31,7 +36,8 @@ export function Tabs<T extends string = string>({ items, value, defaultValue, on
   const shown = useDeferredValue(index);
   const prev = useRef(shown);
   const hasPanels = items.some((i) => i.content !== undefined);
-  /* the underline travels as a droplet (not draggable: tabs are pressed, not slid) */
+  /* the underline travels as a droplet (not draggable: tabs are pressed, not slid); pills have no indicator, so no
+     bridge or overflow strip either */
   useBridge(list, ind, index, () => {}, false);
   /* the new panel comes in from the side of travel */
   useIsoLayoutEffect(() => {
@@ -58,9 +64,9 @@ export function Tabs<T extends string = string>({ items, value, defaultValue, on
   };
   const cur = items[shown] ?? items[index];
   return (
-    <div className={cx('sg-tabs', className)} style={style}>
+    <div className={cx('sg-tabs', variant === 'pill' && 'sg-tabs--pill', className)} style={style}>
       <div ref={list} role="tablist" aria-label={label} className="sg-tabs__list" onKeyDown={onKey}>
-        <span ref={ind} className="sg-tabs__indicator" aria-hidden="true" />
+        {variant !== 'pill' && <span ref={ind} className="sg-tabs__indicator" aria-hidden="true" />}
         {items.map((it, i) => (
           <button key={it.value} type="button" role="tab" id={`${id}-t${i}`} data-sg-item aria-selected={i === index}
             aria-controls={hasPanels ? `${id}-p` : undefined} tabIndex={i === stop ? 0 : -1} disabled={it.disabled}

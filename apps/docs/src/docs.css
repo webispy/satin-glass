@@ -190,9 +190,6 @@ body { background: var(--sg-bg); }
 
 
 
-/* the FilterBar recipe (tables page): one wrapping row; the applied count and clear sit at its end */
-.filterbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.filterbar__applied { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: auto; }
 
 /* overlays: the console in the top drawer */
 .console { display: flex; flex-direction: column; gap: 8px; height: 100%; }
@@ -209,3 +206,5 @@ body { background: var(--sg-bg); }
 /* foundations: the material demo's controls, one row under the photo (they wrap on a narrow screen) */
 .material-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-top: 14px; }
 .material-controls__tint { display: inline-flex; align-items: center; gap: 12px; }
+
+.demo-start { align-self: flex-start; }

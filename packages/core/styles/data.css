@@ -42,6 +42,14 @@
 .sg-chart__tip-row { display: flex; align-items: center; gap: 6px; color: var(--sg-label-secondary); }
 .sg-chart__tip-row b { margin-left: auto; padding-left: 12px; color: var(--sg-label); font-weight: 650; font-variant-numeric: tabular-nums; }
 .sg-chart__caption { margin-top: 8px; font-size: 13px; color: var(--sg-label-secondary); }
+.sg-chart__axis-title { fill: var(--sg-label-secondary); font-size: 12px; font-weight: 560; }
+/* scatter (0.6): points ringed in the card colour so they stay apart where they crowd; picked points larger and
+   named, the rest recede; the active point (pointer or keys) gets a ring */
+.sg-scatter__point { stroke: var(--sg-surface); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; transition: opacity var(--sg-duration-fast) ease; }
+[data-picking] > .sg-scatter__point:not([data-picked]) { opacity: 0.35; }
+.sg-scatter__point[data-active] { stroke: var(--sg-label); stroke-width: 2; opacity: 1; }
+.sg-scatter__label { fill: var(--sg-label); font-size: 12px; font-weight: 620; paint-order: stroke; stroke: var(--sg-surface); stroke-width: 3px; stroke-linejoin: round; }
+[data-sg-theme$="-hc"] .sg-scatter__point { stroke: var(--sg-label); }
 .sg-donut { display: flex; flex-wrap: wrap; align-items: center; gap: 20px 28px; }
 .sg-donut__ring { position: relative; flex: none; outline: none; border-radius: 50%; }
 .sg-donut__ring:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
@@ -182,3 +190,15 @@
 .sg-cell-danger { color: var(--sg-danger-text); font-weight: 650; }
 .sg-cell-muted { color: var(--sg-label-tertiary); }
 [data-sg-theme$="-hc"] .sg-table tbody th, [data-sg-theme$="-hc"] .sg-table tbody td { --_hline: var(--sg-separator-strong); }
+
+/* ---- ColumnChooser (0.6): a popover of checkboxes in the table's header groups; scrolls when the list is long ---- */
+.sg-colchooser__count { margin-inline-start: 6px; font-variant-numeric: tabular-nums; color: var(--sg-label-secondary); font-weight: 560; }
+.sg-popover.sg-colchooser { display: flex; flex-direction: column; min-width: 220px; max-height: min(480px, calc(100vh - 24px)); padding: 0; }
+.sg-colchooser > [data-sg-content] { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+.sg-colchooser__section { display: flex; flex-direction: column; gap: 2px; }
+.sg-colchooser__section + .sg-colchooser__section { padding-top: 8px; border-top: 1px solid var(--sg-separator); }
+.sg-colchooser .sg-check { padding: 4px 0; }
+.sg-colchooser .sg-check__text { font-size: 15px; line-height: 20px; }
+.sg-colchooser__group .sg-check__text { font-weight: 620; }
+.sg-colchooser__item--nested { padding-inline-start: 30px !important; }
+.sg-colchooser__foot { display: flex; justify-content: flex-end; padding-top: 4px; }

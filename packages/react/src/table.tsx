@@ -16,6 +16,8 @@ import { cx, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { Tooltip } from './feedback';
 import { Skeleton } from './skeleton';
 import { Checkbox } from './selection';
+import { Button, type ButtonVariant } from './controls';
+import { Popover } from './overlays';
 
 export type SortDir = 'asc' | 'desc';
 export type SortState = { key: string; dir: SortDir } | null;
@@ -39,11 +41,15 @@ export type Column<T> = {
   render?: (row: T, ctx: { index: number; selected: boolean; pinned: boolean }) => ReactNode;
   /** stays in view when the table scrolls sideways (leading columns only) */
   sticky?: boolean;
+  /** can be hidden from a ColumnChooser (default: yes, except sticky columns — they say which row is which) */
+  hideable?: boolean;
 };
 
 export type DataTableProps<T> = {
   rows: T[];
   columns: Column<T>[];
+  /** keys of columns not shown (a ColumnChooser edits this); a hidden sorted column stops sorting */
+  hiddenColumns?: string[];
   rowKey: (row: T) => string;
   'aria-label': string;
   sort?: SortState; defaultSort?: SortState; onSortChange?: (s: SortState) => void;
@@ -70,6 +76,8 @@ export type DataTableProps<T> = {
 const ROW_H = { compact: 36, regular: 44 };
 const SEL_W = 44, DEFAULT_W = 120, OVERSCAN = 8, VIRTUAL_FROM = 80;
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]';
+/* controls inside cells that are still in the tab order */
+const INNER_TABBABLE = ['a[href]', 'button', 'input', 'select', 'textarea', '[tabindex]'].map((s) => `[data-r] ${s}:not([tabindex="-1"])`).join(', ');
 
 function compareValues(a: unknown, b: unknown): number {
   const ea = a === null || a === undefined || a === '' || (typeof a === 'number' && isNaN(a));
@@ -81,7 +89,7 @@ function compareValues(a: unknown, b: unknown): number {
 const isEmpty = (v: unknown) => v === null || v === undefined || v === '' || (typeof v === 'number' && isNaN(v));
 
 export function DataTable<T>({
-  rows, columns, rowKey, 'aria-label': label, sort, defaultSort = null, onSortChange, manualSort, selectable,
+  rows, columns: allColumns, hiddenColumns, rowKey, 'aria-label': label, sort, defaultSort = null, onSortChange, manualSort, selectable,
   selected, defaultSelected = [], onSelectedChange, pinnedRows = [], density = 'regular', maxHeight, loading, empty,
   onRowClick, rowCount, rowState, labels = {}, className, style,
 }: DataTableProps<T>) {
@@ -91,6 +99,10 @@ export function DataTable<T>({
   const box = useRef<HTMLDivElement>(null), head = useRef<HTMLTableSectionElement>(null), pin = useRef<HTMLTableSectionElement>(null);
   const id = useStableId('sg-table');
   const rowH = ROW_H[density];
+  const columns = useMemo(() => (hiddenColumns?.length ? allColumns.filter((c) => !hiddenColumns.includes(c.key)) : allColumns), [allColumns, hiddenColumns]);
+  /* hiding the sorted column ends that sort (rows would stay ordered by something no longer on screen) */
+  const sortHidden = !!sortState && !!hiddenColumns?.includes(sortState.key);
+  useEffect(() => { if (sortHidden) setSort(null); }, [sortHidden]);
 
   /* ---- sorting (stable; empty values last whichever the direction) */
   const sorted = useMemo(() => {
@@ -112,21 +124,21 @@ export function DataTable<T>({
     setSort(null);
   };
 
-  /* ---- selection */
-  const anchor = useRef<number | null>(null);
+  /* ---- selection: the range anchor is a row's key, so sorting or filtering cannot move it to another row */
+  const anchor = useRef<string | null>(null);
   const keys = useMemo(() => sorted.map(rowKey), [sorted, rowKey]);
   const allOn = keys.length > 0 && keys.every((k) => selSet.has(k));
   const someOn = !allOn && keys.some((k) => selSet.has(k));
   const toggleRow = (i: number, range: boolean) => {
-    const k = keys[i];
-    if (range && anchor.current !== null) {
-      const [a, b] = [Math.min(anchor.current, i), Math.max(anchor.current, i)];
-      const on = !selSet.has(k) || selSet.has(keys[anchor.current]);
+    const k = keys[i], at = anchor.current === null ? -1 : keys.indexOf(anchor.current);
+    if (range && at >= 0) {
+      const [a, b] = [Math.min(at, i), Math.max(at, i)];
+      const on = !selSet.has(k) || selSet.has(anchor.current!);
       const next = new Set(sel);
       for (let j = a; j <= b; j++) on ? next.add(keys[j]) : next.delete(keys[j]);
       setSel([...next]);
     } else setSel(selSet.has(k) ? sel.filter((x) => x !== k) : [...sel, k]);
-    anchor.current = i;
+    anchor.current = k;
   };
   const toggleAll = () => setSel(allOn ? sel.filter((k) => !keys.includes(k)) : [...new Set([...sel, ...keys])]);
 
@@ -163,7 +175,9 @@ export function DataTable<T>({
 
   /* ---- keyboard grid: rows −1 (header) · pinned · data; one tab stop */
   const P = pinnedRows.length, N = sorted.length;
-  const [cell, setCell] = useState<{ r: number; c: number }>({ r: -1, c: 0 });
+  const [cellState, setCell] = useState<{ r: number; c: number }>({ r: -1, c: 0 });
+  /* the tab stop stays on the grid when rows are filtered away or columns hidden under it */
+  const cell = { r: Math.max(-1, Math.min(P + N - 1, cellState.r)), c: Math.max(0, Math.min(C - 1, cellState.c)) };
   const want = useRef<{ r: number; c: number } | null>(null);
   const cellEl = (r: number, c: number) => box.current?.querySelector<HTMLElement>(`[data-r="${r}"][data-c="${c}"]`) ?? null;
   const target = (el: HTMLElement) => { const inner = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE)); return inner.length === 1 ? inner[0] : el; };
@@ -212,17 +226,16 @@ export function DataTable<T>({
     ro.observe(h);
     return () => ro.disconnect();
   }, [groups]);
-  /* roving tab stop: only the current cell (or its single control) is tabbable */
+  /* roving tab stop: only the current cell (or its single control) is tabbable. Two native queries per render —
+     controls not yet taken out of the tab order, and the previous stop — instead of walking every cell (a 60 × 20
+     comparison renders 1,200) */
   useIsoLayoutEffect(() => {
     const b = box.current;
     if (!b) return;
-    b.querySelectorAll<HTMLElement>('[data-r]').forEach((el) => {
-      const on = +el.dataset.r! === cell.r && +el.dataset.c! === cell.c;
-      const inner = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE));
-      inner.forEach((x) => { x.tabIndex = -1; });
-      el.tabIndex = -1;
-      if (on) (inner.length === 1 ? inner[0] : el).tabIndex = 0;
-    });
+    b.querySelectorAll<HTMLElement>(INNER_TABBABLE).forEach((x) => { x.tabIndex = -1; });
+    b.querySelectorAll<HTMLElement>('[data-r][tabindex="0"]').forEach((x) => { x.tabIndex = -1; });
+    const el = cellEl(cell.r, cell.c);
+    if (el) target(el).tabIndex = 0;
   });
   const pageRows = Math.max(1, Math.floor(((box.current?.clientHeight ?? 400) - (head.current?.offsetHeight ?? 0)) / rowH) - 1);
   const onKey = (e: KeyboardEvent<HTMLTableElement>) => {
@@ -400,5 +413,77 @@ export function DataTable<T>({
       </table>
       <span className="sg-visually-hidden" aria-live="polite">{sortState ? `${((h) => (typeof h === 'string' || typeof h === 'number' ? String(h) : sortState.key))(columns.find((c) => c.key === sortState.key)?.header)} ${sortState.dir === 'asc' ? labels.sortedAsc ?? 'sorted ascending' : labels.sortedDesc ?? 'sorted descending'}` : ''}</span>
     </div>
+  );
+}
+
+/* ================================================================================================ ColumnChooser (0.6)
+   Which columns a DataTable shows: a button that opens a popover of checkboxes, grouped like the table's header
+   (a group's own checkbox shows or hides it whole, indeterminate when partly shown). Columns that are not hideable
+   — sticky ones by default, they say which row is which — are listed checked and locked, and the last shown
+   column cannot be hidden. The page owns the hidden keys and gives the same list to the table. */
+export type ColumnChooserProps<T> = {
+  columns: Column<T>[];
+  hidden: string[];
+  onHiddenChange: (keys: string[]) => void;
+  /** the button's text (default "Columns") */
+  label?: ReactNode;
+  variant?: ButtonVariant;
+  size?: 'sm' | 'md';
+  icon?: ReactNode;
+  labels?: { panel?: string; showAll?: string; count?: (shown: number, total: number) => string };
+  className?: string;
+};
+
+export function ColumnChooser<T>({ columns, hidden, onHiddenChange, label = 'Columns', variant = 'neutral', size = 'sm', icon, labels = {}, className }: ColumnChooserProps<T>) {
+  const [open, setOpen] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
+  const can = (c: Column<T>) => c.hideable ?? !c.sticky;
+  const off = new Set(hidden.filter((k) => columns.some((c) => c.key === k && can(c))));
+  const shown = columns.length - off.size;
+  const set = (keys: string[], show: boolean) => {
+    const next = new Set(off);
+    for (const k of keys) show ? next.delete(k) : next.add(k);
+    /* never hide everything: keep the first of these on if nothing else would show */
+    if (next.size >= columns.length) next.delete(keys[0]);
+    onHiddenChange(columns.filter((c) => next.has(c.key)).map((c) => c.key));
+  };
+  /* sections in column order: a run of one group is one section; ungrouped columns sit in unnamed ones */
+  const sections: { group?: string; cols: Column<T>[] }[] = [];
+  for (const c of columns) {
+    const last = sections[sections.length - 1];
+    if (last && last.group === c.group) last.cols.push(c); else sections.push({ group: c.group, cols: [c] });
+  }
+  const text = (h: ReactNode, key: string) => (typeof h === 'string' || typeof h === 'number' ? h : key);
+  const count = labels.count?.(shown, columns.length) ?? `${shown}/${columns.length}`;
+  return (
+    <>
+      <Button ref={btn} type="button" variant={variant} size={size} startIcon={icon} className={cx('sg-colchooser__button', className)}
+        aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        {label}{off.size > 0 && <span className="sg-colchooser__count">{count}</span>}
+      </Button>
+      <Popover open={open} onClose={() => setOpen(false)} anchor={btn.current} placement="bottom-end" aria-label={labels.panel ?? (typeof label === 'string' ? label : 'Columns')} className="sg-colchooser">
+        {sections.map((sec, i) => {
+          const keys = sec.cols.filter(can).map((c) => c.key);
+          const on = keys.filter((k) => !off.has(k)).length;
+          return (
+            <div key={i} className="sg-colchooser__section" role="group" aria-label={sec.group}>
+              {sec.group && (
+                <Checkbox className="sg-colchooser__group" label={sec.group} checked={keys.length > 0 && on === keys.length} indeterminate={on > 0 && on < keys.length}
+                  disabled={!keys.length} onChange={(v) => set(keys, v)} />
+              )}
+              {sec.cols.map((c) => (
+                <Checkbox key={c.key} className={cx('sg-colchooser__item', !!sec.group && 'sg-colchooser__item--nested')} label={text(c.header, c.key)}
+                  checked={!off.has(c.key)} disabled={!can(c) || (!off.has(c.key) && shown === 1)} onChange={(v) => set([c.key], v)} />
+              ))}
+            </div>
+          );
+        })}
+        {off.size > 0 && (
+          <div className="sg-colchooser__foot">
+            <Button size="sm" variant="plain" onClick={() => onHiddenChange([])}>{labels.showAll ?? 'Show all'}</Button>
+          </div>
+        )}
+      </Popover>
+    </>
   );
 }

@@ -204,20 +204,22 @@ await go('table');
 
   /* keyboard grid (groups, pinned rows, sticky column) */
   const gg = p.getByRole('grid', { name: '상품 판매와 재고', exact: true });
-  await demo('table-groups').evaluate((e) => { e.tabIndex = -1; e.focus(); });
+  await demo('table-groups').getByRole('button', { name: /^열/ }).focus();   /* the column chooser comes just before the grid */
   await p.keyboard.press(TAB);
   const a0 = await active();
   ok('table: one Tab stop leads into the grid', a0.grid === '상품 판매와 재고' && a0.r !== null, JSON.stringify(a0));
   await p.keyboard.press('ArrowDown'); const a1 = await active();
   await p.keyboard.press('ArrowRight'); const a2 = await active();
   ok('table: arrows move between cells', a1.r === a0.r + 1 && a1.c === a0.c && a2.c === a1.c + 1, `${JSON.stringify(a0)} → ${JSON.stringify(a1)} → ${JSON.stringify(a2)}`);
+  /* the last column comes from the grid: the demo starts with some columns hidden by its column chooser */
+  const lastC = await gg.evaluate((e) => Math.max(...[...e.querySelectorAll('[data-c]')].map((c) => +c.dataset.c)));
   await p.keyboard.press('End'); const a3 = await active();
   await p.keyboard.press('Home'); const a4 = await active();
-  ok('table: End / Home go to the row\'s last / first cell', a3.c === 9 && a4.c === 0, `${a3.c} / ${a4.c}`);
+  ok('table: End / Home go to the row\'s last / first cell', a3.c === lastC && a4.c === 0, `${a3.c} / ${a4.c} (last ${lastC})`);
   await p.keyboard.press('Control+End'); await p.waitForTimeout(100); const a5 = await active();
   const lastR = await gg.evaluate((e) => Math.max(...[...e.querySelectorAll('[data-r]')].map((c) => +c.dataset.r)));
   const gLastRow = await p.evaluate(() => document.activeElement.closest('tr')?.getAttribute('aria-rowindex'));
-  ok('table: Ctrl+End jumps to the last cell', a5.r === lastR && a5.c === 9 && gLastRow === (await gg.getAttribute('aria-rowcount')), `${JSON.stringify(a5)}, row ${gLastRow}`);
+  ok('table: Ctrl+End jumps to the last cell', a5.r === lastR && a5.c === lastC && gLastRow === (await gg.getAttribute('aria-rowcount')), `${JSON.stringify(a5)}, row ${gLastRow}`);
   ok('table: still exactly one tab stop', (await demo('table-groups').locator('[tabindex="0"]').count()) === 1);
   const gbox = demo('table-groups').locator('.sg-table');
   await gbox.evaluate((e) => { e.scrollTop = 200; e.scrollLeft = 400; }); await p.waitForTimeout(200);

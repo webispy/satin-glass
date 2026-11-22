@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { useState } from 'react';
-import { Checkbox, RadioGroup, Radio, ChoiceList, Select, Calendar, DatePicker } from '../src';
+import { Checkbox, RadioGroup, Radio, ChoiceList, Select, Calendar, DatePicker, Combobox, ColumnChooser, type Column } from '../src';
 
 describe('Checkbox', () => {
   it('is a real checkbox with a label; toggles and reports', () => {
@@ -168,5 +168,65 @@ describe('DatePicker', () => {
     const [, m, dd] = iso.split('-').map(Number);
     expect(trigger.textContent).toContain(`${m}/${dd}`);
     expect((container.querySelector('input[name=visit]') as HTMLInputElement).value).toBe(iso);
+  });
+});
+
+describe('Combobox multiple', () => {
+  const opts = [{ value: 'a', label: 'Aurora' }, { value: 'b', label: 'Borealis' }, { value: 'c', label: 'Cirrus' }];
+  function M() { const [v, setV] = useState<string[]>(['a']); return <><Combobox multiple label="공급사" options={opts} value={v} onChange={setV} name="vendor" /><output>{v.join(',')}</output></>; }
+  it('chips, toggling keeps the list open and clears the search, Backspace removes the last, a multi-select listbox', () => {
+    const { container } = render(<M />);
+    const input = screen.getByRole('combobox', { name: '공급사' });
+    expect(container.querySelector('.sg-combobox__chip')!.textContent).toBe('Aurora');
+    fireEvent.change(input, { target: { value: 'cir' } });
+    expect(screen.getByRole('listbox').getAttribute('aria-multiselectable')).toBe('true');
+    expect(screen.getAllByRole('option')).toHaveLength(1);
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(document.querySelector('output')!.textContent).toBe('a,c');
+    expect((input as HTMLInputElement).value).toBe('');
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+    expect(screen.getByRole('option', { name: /Cirrus/ }).getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(screen.getByRole('option', { name: /Aurora/ }));
+    expect(document.querySelector('output')!.textContent).toBe('c');
+    expect(screen.getByRole('listbox')).toBeTruthy();
+    fireEvent.keyDown(input, { key: 'Backspace' });
+    expect(document.querySelector('output')!.textContent).toBe('');
+    expect(container.querySelectorAll('input[name=vendor]')).toHaveLength(0);
+  });
+});
+
+describe('Combobox maxChips', () => {
+  it('more chosen than maxChips: a count stands in for the chips; the description still names them all', () => {
+    const { container } = render(<Combobox multiple aria-label="공급사" maxChips={1} labels={{ count: (n) => `공급사 ${n}곳` }} defaultValue={['a', 'b', 'c']}
+      options={[{ value: 'a', label: 'Aurora' }, { value: 'b', label: 'Borealis' }, { value: 'c', label: 'Cirrus' }]} />);
+    expect(container.querySelectorAll('.sg-combobox__chip')).toHaveLength(0);
+    expect(container.querySelector('.sg-combobox__count')!.textContent).toBe('공급사 3곳');
+    const desc = screen.getByRole('combobox').getAttribute('aria-describedby')!;
+    expect(document.getElementById(desc)!.textContent).toBe('Aurora, Borealis, Cirrus');
+  });
+});
+
+describe('ColumnChooser', () => {
+  type R = { id: string };
+  const cols: Column<R>[] = [
+    { key: 'name', header: '모델', sticky: true },
+    { key: 'mmlu', header: 'MMLU', group: '지식' }, { key: 'gpqa', header: 'GPQA', group: '지식' },
+    { key: 'cost', header: '비용' },
+  ];
+  function C() { const [h, setH] = useState<string[]>([]); return <><ColumnChooser columns={cols} hidden={h} onHiddenChange={setH} label="열" /><output>{h.join(',')}</output></>; }
+  it('groups toggle whole, sticky columns are locked, the last shown cannot be hidden, show all', async () => {
+    render(<C />);
+    fireEvent.click(screen.getByRole('button', { name: '열' }));
+    const box = (n: string) => screen.getByRole('checkbox', { name: n }) as HTMLInputElement;
+    await waitFor(() => expect(box('모델')).toBeTruthy());
+    expect(box('모델').disabled).toBe(true);
+    fireEvent.click(box('지식'));
+    expect(document.querySelector('output')!.textContent).toBe('mmlu,gpqa');
+    fireEvent.click(box('MMLU'));
+    expect(box('지식').indeterminate).toBe(true);
+    fireEvent.click(box('비용'));
+    expect(document.querySelector('output')!.textContent).toBe('gpqa,cost');
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
+    expect(document.querySelector('output')!.textContent).toBe('');
   });
 });

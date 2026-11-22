@@ -5,20 +5,22 @@
    chosen; leaving the field (Tab, a click elsewhere) does the same, and leaving it empty clears the value. Keys are
    left alone while an IME is composing (Korean, Japanese…). Loading and "no results" are said in a status line
    outside the list. The panel is Select's: it blooms from the field and rows look and press the same; filtering
-   changes the rows in place. */
+   changes the rows in place.
+   multiple (0.6): several values, shown as small removable chips in the field before the text. Choosing toggles an
+   option and keeps the list open (the text clears so the whole list comes back); Backspace in an empty field
+   removes the last chip; the listbox is multi-selectable and the chips are named in the field's description. */
 import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import type { Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useStableId } from './utils';
 import { Portal, glassClass, useGlassLight } from './foundation';
 import { useAnchored } from './overlay-hooks';
-import { CheckIcon, ChevronDownIcon, ClearIcon } from './icons';
+import { CheckIcon, ChevronDownIcon, ClearIcon, CloseIcon } from './icons';
 import type { SelectGroup, SelectOption } from './select';
 
 export type ComboboxInputReason = 'input' | 'select' | 'clear' | 'restore';
-export type ComboboxProps<T extends string = string> = {
+type ComboboxCommon<T extends string> = {
   /** options and named groups, as Select; a rich (non-string) label needs textValue to be typed and matched */
   options: (SelectOption<T> | SelectGroup<T>)[];
-  value?: T | null; defaultValue?: T | null; onChange?: (value: T | null) => void;
   /** the text in the field (control it to search a server) */
   inputValue?: string; defaultInputValue?: string;
   onInputChange?: (text: string, reason: ComboboxInputReason) => void;
@@ -35,9 +37,16 @@ export type ComboboxProps<T extends string = string> = {
   /** submits the value with forms */
   name?: string;
   placement?: Placement;
-  labels?: { empty?: string; loading?: string; clear?: string; toggle?: string };
+  labels?: { empty?: string; loading?: string; clear?: string; toggle?: string; remove?: (text: string) => string; chosen?: (texts: string[]) => string; count?: (n: number) => string };
   id?: string; className?: string; style?: CSSProperties; 'aria-label'?: string;
 };
+export type ComboboxProps<T extends string = string> = ComboboxCommon<T> & (
+  | { multiple?: false; value?: T | null; defaultValue?: T | null; onChange?: (value: T | null) => void }
+  | { multiple: true; value?: T[]; defaultValue?: T[]; onChange?: (values: T[]) => void;
+      /** when more than this many are chosen, a count ("3 selected") stands in for the chips, so the field keeps one
+          line (a filter bar); a partial row of chips would hide most of the choice anyway */
+      maxChips?: number }
+);
 
 const isGroup = <T extends string>(x: SelectOption<T> | SelectGroup<T>): x is SelectGroup<T> => 'options' in x;
 const textOf = <T extends string>(o: SelectOption<T>) => o.textValue ?? (typeof o.label === 'string' ? o.label : String(o.value));
@@ -51,18 +60,26 @@ function Marked({ text, q }: { text: string; q: string }) {
   return <>{text.slice(0, i)}<mark className="sg-option__match">{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}</>;
 }
 
+const Values = ({ multi, children }: { multi: boolean; children: ReactNode }) => (multi ? <span className="sg-combobox__values">{children}</span> : <>{children}</>);
+
 export const Combobox = forwardRef(function Combobox<T extends string = string>(
-  { options, value, defaultValue = null, onChange, inputValue, defaultInputValue, onInputChange, filter, getOptionText, loading, clearable = true,
-    label, placeholder, helperText, error, disabled, name, placement = 'bottom-start', labels, id, className, style, 'aria-label': ariaLabel }: ComboboxProps<T>,
+  { options, multiple, value, defaultValue, onChange, inputValue, defaultInputValue, onInputChange, filter, getOptionText, loading, clearable = true,
+    label, placeholder, helperText, error, disabled, name, placement = 'bottom-start', labels, id, className, style, 'aria-label': ariaLabel, ...rest }: ComboboxProps<T>,
   ref: React.Ref<HTMLInputElement>,
 ) {
-  const [v, setV] = useControllable<T | null>(value, defaultValue, onChange as (v: T | null) => void);
+  const multi = multiple === true;
+  const maxChips = (rest as { maxChips?: number }).maxChips ?? Infinity;
+  const [raw, setRaw] = useControllable<T | null | T[]>(value, defaultValue ?? (multi ? [] : null), onChange as (v: T | null | T[]) => void);
+  /* one value (single) or none; the chosen list (multiple) */
+  const v = multi ? null : (raw as T | null);
+  const list: T[] = multi ? ((raw as T[] | null) ?? []) : [];
+  const setV = (x: T | null) => setRaw(x);
   /* the text of every value seen, so a chosen one keeps its name when a search no longer returns it */
   const known = useRef(new Map<string, string>());
   for (const x of options) for (const o of isGroup(x) ? x.options : [x]) known.current.set(o.value, textOf(o));
   const textFor = (val: T | null) => (val == null ? '' : known.current.get(val) ?? getOptionText?.(val) ?? String(val));
 
-  const [ownText, setOwnText] = useState(() => defaultInputValue ?? textFor(v));
+  const [ownText, setOwnText] = useState(() => defaultInputValue ?? (multi ? '' : textFor(v)));
   const text = inputValue ?? ownText;
   const setText = (t: string, reason: ComboboxInputReason) => { if (inputValue === undefined) setOwnText(t); onInputChange?.(t, reason); };
   /* editing: the text was typed since the last choice; only then does it narrow the list */
@@ -71,15 +88,20 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
   const [active, setActive] = useState(-1);
   /* a value set from outside shows its text (unless someone is typing) */
   const lastV = useRef(v);
-  useEffect(() => { if (lastV.current !== v) { lastV.current = v; if (!editing) setText(textFor(v), 'restore'); } });
+  useEffect(() => { if (!multi && lastV.current !== v) { lastV.current = v; if (!editing) setText(textFor(v), 'restore'); } });
 
-  const q = editing ? text.trim() : '';
+  /* multiple: the text is only a search, so it always narrows */
+  const q = editing || multi ? text.trim() : '';
   const matches = (o: SelectOption<T>) => !q || filter === 'none' || (filter ? filter(o, q) : contains(o, q));
   const shown = useMemo(() => options.map((x) => (isGroup(x) ? { ...x, options: x.options.filter(matches) } : x))
     .filter((x) => (isGroup(x) ? x.options.length > 0 : matches(x))), [options, q, filter]);
   const flat = useMemo(() => shown.flatMap((x) => (isGroup(x) ? x.options : [x])), [shown]);
   const enabled = useMemo(() => flat.map((o, i) => (o.disabled ? -1 : i)).filter((i) => i >= 0), [flat]);
-  const selectedIndex = flat.findIndex((o) => o.value === v);
+  const selectedIndex = multi ? -1 : flat.findIndex((o) => o.value === v);
+  const isOn = (val: T) => (multi ? list.includes(val) : val === v);
+  /* multiple: after a choice clears the text the list grows back; keep the chosen option active */
+  const keep = useRef<T | null>(null);
+  useEffect(() => { if (keep.current !== null) { const i = flat.findIndex((o) => o.value === keep.current); keep.current = null; if (i >= 0) setActive(i); } }, [flat]);
 
   const input = useRef<HTMLInputElement>(null), control = useRef<HTMLDivElement>(null);
   const auto = useStableId('sg-combo');
@@ -89,18 +111,27 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
   /* the text typed: the first match becomes active */
   useEffect(() => { if (open && editing) setActive(enabled[0] ?? -1); }, [q, open, editing, flat.length]);
 
-  const restore = () => { setText(textFor(v), 'restore'); setEditing(false); setOpen(false); };
+  const restore = () => { setText(multi ? '' : textFor(v), 'restore'); setEditing(false); setOpen(false); };
   const { panel, mounted } = useAnchored(open, control.current, placement, (r) => { if (r === 'escape') restore(); else if (open) leave(); }, null, { matchWidth: true });
 
   const choose = (i: number) => {
     const o = flat[i];
     if (!o || o.disabled) return;
+    if (multi) {
+      setRaw(list.includes(o.value) ? list.filter((x) => x !== o.value) : [...list, o.value]);
+      if (text) { setText('', 'select'); keep.current = o.value; }
+      setEditing(false); setActive(i);
+      input.current?.focus({ preventScroll: true });
+      return;
+    }
     setV(o.value); setText(textOf(o), 'select'); setEditing(false); setOpen(false);
     input.current?.focus({ preventScroll: true });
   };
-  const clear = () => { setV(null); setText('', 'clear'); setEditing(false); setOpen(false); input.current?.focus({ preventScroll: true }); };
+  const remove = (val: T) => { setRaw(list.filter((x) => x !== val)); input.current?.focus({ preventScroll: true }); };
+  const clear = () => { setRaw(multi ? [] : null); setText('', 'clear'); setEditing(false); setOpen(false); input.current?.focus({ preventScroll: true }); };
   /* leaving the field: an emptied field clears the value, any other unfinished text goes back to the value's */
   const leave = () => {
+    if (multi) { if (text) setText('', 'restore'); setEditing(false); setOpen(false); return; }
     if (editing && !text.trim() && v != null) { setV(null); setText('', 'clear'); setEditing(false); setOpen(false); return; }
     if (editing || text !== textFor(v)) restore(); else setOpen(false);
   };
@@ -124,6 +155,7 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
     } else if (open && (k === 'PageDown' || k === 'PageUp')) { e.preventDefault(); setActive((a) => move(a, k === 'PageDown' ? 1 : -1, 10)); }
     else if (k === 'Enter' && open) { e.preventDefault(); if (active >= 0) choose(active); }
     else if (k === 'Escape' && !open && editing) { e.preventDefault(); restore(); }
+    else if (k === 'Backspace' && multi && !text && list.length) { e.preventDefault(); remove(list[list.length - 1]); }
   };
 
   /* keep the active option in view (the list scrolls, never the panel: see Select) */
@@ -145,7 +177,7 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
   const renderOption = (o: SelectOption<T>) => {
     const i = ++n;
     return (
-      <div key={o.value} id={optId(i)} role="option" aria-selected={o.value === v} aria-disabled={o.disabled || undefined}
+      <div key={o.value} id={optId(i)} role="option" aria-selected={isOn(o.value)} aria-disabled={o.disabled || undefined}
         data-active={i === active ? '' : undefined} className="sg-option"
         onPointerMove={() => { if (!o.disabled && active !== i) setActive(i); }}
         onMouseDown={(e) => e.preventDefault() /* focus stays in the input */}
@@ -162,19 +194,35 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
 
   return (
     <>
-      <div className={cx('sg-field sg-combobox', className)} style={style} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
+      <div className={cx('sg-field sg-combobox', multi && 'sg-combobox--multi', className)} style={style} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
         {label && <label id={labelId} className="sg-field__label" htmlFor={fid}>{label}</label>}
         <div ref={control} className="sg-field__control">
+          {/* multiple: the chips and the text wrap together; clear and toggle stay on the first line's end */}
+          <Values multi={multi}>
+          {multi && list.length <= maxChips && list.map((val) => {
+            const t = textFor(val);
+            return (
+              <span key={val} className="sg-combobox__chip">
+                <span className="sg-combobox__chip-text">{t}</span>
+                {!disabled && (
+                  <button type="button" tabIndex={-1} className="sg-combobox__chip-remove" aria-label={labels?.remove?.(t) ?? `Remove ${t}`}
+                    onMouseDown={(e) => e.preventDefault()} onClick={() => remove(val)}><CloseIcon /></button>
+                )}
+              </span>
+            );
+          })}
+          {multi && list.length > maxChips && <span className="sg-combobox__count" aria-hidden="true">{labels?.count?.(list.length) ?? `${list.length} selected`}</span>}
           <input ref={mergeRefs(ref, input)} id={fid} className="sg-field__input" type="text" role="combobox" autoComplete="off" spellCheck={false}
             aria-autocomplete="list" aria-expanded={open} aria-controls={open ? listId : undefined}
             aria-activedescendant={open && active >= 0 ? optId(active) : undefined}
-            aria-label={labelId ? undefined : ariaLabel} aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined}
-            disabled={disabled} placeholder={placeholder} value={text}
+            aria-label={labelId ? undefined : ariaLabel} aria-invalid={invalid || undefined} aria-describedby={cx(!!help && `${fid}-help`, multi && list.length > 0 && `${fid}-chosen`) || undefined}
+            disabled={disabled} placeholder={multi && list.length ? undefined : placeholder} value={text}
             onChange={(e) => { setText(e.currentTarget.value, 'input'); setEditing(true); setOpen(true); }}
             onClick={() => { if (!open) openAt(selectedIndex >= 0 ? selectedIndex : enabled[0] ?? -1); }}
             onKeyDown={onKey}
             onBlur={() => leave()} />
-          {clearable && !disabled && (v != null || text) && (
+          </Values>
+          {clearable && !disabled && (v != null || list.length > 0 || text) && (
             <button type="button" className="sg-field__clear" tabIndex={-1} aria-label={labels?.clear ?? 'Clear'} onMouseDown={(e) => e.preventDefault()} onClick={clear}><ClearIcon /></button>
           )}
           <button type="button" className="sg-combobox__toggle" tabIndex={-1} disabled={disabled} aria-label={labels?.toggle ?? 'Show suggestions'} aria-expanded={open} aria-controls={open ? listId : undefined}
@@ -184,13 +232,14 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
           </button>
         </div>
         {help && <span id={`${fid}-help`} className="sg-field__help">{help}</span>}
+        {multi && list.length > 0 && <span id={`${fid}-chosen`} hidden>{labels?.chosen?.(list.map(textFor)) ?? list.map(textFor).join(', ')}</span>}
       </div>
-      {name && <input type="hidden" name={name} value={v ?? ''} disabled={disabled} />}
+      {name && (multi ? list.map((x) => <input key={x} type="hidden" name={name} value={x} disabled={disabled} />) : <input type="hidden" name={name} value={v ?? ''} disabled={disabled} />)}
       {mounted && (
         <Portal className="sg-portal--passthrough sg-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} className={cx('sg-listbox sg-combobox__panel', glassClass('strong'))}>
             <div data-sg-content>
-              <div id={listId} role="listbox" aria-labelledby={labelId} aria-label={labelId ? undefined : ariaLabel}>
+              <div id={listId} role="listbox" aria-multiselectable={multi || undefined} aria-labelledby={labelId} aria-label={labelId ? undefined : ariaLabel}>
                 {shown.map((x, gi) => (isGroup(x) ? (
                   <div key={`g${gi}`} role="group" aria-labelledby={`${fid}-g${gi}`}>
                     <div id={`${fid}-g${gi}`} className="sg-listbox__group" role="presentation">{x.label}</div>

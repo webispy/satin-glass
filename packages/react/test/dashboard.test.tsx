@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import {
-  Tabs, Tooltip, Banner, EmptyState, Pagination, pageWindow, Stat, Tag, Accordion, Card, CardHeader, CardBody, DataTable, niceTicks,
+  Tabs, Tooltip, Banner, ScatterChart, EmptyState, Pagination, pageWindow, Stat, Tag, Accordion, Card, CardHeader, CardBody, DataTable, niceTicks,
   LineChart, BarChart, DonutChart, BarMeter, IntervalPlot, type Column,
 } from '../src';
 
@@ -153,6 +153,55 @@ describe('charts', () => {
   });
 });
 
+describe('ScatterChart', () => {
+  const data = [
+    { name: 'Kestrel', cost: 12, score: 71, vendor: 'n' }, { name: 'Wren', cost: 0.4, score: 58, vendor: 'h' },
+    { name: 'Osprey', cost: 3, score: 66, vendor: 'n' }, { name: 'Gap', cost: null, score: 50, vendor: 'h' },
+  ];
+  const groups = [{ key: 'n', label: '노스' }, { key: 'h', label: '하버' }];
+  it('a labelled figure; the data table lists every point; keys walk left to right; log ticks; highlight; legend', () => {
+    /* a ResizeObserver that reports a width, so the plot draws */
+    const RO0 = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class { cb: ResizeObserverCallback; constructor(cb: ResizeObserverCallback) { this.cb = cb; } observe() { this.cb([{ contentRect: { width: 480 } } as ResizeObserverEntry], this as unknown as ResizeObserver); } unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
+    const { container } = render(<ScatterChart aria-label="비용 대비 점수" data={data} x="cost" y="score" pointLabel="name" group="vendor" groups={groups}
+      xScale="log" xLabel="비용" yLabel="점수" highlight={['Osprey']} />);
+    expect(screen.getByRole('figure', { name: '비용 대비 점수' })).toBeTruthy();
+    const rows = [...container.querySelectorAll('table tbody tr')].map((tr) => tr.textContent);
+    expect(rows).toHaveLength(4);
+    expect(rows[3]).toContain('—');
+    expect(container.querySelectorAll('.sg-scatter__point')).toHaveLength(3);
+    expect(container.querySelector('.sg-scatter__label')!.textContent).toBe('Osprey');
+    const ticks = [...container.querySelectorAll('.sg-chart__tick')].map((t) => t.textContent);
+    expect(ticks).toEqual(expect.arrayContaining(['1', '10']));
+    const plot = container.querySelector<HTMLElement>('.sg-chart__plot')!;
+    fireEvent.keyDown(plot, { key: 'ArrowRight' });
+    expect(container.querySelector('[aria-live]')!.textContent).toMatch(/^Wren/);
+    fireEvent.keyDown(plot, { key: 'End' });
+    expect(container.querySelector('[aria-live]')!.textContent).toMatch(/^Kestrel/);
+    fireEvent.click(screen.getByRole('button', { name: '하버' }));
+    expect(container.querySelectorAll('.sg-scatter__point')).toHaveLength(2);
+    globalThis.ResizeObserver = RO0;
+  });
+  it('switching between linear and log and back keeps drawing (the old range is in the other scale\'s units)', () => {
+    const RO0 = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class { cb: ResizeObserverCallback; constructor(cb: ResizeObserverCallback) { this.cb = cb; } observe() { this.cb([{ contentRect: { width: 480 } } as ResizeObserverEntry], this as unknown as ResizeObserver); } unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
+    const wide = [{ name: 'a', price: 9000, sold: 40 }, { name: 'b', price: 120000, sold: 12 }, { name: 'c', price: 31000, sold: 25 }];
+    const chart = (s: 'linear' | 'log') => <ScatterChart aria-label="가격 대비 판매량" data={wide} x="price" y="sold" pointLabel="name" xScale={s} />;
+    const { container, rerender } = render(chart('log'));
+    /* let the move to linear finish (the springs run on animation frames), so the next move starts from a linear range */
+    vi.useFakeTimers();
+    rerender(chart('linear'));
+    act(() => { vi.advanceTimersByTime(3000); });
+    rerender(chart('log'));
+    act(() => { vi.advanceTimersByTime(3000); });
+    vi.useRealTimers();
+    expect(container.querySelectorAll('.sg-scatter__point')).toHaveLength(3);
+    const ticks = [...container.querySelectorAll('.sg-chart__tick')].map((t) => t.textContent);
+    expect(ticks).toEqual(expect.arrayContaining(['1만', '10만']));
+    globalThis.ResizeObserver = RO0;
+  });
+});
+
 describe('DataTable', () => {
   type R = { id: string; name: string; score: number | null; cost: number };
   const rows: R[] = [{ id: '1', name: 'Beta', score: 80, cost: 2 }, { id: '2', name: 'alpha', score: null, cost: 1 }, { id: '3', name: 'Gamma', score: 95, cost: 3 }];
@@ -220,5 +269,30 @@ describe('DataTable', () => {
     expect(screen.getByText('없음')).toBeTruthy();
     rerender(<T rows={[]} loading />);
     expect(document.querySelectorAll('tbody .sg-skeleton').length).toBeGreaterThan(0);
+  });
+  it('shift range is anchored to a row, not a position: sorting in between keeps it', () => {
+    function S() { const [s, setS] = useState<string[]>([]); return <><T selectable selected={s} onSelectedChange={setS} /><output>{s.slice().sort().join(',')}</output></>; }
+    render(<S />);
+    const rowBox = (name: string) => [...document.querySelectorAll('tbody:last-of-type tr')].find((tr) => tr.querySelector('th')?.textContent === name)!.querySelector('input')!;
+    fireEvent.click(rowBox('Gamma'));                                   /* anchor: Gamma (third) */
+    fireEvent.click(screen.getByRole('button', { name: /서버/ }));     /* alpha, Beta, Gamma */
+    fireEvent.click(screen.getByRole('button', { name: /서버/ }));     /* Gamma, Beta, alpha */
+    fireEvent.click(rowBox('Beta'), { shiftKey: true });                /* Gamma..Beta, not position 3..2 */
+    expect(document.querySelector('output')!.textContent).toBe('1,3');
+  });
+  it('hidden columns: not rendered; hiding the sorted column ends the sort; the tab stop stays on the grid', () => {
+    const on = vi.fn();
+    const { rerender } = render(<T onSortChange={on} />);
+    const stops = () => [...document.querySelectorAll<HTMLElement>('.sg-table [tabindex="0"]')];
+    fireEvent.click(screen.getByRole('button', { name: /비용/ }));
+    stops()[0].focus();
+    fireEvent.keyDown(document.activeElement!, { key: 'End' });
+    expect((document.activeElement as HTMLElement).closest('[data-r]')!.getAttribute('data-c')).toBe('2');
+    rerender(<T onSortChange={on} hiddenColumns={['cost']} />);
+    expect(screen.queryByRole('button', { name: /비용/ })).toBeNull();
+    expect(screen.getByRole('grid').getAttribute('aria-colcount')).toBe('2');
+    expect(on).toHaveBeenLastCalledWith(null);
+    expect(stops()).toHaveLength(1);
+    expect(stops()[0].closest('[data-r]')!.getAttribute('data-c')).toBe('1');
   });
 });

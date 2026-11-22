@@ -216,6 +216,17 @@ a.sg-crumb__item:active, button.sg-crumb__item:active { background: var(--sg-fil
 .sg-tabs__list[data-sg-more-start] { --_fade-s: 24px; }
 .sg-tabs__list[data-sg-more-end] { --_fade-e: 24px; }
 [data-sg-theme$="-hc"] .sg-tabs__tab { color: var(--sg-label); }
+/* pill (0.6): wraps; the chosen pill wears the raised face (8.1), the rest sit flat on the page */
+.sg-tabs--pill .sg-tabs__list { flex-wrap: wrap; gap: 6px; overflow: visible; box-shadow: none; contain: none; }
+.sg-tabs--pill .sg-tabs__tab {
+  height: var(--sg-size-control-sm); padding: 0 14px; border-radius: var(--sg-radius-full); font-size: var(--sg-text-control-sm-size); background-color: var(--sg-fill);
+  transition: color var(--sg-duration-fast) ease, background-color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
+}
+@media (hover: hover) { .sg-tabs--pill .sg-tabs__tab:hover:not(:disabled):not([aria-selected="true"]) { background-color: var(--sg-fill-hover); } }
+.sg-tabs--pill .sg-tabs__tab:active:not(:disabled) { transform: scale(0.965); }
+.sg-tabs--pill .sg-tabs__tab[aria-selected="true"] { background-color: var(--sg-depth-raised-bg); background-image: var(--sg-depth-sheen); box-shadow: var(--sg-depth-raised), var(--sg-depth-raised-edge); }
+.sg-tabs--pill .sg-tabs__tab:focus-visible { outline-offset: var(--sg-focus-offset); }
+[data-sg-theme$="-hc"] .sg-tabs--pill .sg-tabs__tab[aria-selected="true"] { box-shadow: var(--sg-selection-outline); }
 
 /* ---------------------------------------------------------------- Pagination */
 /* a size container (for the compact switch): it fills its line, the controls sit at its end */

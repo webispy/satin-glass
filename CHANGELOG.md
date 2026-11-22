@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.0 — unreleased
+
+Parts for comparing many things on many measures — choosing a table's columns, filtering by several values, a filter row that lines up, tabs that wrap, a scatter chart — shown together in a new model evaluation example; and fixes to the data table's keyboard and selection, and to wheel scrolling over overflowing strips.
+
+### New
+- **`ColumnChooser`** (data) and **`DataTable` `hiddenColumns`**: a button that opens a popover of checkboxes grouped like the table's header; a group's own checkbox shows or hides it whole (indeterminate when partly shown). Sticky columns are locked by default (`Column.hideable`), the last shown column cannot be hidden, and hiding the sorted column ends the sort.
+- **`Combobox` `multiple`**: several values, shown as removable chips before the text. Choosing toggles and keeps the list open (the search clears so the whole list returns); Backspace in an empty field removes the last chip; the listbox is multi-selectable and the chosen values are named in the field's description; one hidden input per value. `maxChips` shows a count instead of the chips when more are chosen, so a field in a filter row keeps one line.
+- **`FilterBar`** (controls), promoted from the 0.5 recipe: a named group of filters with the applied count and one clear, focus returning to the first control. Every control in it takes the small control height (32 px), so search fields, comboboxes and segmented controls line up with filter selects and chips.
+- **`Tabs` `variant="pill"`**: tabs that wrap onto more lines instead of scrolling, so every section stays in sight on a phone. The chosen pill wears the raised face (a drop cannot travel between lines).
+- **`ScatterChart`** (data): one point per item on two numeric axes, linear or log (`xScale`, `yScale`), with groups (a colour and a legend each), `highlight` to pick points out by name (larger and labelled, the rest recede; labels that would overlap move apart), the nearest point under the pointer, arrow keys from left to right, and the data table for screen readers. Points pop in from the left; new data and a new scale move together, as the other charts.
+
+### Fixed
+- `DataTable`: a Shift-click range was anchored to a row position, so sorting or filtering in between extended it from a different row; it is anchored to the row's key. The keyboard tab stop stays on the grid when rows are filtered away or columns hidden under it. The roving tab stop no longer walks every cell on each render (two native queries instead), which mattered for wide comparison tables.
+- Charts: the data table kept for screen readers could be wider than its 1 px box (a table grows to its content), so a chart with a wide table — a scatter's four columns — made a narrow page scroll sideways. The box is now a wrapper around the table.
+- Overflowing strips: a strip remembered who owned the last wheel gesture and cleared it only on a fresh event at the strip, so a later page scroll that reached the strip mid-way could be taken by the owner left over from an earlier gesture. Each wheel gesture now has its own owner.
+
 ## 0.5.0 — 2026-11-21
 
 New components for screens that show and choose data (a meter, a group of people, a timeline, a drawer from any edge, a combobox, and a recipe for the filter row above a table); a theme setting for flat grooves; depth that reads in dark themes; motion reworked where it did not answer the hand (accordion, timeline, charts, switch, checkbox, media viewer, overflowing strips); and a consistency pass over every component against the design language, which fixed focus, stacking, right-to-left and reduced-motion faults and a Safari afterimage source.

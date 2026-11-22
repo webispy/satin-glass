@@ -8,6 +8,7 @@ export { useControllable, useImageTint, cx, type Tone } from './utils';
 export * from './selection';
 export * from './select';
 export * from './combobox';
+export * from './filterbar';
 export * from './date';
 export * from './breadcrumbs';
 export * from './skeleton';

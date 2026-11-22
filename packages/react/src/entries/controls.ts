@@ -6,3 +6,4 @@ export {
   type TextFieldProps, type TextAreaFieldProps, TextField, type SearchFieldProps, SearchField,
   type ChipProps, Chip, Badge, BadgeAnchor, type AvatarProps, Avatar, type AvatarGroupProps, AvatarGroup, Progress, type PageControlProps, PageControl,
 } from '../controls';
+export { type FilterBarProps, FilterBar } from '../filterbar';

@@ -325,3 +325,21 @@ button.sg-avatar-group__more:focus-visible { outline: var(--sg-focus-outline); o
 .sg-pagecontrol--on-media .sg-pagecontrol__dot { color: #fff; opacity: 0.5; }
 .sg-pagecontrol--on-media .sg-pagecontrol__dot[aria-current="true"] { color: #fff; opacity: 1; }
 .sg-pagecontrol:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
+
+/* ---- FilterBar (0.6): one wrapping row of filters; the applied count and "clear" sit at its end ---- */
+.sg-filterbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+/* one height for the row: every control in it takes the small control size (filter selects, chips and small
+   buttons already have it), so search fields, comboboxes and segmented controls line up with them */
+.sg-filterbar .sg-field__control { height: var(--sg-size-control-sm); }
+.sg-filterbar .sg-combobox--multi { --_line: 26px; --_pad: 3px; }
+.sg-filterbar .sg-combobox--multi .sg-field__control { height: auto; }
+.sg-filterbar .sg-combobox__chip { height: 24px; }
+/* a combobox in the bar keeps one line whatever is chosen: chips shrink to an ellipsis and the text field takes
+   what is left (maxChips keeps the count small) */
+.sg-filterbar .sg-combobox__values { flex-wrap: nowrap; }
+.sg-filterbar .sg-combobox__chip { flex: 0 1 auto; min-width: 48px; }
+.sg-filterbar .sg-combobox--multi .sg-field__input { flex: 1 1 40px; min-width: 16px; }
+.sg-filterbar .sg-segmented { height: var(--sg-size-control-sm); }
+.sg-filterbar .sg-chip, .sg-filterbar .sg-button { height: var(--sg-size-control-sm); }
+.sg-filterbar__applied { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: auto; }
+.sg-filterbar__count { font-size: var(--sg-text-footnote-size); line-height: var(--sg-text-footnote-line); color: var(--sg-label-secondary); font-variant-numeric: tabular-nums; }

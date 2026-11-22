@@ -1,4 +1,4 @@
-/* Charts (0.3): own SVG charts for dashboards — line / area, bar (grouped, stacked), donut, sparkline — and the
+/* Charts (0.3): own SVG charts for dashboards — line / area, bar (grouped, stacked), donut, sparkline, scatter (0.6) — and the
    small marks that live inside table cells (BarMeter, IntervalPlot).
    Every chart: series colours from the theme (--sg-chart-1…6, ≥ 3:1 on the card), a legend that hides and shows
    series, a crosshair tooltip that follows the pointer or the arrow keys (the plot is focusable and announces the
@@ -172,8 +172,10 @@ type ChartChromeProps = {
   label: string; series: ChartSeries[]; hidden: Set<string>; toggle: (k: string) => void; legend: boolean;
   rows: { head: string; cells: string[] }[]; announce: string; children: ReactNode; className?: string; style?: CSSProperties; caption?: ReactNode;
   legendLabel?: string;
+  /** the data table's column titles when they are not the series (a scatter's axes) */
+  head?: string[];
 };
-function ChartChrome({ label, series, hidden, toggle, legend, rows, announce, children, className, style, caption }: ChartChromeProps) {
+function ChartChrome({ label, series, hidden, toggle, legend, rows, announce, children, className, style, caption, head }: ChartChromeProps) {
   return (
     <figure className={cx('sg-chart', className)} style={style} aria-label={label}>
       {legend && series.length > 1 && (
@@ -188,11 +190,12 @@ function ChartChrome({ label, series, hidden, toggle, legend, rows, announce, ch
       {children}
       {caption && <figcaption className="sg-chart__caption">{caption}</figcaption>}
       <div className="sg-visually-hidden" aria-live="polite">{announce}</div>
-      <table className="sg-visually-hidden">
+      {/* the wrapper holds the 1px box: a table grows to its content whatever width it is given, and a wide one (a scatter's four columns) made narrow pages scroll sideways */}
+      <div className="sg-visually-hidden"><table>
         <caption>{label}</caption>
-        <thead><tr><th scope="col">{rows.length ? '' : ''}</th>{series.map((s) => <th key={s.key} scope="col">{s.label}</th>)}</tr></thead>
+        <thead><tr><th scope="col">{rows.length ? '' : ''}</th>{(head ?? series.map((s) => s.label)).map((h, i) => <th key={i} scope="col">{h}</th>)}</tr></thead>
         <tbody>{rows.map((r, i) => <tr key={i}><th scope="row">{r.head}</th>{r.cells.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody>
-      </table>
+      </table></div>
     </figure>
   );
 }
@@ -227,7 +230,7 @@ function Tip({ x, y, w, title, rows }: { x: number; y: number; w: number; title:
   return (
     <div className="sg-chart__tip" aria-hidden="true" style={{ left: x, top: y, transform: `translate(${right ? 'calc(-100% - 12px)' : '12px'}, -50%)` }}>
       <div className="sg-chart__tip-title">{title}</div>
-      {rows.map((r) => <div key={r.label} className="sg-chart__tip-row"><span className="sg-chart__swatch" style={{ background: r.color }} />{r.label}<b>{r.value}</b></div>)}
+      {rows.map((r) => <div key={r.label} className="sg-chart__tip-row">{r.color && <span className="sg-chart__swatch" style={{ background: r.color }} />}{r.label}<b>{r.value}</b></div>)}
     </div>
   );
 }
@@ -325,6 +328,182 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
           )}
         </svg>}
         {active !== null && <Tip x={X(active)} y={M.top + ih / 2} w={width} title={xFormat(String(data[active][x]))} rows={rowsFor(active)} />}
+      </div>
+    </ChartChrome>
+  );
+}
+
+/* ------------------------------------------------------------------------------------------------ ScatterChart */
+/* (0.6) Two measures of the same things — quality against cost, speed against size: one point per item, placed on
+   two numeric axes (linear, or log when the values span orders of magnitude, as prices do). Points can belong to
+   groups (a colour each and a legend that hides and shows them); `highlight` picks some out by name — drawn larger
+   and labelled, the rest recede — for "the ones I am comparing". The pointer finds the nearest point; arrow keys
+   walk the points from left to right; the data table lists every point. Points pop in on 'pop'; new data and a new
+   scale move together on one spring (as the other charts). */
+export type ScatterChartProps = {
+  data: ChartDatum[];
+  /** keys of the numeric values on the two axes */
+  x: string; y: string;
+  /** key of each point's name (tooltip, labels, the data table) */
+  pointLabel: string;
+  /** key whose value puts a point in a group; `groups` names them (key = that value), colours and orders them */
+  group?: string;
+  groups?: ChartSeries[];
+  /** names of points to pick out */
+  highlight?: string[];
+  xScale?: 'linear' | 'log'; yScale?: 'linear' | 'log';
+  /** axis titles (also the data table's columns) */
+  xLabel?: string; yLabel?: string;
+  xFormat?: Fmt; yFormat?: Fmt;
+  height?: number;
+  legend?: boolean;
+  locale?: string;
+  'aria-label': string;
+  caption?: ReactNode;
+  className?: string; style?: CSSProperties;
+};
+
+type Axis = { lo: number; hi: number; ticks: number[] };
+const lg = Math.log10;
+/* 1 · 2 · 5 per decade; only the powers of ten when that is too many */
+function logTicks(lo: number, hi: number): number[] {
+  const out: number[] = [];
+  /* only a real, positive range of a sane span (a range in another scale's units can reach Infinity and never end the loop) */
+  if (!(lo > 0) || !isFinite(hi) || hi < lo || lg(hi) - lg(lo) > 40) return out;
+  for (let d = Math.floor(lg(lo)); d <= Math.ceil(lg(hi)); d++) for (const m of [1, 2, 5]) { const v = +(m * 10 ** d).toPrecision(6); if (v >= lo && v <= hi) out.push(v); }
+  return out.length > 7 ? out.filter((v) => Math.abs(lg(v) - Math.round(lg(v))) < 1e-9) : out;
+}
+/* an axis in its own units (log10 for a log scale) with its ticks in data units */
+function axisOf(vals: number[], log: boolean, count: number): Axis {
+  if (log) {
+    const pos = vals.filter((v) => v > 0);
+    if (!pos.length) return { lo: 0, hi: 1, ticks: [1, 10] };
+    let a = Math.min(...pos), b = Math.max(...pos);
+    if (a === b) { a /= 2; b *= 2; }
+    const pad = (lg(b) - lg(a)) * 0.06;
+    return { lo: lg(a) - pad, hi: lg(b) + pad, ticks: logTicks(10 ** (lg(a) - pad), 10 ** (lg(b) + pad)) };
+  }
+  const t = niceTicks(vals.length ? Math.min(...vals) : 0, vals.length ? Math.max(...vals) : 1, count);
+  return { lo: t[0], hi: t[t.length - 1], ticks: t };
+}
+
+export function ScatterChart({ data, x, y, pointLabel, group, groups = [], highlight, xScale = 'linear', yScale = 'linear', xLabel = x, yLabel = y, xFormat, yFormat, height = 280, legend = true, locale, 'aria-label': label, caption, className, style }: ScatterChartProps) {
+  const fx = xFormat ?? defaultFmt(locale), fy = yFormat ?? defaultFmt(locale);
+  const [box, measured] = useWidth<HTMLDivElement>();
+  const width = measured ?? 0;
+  const g = useRef<SVGGElement>(null);
+  const [hidden, toggle] = useHidden(groups);
+  const [active, setActive] = useState<Active>(null);
+  const [kbd, setKbd] = useState(false);
+  const xl = xScale === 'log', yl = yScale === 'log';
+  const num = (d: ChartDatum, k: string, log: boolean) => { const v = d[k]; return typeof v === 'number' && isFinite(v) && (!log || v > 0) ? v : null; };
+  const gi = (d: ChartDatum) => (group ? groups.findIndex((s) => s.key === String(d[group])) : -1);
+  const colorOf = (d: ChartDatum) => { const i = gi(d); return i >= 0 ? groups[i].color ?? COLOR(i) : COLOR(0); };
+  const onShow = (d: ChartDatum) => !group || !hidden.has(String(d[group]));
+  const plotted = data.map((d, i) => i).filter((i) => num(data[i], x, xl) !== null && num(data[i], y, yl) !== null);
+  const visible = plotted.filter((i) => onShow(data[i]));
+  const count = Math.max(2, Math.round(height / 56));
+  const ax = axisOf(visible.map((i) => num(data[i], x, xl)!), xl, Math.max(2, Math.round(width / 110)));
+  const ay = axisOf(visible.map((i) => num(data[i], y, yl)!), yl, count);
+  const u = (v: number, log: boolean) => (log ? lg(v) : v);
+  const top = M.top + (yLabel ? 16 : 0), bottom = M.bottom + (xLabel ? 18 : 0);
+  const left = yAxisWidth(ay.ticks.map(fy));
+  const iw = Math.max(10, width - left - M.right), ih = height - top - bottom;
+  /* the two scales and every point (in axis units) move as one */
+  const morph = useMorph([ax.lo, ax.hi, ay.lo, ay.hi, ...data.flatMap((d) => [u(num(d, x, xl) ?? (xl ? 1 : 0), xl), u(num(d, y, yl) ?? (yl ? 1 : 0), yl)])], box);
+  const [sx0, sx1, sy0, sy1] = morph.now, [px0, px1, py0, py1] = morph.from;
+  /* the scale the move started from: after a switch between linear and log the old range is in the other scale's units, so its
+     ticks are not drawn again (they would be read in the new units); the new ticks fade in as the axis moves */
+  const target = `${ax.lo},${ax.hi},${ay.lo},${ay.hi}`;
+  const scales = useRef({ target, xl, yl, fromX: xl, fromY: yl });
+  if (scales.current.target !== target) scales.current = { target, xl, yl, fromX: scales.current.xl, fromY: scales.current.yl };
+  const xSwitched = scales.current.fromX !== xl, ySwitched = scales.current.fromY !== yl;
+  /* across a switch the two ranges are in different units (log10 4–5 against 0–100,000), and a move in units would be all one or
+     the other; so a switched axis moves on the screen instead: each point and tick from its place on the old axis to its place on
+     the new one, on the move's progress */
+  const along = (v: number, from: boolean, lo0: number, hi0: number, now: boolean, lo1: number, hi1: number) => {
+    const b = (u(v, now) - lo1) / (hi1 - lo1 || 1), a = (u(v, from) - lo0) / (hi0 - lo0 || 1);
+    return isFinite(a) ? a + (b - a) * morph.p : b;
+  };
+  const xAt = (v: number) => left + along(v, scales.current.fromX, px0, px1, xl, ax.lo, ax.hi) * iw;
+  const yAt = (v: number) => top + ih - along(v, scales.current.fromY, py0, py1, yl, ay.lo, ay.hi) * ih;
+  const tx = (t: number) => (xSwitched ? xAt(t) : X(u(t, xl)));
+  const ty = (t: number) => (ySwitched ? yAt(t) : Y(u(t, yl)));
+  const pos = (i: number): [number, number] => [xSwitched ? xAt(num(data[i], x, xl)!) : X(morph.now[4 + i * 2]), ySwitched ? yAt(num(data[i], y, yl)!) : Y(morph.now[5 + i * 2])];
+  /* while a switch moves them, ticks outside the plot are not drawn */
+  const inX = (t: number) => { const v = tx(t); return isFinite(v) && v >= left - 1 && v <= left + iw + 1; };
+  const inY = (t: number) => { const v = ty(t); return isFinite(v) && v >= top - 1 && v <= top + ih + 1; };
+  const X = (uv: number) => left + ((uv - sx0) / (sx1 - sx0 || 1)) * iw;
+  const Y = (uv: number) => top + ih - ((uv - sy0) / (sy1 - sy0 || 1)) * ih;
+  const prevX = xSwitched ? [] : px0 === ax.lo && px1 === ax.hi ? ax.ticks : (xl ? logTicks(10 ** px0, 10 ** px1) : niceTicks(px0, px1, Math.max(2, Math.round(width / 110))).filter((t) => t >= px0 && t <= px1));
+  const prevY = ySwitched ? [] : py0 === ay.lo && py1 === ay.hi ? ay.ticks : (yl ? logTicks(10 ** py0, 10 ** py1) : niceTicks(py0, py1, count).filter((t) => t >= py0 && t <= py1));
+  const picked = new Set(highlight ?? []);
+  const name = (i: number) => String(data[i][pointLabel] ?? '');
+  /* entrance: the points pop in from left to right */
+  useIsoLayoutEffect(() => {
+    const el = g.current;
+    if (!el) return;
+    if (prefersReducedMotion(el)) { fade(el as unknown as HTMLElement, 0, 1, timing.appear); return; }
+    const pts = Array.from(el.querySelectorAll<SVGElement>('[data-pop]'));
+    const order = pts.map((p, k) => [k, +(p.getAttribute('cx') ?? 0)] as const).sort((a, b) => a[1] - b[1]).map(([k]) => k);
+    order.forEach((k, n) => { animate(pts[k], [{ transform: 'scale(0)' }, { transform: 'scale(1)' }], 'pop', { delay: Math.min(n * 12, 300), fill: 'backwards' }); });
+  }, [measured !== null]);
+  /* names of the picked points: beside the point (left of it near the right edge); a name that would cover one
+     already placed moves down a line, so points close together keep both names readable */
+  const labels: { i: number; x: number; y: number; flip: boolean }[] = [];
+  /* the label's width at 12 px, near enough: wide (CJK) characters about 12 px, others about 7 */
+  const tw = (t: string) => [...t].reduce((a, c) => a + (c.charCodeAt(0) > 0x1100 ? 12 : 7), 4);
+  for (const i of plotted) {
+    if (!onShow(data[i]) || !picked.has(name(i)) || measured === null) continue;
+    const [cx, cy] = pos(i), flip = cx > left + iw * 0.75, w = tw(name(i));
+    const x = cx + (flip ? -10 : 10), x0 = flip ? x - w : x, x1 = flip ? x : x + w;
+    let y = cy;
+    for (let n = 0; n < labels.length + 1; n++) {
+      const hit = labels.find((l) => { const w2 = tw(name(l.i)), a0 = l.flip ? l.x - w2 : l.x, a1 = l.flip ? l.x : l.x + w2; return a0 < x1 && x0 < a1 && Math.abs(l.y - y) < 15; });
+      if (!hit) break;
+      y = hit.y + 15;
+    }
+    labels.push({ i, x, y, flip });
+  }
+  /* keys walk the points left to right */
+  const byX = [...visible].sort((a, b) => morph.now[4 + a * 2] - morph.now[4 + b * 2]);
+  const onMove = (e: ReactPointerEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    let best: number | null = null, bd = 28 * 28;
+    for (const i of visible) { const [px, py] = pos(i), d = (px - mx) ** 2 + (py - my) ** 2; if (d < bd) { bd = d; best = i; } }
+    setKbd(false);
+    setActive(best);
+  };
+  const rowsFor = (i: number): TipRow[] => [
+    ...(group ? [{ color: colorOf(data[i]), label: groups[gi(data[i])]?.label ?? String(data[i][group]), value: '' }] : []),
+    { color: '', label: xLabel, value: fx(num(data[i], x, xl)!) },
+    { color: '', label: yLabel, value: fy(num(data[i], y, yl)!) },
+  ];
+  const announce = kbd && active !== null ? `${name(active)}: ${xLabel} ${fx(num(data[active], x, xl)!)}, ${yLabel} ${fy(num(data[active], y, yl)!)}` : '';
+  const cell = (d: ChartDatum, k: string, f: Fmt) => (typeof d[k] === 'number' ? f(d[k] as number) : '—');
+  return (
+    <ChartChrome label={label} series={groups} hidden={hidden} toggle={toggle} legend={legend && !!group} announce={announce} caption={caption} className={className} style={style}
+      head={[xLabel, yLabel, ...(group ? [''] : [])]}
+      rows={data.map((d) => ({ head: String(d[pointLabel] ?? ''), cells: [cell(d, x, fx), cell(d, y, fy), ...(group ? [groups[gi(d)]?.label ?? String(d[group] ?? '')] : [])] }))}>
+      <div ref={box} className="sg-chart__plot sg-scatter" tabIndex={0} role="img" aria-label={label}
+        onPointerMove={onMove} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}
+        onKeyDown={(e) => { setKbd(true); const at = active === null ? null : byX.indexOf(active); plotKeys(e, byX.length, at !== null && at >= 0 ? at : null, (n) => setActive(n === null ? null : byX[n] ?? null)); }}>
+        {measured === null ? <div style={{ height }} /> : <svg width={width} height={height} aria-hidden="true">
+          {tickLayer(ay.ticks, prevY, morph.p).filter(({ t }) => inY(t)).map(({ t, o }) => <g key={`y${t}`} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={ty(t)} y2={ty(t)} /><text className="sg-chart__tick" x={left - 8} y={ty(t)} dy="0.35em" textAnchor="end">{fy(t)}</text></g>)}
+          {tickLayer(ax.ticks, prevX, morph.p).filter(({ t }) => inX(t)).map(({ t, o }) => <g key={`x${t}`} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={tx(t)} x2={tx(t)} y1={top} y2={top + ih} /><text className="sg-chart__tick" x={tx(t)} y={top + ih + 16} textAnchor="middle">{fx(t)}</text></g>)}
+          {yLabel && <text className="sg-chart__axis-title" x={left} y={M.top + 2} dy="0.35em" textAnchor="start">{yLabel}</text>}
+          {xLabel && <text className="sg-chart__axis-title" x={left + iw} y={height - 4} textAnchor="end">{xLabel}</text>}
+          <g ref={g} data-picking={picked.size > 0 || undefined}>
+            {plotted.map((i) => {
+              if (!onShow(data[i])) return null;
+              const [cx, cy] = pos(i), on = picked.has(name(i));
+              return <circle key={i} data-pop className="sg-scatter__point" data-picked={on || undefined} data-active={active === i || undefined} cx={cx} cy={cy} r={on ? 6.5 : 5} style={{ fill: colorOf(data[i]) }} />;
+            })}
+            {labels.map((l) => <text key={`l${l.i}`} className="sg-scatter__label" x={l.x} y={l.y} dy="0.35em" textAnchor={l.flip ? 'end' : 'start'}>{name(l.i)}</text>)}
+          </g>
+        </svg>}
+        {active !== null && measured !== null && <Tip x={pos(active)[0]} y={pos(active)[1]} w={width} title={name(active)} rows={rowsFor(active)} />}
       </div>
     </ChartChrome>
   );

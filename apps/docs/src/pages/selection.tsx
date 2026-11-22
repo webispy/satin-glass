@@ -196,6 +196,8 @@ const COMBO_LABELS = { empty: '맞는 항목이 없어요', loading: '찾는 중
 function Combos() {
   const [city, setCity] = useState<string | null>('busan');
   const [owner, setOwner] = useState<string | null>(null);
+  const [cities, setCities] = useState<string[]>(['seoul', 'busan']);
+  const [teams, setTeams] = useState<string[]>(['seoul', 'busan', 'daegu']);
   /* a server search: the options come already filtered, a moment later */
   const [q, setQ] = useState('');
   const [product, setProduct] = useState<string | null>(null);
@@ -222,6 +224,11 @@ function Combos() {
             getOptionText={(id) => PRODUCTS.find((x) => x.id === id)?.name ?? id}
             options={found.map((x) => ({ value: x.id, label: x.name, description: `${x.price.toLocaleString('ko-KR')}원` }))} />
           <Text variant="footnote" tone="secondary">{product ? `고른 상품: ${PRODUCTS.find((x) => x.id === product)?.name}` : '고른 상품 없음'} · 서버 검색을 흉내 내 0.45초 뒤에 결과가 와요.</Text>
+        </Demo>
+        <Demo col data-demo="combobox-multiple">
+          <Combobox multiple label="방문할 도시" placeholder="도시 이름" options={CITIES} value={cities} onChange={setCities} labels={{ ...COMBO_LABELS, remove: (t) => `${t} 빼기` }} name="cities" />
+          <Combobox multiple aria-label="필터: 도시" placeholder="도시" maxChips={1} options={CITIES} value={teams} onChange={setTeams} labels={{ ...COMBO_LABELS, count: (n) => `도시 ${n}곳` }} style={{ width: 220 }} />
+          <Text variant="footnote" tone="secondary">여러 개(multiple): 고르면 목록이 열린 채로 남고, 고른 값은 칩이 됩니다. 입력란이 비었을 때 Backspace는 마지막 칩을 지워요. 필터 줄처럼 한 줄을 지켜야 하면 maxChips로 그보다 많이 고를 때 칩 대신 개수를 보여 줍니다.</Text>
         </Demo>
       </div>
     </Section>

@@ -169,6 +169,12 @@ export function Navigation() {
             <Tabs aria-label="분류" activation="manual" defaultValue="digital" items={['전체', '의류', '생활', '주방', '문구', '디지털', '반려동물', '캠핑', '선물 포장', '할인 중'].map((l, i) => ({ value: ['all', 'wear', 'home', 'kitchen', 'paper', 'digital', 'pet', 'camp', 'gift', 'sale'][i], label: l }))} />
           </div>
         </Demo>
+        <Demo col data-demo="tabs-pill" style={{ marginTop: 16 }}>
+          <Text variant="subhead" tone="secondary">알약 탭(variant=&quot;pill&quot;)은 넘치면 다음 줄로 넘어가 모든 구역이 한눈에 보입니다. 휴대폰에서 묶음이 많을 때 씁니다. 물방울이 줄을 넘어 다닐 수 없으니, 고른 알약이 볼록한 면을 직접 입고 바뀔 때는 짧게 칠해집니다. 키는 밑줄 탭과 같아요.</Text>
+          <div style={{ maxWidth: 420 }}>
+            <Tabs variant="pill" aria-label="벤치마크 묶음" defaultValue="reason" items={[{ value: 'all', label: '모든 벤치마크' }, { value: 'know', label: '지식' }, { value: 'reason', label: '추론' }, { value: 'code', label: '코딩' }, { value: 'inst', label: '지시 따르기' }, { value: 'ko', label: '한국어' }, { value: 'long', label: '긴 문맥', disabled: true }]} />
+          </div>
+        </Demo>
       </Section>
       <Section title="페이지 이동" intro="처음과 끝, 지금 페이지의 이웃을 보여 주고 사이는 …로 접습니다. 지금 페이지가 가운데에서 움직이는 동안 버튼 개수가 그대로라 포인터 밑에서 버튼이 밀리지 않습니다. 좁은 곳에서는 ‘6 / 40’으로 바뀝니다.">
         <Demo col data-demo="pagination">

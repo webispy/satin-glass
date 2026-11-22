@@ -1,11 +1,11 @@
 /* Charts and figures: KPI stats, line / area, bars, donut, sparklines and the small marks that live in table cells. */
 import { useState } from 'react';
 import {
-  BarChart, BarMeter, Button, DonutChart, IntervalPlot, LineChart, Meter, SegmentedControl, Slider, Sparkline, Stack, Stat, Text,
+  BarChart, BarMeter, Button, DonutChart, IntervalPlot, LineChart, Meter, ScatterChart, SegmentedControl, Slider, Sparkline, Stack, Stat, Text,
 } from '@satin-glass/react';
 import { CircleDollarSign, MousePointerClick, RotateCcw, ShoppingBag } from 'lucide-react';
 import { Demo, Page, Section } from '../shared';
-import { CATEGORY_SHARE, DAYS, MONTHS, PRODUCTS, REGIONS, num, wonShort } from '../data';
+import { CATEGORIES, CATEGORY_SHARE, DAYS, MONTHS, PRODUCTS, REGIONS, num, wonShort } from '../data';
 
 const STAT_LABELS = { up: '증가', down: '감소', flat: '변화 없음' };
 const week = (k: 'visits' | 'orders' | 'revenue') => DAYS.slice(-7).reduce((a, d) => a + d[k], 0);
@@ -19,6 +19,7 @@ export function ChartsPage() {
       <Meters />
       <Lines />
       <Bars />
+      <Scatter />
       <Donut />
       <Small />
     </Page>
@@ -88,6 +89,25 @@ function Bars() {
         <SegmentedControl size="sm" aria-label="막대 배치" value={stacked} onChange={setStacked} options={[{ value: 'group', label: '묶음' }, { value: 'stack', label: '누적' }]} style={{ alignSelf: 'flex-start' }} />
         <BarChart aria-label="경로별 월 주문" data={MONTHS} x="month" stacked={stacked === 'stack'} height={240} locale="ko-KR"
           series={[{ key: 'app', label: '앱' }, { key: 'web', label: '웹' }, { key: 'store', label: '매장' }]} />
+      </Demo>
+    </Section>
+  );
+}
+
+function Scatter() {
+  const [y, setY] = useState<'sold' | 'rating'>('sold');
+  const [scale, setScale] = useState<'log' | 'linear'>('log');
+  const top = [...PRODUCTS].sort((a, b) => b.sold - a.sold).slice(0, 2).map((p) => p.name);
+  return (
+    <Section title="산점도 (ScatterChart)" intro="같은 대상의 두 값 — 가격과 판매량, 품질과 비용 — 을 점 하나로 놓습니다. 값이 여러 자리수에 걸치면(가격처럼) 로그 눈금으로 거리를 공평하게 봅니다. 묶음마다 색이 있고 범례로 숨겼다 보일 수 있으며, highlight로 몇 개를 골라 크게 하고 이름을 붙이면 나머지는 물러납니다. 포인터는 가장 가까운 점을 찾고, 방향키는 왼쪽부터 점을 하나씩 짚으며 읽어 줍니다. 점은 왼쪽부터 차례로 톡 나타나고, 지표나 눈금을 바꾸면 축과 점이 함께 옮겨 갑니다.">
+      <Demo col data-demo="scatter">
+        <Stack direction="row" gap={2} wrap>
+          <SegmentedControl size="sm" aria-label="세로축" value={y} onChange={setY} options={[{ value: 'sold', label: '판매량' }, { value: 'rating', label: '평점' }]} />
+          <SegmentedControl size="sm" aria-label="가격 눈금" value={scale} onChange={setScale} options={[{ value: 'log', label: '로그 눈금' }, { value: 'linear', label: '균등 눈금' }]} />
+        </Stack>
+        <ScatterChart aria-label={`가격 대비 ${y === 'sold' ? '판매량' : '평점'}`} data={PRODUCTS.filter((p) => !p.paused) as unknown as Record<string, string | number>[]} x="price" y={y} pointLabel="name"
+          group="category" groups={CATEGORIES.map((c) => ({ key: c.key, label: c.label }))} highlight={top} xScale={scale} height={280} locale="ko-KR"
+          xLabel="가격(원)" yLabel={y === 'sold' ? '30일 판매량' : '평점(5점 만점)'} xFormat={(v) => wonShort(v)} yFormat={(v) => (y === 'rating' ? v.toFixed(1) : num(v))} />
       </Demo>
     </Section>
   );

@@ -183,7 +183,7 @@ await go('overlays');
 /* ================================================================ Combobox */
 await go('selection');
 {
-  const cb = p.getByRole('combobox', { name: '도시' });
+  const cb = p.getByRole('combobox', { name: '도시', exact: true });
   await cb.scrollIntoViewIfNeeded();
   ok('combobox: shows the chosen value\'s name', await cb.inputValue() === '부산', await cb.inputValue());
   await cb.click(); await cb.fill('대'); await wait(600);
