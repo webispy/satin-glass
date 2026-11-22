@@ -151,14 +151,34 @@ async function checkCase(p, id, k, opt = {}, vw, quick = false) {
 
   /* drag: from the selected item toward the far visible edge; then (scrolled to the end) back toward the start */
   const drag = async (fromSel, toFrac) => {
-    const tb = await box.locator(k.track).boundingBox(), sb = await box.locator(`${k.item}[${k.on}="true"]`).boundingBox();
-    const y = sb.y + sb.height / 2, x0 = sb.x + sb.width / 2, x1 = tb.x + tb.width * toFrac;
+    /* the finger must go down on the selection: measured, then confirmed at that point (on a busy machine the page
+       can still be settling a scroll between the measuring and the press) */
+    let tb, sb, y, x0, x1;
+    for (let n = 0; n < 3; n++) {
+      tb = await box.locator(k.track).boundingBox(); sb = await box.locator(`${k.item}[${k.on}="true"]`).boundingBox();
+      y = sb.y + sb.height / 2; x0 = sb.x + sb.width / 2; x1 = tb.x + tb.width * toFrac;
+      if (await box.evaluate((el, { k, x, y }) => document.elementFromPoint(x, y)?.closest(k.item)?.getAttribute(k.on) === 'true', { k, x: x0, y })) break;
+      await p.waitForTimeout(150); await still(box, k);
+    }
+    /* what the pointer did, for the failure message: where it went down (item index or class), whether the drop was
+       pressed (P) and dragging (D) at each step — a rare WebKit failure under load is not yet explained */
+    await box.evaluate((el, k) => {
+      const t = el.querySelector(k.track);
+      window.__ev = [];
+      if (window.__evOn) { window.__evTrack = t; return; }
+      window.__evOn = true; window.__evTrack = t;
+      for (const ty of ['pointerdown', 'pointerup', 'pointercancel']) addEventListener(ty, (e) => {
+        const tr = window.__evTrack, it = e.target.closest?.('[data-sg-item]');
+        window.__ev.push(`${ty.slice(7)}@${it && tr.contains(it) ? '#' + [...tr.querySelectorAll('[data-sg-item]')].indexOf(it) : String(e.target.className ?? e.target.nodeName).slice(0, 20)}${tr.hasAttribute('data-sg-pressing') ? ' P' : ''}${tr.hasAttribute('data-sg-dragging') ? ' D' : ''}`);
+      }, true);
+      addEventListener('pointermove', () => { const tr = window.__evTrack; if (tr.hasAttribute('data-sg-dragging') && !window.__ev.includes('dragging')) window.__ev.push('dragging'); }, true);
+    }, k);
     await p.mouse.move(x0, y); await p.mouse.down();
     for (let s = 1; s <= 14; s++) { await p.mouse.move(x0 + ((x1 - x0) * s) / 14, y); await p.waitForTimeout(12); }
     /* which item is under the finger at release */
     const under = await box.evaluate((el, { k, x, y }) => { const h = document.elementFromPoint(x, y)?.closest(k.item); return [...el.querySelectorAll(k.item)].indexOf(h); }, { k, x: x1, y });
     await p.mouse.up(); await still(box, k);
-    return { under, s: await state(box, k) };
+    return { under, s: await state(box, k), ev: (await p.evaluate(() => window.__ev)).join(' ') };
   };
   if (!opt.refused) {
     await box.locator(`${k.item}[${k.on}="true"]`).focus(); await p.keyboard.press('Home'); await still(box, k);
@@ -169,7 +189,7 @@ async function checkCase(p, id, k, opt = {}, vw, quick = false) {
     const c = await drag(true, 0.18);
     const cOk = lands(c.s) && (c.s.selected === c.under || (c.under >= 0 && (await items.nth(c.under).isDisabled())));
     ok(`${tag}: drag across the items — the drop lands on the item under the finger (also from a track scrolled by ${startScroll} px)`, aOk && cOk,
-      `→ under #${a.under}: ${fmt(a.s)}; ← under #${c.under}: ${fmt(c.s)}`);
+      `→ under #${a.under}: ${fmt(a.s)} [${a.ev}]; ← under #${c.under}: ${fmt(c.s)} [${c.ev}]`);
   } else {
     /* bring the kept selection into view (tapping other items may have scrolled it away), then drag it off */
     await box.locator(`${k.item}[${k.on}="true"]`).evaluate((e) => { const t = e.parentElement; t.scrollLeft = e.offsetLeft - 8; });
@@ -214,60 +234,106 @@ const reduced = async () => {
 
 /* browsing what is hidden, without choosing: a mouse wheel scrolls the strip sideways and hands over to the page at
    the end; a mouse drag that does not start on the selection pans the strip 1:1 and selects nothing; a click still
-   selects */
+   selects.
+   These checks depend on real time between events, as the component does: wheel events less than 300 ms apart are
+   one gesture (core/overflow.ts LATCH), and a fling needs the release within 80 ms of the last move (core/bridge.ts).
+   On a busy machine (suites side by side) the browser may deliver the test's events further apart than that — then
+   the component rightly treats them as separate gestures and the check would test something else. So each gesture
+   records its own event times in the page; one whose timing broke the premise is tried again (up to 3 times), and
+   the check reports how many tries it took. A real fault fails all three. */
+const GAP_WHEEL = 250, GAP_FLING = 70;
 const browse = async () => {
   const p = await newPage({ viewport: { width: 1280, height: 900 } });
   await p.goto(U('lab')); await settle(p, 900);
+  await p.evaluate(() => {
+    window.__t = { wheel: [], move: [], up: [] };
+    addEventListener('wheel', (e) => window.__t.wheel.push(e.timeStamp), { capture: true, passive: true });
+    addEventListener('pointermove', (e) => { if (e.buttons) window.__t.move.push(e.timeStamp); }, true);
+    addEventListener('pointerup', (e) => window.__t.up.push(e.timeStamp), true);
+  });
+  const resetTimes = () => p.evaluate(() => { window.__t.wheel = []; window.__t.move = []; window.__t.up = []; });
+  const maxWheelGap = () => p.evaluate(() => { const a = window.__t.wheel; let m = 0; for (let i = 1; i < a.length; i++) m = Math.max(m, a[i] - a[i - 1]); return Math.round(m); });
+  const releaseGap = () => p.evaluate(() => { const m = window.__t.move, u = window.__t.up; return m.length && u.length ? Math.round(u[u.length - 1] - m[m.length - 1]) : Infinity; });
+  /* run a gesture until its timing held (pre() true), at most 3 times; returns the last result and the tries */
+  const tries = async (fn) => { let r, n = 0; do { n++; r = await fn(); } while (!r.pre && n < 3); return { ...r, n }; };
+  const note = (r) => (r.n > 1 ? ` (${r.n} tries: the browser delivered the events too far apart before)` : '') + (r.pre ? '' : ' — event timing never held');
   for (const id of ['many-seg-360', 'many-tabs-360']) {
     const t = p.locator(`[data-lab="${id}"] :is(.sg-segmented, .sg-tabbar__track)`).first();
-    await t.scrollIntoViewIfNeeded(); await settle(p, 300);
     const st = () => t.evaluate((e) => ({ sl: Math.round(e.scrollLeft), max: e.scrollWidth - e.clientWidth,
       sel: [...e.querySelectorAll('[data-sg-item]')].findIndex((x) => x.getAttribute('aria-checked') === 'true' || x.getAttribute('aria-selected') === 'true') }));
-    await t.evaluate((e) => { e.scrollLeft = 0; }); await settle(p, 100);
-    const bx = await t.boundingBox(), y0 = await p.evaluate(() => scrollY);
-    await p.mouse.move(bx.x + bx.width / 2, bx.y + bx.height / 2);
-    await p.mouse.wheel(0, 100); await settle(p, 200);
-    const one = await st(), y1 = await p.evaluate(() => scrollY);
-    for (let k = 0; k < 30; k++) await p.mouse.wheel(0, 100);
-    await settle(p, 300);
-    const end = await st(), y2 = await p.evaluate(() => scrollY);
-    ok(`${id}: the mouse wheel scrolls the strip sideways, and one gesture that reaches the end stays there (the page does not take over mid-gesture)`, one.sl > 0 && y1 === y0 && end.sl >= end.max - 1 && y2 === y0, `first ${one.sl} (page ${y1 - y0}), end ${end.sl}/${end.max} (page ${y2 - y0})`);
-    /* after a pause, a new turn at the end scrolls the page */
+    const y = () => p.evaluate(() => scrollY);
+    /* the strip at its start, in view, the page still */
+    const home = async () => { await t.evaluate((e) => { e.scrollLeft = 0; e.scrollIntoView({ block: 'center', behavior: 'instant' }); }); await settle(p, 450); };
+
+    /* one gesture over the strip: it scrolls sideways, and reaching the end does not hand over mid-gesture */
+    const g1 = await tries(async () => {
+      await home();
+      const bx = await t.boundingBox(), y0 = await y();
+      await p.mouse.move(bx.x + bx.width / 2, bx.y + bx.height / 2);
+      await resetTimes();
+      await p.mouse.wheel(0, 100); await settle(p, 120);
+      const one = await st(), y1 = await y();
+      for (let k = 0; k < 30; k++) await p.mouse.wheel(0, 100);
+      await settle(p, 300);
+      const end = await st(), y2 = await y();
+      return { one, end, d1: y1 - y0, d2: y2 - y0, y2, pre: (await maxWheelGap()) < GAP_WHEEL };
+    });
+    ok(`${id}: the mouse wheel scrolls the strip sideways, and one gesture that reaches the end stays there (the page does not take over mid-gesture)${note(g1)}`,
+      g1.pre && g1.one.sl > 0 && g1.d1 === 0 && g1.end.sl >= g1.end.max - 1 && g1.d2 === 0, `first ${g1.one.sl} (page ${g1.d1}), end ${g1.end.sl}/${g1.end.max} (page ${g1.d2})`);
+    /* after a pause, a new turn at the end scrolls the page (a pause is always longer than the latch) */
     await settle(p, 400);
     for (let k = 0; k < 3; k++) await p.mouse.wheel(0, 100);
     await settle(p, 300);
-    const y3 = await p.evaluate(() => scrollY);
-    ok(`${id}: after a pause, the next turn at the end scrolls the page`, y3 > y2, `page ${y2 - y0} → ${y3 - y0}`);
+    const y3 = await y();
+    ok(`${id}: after a pause, the next turn at the end scrolls the page`, y3 > g1.y2, `page ${g1.y2} → ${y3}`);
+
     /* a gesture that started on the page keeps scrolling the page when the strip passes under the pointer */
-    await t.evaluate((e) => { e.scrollLeft = 0; }); await t.scrollIntoViewIfNeeded(); await settle(p, 500);
-    const b3 = await t.boundingBox();
-    await p.mouse.move(b3.x + b3.width / 2, b3.y - 60);
-    await p.mouse.wheel(0, 60); await p.mouse.move(b3.x + b3.width / 2, b3.y + b3.height / 2);
-    const s4 = (await st()).sl, y4 = await p.evaluate(() => scrollY);
-    await p.mouse.wheel(0, 60); await p.mouse.wheel(0, 60); await settle(p, 300);
-    const s5 = (await st()).sl, y5 = await p.evaluate(() => scrollY);
-    ok(`${id}: a wheel gesture that started on the page keeps scrolling the page over the strip`, s5 === s4 && y5 > y4, `strip ${s4} → ${s5}, page ${y4} → ${y5}`);
-    /* the page was scrolled far by the wheel checks: bring the strip back and wait until the page is still */
-    await t.evaluate((e) => { e.scrollLeft = e.scrollWidth; e.scrollIntoView({ block: 'center', behavior: 'instant' }); }); await settle(p, 300);
-    const b2 = await t.boundingBox(), before = await st();
+    const g3 = await tries(async () => {
+      await home();
+      const b3 = await t.boundingBox();
+      await p.mouse.move(b3.x + b3.width / 2, b3.y - 60);
+      await resetTimes();
+      await p.mouse.wheel(0, 60); await p.mouse.move(b3.x + b3.width / 2, b3.y + b3.height / 2);
+      const s4 = (await st()).sl, y4 = await y();
+      await p.mouse.wheel(0, 60); await p.mouse.wheel(0, 60); await settle(p, 300);
+      const s5 = (await st()).sl, y5 = await y();
+      return { s4, s5, y4, y5, pre: (await maxWheelGap()) < GAP_WHEEL };
+    });
+    ok(`${id}: a wheel gesture that started on the page keeps scrolling the page over the strip${note(g3)}`, g3.pre && g3.s5 === g3.s4 && g3.y5 > g3.y4, `strip ${g3.s4} → ${g3.s5}, page ${g3.y4} → ${g3.y5}`);
+
+    /* a mouse drag that starts off the selection pans the strip and chooses nothing; let go while moving, it coasts */
     const items = t.locator('[data-sg-item]');
-    /* start on an item that is not the selection: the leftmost one in view */
-    const startX = await items.evaluateAll((els, x) => { const s = els.find((e) => { const r = e.getBoundingClientRect(); return r.left >= x && e.getAttribute('aria-checked') !== 'true' && e.getAttribute('aria-selected') !== 'true'; }); const r = s.getBoundingClientRect(); return r.left + r.width / 2; }, b2.x);
-    await p.mouse.move(startX, b2.y + b2.height / 2); await p.mouse.down();
-    await p.mouse.move(startX + 220, b2.y + b2.height / 2, { steps: 8 }); await p.mouse.up();
-    const atRelease = (await st()).sl;
-    await settle(p, 1200);
-    const after = await st();
-    ok(`${id}: a mouse drag off the selection pans the strip and chooses nothing (not even the item it ends on)`, after.sl < before.sl - 150 && after.sel === before.sel, `scroll ${before.sl} → ${after.sl}, selection ${before.sel} → ${after.sel}`);
-    ok(`${id}: let go while moving, it coasts on and comes to rest (a fling)`, after.sl < atRelease - 20 || after.sl === 0, `at release ${atRelease} → at rest ${after.sl}`);
-    const k = after.sel === 1 ? 2 : 1;
+    const g4 = await tries(async () => {
+      await t.evaluate((e) => { e.scrollLeft = e.scrollWidth; e.scrollIntoView({ block: 'center', behavior: 'instant' }); }); await settle(p, 400);
+      const b2 = await t.boundingBox(), before = await st();
+      /* start on an item that is not the selection: the leftmost one in view */
+      const startX = await items.evaluateAll((els, x) => { const s = els.find((e) => { const r = e.getBoundingClientRect(); return r.left >= x && e.getAttribute('aria-checked') !== 'true' && e.getAttribute('aria-selected') !== 'true'; }); const r = s.getBoundingClientRect(); return r.left + r.width / 2; }, b2.x);
+      await resetTimes();
+      await p.mouse.move(startX, b2.y + b2.height / 2); await p.mouse.down();
+      await p.mouse.move(startX + 220, b2.y + b2.height / 2, { steps: 8 }); await p.mouse.up();
+      const atRelease = (await st()).sl;
+      await settle(p, 1200);
+      return { before, atRelease, after: await st(), gap: await releaseGap(), pre: (await releaseGap()) < GAP_FLING };
+    });
+    ok(`${id}: a mouse drag off the selection pans the strip and chooses nothing (not even the item it ends on)`, g4.after.sl < g4.before.sl - 150 && g4.after.sel === g4.before.sel, `scroll ${g4.before.sl} → ${g4.after.sl}, selection ${g4.before.sel} → ${g4.after.sel}`);
+    ok(`${id}: let go while moving, it coasts on and comes to rest (a fling)${note(g4)}`, g4.pre && (g4.after.sl < g4.atRelease - 20 || g4.after.sl === 0), `at release ${g4.atRelease} → at rest ${g4.after.sl}; release ${g4.gap} ms after the last move`);
+    const k = g4.after.sel === 1 ? 2 : 1;
     await items.nth(k).click(); await settle(p, 400);
     ok(`${id}: a click still chooses`, (await st()).sel === k);
   }
   await p.context().close();
 };
 
-await Promise.all([...[1280, 390, 320].map(atWidth), reduced(), browse()]);
+/* OVF_PART=checks: everything but browsing; OVF_PART=browse: only browsing — the runner puts browsing, which depends
+   on real time between events, in its less crowded motion phase. OVF_WIDTHS=1280 OVF_ONLY=many-tabs-300-action:
+   only these (while investigating one case). */
+const PART = process.env.OVF_PART;
+const WIDTHS = process.env.OVF_WIDTHS ? process.env.OVF_WIDTHS.split(',').map(Number) : [1280, 390, 320];
+if (process.env.OVF_ONLY) CASES.splice(0, CASES.length, ...CASES.filter(([id]) => id === process.env.OVF_ONLY));
+await Promise.all([
+  ...(PART === 'browse' ? [] : [...WIDTHS.map(atWidth), ...(process.env.OVF_ONLY ? [] : [reduced()])]),
+  ...(PART === 'checks' || process.env.OVF_ONLY ? [] : [browse()]),
+]);
 
 ok('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 await b.close();

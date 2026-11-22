@@ -60,3 +60,24 @@ describe('reduce motion scope', () => {
     expect(prefersReducedMotion(document.getElementById('b'))).toBe(false);
   });
 });
+
+describe('overflow strip wheel latching', () => {
+  it('a later gesture from the page that reaches the strip mid-way stays the page’s (no owner left over)', async () => {
+    const { createOverflowStrip } = await import('../src/overflow');
+    const strip = document.createElement('div');
+    const item = document.createElement('button'); strip.append(item); document.body.append(strip);
+    Object.defineProperty(strip, 'scrollWidth', { value: 800 }); Object.defineProperty(strip, 'clientWidth', { value: 300 });
+    const s = createOverflowStrip(strip, () => [item]);
+    const wheel = (target: EventTarget, t: number) => {
+      const e = new WheelEvent('wheel', { deltaY: 100, bubbles: true, cancelable: true });
+      Object.defineProperty(e, 'timeStamp', { value: t });
+      target.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    expect(wheel(strip, 10_000)).toBe(true);            /* a gesture that starts on the strip: the strip's */
+    expect(wheel(document.body, 11_000)).toBe(false);   /* a pause, then a gesture on the page … */
+    expect(wheel(strip, 11_050)).toBe(false);           /* … reaching the strip mid-way stays the page's */
+    expect(wheel(strip, 12_000)).toBe(true);            /* a pause, a fresh turn on the strip: the strip's again */
+    s.destroy(); strip.remove();
+  });
+});

@@ -71,10 +71,12 @@ export function glide(el: HTMLElement): Glide {
    a trackpad's coasting) belongs to whatever it started on. A gesture that started on the strip stays there even at
    its end (it stops; a fresh turn after a pause scrolls the page); one that started on the page keeps scrolling the
    page when the strip passes under the pointer. Every wheel event anywhere is timed, so a gesture is known to have
-   started on the page even before it reaches a strip. */
+   started on the page even before it reaches a strip. Gestures are numbered: what a strip decided belongs to one
+   gesture only, so a later gesture that reaches the strip mid-way (the page's) is not taken by an owner left over
+   from an earlier one. */
 const LATCH = 300;
-let wheelPrev = -1e9, wheelLast = -1e9;
-if (typeof addEventListener === 'function') addEventListener('wheel', (e) => { wheelPrev = wheelLast; wheelLast = e.timeStamp; }, { capture: true, passive: true });
+let wheelPrev = -1e9, wheelLast = -1e9, gesture = 0;
+if (typeof addEventListener === 'function') addEventListener('wheel', (e) => { if (e.timeStamp - wheelLast > LATCH) gesture++; wheelPrev = wheelLast; wheelLast = e.timeStamp; }, { capture: true, passive: true });
 
 /** Room kept between a revealed item and the strip's edge (≥ the CSS edge fade, 24 px). */
 const EDGE = 32;
@@ -124,11 +126,11 @@ export function createOverflowStrip(scroller: HTMLElement, items: () => HTMLElem
   /* a mouse wheel (vertical only, no modifier) scrolls an overflowing strip sideways: down toward the end. It takes
      the event only while the strip can move that way, so at either end the next turn scrolls the page. Trackpads'
      horizontal and diagonal swipes, and Shift + wheel, stay the browser's */
-  let owner: 'strip' | 'page' | null = null;
+  let owner: 'strip' | 'page' | null = null, ownerOf = -1;
   const wheel = (e: WheelEvent) => {
     /* a new gesture: nothing (anywhere) within LATCH before this event */
     const fresh = e.timeStamp - wheelPrev > LATCH;
-    if (fresh) owner = null;
+    if (ownerOf !== gesture) { owner = null; ownerOf = gesture; }
     if (e.ctrlKey || e.shiftKey || e.altKey || e.metaKey || e.deltaX !== 0 || e.deltaY === 0 || scroller.hasAttribute('data-sg-panning')) { owner ??= 'page'; return; }
     const max = scroller.scrollWidth - scroller.clientWidth;
     if (max <= 1) return;
