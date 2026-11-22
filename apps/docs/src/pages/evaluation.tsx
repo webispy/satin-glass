@@ -20,7 +20,7 @@ import {
 } from '../eval-data';
 
 const ALL = BENCHMARKS.map((b) => b.key);
-const TABLE_LABELS = { selectAll: '보이는 모델 모두 고르기', sortedAsc: '오름차순 정렬', sortedDesc: '내림차순 정렬' };
+const TABLE_LABELS = { selectAll: '보이는 모델 모두 선택', sortedAsc: '오름차순 정렬', sortedDesc: '내림차순 정렬' };
 const LOW_N = 100;
 const EXAMPLE = ['kestrel-4', 'tide-pro', 'nimbus-2'];
 const PRICE = '100만 토큰당 USD';
@@ -91,7 +91,7 @@ export function Evaluation() {
     </FilterBar>
   );
   return (
-    <Page title="모델 평가 예제" intro="공개 리더보드에서 흔히 보는 흐름 — 걸러 보고, 몇 개를 골라 비교하고, 근거를 확인하기 — 을 라이브러리 컴포넌트로 만든 화면입니다. 0.6에서 더한 열 고르기(ColumnChooser), 여러 개 고르는 Combobox, 필터 줄(FilterBar), 알약 탭, 산점도(ScatterChart)를 씁니다. 모델·공급사 이름과 점수는 모두 지어낸 것입니다.">
+    <Page title="모델 평가 예제" intro="공개 리더보드에서 흔히 보는 흐름(걸러 보고, 몇 개를 선택해 비교하고, 근거를 확인하기)을 라이브러리 컴포넌트로 만든 화면입니다. 0.6에서 추가한 열 선택(ColumnChooser), 여러 개 선택하는 Combobox, 필터 바(FilterBar), 필 탭, 산점도(ScatterChart)를 씁니다. 모델·공급사 이름과 점수는 모두 지어낸 것입니다.">
       <div className="dash eval" data-demo="evaluation">
         <header className="dash__head">
           <div className="dash__title">
@@ -136,11 +136,11 @@ function Board({ models, filters, onClear, picked, setPicked, onCompare, onOpen 
     { key: 'name', header: '모델', width: phone ? 132 : 160, sticky: true, sortable: true,
       render: (r, { pinned }) => (pinned || !r.model ? <b>{r.name}</b> : <button type="button" className="dash__link" onClick={() => onOpen(r.model!)}>{r.name}</button>) },
     { key: 'vendor', header: '공급사', width: 112, sortable: true, value: (r) => (r.model ? vendorLabel(r.model.vendor) : ''), render: (r) => (r.model ? <Vendor k={r.model.vendor} /> : null) },
-    { key: 'effort', header: '추론', width: 76, sortable: true, value: (r) => r.values.effort, description: '평가할 때 쓴 추론 설정이에요. 품질이 아니라 실행 조건입니다. 높을수록 느리고 비싸져요.',
+    { key: 'effort', header: '추론', width: 76, sortable: true, value: (r) => r.values.effort, description: '평가할 때 쓴 추론 설정이에요. 품질이 아니라 실행 조건이에요. 높을수록 느리고 비싸져요.',
       render: (r) => (r.model ? EFFORT_WORD[r.model.effort] : null) },
     { key: 'deploy', header: '실행 위치', width: 96, sortable: true, value: (r) => (r.model ? DEPLOY_WORD[r.model.deploy] : ''), render: (r) => (r.model ? DEPLOY_WORD[r.model.deploy] : null) },
-    { key: 'overall', header: '종합', subheader: '측정한 것 평균', align: 'end', width: phone ? 132 : 148, sortable: true, firstSort: 'desc', value: (r) => r.values.overall,
-      description: `결과가 있는 벤치마크의 평균이에요. ${BENCHMARKS.length}개 중 일부가 빠진 모델은 몇 개를 쟀는지 함께 보여요. 벤치마크마다 찍기 점수가 달라 단순 평균은 참고용입니다.`,
+    { key: 'overall', header: '종합', subheader: '측정한 항목 평균', align: 'end', width: phone ? 132 : 148, sortable: true, firstSort: 'desc', value: (r) => r.values.overall,
+      description: `결과가 있는 벤치마크의 평균이에요. ${BENCHMARKS.length}개 중 일부가 빠진 모델은 몇 개를 측정했는지 함께 보여요. 벤치마크마다 찍기 점수가 달라 단순 평균은 참고용이에요.`,
       render: (r, { pinned }) => {
         const v = r.values.overall;
         if (v === null) return null;
@@ -148,7 +148,7 @@ function Board({ models, filters, onClear, picked, setPicked, onCompare, onOpen 
         const k = measured(r.model);
         return (
           <span className="sg-cell-meter">
-            {k < BENCHMARKS.length && <small className="eval__n" title={`${BENCHMARKS.length}개 중 ${k}개만 쟀어요`}>{k}/{BENCHMARKS.length}</small>}
+            {k < BENCHMARKS.length && <small className="eval__n" title={`${BENCHMARKS.length}개 중 ${k}개만 측정했어요`}>{k}/{BENCHMARKS.length}</small>}
             <BarMeter value={v} max={100} width={36} />
             <span className={v === lead.overall ? 'sg-cell-strong' : undefined}>{v.toFixed(1)}</span>
           </span>
@@ -176,13 +176,13 @@ function Board({ models, filters, onClear, picked, setPicked, onCompare, onOpen 
           <span className="eval__tools">
             <Chip selected={summary} onSelectedChange={setSummary}>요약 행</Chip>
             <ColumnChooser columns={choosable} hidden={hidden} onHiddenChange={setHidden} label="열" icon={<Columns3 />}
-              labels={{ panel: '보일 열', showAll: '모두 보기', count: (s, t) => `${s}/${t}` }} />
+              labels={{ panel: '표시할 열', showAll: '모두 보기', count: (s, t) => `${s}/${t}` }} />
           </span>
         </div>
         {/* what the table holds, and what was picked from it: the next step sits right here */}
         <div className="table-bar eval__pickbar" data-on={picked.length > 0 || undefined}>
           <Text variant="subhead" as="span" aria-live="polite">
-            {picked.length ? `${picked.length}개 골랐어요 · ${names.slice(0, 2).join(', ')}${names.length > 2 ? ' 외' : ''}` : `모델 ${MODELS.length}개 중 ${models.length}개 · 체크해서 비교할 모델을 고르세요`}
+            {picked.length ? `${picked.length}개 선택했어요 · ${names.slice(0, 2).join(', ')}${names.length > 2 ? ' 외' : ''}` : `모델 ${MODELS.length}개 중 ${models.length}개 · 체크해서 비교할 모델을 선택하세요`}
           </Text>
           {picked.length > 0 && (
             <span className="table-bar__actions">
@@ -195,7 +195,7 @@ function Board({ models, filters, onClear, picked, setPicked, onCompare, onOpen 
           defaultSort={{ key: 'overall', dir: 'desc' }} density="compact" maxHeight={560} selectable selected={picked} onSelectedChange={setPicked}
           labels={{ ...TABLE_LABELS, selectRow: (r) => `${r.name} 비교에 넣기` }}
           empty={<EmptyState size="sm" icon={<SearchX />} title="조건에 맞는 모델이 없어요" actions={<Button size="sm" variant="neutral" onClick={onClear}>필터 초기화</Button>} />} />
-        <Text variant="footnote" tone="secondary" as="p">굵은 값은 보이는 모델 중 가장 좋은 값이에요(가격은 가장 낮은 값). n=은 표본이 {LOW_N}개보다 작아 오차가 큰 결과, –는 재지 않은 결과예요.</Text>
+        <Text variant="footnote" tone="secondary" as="p">굵은 값은 보이는 모델 중 가장 좋은 값이에요(가격은 가장 낮은 값). n=은 표본이 {LOW_N}개보다 적어 오차가 큰 결과, –는 측정하지 않은 결과예요.</Text>
       </CardBody>
     </Card>
   );
@@ -207,7 +207,7 @@ function Compare({ models, picked, setPicked, onBack, onOpen }: { models: Model[
   const chosen = picked.map((id) => MODELS.find((m) => m.id === id)).filter((m): m is Model => !!m);
   if (!chosen.length) {
     return (
-      <EmptyState icon={<Scale />} title="비교할 모델을 골라 주세요" description="순위표에서 모델을 체크하면 여기에 나란히 보여요."
+      <EmptyState icon={<Scale />} title="비교할 모델을 선택해 주세요" description="순위표에서 모델을 체크하면 여기에 나란히 보여요."
         actions={<><Button size="sm" variant="tinted" onClick={onBack}>순위표로</Button><Button size="sm" variant="neutral" onClick={() => setPicked(EXAMPLE)}>예시 3개로 보기</Button></>} />
     );
   }
@@ -235,18 +235,18 @@ function Compare({ models, picked, setPicked, onBack, onOpen }: { models: Model[
         const top = best(r);
         if (r.kind === 'bench') {
           const s = m.scores[r.key];
-          if (!s) return <span className="sg-cell-muted">재지 않음</span>;
+          if (!s) return <span className="sg-cell-muted">측정 안 함</span>;
           return (
             <span className="eval__ci">
               <IntervalPlot value={s.v} low={s.lo} high={s.hi} reference={r.chance} width={88}
-                aria-label={`${s.v.toFixed(1)}점, 95% 구간 ${s.lo.toFixed(1)}–${s.hi.toFixed(1)}${r.chance ? `, 찍기 ${r.chance}점` : ''}`} />
+                aria-label={`${s.v.toFixed(1)}점, 95% 신뢰 구간 ${s.lo.toFixed(1)}–${s.hi.toFixed(1)}${r.chance ? `, 찍기 ${r.chance}점` : ''}`} />
               <ScoreText s={s} lead={s.v === top} />
             </span>
           );
         }
         if (r.kind === 'overall') {
           const v = overall(m, ALL), k = measured(m);
-          return v === null ? null : <span className="eval__score"><span className={v === top ? 'sg-cell-strong' : undefined}>{v.toFixed(1)}</span>{k < BENCHMARKS.length && <small className="eval__n" title={`${BENCHMARKS.length}개 중 ${k}개만 쟀어요`}>{k}/{BENCHMARKS.length}</small>}</span>;
+          return v === null ? null : <span className="eval__score"><span className={v === top ? 'sg-cell-strong' : undefined}>{v.toFixed(1)}</span>{k < BENCHMARKS.length && <small className="eval__n" title={`${BENCHMARKS.length}개 중 ${k}개만 측정했어요`}>{k}/{BENCHMARKS.length}</small>}</span>;
         }
         if (r.kind === 'price') return <span className={m.price === top ? 'sg-cell-strong' : undefined}>{usd(m.price)}</span>;
         if (r.kind === 'speed') return <span className={m.speed === top ? 'sg-cell-strong' : undefined}>{m.speed} 토큰/초</span>;
@@ -262,13 +262,13 @@ function Compare({ models, picked, setPicked, onBack, onOpen }: { models: Model[
         <Button size="sm" variant="plain" onClick={() => setPicked([])}>모두 빼기</Button>
       </div>
       <Card>
-        <CardHeader title="나란히 보기" description="굵은 값이 고른 모델 중 가장 좋은 값이에요. 점은 점수, 선은 95% 구간, 세로 눈금은 찍기 점수예요. 모델 이름을 누르면 자세히 볼 수 있어요." />
+        <CardHeader title="나란히 보기" description="굵은 값이 선택한 모델 중 가장 좋은 값이에요. 점은 점수, 선은 95% 신뢰 구간, 세로 눈금은 찍기 점수예요. 모델 이름을 누르면 자세히 볼 수 있어요." />
         <CardBody>
-          <DataTable<CRow> aria-label="고른 모델 나란히 보기" rows={rows} rowKey={(r) => r.key} columns={cols} density="compact" />
+          <DataTable<CRow> aria-label="선택한 모델 나란히 보기" rows={rows} rowKey={(r) => r.key} columns={cols} density="compact" />
         </CardBody>
       </Card>
       <Card>
-        <CardHeader title="가격 대비 종합 점수" description={`왼쪽 위일수록 싸고 잘해요. 가격은 로그 눈금이에요. 고른 모델은 이름이 붙어요${outside.length ? ` · ${outside.length}개는 지금 필터 밖이지만 함께 보여요` : ''}.`} />
+        <CardHeader title="가격 대비 종합 점수" description={`왼쪽 위일수록 싸고 점수가 높아요. 가격은 로그 스케일이에요. 선택한 모델에는 이름이 붙어요.${outside.length ? ` 그중 ${outside.length}개는 지금 필터 밖이지만 함께 보여 줘요.` : ''}`} />
         <CardBody>
           <ScatterChart aria-label="가격 대비 종합 점수" data={points} x="price" y="overall" pointLabel="name" xScale="log" xLabel={`가격(${PRICE})`} yLabel="종합 점수"
             xFormat={usd} yFormat={(v) => v.toFixed(0)} group="vendor" groups={VENDORS.map((v) => ({ ...v, color: vendorColor(v.key) }))} highlight={chosen.map((m) => m.name)} height={300} locale="ko-KR" />
@@ -310,7 +310,7 @@ function ModelCard({ m, picked, onPick, onOpen }: { m: Model; picked: boolean; o
       <CardHeader title={m.name} description={<Vendor k={m.vendor} />} />
       <CardBody className="eval__card-body">
         <Facts m={m} />
-        {low > 0 && <Text variant="footnote" tone="secondary" as="p">표본이 작은 결과 {low}개 · 평가 {m.single ? '1회' : '여러 회'}</Text>}
+        {low > 0 && <Text variant="footnote" tone="secondary" as="p">표본이 작은 결과 {low}개 · {m.single ? '1번 평가' : '여러 번 평가'}</Text>}
         <div className="eval__card-actions">
           <Chip selected={picked} onSelectedChange={onPick}>{picked ? '비교에 넣음' : '비교에 넣기'}</Chip>
           <Button size="sm" variant="plain" onClick={onOpen}>자세히</Button>
@@ -329,14 +329,14 @@ function Detail({ m, picked, onPick }: { m: Model; picked: boolean; onPick: (on:
         <Button size="sm" variant={picked ? 'neutral' : 'tinted'} onClick={() => onPick(!picked)}>{picked ? '비교에서 빼기' : '비교에 넣기'}</Button>
       </div>
       <Facts m={m} />
-      <Text variant="footnote" tone="secondary" as="p">점은 점수, 선은 95% 구간, 세로 눈금은 찍기 점수예요.</Text>
+      <Text variant="footnote" tone="secondary" as="p">점은 점수, 선은 95% 신뢰 구간, 세로 눈금은 찍기 점수예요.</Text>
       <ul className="eval__scores">
         {BENCHMARKS.map((b) => {
           const s = m.scores[b.key];
           return (
             <li key={b.key}>
               <span>{b.label}</span>
-              {s ? <IntervalPlot value={s.v} low={s.lo} high={s.hi} reference={b.chance} width={112} aria-label={`${s.v.toFixed(1)}점, 95% 구간 ${s.lo.toFixed(1)}–${s.hi.toFixed(1)}`} /> : <span className="sg-cell-muted">재지 않음</span>}
+              {s ? <IntervalPlot value={s.v} low={s.lo} high={s.hi} reference={b.chance} width={112} aria-label={`${s.v.toFixed(1)}점, 95% 신뢰 구간 ${s.lo.toFixed(1)}–${s.hi.toFixed(1)}${b.chance ? `, 찍기 ${b.chance}점` : ''}`} /> : <span className="sg-cell-muted">측정 안 함</span>}
               {s ? <ScoreText s={s} /> : <span />}
             </li>
           );
@@ -346,9 +346,9 @@ function Detail({ m, picked, onPick }: { m: Model; picked: boolean; onPick: (on:
         <dl className="eval__trace">
           <dt>실행 ID</dt><dd>{m.trace.run}</dd>
           <dt>설정</dt><dd>{m.trace.config}</dd>
-          <dt>평가 횟수</dt><dd>{m.single ? '1회 (표본이 작아요)' : '여러 회'}</dd>
+          <dt>평가 횟수</dt><dd>{m.single ? '1번 (표본이 작아요)' : '여러 번'}</dd>
           <dt>최소 표본</dt><dd>{minSample(m)}개</dd>
-          <dt>속도 · 문맥</dt><dd>{m.speed} 토큰/초 · {m.context >= 1000 ? `${m.context / 1000}M` : `${m.context}K`} 토큰</dd>
+          <dt>속도 · 컨텍스트</dt><dd>{m.speed} 토큰/초 · {m.context >= 1000 ? `${m.context / 1000}M` : `${m.context}K`} 토큰</dd>
           {m.trace.missing && <><dt>빠진 결과</dt><dd>{m.trace.missing}</dd></>}
         </dl>
       ) }]} />

@@ -24,8 +24,8 @@ export function Display() {
   const toast = useToast();
   const load = () => { setLoading(true); setTimeout(() => setLoading(false), 1800); };
   return (
-    <Page title="구성과 미디어" intro="큰 제목이 바 안으로 접히는 내비게이션, 경로 표시, 펼치는 구역, 불러오는 동안의 자리 표시, 전체 화면 사진 보기입니다.">
-      <Section title="큰 제목" intro="스크롤하면 큰 제목이 유리 바 밑으로 들어가면서, 바의 작은 제목이 그만큼 떠오릅니다. 정해진 지점에서 바뀌지 않고 손가락 위치를 그대로 따라갑니다.">
+    <Page title="구성과 미디어" intro="큰 제목이 바 안으로 접히는 내비게이션, 경로 표시, 타임라인, 펼치는 구역, 불러오는 동안의 자리 표시, 전체 화면 사진 보기입니다.">
+      <Section title="큰 제목" intro="스크롤하면 큰 제목이 유리 바 밑으로 들어가면서, 바의 작은 제목이 그만큼 떠오릅니다. 정해진 지점에서 한 번에 바뀌지 않고 스크롤 위치를 그대로 따라갑니다.">
         <Demo center data-demo="largetitle" style={{ padding: 24 }}>
           <div className="phone" style={{ height: 600 }}>
             <div ref={setScreen} className="phone__screen" data-scroll="largetitle">
@@ -41,7 +41,7 @@ export function Display() {
         </Demo>
       </Section>
 
-      <Section title="경로 (Breadcrumbs)" intro="지금 있는 곳은 굵은 글씨로 끝에 오고 링크가 아닙니다. 단계가 많으면 가운데를 … 버튼으로 접고, 누르면 숨은 단계가 메뉴로 열립니다. 좁으면 각 단계가 말줄임됩니다.">
+      <Section title="경로 (Breadcrumbs)" intro="현재 위치는 맨 끝에 굵은 글씨로 표시되고 링크가 아닙니다. 단계가 많으면 가운데를 … 버튼으로 접고, 누르면 숨은 단계가 메뉴로 열립니다. 폭이 좁으면 각 단계가 말줄임표로 줄어듭니다.">
         <Demo col data-demo="breadcrumbs">
           <Breadcrumbs aria-label="경로" items={[{ label: '홈', href: '#/display', icon: <Home /> }, { label: '여행', href: '#/display' }, { label: '서울 산책' }]} />
           <Breadcrumbs aria-label="긴 경로" moreLabel="숨은 단계 보기" maxItems={4} items={[
@@ -54,7 +54,7 @@ export function Display() {
         </Demo>
       </Section>
 
-      <Section title="타임라인 (Timeline)" intro="순서가 있는 일을 한 줄로 잇습니다. 주문이나 신청처럼 단계가 있으면 완료(체크) · 지금 단계(위치 점) · 예정(빈 원)을 모양으로 구별하고, 지나온 길은 강조색 선으로 그립니다. 지금 단계는 aria-current=&quot;step&quot;이고, 각 단계의 상태는 스크린 리더에 말로도 전합니다. 활동 기록처럼 일이 쌓이는 목록은 톤의 점이나 아이콘으로 표시합니다. 선은 잇기만 하고 무엇도 움직이지 않습니다.">
+      <Section title="타임라인 (Timeline)" intro="순서가 있는 일을 한 줄로 잇습니다. 주문이나 신청처럼 단계가 있으면 완료(체크) · 진행 중(위치 점) · 예정(빈 원)을 모양으로 구별하고, 지나온 구간은 강조색 선으로 그립니다. 진행 중인 단계에는 aria-current=&quot;step&quot;을 붙이고, 각 단계의 상태는 스크린 리더에 글로도 전합니다. 활동 기록처럼 일이 쌓이는 목록은 톤(색)이 있는 점이나 아이콘으로 표시합니다. 진행 중인 단계가 바뀌면 위치 점이 선을 따라 옮겨 가며 지나는 선을 채우고, 기록이 추가되면 그 줄이 펼쳐집니다.">
         <div className="grid grid--2">
           <Demo col data-demo="timeline-steps">
             <Text variant="subhead" tone="secondary">주문 배송 · 단계 (버튼으로 단계를 옮겨 보세요)</Text>
@@ -63,13 +63,13 @@ export function Display() {
           <Demo col data-demo="timeline-events">
             <Text variant="subhead" tone="secondary">활동 기록 · 아이콘과 톤 (다음: 새 기록이 위에 추가, 이전: 최근 기록이 빠짐)</Text>
             <EventLog />
-            <Text variant="subhead" tone="secondary">점만 · 톤</Text>
+            <Text variant="subhead" tone="secondary">점과 톤만 (아이콘 없음)</Text>
             <DeployLog />
           </Demo>
         </div>
       </Section>
 
-      <Section title="펼치는 구역 (Accordion)" intro="자주 보지 않는 내용을 접어 둡니다. 제목 버튼이 구역을 열고 닫고(aria-expanded), 구역은 높이를 펼치며 내용이 살짝 내려앉습니다. 하나만 열리게 하려면 multiple={false}.">
+      <Section title="펼치는 구역 (Accordion)" intro="자주 보지 않는 내용을 접어 둡니다. 제목 버튼이 구역을 열고 닫고(aria-expanded), 구역의 높이가 펼쳐지면서 내용이 제목 뒤에서 살짝 내려옵니다. 하나만 열리게 하려면 multiple={false}를 줍니다.">
         <div className="grid grid--2">
           <Demo col data-demo="accordion">
             <Accordion defaultValue={['ship']} items={[
@@ -82,7 +82,7 @@ export function Display() {
                   {([['S', '가슴 88–92 · 허리 72–76 · 엉덩이 90–94'], ['M', '가슴 94–98 · 허리 78–82 · 엉덩이 96–100'], ['L', '가슴 100–104 · 허리 84–88 · 엉덩이 102–106'], ['XL', '가슴 106–110 · 허리 90–94 · 엉덩이 108–112'], ['2XL', '가슴 112–116 · 허리 96–100 · 엉덩이 114–118']] as const).map(([k, v]) => (
                     <Text key={k} variant="subhead" as="p"><b>{k}</b> · {v} cm</Text>
                   ))}
-                  <Text variant="footnote" tone="secondary" as="p">린넨과 니트는 처음 세탁하면 2–3% 줄 수 있어요. 소매 길이는 모델 사진 아래의 실측표를 함께 보세요.</Text>
+                  <Text variant="footnote" tone="secondary" as="p">리넨과 니트는 처음 세탁하면 2–3% 줄어들 수 있어요. 소매 길이는 모델 사진 아래의 실측표를 함께 보세요.</Text>
                 </Stack>
               ) },
               { value: 'bulk', title: '대량 주문', disabled: true, content: null },
@@ -98,7 +98,7 @@ export function Display() {
         </div>
       </Section>
 
-      <Section title="스켈레톤" intro="불러오는 동안 내용의 모양을 미리 보여 줍니다. 빛 한 줄기가 모든 자리 표시를 함께 지나갑니다. 동작 줄이기에서는 천천히 숨 쉬듯 밝아졌다 어두워집니다.">
+      <Section title="스켈레톤" intro="불러오는 동안 내용의 모양을 미리 보여 줍니다. 빛 한 줄기가 모든 자리 표시(스켈레톤)를 함께 지나갑니다. 동작 줄이기를 켜면 천천히 숨 쉬듯 밝아졌다 어두워집니다.">
         <Demo col data-demo="skeleton">
           <Stack direction="row" gap={3} align="center"><Button variant="tinted" onClick={load} disabled={loading}>다시 불러오기</Button><Text variant="footnote" tone="secondary">{loading ? '불러오는 중…' : '불러옴'}</Text></Stack>
           <div aria-busy={loading} aria-live="polite" style={{ width: '100%', maxWidth: 520 }}>
@@ -108,7 +108,7 @@ export function Display() {
                 <div style={{ flex: 1, minWidth: 0 }} className={loading ? undefined : 'fade-in'}>
                   {loading ? <Skeleton lines={2} /> : <>
                     <Text variant="headline">{['김하늘', 'Lee Sora', '박지민'][i]}</Text>
-                    <Text variant="subhead" tone="secondary">{['서울숲에서 사진을 공유했어요', '북촌 산책 코스를 저장했어요', '남산 야경 코스에 별을 줬어요'][i]}</Text>
+                    <Text variant="subhead" tone="secondary">{['서울숲에서 사진을 공유했어요', '북촌 산책 코스를 저장했어요', '남산 야경 코스에 즐겨찾기에 추가했어요'][i]}</Text>
                   </>}
                 </div>
               </Stack>
@@ -121,7 +121,7 @@ export function Display() {
         </Demo>
       </Section>
 
-      <Section title="미디어 뷰어" intro="사진을 누르면 그 자리에서 커지며 열리고, 닫으면 제자리로 돌아갑니다. 좌우로 넘기기, 두 번 탭·핀치·Ctrl+휠·+/−로 확대, 확대한 채 끌기, 아래로 쓸어 닫기를 지원합니다.">
+      <Section title="미디어 뷰어" intro="사진을 누르면 그 자리에서 커지며 열리고, 닫으면 제자리로 돌아갑니다. 좌우로 넘기기, 두 번 탭·핀치·Ctrl+휠·+/−로 확대, 확대한 채 끌기, 아래로 쓸어내려 닫기를 지원합니다.">
         <Demo data-demo="media">
           <div className="grid grid--3" style={{ width: '100%', gap: 8 }}>
             {PHOTOS.map((ph, i) => (

@@ -14,7 +14,7 @@ const pct = (k: 'visits' | 'orders' | 'revenue') => { const v = (week(k) / lastW
 
 export function ChartsPage() {
   return (
-    <Page title="차트와 지표" intro="직접 그린 SVG 차트입니다. 계열 색은 테마 토큰(--sg-chart-1…6)을 쓰고, 네 테마 모두 카드 위에서 3:1 이상의 대비를 지킵니다. 키보드로 점을 옮기면 값을 읽어 주고, 전체 데이터는 화면에 보이지 않는 표로도 제공합니다.">
+    <Page title="차트와 지표" intro="직접 그린 SVG 차트입니다. 계열 색은 테마 토큰(--sg-chart-1…6)을 쓰고, 네 테마 모두 카드 위에서 3:1 이상의 대비를 지킵니다. 키보드로 점 사이를 옮겨 다니면 값을 읽어 주고, 전체 데이터는 화면에 보이지 않는 표로도 제공합니다.">
       <Stats />
       <Meters />
       <Lines />
@@ -31,7 +31,7 @@ function Meters() {
   const left = (50 - used).toFixed(1);
   const storage = used >= 45 ? '거의 다 찼어요' : used >= 30 ? `${left} GB 남았어요 · 정리하면 좋아요` : `${left} GB 남았어요`;
   return (
-    <Section title="미터 (Meter)" intro="정해진 범위 안의 값입니다. 저장 공간, 할당량, 점수처럼 끝이 정해진 양을 보여 주고, 작업이 끝을 향해 가는 진행(Progress)과는 다릅니다. 막대는 값이 다니는 홈이고, 채움은 시작 쪽부터 평평하게 찹니다. low · high · optimum을 주면 HTML의 meter처럼 구간에 따라 색이 정해지고(좋음 · 아쉬움 · 나쁨), 그 뜻은 status 문구로도 알려 줍니다. 값은 데이터가 바꾸는 것이라 움직임 없이 바로 바뀝니다.">
+    <Section title="미터 (Meter)" intro="정해진 범위 안의 값입니다. 저장 공간, 할당량, 점수처럼 끝이 정해진 양을 보여 주고, 작업이 끝을 향해 가는 진행(Progress)과는 다릅니다. 막대는 홈이고, 값만큼 시작 쪽부터 평평하게 채워집니다. low · high · optimum을 주면 HTML의 meter처럼 구간에 따라 색이 정해지고(좋음 · 주의 · 나쁨), 그 뜻은 status 문구로도 알려 줍니다. 값은 사용자의 손이 아니라 데이터가 바꾸므로 애니메이션 없이 바로 반영됩니다.">
       <div className="grid grid--2">
         <Demo col data-demo="meter">
           <Meter label="저장 공간" value={used} max={50} low={30} high={45} optimum={0} format={(v) => `${v.toFixed(1)} GB / 50 GB`} status={storage} />
@@ -41,7 +41,7 @@ function Meters() {
           <Meter label="응답 시간 목표" value={Number.NaN} labels={{ unavailable: '알 수 없음' }} status="측정 중이에요" />
         </Demo>
         <Demo col data-demo="meter-bands">
-          <Text variant="subhead" tone="secondary">값을 바꾸면 구간에 따라 색과 문구가 바뀝니다 (30 GB부터 아쉬움, 45 GB부터 나쁨)</Text>
+          <Text variant="subhead" tone="secondary">값을 바꾸면 구간에 따라 색과 문구가 바뀝니다 (30 GB부터 주의, 45 GB부터 나쁨)</Text>
           <Meter label="저장 공간" value={used} max={50} low={30} high={45} optimum={0} format={(v) => `${v.toFixed(1)} GB`} status={storage} />
           <Slider aria-label="사용한 저장 공간" min={0} max={50} step={0.1} value={used} onChange={setUsed} format={(v) => `${v.toFixed(1)} GB`} />
         </Demo>
@@ -71,7 +71,7 @@ function Stats() {
 function Lines() {
   const [area, setArea] = useState<'line' | 'area'>('area');
   return (
-    <Section title="선 · 영역" intro="포인터를 따라 십자선과 모든 계열의 값이 뜹니다. 범례를 누르면 계열을 숨기고 보일 수 있습니다(마지막 하나는 숨기지 않아요). 처음에는 선이 그려지고, 데이터가 바뀌면 이전 모양에서 이어집니다.">
+    <Section title="선 · 영역" intro="포인터를 따라 십자선과 모든 계열의 값이 뜹니다. 범례를 누르면 계열을 숨기거나 다시 보일 수 있습니다(마지막 하나는 숨길 수 없습니다). 처음에는 선이 그려지고, 데이터가 바뀌면 이전 모양에서 새 모양으로 이어서 바뀝니다.">
       <Demo col data-demo="line">
         <SegmentedControl size="sm" aria-label="선 모양" value={area} onChange={setArea} options={[{ value: 'line', label: '선' }, { value: 'area', label: '영역' }]} style={{ alignSelf: 'flex-start' }} />
         <LineChart aria-label="하루 방문과 재방문" data={DAYS} x="day" series={[{ key: 'visits', label: '방문' }, { key: 'returning', label: '재방문' }]} area={area === 'area'} height={240} locale="ko-KR"
@@ -99,11 +99,11 @@ function Scatter() {
   const [scale, setScale] = useState<'log' | 'linear'>('log');
   const top = [...PRODUCTS].sort((a, b) => b.sold - a.sold).slice(0, 2).map((p) => p.name);
   return (
-    <Section title="산점도 (ScatterChart)" intro="같은 대상의 두 값 — 가격과 판매량, 품질과 비용 — 을 점 하나로 놓습니다. 값이 여러 자리수에 걸치면(가격처럼) 로그 눈금으로 거리를 공평하게 봅니다. 묶음마다 색이 있고 범례로 숨겼다 보일 수 있으며, highlight로 몇 개를 골라 크게 하고 이름을 붙이면 나머지는 물러납니다. 포인터는 가장 가까운 점을 찾고, 방향키는 왼쪽부터 점을 하나씩 짚으며 읽어 줍니다. 점은 왼쪽부터 차례로 톡 나타나고, 지표나 눈금을 바꾸면 축과 점이 함께 옮겨 갑니다.">
+    <Section title="산점도 (ScatterChart)" intro="같은 대상의 두 값(가격과 판매량, 품질과 비용 등)을 점 하나로 나타냅니다. 가격처럼 값이 여러 자릿수에 걸치면 로그 스케일로 간격을 고르게 봅니다. 묶음마다 색이 있고 범례로 숨기거나 다시 보일 수 있으며, highlight로 지정한 점은 크게 그리고 이름을 붙이며 나머지는 흐려집니다. 포인터는 가장 가까운 점을 찾고, 방향키는 왼쪽부터 점을 하나씩 짚으며 읽어 줍니다. 점은 왼쪽부터 차례로 나타나고, 지표나 스케일을 바꾸면 축과 점이 함께 옮겨 갑니다.">
       <Demo col data-demo="scatter">
         <Stack direction="row" gap={2} wrap>
           <SegmentedControl size="sm" aria-label="세로축" value={y} onChange={setY} options={[{ value: 'sold', label: '판매량' }, { value: 'rating', label: '평점' }]} />
-          <SegmentedControl size="sm" aria-label="가격 눈금" value={scale} onChange={setScale} options={[{ value: 'log', label: '로그 눈금' }, { value: 'linear', label: '균등 눈금' }]} />
+          <SegmentedControl size="sm" aria-label="가격 스케일" value={scale} onChange={setScale} options={[{ value: 'log', label: '로그 스케일' }, { value: 'linear', label: '선형 스케일' }]} />
         </Stack>
         <ScatterChart aria-label={`가격 대비 ${y === 'sold' ? '판매량' : '평점'}`} data={PRODUCTS.filter((p) => !p.paused) as unknown as Record<string, string | number>[]} x="price" y={y} pointLabel="name"
           group="category" groups={CATEGORIES.map((c) => ({ key: c.key, label: c.label }))} highlight={top} xScale={scale} height={280} locale="ko-KR"
@@ -115,7 +115,7 @@ function Scatter() {
 
 function Donut() {
   return (
-    <Section title="도넛" intro="전체에서 각 부분이 차지하는 몫입니다. 조각에 포인터를 올리거나 방향키로 옮기면 가운데에 그 몫이 나타납니다. 조각이 많으면 막대가 더 읽기 쉬워요. 다섯 개 안팎일 때 씁니다.">
+    <Section title="도넛" intro="전체에서 각 부분이 차지하는 몫입니다. 조각에 포인터를 올리거나 방향키로 조각을 옮겨 다니면 가운데에 그 몫이 나타납니다. 조각이 다섯 개 안팎일 때 쓰고, 그보다 많으면 막대 차트가 더 읽기 쉽습니다.">
       <Demo data-demo="donut">
         <DonutChart aria-label="분류별 매출" locale="ko-KR" centerLabel="30일 매출" format={(v) => wonShort(v)} data={CATEGORY_SHARE} />
       </Demo>
@@ -127,10 +127,10 @@ function Small() {
   const top = PRODUCTS.filter((p) => !p.paused).sort((a, b) => b.sold - a.sold).slice(0, 5);
   const best = top[0].sold;
   return (
-    <Section title="작은 표시" intro="숫자 옆에 붙는 작은 그림들입니다. 꾸밈이므로 스크린 리더에는 숨기고, 의미는 옆의 숫자가 전합니다. 스파크라인은 흐름, 막대(BarMeter)는 크기 비교, 구간(IntervalPlot)은 평균과 범위를 기준선과 함께 보여 줍니다.">
+    <Section title="작은 표시" intro="숫자 옆에 붙는 작은 그림들입니다. 꾸밈이므로 스크린 리더에는 숨기고, 의미는 옆의 숫자가 전합니다. 스파크라인은 흐름, 막대 미터(BarMeter)는 크기 비교, 구간(IntervalPlot)은 평균과 범위를 기준선과 함께 보여 줍니다.">
       <div className="grid grid--2">
         <Demo col data-demo="small-spark">
-          <Text variant="subhead" tone="secondary">스파크라인 · 막대</Text>
+          <Text variant="subhead" tone="secondary">스파크라인 · 막대 미터</Text>
           <ul className="mini-list">
             {top.map((p) => (
               <li key={p.id}>
@@ -155,7 +155,7 @@ function Small() {
           </ul>
         </Demo>
       </div>
-      <Stack gap={1} style={{ marginTop: 8 }}><Text variant="footnote" tone="tertiary">표 안에 넣는 방법은 ‘표’ 페이지의 셀 안의 표시를 보세요.</Text></Stack>
+      <Stack gap={1} style={{ marginTop: 8 }}><Text variant="footnote" tone="tertiary">표 안에 넣는 방법은 ‘표’ 페이지의 ‘셀 안의 표시’ 섹션에 있습니다.</Text></Stack>
     </Section>
   );
 }

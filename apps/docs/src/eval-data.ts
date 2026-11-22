@@ -34,16 +34,16 @@ export const FAMILIES = [
   { key: 'instruct', label: '지시 따르기' }, { key: 'korean', label: '한국어' },
 ];
 export const BENCHMARKS: Benchmark[] = [
-  { key: 'gen', label: '일반 지식', family: 'knowledge', note: '여러 분야 객관식 1,200문항. 보기 4개라 찍으면 25점이에요.', chance: 25 },
-  { key: 'pro', label: '전문 지식', family: 'knowledge', note: '대학원 수준 과학 문제 450문항. 보기 4개.', chance: 25 },
-  { key: 'math', label: '수학', family: 'reasoning', note: '경시 대회형 문제 60문항. 답을 직접 써야 해서 찍기 점수가 없어요.' },
-  { key: 'logic', label: '논리', family: 'reasoning', note: '여러 단계를 거쳐야 하는 추론 문제 800문항.' },
-  { key: 'func', label: '함수 작성', family: 'coding', note: '설명을 읽고 함수를 짜서 숨은 테스트를 통과한 비율.' },
-  { key: 'fix', label: '버그 수정', family: 'coding', note: '실제 저장소 크기의 코드에서 실패하는 테스트를 고친 비율.' },
-  { key: 'format', label: '형식 지키기', family: 'instruct', note: '길이·형식·금지어 같은 검증 가능한 지시를 모두 지킨 비율.' },
-  { key: 'long', label: '긴 지시', family: 'instruct', note: '3천 자가 넘는 시스템 지시를 대화 끝까지 지킨 비율.' },
-  { key: 'read', label: '독해', family: 'korean', note: '한국어 지문 독해 객관식. 보기 5개라 찍으면 20점이에요.', chance: 20 },
-  { key: 'write', label: '작문', family: 'korean', note: '한국어 글쓰기를 채점 기준표로 평가한 점수(0–100).' },
+  { key: 'gen', label: '일반 지식', family: 'knowledge', note: '여러 분야 객관식 1,200문항이에요. 보기가 4개라 찍으면 25점이에요.', chance: 25 },
+  { key: 'pro', label: '전문 지식', family: 'knowledge', note: '대학원 수준 과학 문제 450문항이에요. 보기가 4개라 찍으면 25점이에요.', chance: 25 },
+  { key: 'math', label: '수학', family: 'reasoning', note: '경시대회형 문제 60문항이에요. 답을 직접 써야 해서 찍기 점수가 없어요.' },
+  { key: 'logic', label: '논리', family: 'reasoning', note: '여러 단계를 거쳐야 하는 추론 문제 800문항이에요.' },
+  { key: 'func', label: '함수 작성', family: 'coding', note: '설명을 읽고 짠 함수가 숨은 테스트를 통과한 비율이에요.' },
+  { key: 'fix', label: '버그 수정', family: 'coding', note: '실제 저장소 규모의 코드에서 버그를 고쳐 실패하던 테스트를 통과시킨 비율이에요.' },
+  { key: 'format', label: '형식 지키기', family: 'instruct', note: '길이·형식·금지어처럼 확인할 수 있는 지시를 모두 지킨 비율이에요.' },
+  { key: 'long', label: '긴 지시', family: 'instruct', note: '3천 자가 넘는 시스템 지시를 대화 끝까지 지킨 비율이에요.' },
+  { key: 'read', label: '독해', family: 'korean', note: '한국어 지문 독해 객관식이에요. 보기가 5개라 찍으면 20점이에요.', chance: 20 },
+  { key: 'write', label: '작문', family: 'korean', note: '한국어 글쓰기를 채점 기준표로 평가한 점수(0–100)예요.' },
 ];
 
 /* a small seeded generator (mulberry32) */
@@ -100,7 +100,7 @@ export const MODELS: Model[] = LINES.flatMap((line) => line.sizes.map((size, si)
       run: `run-${(0x10000 + Math.floor(r() * 0xeffff)).toString(16)}`,
       config: `temperature 0 · ${effort ? ['', '추론 낮음', '추론 중간', '추론 높음'][effort] : '추론 없음'} · 최대 출력 ${pick(['4K', '8K', '16K'])}`,
       date: `2026-11-${String(3 + Math.floor(r() * 15)).padStart(2, '0')}`,
-      missing: missing.length ? `${missing.join(', ')}: 로컬 실행 환경에서 컨텍스트가 모자라 돌리지 못했어요.` : undefined,
+      missing: missing.length ? `${missing.join(', ')}: 로컬 실행 환경에서 컨텍스트가 모자라 측정하지 못했어요.` : undefined,
     },
   } satisfies Model;
 }));

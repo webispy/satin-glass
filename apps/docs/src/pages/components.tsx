@@ -37,7 +37,7 @@ export function Buttons() {
           <Button variant="tinted" startIcon={<Plus />} shape="round">추가</Button>
         </Demo>
       </Section>
-      <Section title="아이콘 버튼과 그룹" intro="아이콘 버튼은 둥근 사각형이 기본(원형은 shape='round'). 그룹은 유리 한 장을 나눠 씁니다 — 유리 위에 유리를 겹치지 않아요.">
+      <Section title="아이콘 버튼과 그룹" intro="아이콘 버튼은 둥근 사각형이 기본이고, 원형은 shape='round'입니다. 그룹은 유리 한 장을 나눠 씁니다. 유리 위에 유리를 겹치지 않습니다.">
         <Demo media>
           <Photo scene={3} style={{ position: 'absolute', inset: 0 }} />
           <div style={{ position: 'relative', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -74,7 +74,7 @@ export function Inputs() {
           </Demo>
         </div>
       </Section>
-      <Section title="스위치 · 슬라이더 · 스테퍼" intro="스위치는 누르는 동안 손잡이가 가는 쪽으로 늘어나고 끌어서도 켭니다. 슬라이더는 잡으면 유리 말풍선에 값이 뜹니다.">
+      <Section title="스위치 · 슬라이더 · 스테퍼" intro="스위치는 누르는 동안 손잡이가 움직일 쪽으로 늘어나고, 손잡이를 끌어서 켜고 끌 수도 있습니다. 슬라이더는 잡으면 유리 말풍선에 값이 뜹니다.">
         <Demo col>
           <div className="label-row"><Text>Wi‑Fi</Text><Switch checked={wifi} onChange={setWifi} aria-label="Wi‑Fi" /></div>
           <div className="label-row"><Text>오프라인 지도</Text><Switch defaultChecked={false} aria-label="오프라인 지도" /></div>
@@ -82,10 +82,10 @@ export function Inputs() {
           <div className="label-row"><Text>인원</Text><Stepper value={guests} onChange={setGuests} min={1} max={12} label="인원" format={(v) => `${v}명`} /></div>
         </Demo>
       </Section>
-      <Section title="세그먼트" intro="선택 표시가 물방울처럼 늘어나 다음 칸까지 이어졌다가 모입니다. 끌어서 고를 수도 있어요.">
+      <Section title="세그먼트" intro="선택 표시가 물방울처럼 늘어나 다음 칸까지 이어졌다가 모입니다. 끌어서 선택할 수도 있습니다.">
         <Demo col>
           <SegmentedControl aria-label="보기" value={view} onChange={setView} options={[{ value: 'map', label: '지도' }, { value: 'list', label: '목록' }, { value: 'photo', label: '사진' }, { value: 'saved', label: '저장됨' }]} />
-          <SegmentedControl size="sm" aria-label="이동 수단" defaultValue="walk" options={[{ value: 'walk', label: '도보', icon: <Footprints /> }, { value: 'bike', label: '자전거', icon: <Bike /> }, { value: 'car', label: '차', icon: <Car /> }]} style={{ maxWidth: 340 }} />
+          <SegmentedControl size="sm" aria-label="이동 수단" defaultValue="walk" options={[{ value: 'walk', label: '도보', icon: <Footprints /> }, { value: 'bike', label: '자전거', icon: <Bike /> }, { value: 'car', label: '자동차', icon: <Car /> }]} style={{ maxWidth: 340 }} />
         </Demo>
       </Section>
       <Section title="칩">
@@ -108,8 +108,8 @@ export function Navigation() {
   const [section, setSection] = useState('orders');
   const [pg, setPg] = useState(6);
   return (
-    <Page title="내비게이션" intro="떠 있는 유리 바. 화면 가장자리에서 12px 띄우고, 모서리는 고정 반경 22px입니다. 페이지 안의 구역은 탭으로, 긴 목록은 페이지 이동으로 나눕니다.">
-      <Section title="탭 바" intro="탭하면 선택 표시가 물방울처럼 늘어나 이어졌다가 새 탭에서 모입니다. 표시는 바 안에만 머뭅니다. draggable을 주면 바 위를 끌 때 손가락을 따라가고, 놓은 탭이 선택됩니다(기본은 꺼짐: 탭해서 고름). 이 예시는 켜 두었습니다.">
+    <Page title="내비게이션" intro="떠 있는 유리 바입니다. 화면 가장자리에서 12px 띄우고, 모서리는 고정 반경 22px입니다. 페이지 안의 구역은 탭으로, 긴 목록은 페이지 이동으로 나눕니다.">
+      <Section title="탭 바" intro="탭하면 선택 표시가 물방울처럼 늘어나 이어졌다가 새 탭에서 모입니다. 표시는 바 안에만 머뭅니다. draggable을 주면 바 위를 끌 때 손가락을 따라가고, 손을 뗀 자리의 탭이 선택됩니다. 기본은 꺼져 있어 탭해서 선택하며, 이 예시는 draggable을 켜 두었습니다.">
         <Demo media style={{ padding: 0, minHeight: 220 }}>
           <Photo scene={0} style={{ position: 'absolute', inset: 0 }} />
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: 20, maxWidth: 460, margin: '0 auto' }}>
@@ -153,7 +153,7 @@ export function Navigation() {
           </Demo>
         </div>
       </Section>
-      <Section title="탭" intro="한 페이지 안의 구역을 나눕니다. 밑줄은 탭 바·세그먼트와 같은 물방울이라 같은 방식으로 이동합니다. 방향키로 옮기면 바로 선택되고(수동으로 하려면 activation=&quot;manual&quot;), 새 패널은 이동한 쪽에서 들어옵니다. 무거운 패널은 탭을 누른 프레임을 막지 않게 늦게 그립니다.">
+      <Section title="탭" intro="한 페이지 안의 구역을 나눕니다. 밑줄은 탭 바·세그먼트와 같은 물방울이라 같은 방식으로 이동합니다. 방향키로 포커스를 옮기면 바로 선택되고(수동으로 하려면 activation=&quot;manual&quot;), 새 패널은 이동한 쪽에서 들어옵니다. 내용이 무거운 패널은 탭을 누른 직후의 반응이 끊기지 않도록 뒤로 미뤄 그립니다.">
         <Demo col data-demo="tabs">
           <Tabs aria-label="스토어 관리" value={section} onChange={setSection} items={[
             { value: 'orders', label: '주문', icon: <ShoppingBag />, badge: 12, content: <Text variant="subhead" tone="secondary">새 주문 12건이 확인을 기다려요.</Text> },
@@ -164,19 +164,19 @@ export function Navigation() {
           ]} />
         </Demo>
         <Demo col data-demo="tabs-many" style={{ marginTop: 16 }}>
-          <Text variant="subhead" tone="secondary">탭이 많으면 줄이 가로로 스크롤되고, 더 있는 쪽 끝이 흐려집니다. 선택한 탭은 늘 보이는 곳으로 옵니다.</Text>
+          <Text variant="subhead" tone="secondary">탭이 많으면 줄이 가로로 스크롤되고, 가려진 탭이 있는 쪽 끝이 흐려집니다. 선택한 탭은 항상 보이는 곳까지 스크롤됩니다.</Text>
           <div style={{ maxWidth: 420 }}>
             <Tabs aria-label="분류" activation="manual" defaultValue="digital" items={['전체', '의류', '생활', '주방', '문구', '디지털', '반려동물', '캠핑', '선물 포장', '할인 중'].map((l, i) => ({ value: ['all', 'wear', 'home', 'kitchen', 'paper', 'digital', 'pet', 'camp', 'gift', 'sale'][i], label: l }))} />
           </div>
         </Demo>
         <Demo col data-demo="tabs-pill" style={{ marginTop: 16 }}>
-          <Text variant="subhead" tone="secondary">알약 탭(variant=&quot;pill&quot;)은 넘치면 다음 줄로 넘어가 모든 구역이 한눈에 보입니다. 휴대폰에서 묶음이 많을 때 씁니다. 물방울이 줄을 넘어 다닐 수 없으니, 고른 알약이 볼록한 면을 직접 입고 바뀔 때는 짧게 칠해집니다. 키는 밑줄 탭과 같아요.</Text>
+          <Text variant="subhead" tone="secondary">필 탭(variant=&quot;pill&quot;)은 넘치면 다음 줄로 넘어가 모든 구역이 한눈에 보입니다. 휴대폰에서 구역이 많을 때 씁니다. 선택 표시(물방울)가 줄을 넘어 이동할 수 없으므로 선택한 필 자체가 볼록한 면이 되고, 선택이 바뀌면 짧은 전환으로 바뀝니다. 키보드 조작은 밑줄 탭과 같습니다.</Text>
           <div style={{ maxWidth: 420 }}>
             <Tabs variant="pill" aria-label="벤치마크 묶음" defaultValue="reason" items={[{ value: 'all', label: '모든 벤치마크' }, { value: 'know', label: '지식' }, { value: 'reason', label: '추론' }, { value: 'code', label: '코딩' }, { value: 'inst', label: '지시 따르기' }, { value: 'ko', label: '한국어' }, { value: 'long', label: '긴 문맥', disabled: true }]} />
           </div>
         </Demo>
       </Section>
-      <Section title="페이지 이동" intro="처음과 끝, 지금 페이지의 이웃을 보여 주고 사이는 …로 접습니다. 지금 페이지가 가운데에서 움직이는 동안 버튼 개수가 그대로라 포인터 밑에서 버튼이 밀리지 않습니다. 좁은 곳에서는 ‘6 / 40’으로 바뀝니다.">
+      <Section title="페이지 이동" intro="처음과 끝, 현재 페이지와 그 앞뒤 페이지를 보여 주고 사이는 …로 접습니다. 현재 페이지가 가운데 구간에서 바뀌는 동안에는 버튼 개수가 그대로라 포인터 밑의 버튼이 밀리지 않습니다. 좁은 곳에서는 ‘6 / 40’으로 바뀝니다.">
         <Demo col data-demo="pagination">
           <Pagination page={pg} pageCount={40} onChange={setPg} aria-label="주문 목록 페이지" labels={{ previous: '이전 페이지', next: '다음 페이지', page: (n) => `${n} 페이지` }} style={{ justifyContent: 'flex-start' }} />
           <Pagination page={pg} pageCount={40} siblings={2} onChange={setPg} aria-label="주문 목록 페이지 (이웃 2개)" labels={{ previous: '이전 페이지', next: '다음 페이지', page: (n) => `${n} 페이지` }} style={{ justifyContent: 'flex-start' }} />
@@ -248,7 +248,7 @@ function PasswordPage() {
   return (
     <NavigationPage title="비밀번호 변경" trailing={<Button size="sm" variant="plain" onClick={() => nav.popToRoot()}>완료</Button>}>
       <Stack gap={4}>
-        <TextField label="지금 비밀번호" type="password" />
+        <TextField label="현재 비밀번호" type="password" />
         <TextField label="새 비밀번호" type="password" helperText="8자 이상, 숫자와 기호를 섞어서" />
       </Stack>
     </NavigationPage>
@@ -281,13 +281,13 @@ function AppearancePage({ initial, onChange }: { initial: keyof typeof MODES; on
 
 export function Lists() {
   return (
-    <Page title="목록과 표시" intro="그룹 목록, 카드, 아바타, 배지, 진행 표시.">
+    <Page title="목록과 표시" intro="그룹 목록, 카드, 아바타, 배지, 진행 표시입니다.">
       <div className="grid grid--2">
         <Stack gap={3}>
           <div data-demo="nav-stack">
             <NavigationStack labels={{ back: '뒤로' }} className="settings-stack"><SettingsRoot /></NavigationStack>
           </div>
-          <Text variant="footnote" tone="secondary">줄을 누르면 다음 페이지가 오른쪽에서 들어옵니다(설정 › 프로필 › 계정 보안 › 비밀번호 변경, 깊이 제한 없음). 왼쪽 위 버튼은 바로 아래 페이지의 이름으로 돌아가고, 터치에서는 왼쪽 가장자리에서 밀어도 돌아갑니다. 아래 페이지는 스크롤 위치와 상태를 그대로 갖고 있어요.</Text>
+          <Text variant="footnote" tone="secondary">행을 누르면 다음 페이지가 오른쪽에서 들어옵니다(설정 › 프로필 › 계정 보안 › 비밀번호 변경, 깊이 제한 없음). 왼쪽 위 뒤로 버튼에는 이전 페이지의 이름이 붙고, 터치에서는 왼쪽 가장자리에서 밀어도 돌아갑니다. 이전 페이지는 스크롤 위치와 상태를 그대로 유지합니다.</Text>
         </Stack>
         <Stack gap={4}>
           <Card interactive>
@@ -329,11 +329,13 @@ function Drawers() {
     return () => removeEventListener('keydown', on);
   }, []);
   const [confirm, setConfirm] = useState(false);
+  /* which confirmation is open: deleting a saved filter, or cancelling the order in the drawer (kept after closing so the title holds while the dialog leaves) */
+  const [asking, setAsking] = useState<'filter' | 'order'>('filter');
   const [sort, setSort] = useState<string | null>('new');
   const [open24, setOpen24] = useState(true);
   const [kinds, setKinds] = useState<string[]>(['cafe']);
   return (
-    <Section title="서랍 (Drawer)" intro="화면 가장자리에서 들어오는 패널입니다. 옆(start · end)은 필터나 상세 보기처럼 폭을 정하고, 위·아래(top · bottom)는 콘솔이나 로그 같은 도구 패널로 화면 폭 전체에 높이를 정합니다. 아래에서 올라와 내용을 읽거나 채우는 것은 시트입니다. 목록 옆의 필터, 자세히 보기, 짧은 입력처럼 지금 화면을 떠나지 않고 할 일에 씁니다. 늘 모달이라 뒤 화면은 손이 닿지 않고 스크린 리더에서도 숨겨지며(aria-hidden), 닫으면 연 버튼으로 포커스가 돌아갑니다. 가장자리 쪽으로 끌면 손가락을 그대로 따라오고, 3분의 1을 넘기거나 튕기면 그 자리에서 나가며, 덜 끌면 제자리로 돌아옵니다. side는 글 방향을 따라 'end'(기본, 왼쪽에서 오른쪽으로 쓰는 화면의 오른쪽)와 'start'입니다. 계속 보이는 옆 영역은 Sidebar를 씁니다.">
+    <Section title="서랍 (Drawer)" intro="화면 가장자리에서 들어오는 패널입니다. 옆(start · end)은 폭을 정해 쓰고, 위·아래(top · bottom)는 콘솔이나 로그 같은 도구 패널로 화면 폭 전체에 높이를 정합니다. 아래에서 올라와 내용을 읽거나 채우는 것은 시트입니다. 목록 옆의 필터, 상세 보기, 짧은 입력처럼 지금 화면을 떠나지 않고 할 일에 씁니다. 항상 모달이라 뒤 화면은 조작할 수 없고 스크린 리더에서도 숨겨지며(aria-hidden), 닫으면 서랍을 연 버튼으로 포커스가 돌아갑니다. 가장자리 쪽으로 끌면 손가락을 그대로 따라오고, 폭의 3분의 1을 넘기거나 빠르게 튕기면 닫히며, 덜 끌면 제자리로 돌아옵니다. side는 글 방향을 따라 'end'(기본, 왼쪽에서 오른쪽으로 쓰는 화면의 오른쪽)와 'start'입니다. 계속 보이는 옆 영역은 Sidebar를 씁니다.">
       <Demo data-demo="drawer">
         <Button variant="filled" onClick={() => setFilters(true)}>필터 열기</Button>
         <Button variant="tinted" onClick={() => setNav(true)}>메뉴 (start)</Button>
@@ -347,7 +349,7 @@ function Drawers() {
           <Select label="정렬" value={sort} onChange={setSort} options={[{ value: 'new', label: '최신순' }, { value: 'near', label: '가까운 순' }, { value: 'star', label: '별점 높은 순' }]} />
           <ChoiceList aria-label="종류" multiple value={kinds} onChange={setKinds} options={[{ value: 'cafe', label: '카페' }, { value: 'food', label: '음식점' }, { value: 'park', label: '공원' }]} />
           <ListItem title="24시간 영업" trailing={<Switch checked={open24} onChange={setOpen24} aria-label="24시간 영업" />} />
-          <Button variant="tinted" tone="danger" onClick={() => setConfirm(true)}>저장한 필터 삭제…</Button>
+          <Button variant="tinted" tone="danger" onClick={() => { setAsking('filter'); setConfirm(true); }}>저장한 필터 삭제…</Button>
           <Button variant="filled" onClick={() => setFilters(false)}>결과 보기</Button>
         </Stack>
       </Drawer>
@@ -382,7 +384,7 @@ function Drawers() {
           </ListSection>
           <Stack direction="row" gap={2}>
             <Button variant="neutral" style={{ flex: 1 }}>문의하기</Button>
-            <Button variant="tinted" tone="danger" style={{ flex: 1 }} onClick={() => setConfirm(true)}>주문 취소…</Button>
+            <Button variant="tinted" tone="danger" style={{ flex: 1 }} onClick={() => { setAsking('order'); setConfirm(true); }}>주문 취소…</Button>
           </Stack>
         </Stack>
       </Drawer>
@@ -394,9 +396,9 @@ function Drawers() {
           <ListItem leading={<Settings />} tileColor="var(--sg-iris-500)" title="설정" onClick={() => setNav(false)} />
         </List>
       </Drawer>
-      <Dialog open={confirm} onClose={() => setConfirm(false)} icon={<Trash2 />} tone="danger" title="저장한 필터를 지울까요?"
-        actions={<><Button variant="neutral" onClick={() => setConfirm(false)}>취소</Button><Button variant="filled" tone="danger" onClick={() => setConfirm(false)}>삭제</Button></>}>
-        서랍 위에 뜬 대화상자입니다. 이때는 서랍도 뒤로 물러나 닿지 않아요.
+      <Dialog open={confirm} onClose={() => setConfirm(false)} icon={<Trash2 />} tone="danger" title={asking === 'order' ? '주문을 취소할까요?' : '저장한 필터를 지울까요?'}
+        actions={<><Button variant="neutral" onClick={() => setConfirm(false)}>{asking === 'order' ? '돌아가기' : '취소'}</Button><Button variant="filled" tone="danger" onClick={() => setConfirm(false)}>{asking === 'order' ? '주문 취소' : '삭제'}</Button></>}>
+        {asking === 'order' ? '서랍 위에 뜬 대화상자입니다. 이때는 서랍도 뒤로 물러나 조작할 수 없습니다.' : '저장한 필터만 지워지고, 지금 보고 있는 목록은 그대로입니다.'}
       </Dialog>
     </Section>
   );
@@ -408,7 +410,7 @@ function AvatarGroups() {
   const anchor = useRef<HTMLElement | null>(null);
   const groupLabels = { group: (n: number) => `참여자 ${n}명`, more: (n: number) => `나머지 ${n}명` };
   return (
-    <Section title="아바타 묶음 (AvatarGroup)" intro="여러 사람을 겹친 얼굴로 보여 주고, 나머지는 +N으로 줄입니다. 묶음은 '참여자 8명'처럼 인원으로 읽히고, 보이는 사람은 각자 이름으로 읽힙니다. 얼굴 사이는 놓인 바탕색의 고리로 나눕니다(--sg-avatar-ring, 기본은 카드 바탕). 사람 목록은 내용이라 움직이지 않습니다. +N에 할 일이 있으면 버튼이 되어, 누르면 전체 목록을 띄울 수 있어요.">
+    <Section title="아바타 묶음 (AvatarGroup)" intro="여러 사람을 겹친 얼굴로 보여 주고, 나머지는 +N으로 줄입니다. 묶음은 '참여자 8명'처럼 인원으로 읽히고, 보이는 사람은 각자 이름으로 읽힙니다. 얼굴 사이는 바탕과 같은 색의 고리로 나눕니다(--sg-avatar-ring, 기본은 카드 바탕색). 사람 목록은 내용이므로 움직임을 주지 않습니다. +N에 onMoreClick을 주면 버튼이 되어, 누르면 전체 목록을 띄울 수 있습니다.">
       <div className="grid grid--2">
         <Demo col data-demo="avatar-group">
           <Stack direction="row" gap={4} align="center" wrap>
@@ -499,7 +501,7 @@ export function Overlays() {
         </Demo>
       </Section>
       <Drawers />
-      <Section title="컨텍스트 메뉴 · 토스트" intro="길게 누르거나 오른쪽 클릭(키보드: Shift+F10)하면 항목이 떠오르고 메뉴가 옆에 나타납니다.">
+      <Section title="컨텍스트 메뉴 · 토스트" intro="길게 누르거나 마우스 오른쪽 버튼을 클릭하면(키보드: Shift+F10) 항목이 떠오르고 메뉴가 옆에 나타납니다.">
         <Demo>
           <ContextMenu aria-label="사진" menu={<>
             <MenuItem icon={<Share />}>공유</MenuItem><MenuItem icon={<Heart />}>즐겨찾기</MenuItem><MenuItem icon={<Copy />}>복사</MenuItem>
@@ -518,7 +520,7 @@ export function Overlays() {
 /* a little console for the top drawer: commands echo into a log that scrolls, newest at the bottom */
 const CONSOLE_HELP = ['help — 명령 목록', 'status — 서버 상태', 'fps — 화면 갱신 빈도', 'clear — 지우기'];
 function ConsoleBody() {
-  const [lines, setLines] = useState<string[]>(['Satin Glass 콘솔 · ` 키로 열고 닫아요', 'help 를 입력해 보세요']);
+  const [lines, setLines] = useState<string[]>(['Satin Glass 콘솔 · ` 키로 열고 닫아요', 'help를 입력해 보세요']);
   const [cmd, setCmd] = useState('');
   const log = useRef<HTMLDivElement>(null);
   useEffect(() => { log.current?.scrollTo({ top: log.current.scrollHeight }); }, [lines]);

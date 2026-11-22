@@ -3,6 +3,10 @@ import { chromium } from 'playwright';
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 const cdp = await p.context().newCDPSession(p);
+/* the docs font comes from a CDN in unicode-range pieces: a piece that some page's text asks for arrives whenever it arrives, and the
+   relayout it causes (every Pretendard run reshaped, ~100 ms at ×4) lands in whatever is being measured then — a docs-copy change
+   was enough to move it into the dashboard tab switch. System fonts keep the frames about the library. */
+await p.route(/pretendard/i, (r) => r.abort());
 await p.addInitScript(() => {
   window.__long = 0;
   try { new PerformanceObserver((l) => { window.__long += l.getEntries().length; }).observe({ type: 'longtask', buffered: true }); } catch {}

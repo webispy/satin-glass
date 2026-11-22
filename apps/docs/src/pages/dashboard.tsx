@@ -28,7 +28,7 @@ export function Dashboard() {
   const toast = useToast();
   const showLow = () => { setLowOnly(true); setSection('products'); };
   return (
-    <Page title="대시보드 예제" intro="다른 페이지의 컴포넌트만 조합해 만든 가상 스토어의 운영 화면입니다. 탭, 제목이 있는 카드, 지표, 차트, 표, 필터, 칩, 태그, 배너, 빈 상태, 시트가 한 화면에서 어떻게 어울리는지 보여 줍니다. 이름과 숫자는 모두 지어낸 것입니다.">
+    <Page title="대시보드 예제" intro="다른 페이지의 컴포넌트만 조합해 만든 가상 스토어의 운영 화면입니다. 탭, 카드, 지표, 차트, 표, 필터, 칩, 태그, 배너, 빈 상태, 시트, 아코디언이 한 화면에서 어떻게 어울리는지 보여 줍니다. 이름과 숫자는 모두 지어낸 것입니다.">
       <div className="dash" data-demo="dashboard">
         <header className="dash__head">
           <div className="dash__title">
@@ -63,13 +63,13 @@ function Overview({ period, onShowLow, onShowOrders }: { period: '7' | '30'; onS
   const before = (k: 'visits' | 'orders' | 'revenue') => (prev.length ? sum(prev, k) : sum(days, k) * 0.93);
   const delta = (k: 'visits' | 'orders' | 'revenue') => { const v = (sum(days, k) / before(k) - 1) * 100; return `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`; };
   const conv = (sum(days, 'orders') / sum(days, 'visits')) * 100;
-  const hint = n === 7 ? '지난 7일보다' : '지난 30일보다';
+  const hint = n === 7 ? '직전 7일보다' : '직전 30일보다';
   const top = useMemo(() => PRODUCTS.filter((p) => !p.paused).sort((a, b) => b.revenue - a.revenue).slice(0, 5), []);
   const recent = ORDERS.slice(0, 6);
   return (
     <div className="dash__stack">
       {banner && LOW.length > 0 && (
-        <Banner tone="warning" title={`재고가 1주 안에 바닥나는 상품이 ${LOW.length}개 있어요`} onDismiss={() => setBanner(false)} dismissLabel="알림 닫기"
+        <Banner tone="warning" title={`재고가 7일 안에 바닥나는 상품이 ${LOW.length}개 있어요`} onDismiss={() => setBanner(false)} dismissLabel="알림 닫기"
           actions={<Button size="sm" variant="tinted" onClick={onShowLow}>상품 보기</Button>}>
           {LOW.slice(0, 3).map((p) => p.name).join(', ')}{LOW.length > 3 ? ' 외' : ''}
         </Banner>
@@ -82,10 +82,10 @@ function Overview({ period, onShowLow, onShowOrders }: { period: '7' | '30'; onS
       </div>
       <div className="grid dash__charts">
         <Card>
-          <CardHeader title={metric === 'visits' ? '하루 방문' : '하루 주문'} description={`구매 전환율 ${conv.toFixed(1)}%`}
+          <CardHeader title={metric === 'visits' ? '일별 방문' : '일별 주문'} description={`구매 전환율 ${conv.toFixed(1)}%`}
             actions={<SegmentedControl size="sm" aria-label="차트 지표" value={metric} onChange={setMetric} options={[{ value: 'visits', label: '방문' }, { value: 'orders', label: '주문' }]} />} />
           <CardBody>
-            <LineChart aria-label={metric === 'visits' ? '하루 방문과 재방문' : '하루 주문'} data={days} x="day" area height={220} locale="ko-KR"
+            <LineChart aria-label={metric === 'visits' ? '일별 방문과 재방문' : '일별 주문'} data={days} x="day" area height={220} locale="ko-KR"
               series={metric === 'visits' ? [{ key: 'visits', label: '방문' }, { key: 'returning', label: '재방문' }] : [{ key: 'orders', label: '주문' }]} />
           </CardBody>
         </Card>
@@ -102,7 +102,7 @@ function Overview({ period, onShowLow, onShowOrders }: { period: '7' | '30'; onS
           <CardBody><DonutChart aria-label="분류별 매출" locale="ko-KR" size={160} centerLabel="매출" format={(v) => wonShort(v)} data={CATEGORY_SHARE} /></CardBody>
         </Card>
         <Card>
-          <CardHeader title="많이 팔린 상품" description="매출 순, 12주 흐름" />
+          <CardHeader title="많이 팔린 상품" description="매출순, 12주 흐름" />
           <CardBody>
             <ul className="mini-list">
               {top.map((p) => (
@@ -166,19 +166,19 @@ function Orders() {
           <SearchField aria-label="주문 찾기" placeholder="주문자, 상품, 주문 번호" value={q} onChange={(e) => setQ(e.currentTarget.value)} style={{ width: 240 }} />
           <Select variant="filter" label="상태" value={status} onChange={setStatus} options={[{ value: 'all', label: '전체' }, ...(Object.keys(STATUS) as OrderStatus[]).map((k) => ({ value: k, label: STATUS[k].label }))]} />
           <Select variant="filter" label="경로" value={channel} onChange={setChannel} options={[{ value: 'all', label: '전체' }, ...CHANNELS.map((c) => ({ value: c, label: c }))]} />
-          {filtered && <Button size="sm" variant="plain" onClick={reset}>필터 지우기</Button>}
+          {filtered && <Button size="sm" variant="plain" onClick={reset}>필터 초기화</Button>}
           <span className="dash__spacer" />
           {sel.length > 0 ? (
             <span className="dash__bulk">
               <Text variant="subhead" as="span">{sel.length}건 선택</Text>
-              <Button size="sm" variant="tinted" onClick={() => { toast({ title: `${sel.length}건을 배송 준비로 옮겼어요`, tone: 'success' }); setSel([]); }}>배송 준비</Button>
+              <Button size="sm" variant="tinted" onClick={() => { toast({ title: `${sel.length}건을 ‘배송 준비’로 바꿨어요`, tone: 'success' }); setSel([]); }}>배송 준비</Button>
               <IconButton size="sm" icon={<X />} label="선택 해제" onClick={() => setSel([])} />
             </span>
           ) : <Text variant="footnote" tone="secondary" as="span">{num(found.length)}건</Text>}
         </div>
         <DataTable<Order> aria-label="주문" rows={rows} rowKey={(o) => o.id} columns={ORDER_COLUMNS} manualSort sort={sort} onSortChange={(s) => { setSort(s); setPage(1); }}
           selectable selected={sel} onSelectedChange={setSel} rowCount={found.length} density="compact" labels={{ ...TABLE_LABELS, selectRow: (o) => `주문 ${o.id} 선택` }}
-          empty={<EmptyState size="sm" icon={<PackageSearch />} title="조건에 맞는 주문이 없어요" description={q ? `‘${q}’로 찾은 주문이 없어요.` : '다른 상태나 경로를 골라 보세요.'} actions={<Button size="sm" variant="neutral" onClick={reset}>필터 지우기</Button>} />} />
+          empty={<EmptyState size="sm" icon={<PackageSearch />} title="조건에 맞는 주문이 없어요" description={q ? `‘${q}’ 검색 결과가 없어요.` : '다른 상태나 경로를 선택해 보세요.'} actions={<Button size="sm" variant="neutral" onClick={reset}>필터 초기화</Button>} />} />
         {found.length > PAGE && (
           <div className="dash__pager">
             <Text variant="footnote" tone="secondary" as="span">{num(found.length)}건 중 {num((page - 1) * PAGE + 1)}–{num(Math.min(page * PAGE, found.length))}</Text>
@@ -206,7 +206,7 @@ function Products({ lowOnly, setLowOnly }: { lowOnly: boolean; setLowOnly: (v: b
       render: (p, { pinned }) => (pinned ? num(p.sold) : <span className="sg-cell-meter"><BarMeter value={p.sold} max={best} width={44} tone={p.sold === best ? 'accent' : 'neutral'} /><span className={p.sold === best ? 'sg-cell-strong' : undefined}>{num(p.sold)}</span></span>) },
     { key: 'revenue', header: '매출', subheader: '30일', group: '판매', align: 'end', width: 92, sortable: true, firstSort: 'desc', render: (p) => wonShort(p.revenue) },
     { key: 'stock', header: '재고', group: '재고', align: 'end', width: 76, sortable: true, render: (p) => num(p.stock) },
-    { key: 'daysLeft', header: '소진 예상', group: '재고', align: 'end', width: 92, sortable: true, description: '최근 30일 속도로 팔릴 때 재고가 바닥나기까지 남은 날이에요.',
+    { key: 'daysLeft', header: '소진 예상', group: '재고', align: 'end', width: 92, sortable: true, description: '최근 30일 판매 속도대로 팔릴 때 재고가 바닥나기까지 남은 일수예요.',
       render: (p) => (p.daysLeft === null ? null : <span className={p.daysLeft <= 7 ? 'sg-cell-danger' : p.daysLeft <= 14 ? 'sg-cell-warning' : undefined}>{p.daysLeft}일</span>) },
     { key: 'state', header: '상태', width: 96, render: (p, { pinned }) => (pinned ? null : p.paused ? <Tag>판매 중지</Tag> : p.daysLeft !== null && p.daysLeft <= 7 ? <Tag tone="danger">재고 부족</Tag> : <Tag tone="success">판매 중</Tag>) },
   ];
@@ -221,7 +221,7 @@ function Products({ lowOnly, setLowOnly }: { lowOnly: boolean; setLowOnly: (v: b
         </div>
         <DataTable<Product> aria-label="상품" rows={rows} rowKey={(p) => p.id} columns={cols} pinnedRows={live.length ? [totals] : []} defaultSort={{ key: 'sold', dir: 'desc' }} maxHeight={520}
           rowState={(p) => (p.paused ? { muted: true } : undefined)} labels={TABLE_LABELS}
-          empty={<EmptyState size="sm" icon={<PackageSearch />} title="조건에 맞는 상품이 없어요" actions={<Button size="sm" variant="neutral" onClick={() => { setCats([]); setLowOnly(false); }}>필터 지우기</Button>} />} />
+          empty={<EmptyState size="sm" icon={<PackageSearch />} title="조건에 맞는 상품이 없어요" actions={<Button size="sm" variant="neutral" onClick={() => { setCats([]); setLowOnly(false); }}>필터 초기화</Button>} />} />
       </CardBody>
       <Sheet open={open !== null} onClose={() => setOpen(null)} title={open?.name} aria-label="상품 정보">
         {open && <ProductDetail p={open} />}

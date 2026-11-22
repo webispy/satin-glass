@@ -38,7 +38,7 @@ export function Lab() {
   const [dlg, setDlg] = useState(false);
   const [n, setN] = useState(0);
   return (
-    <Page title="예외 상황 랩" intro="긴 텍스트, 많은 항목, 비활성·거부 상태, 빈 상태를 모아 둔 페이지. 자동 검사(edge.mjs)가 이 페이지를 씁니다.">
+    <Page title="예외 상황 랩" intro="긴 텍스트, 많은 항목, 비활성 상태, 반영되지 않는 제어 값, 빈 상태를 모아 둔 페이지입니다. 자동 검사(edge.mjs)가 이 페이지를 씁니다.">
       <Section title="긴 텍스트">
         <Demo col>
           <div data-lab="long-buttons" style={{ display: 'flex', gap: 8, maxWidth: 360 }}>
@@ -69,7 +69,7 @@ export function Lab() {
         </Demo>
       </Section>
 
-      <Section title="항목이 너무 많을 때" intro="한 줄에 다 들어가지 않는 세그먼트·탭. 항목마다 최소 폭을 지키고, 넘치면 옆으로 밀어 볼 수 있으며 선택한 항목은 늘 보이는 곳으로 옵니다.">
+      <Section title="항목이 너무 많을 때" intro="한 줄에 다 들어가지 않는 세그먼트와 탭입니다. 항목마다 최소 폭을 지키고, 넘치면 옆으로 밀어 볼 수 있으며, 선택한 항목은 항상 보이는 곳까지 스크롤됩니다.">
         <Demo col data-lab="many-seg">
           <Text variant="footnote" tone="secondary">세그먼트 12개 · 전체 폭</Text>
           <div data-lab="many-seg-full"><SegmentedControl aria-label="많은 세그먼트 전체 폭" defaultValue="all" options={MANY_SEG} /></div>
@@ -79,7 +79,7 @@ export function Lab() {
           <div data-lab="many-seg-240" style={{ maxWidth: 240 }}><SegmentedControl aria-label="많은 세그먼트 240" size="sm" defaultValue="all" options={MANY_SEG.slice(0, 8)} /></div>
           <Text variant="footnote" tone="secondary">일부 비활성 · 360px</Text>
           <div data-lab="many-seg-disabled" style={{ maxWidth: 360 }}><SegmentedControl aria-label="많은 세그먼트 일부 비활성" defaultValue="all" options={MANY_SEG.map((o, i) => (i % 4 === 1 ? { ...o, disabled: true } : o))} /></div>
-          <Text variant="footnote" tone="secondary">거부되는 제어 값 · 360px (부모가 바꾸지 않음)</Text>
+          <Text variant="footnote" tone="secondary">반영되지 않는 제어 값 · 360px (부모가 value를 바꾸지 않음)</Text>
           <div data-lab="many-seg-refused" style={{ maxWidth: 360 }}><SegmentedControl aria-label="많은 세그먼트 거부" value="doc" onChange={() => setTries((t) => t + 1)} options={MANY_SEG} /></div>
         </Demo>
         <Demo col data-lab="many-tabs">
@@ -93,10 +93,10 @@ export function Lab() {
           <div data-lab="many-tabs-300-action" style={{ maxWidth: 300 }}>
             <TabBar draggable defaultValue="home" aria-label="많은 탭 300 검색" action={<TabBarAction icon={<Search />} label="검색" />}>{manyTabs().slice(0, 7)}</TabBar>
           </div>
-          <Text variant="footnote" tone="secondary">탭 9개 · 300px · 아이콘만(showLabels={false})</Text>
+          <Text variant="footnote" tone="secondary">탭 9개 · 300px · 아이콘만({'showLabels={false}'})</Text>
           <div data-lab="many-tabs-300-compact" style={{ maxWidth: 300 }}><TabBar draggable showLabels={false} defaultValue="home" aria-label="많은 탭 300 아이콘만">{manyTabs()}</TabBar></div>
-          <Text variant="footnote" tone="secondary">아이콘만 · 아이콘 없는 탭은 라벨을 보임</Text>
-          <div data-lab="tabs-icons-text" style={{ maxWidth: 300 }}><TabBar showLabels={false} defaultValue="home" aria-label="아이콘만, 글자 탭 하나">{[<Tab key="home" value="home" label="홈" icon={<Home />} />, <Tab key="map" value="map" label="지도" icon={<Map />} />, <Tab key="more" value="more" label="더보기" />]}</TabBar></div>
+          <Text variant="footnote" tone="secondary">아이콘만 · 아이콘 없는 탭은 라벨을 표시함</Text>
+          <div data-lab="tabs-icons-text" style={{ maxWidth: 300 }}><TabBar showLabels={false} defaultValue="home" aria-label="아이콘만, 글자 탭 하나">{[<Tab key="home" value="home" label="홈" icon={<Home />} />, <Tab key="map" value="map" label="지도" icon={<Map />} />, <Tab key="more" value="more" label="더 보기" />]}</TabBar></div>
         </Demo>
       </Section>
 
@@ -108,11 +108,11 @@ export function Lab() {
           <Switch aria-label="비활성 켜짐 스위치" disabled defaultChecked />
           <div style={{ width: 200 }}><Slider aria-label="비활성 슬라이더" disabled defaultValue={40} /></div>
           <SegmentedControl aria-label="일부 비활성" defaultValue="a" options={[{ value: 'a', label: 'A' }, { value: 'b', label: 'B', disabled: true }, { value: 'c', label: 'C' }]} />
-          <TextField label="비활성 필드" disabled defaultValue="읽기 전용" />
+          <TextField label="비활성 필드" disabled defaultValue="수정할 수 없음" />
         </Demo>
       </Section>
 
-      <Section title="거부되는 제어 값 (부모가 바꾸지 않음)">
+      <Section title="반영되지 않는 제어 값 (부모가 value를 바꾸지 않음)">
         <Demo data-lab="refused">
           <Switch aria-label="거부 스위치" checked={refused} onChange={() => setTries((t) => t + 1)} />
           <div style={{ width: 200 }}><Slider aria-label="거부 슬라이더" value={30} onChange={() => setTries((t) => t + 1)} /></div>
@@ -126,7 +126,7 @@ export function Lab() {
           <Stepper label="경계 스테퍼" value={n} onChange={setN} min={0} max={3} />
           <Progress value={150} label="넘치는 진행" />
           <Progress value={-20} label="음수 진행" />
-          <PageControl count={1} label="한 쪽" />
+          <PageControl count={1} label="페이지 1개" />
           <List data-lab="empty-list" />
           <SearchField placeholder="빈 검색" />
           <ButtonGroup><IconButton icon={<Bell />} label="알림" /><IconButton icon={<Trash2 />} label="삭제" /></ButtonGroup>
@@ -135,20 +135,20 @@ export function Lab() {
 
       <Section title="선택 컴포넌트">
         <Demo col data-lab="select">
-          <div style={{ maxWidth: 320 }}><Select label="긴 항목 40개" placeholder="고르세요" options={Array.from({ length: 40 }, (_, i) => ({ value: `o${i}`, label: i % 7 === 3 ? `${i + 1}. ${LONG}` : `${i + 1}번 항목`, disabled: i % 9 === 5 }))} /></div>
+          <div style={{ maxWidth: 320 }}><Select label="긴 항목 40개" placeholder="선택하세요" options={Array.from({ length: 40 }, (_, i) => ({ value: `o${i}`, label: i % 7 === 3 ? `${i + 1}. ${LONG}` : `${i + 1}번 항목`, disabled: i % 9 === 5 }))} /></div>
           <div style={{ maxWidth: 320 }}><Select label="거부 셀렉트" value="a" onChange={() => setTries((t) => t + 1)} options={[{ value: 'a', label: '가' }, { value: 'b', label: '나' }]} /></div>
           <div style={{ maxWidth: 320 }}><Select label="비활성 셀렉트" disabled options={[{ value: 'a', label: '가' }]} /></div>
           <div style={{ maxWidth: 320 }}><DatePicker label="이번 달만" min={new Date(new Date().getFullYear(), new Date().getMonth(), 1)} max={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)} /></div>
           <Checkbox label={LONG} description={LONG} />
           <div data-lab="inner-scroll" style={{ height: 180, overflow: 'auto', border: '1px dashed var(--sg-separator)', borderRadius: 12, padding: 12 }}>
             <div style={{ height: 120 }}>안쪽 스크롤 영역 ↓</div>
-            <Select label="안쪽 스크롤 안의 셀렉트" options={[{ value: 'a', label: '가' }, { value: 'b', label: '나' }, { value: 'c', label: '다' }]} />
+            <Select label="스크롤 영역 안의 셀렉트" options={[{ value: 'a', label: '가' }, { value: 'b', label: '나' }, { value: 'c', label: '다' }]} />
             <div style={{ height: 300 }} />
           </div>
         </Demo>
       </Section>
 
-      <Section title="연타용">
+      <Section title="빠르게 여러 번 누르기">
         <Demo data-lab="spam">
           <Button ref={menuBtn} variant="tinted" onClick={() => setMenu((v) => !v)} aria-haspopup="menu" aria-expanded={menu}>메뉴 토글</Button>
           <Menu open={menu} onClose={() => setMenu(false)} anchor={menuBtn.current} aria-label="연타 메뉴">

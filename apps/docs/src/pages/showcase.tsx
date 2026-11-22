@@ -7,6 +7,7 @@ import { Bookmark, Compass, Heart, Home, Info, Map, MoreHorizontal, Plus, Search
 import { Photo, sceneTint } from '../shared';
 import { DisplaySettingsList } from '../settings';
 
+const KIND: Record<string, string> = { hike: '하이킹', beach: '바다', camp: '캠핑', view: '전망' };
 const PLACES = [
   { name: '노을 언덕', dist: '2.4 km', scene: 1, kind: 'hike' },
   { name: '헤론 포인트', dist: '5.1 km', scene: 0, kind: 'beach' },
@@ -35,7 +36,7 @@ export function Showcase() {
     <article className="docs__page">
       <header>
         <Text variant="display">쇼케이스</Text>
-        <Text variant="callout" tone="secondary" style={{ marginTop: 8 }}>컴포넌트를 실제 앱처럼 조합한 휴대폰 화면. 스크롤, 탭 바 끌기, 카드 길게 누르기, 메뉴와 시트를 모두 써 볼 수 있습니다. 떠 있는 유리 바는 한 화면에 하나만 둡니다 — 아래 탭 바가 떠 있으므로 위 바는 화면에 붙은 불투명 바(attached)입니다. 데스크톱·정보가 많은 화면의 기본 구성은 ‘대시보드’ 예제를 보세요(내용은 불투명 카드, 유리는 떠오르는 메뉴·팝오버·토스트에만).</Text>
+        <Text variant="callout" tone="secondary" style={{ marginTop: 8 }}>컴포넌트를 실제 앱처럼 조합한 휴대폰 화면입니다. 스크롤, 탭 바 끌기, 카드 길게 누르기, 메뉴와 시트를 모두 써 볼 수 있습니다. 떠 있는 유리 바는 한 화면에 하나만 둡니다. 아래 탭 바가 떠 있으므로 위 바는 화면에 붙은 불투명 바(attached)입니다. 데스크톱처럼 정보가 많은 화면의 기본 구성은 ‘대시보드’ 예제에 있습니다. 그곳에서는 내용을 불투명 카드에 담고, 유리는 떠오르는 메뉴·팝오버·토스트에만 씁니다.</Text>
       </header>
       <div style={{ display: 'grid', placeItems: 'center', padding: '12px 0 40px' }}>
         <div className="phone">
@@ -69,7 +70,7 @@ export function Showcase() {
                       <MenuItem icon={<Share />} onSelect={() => toast({ title: '링크를 복사했어요', tone: 'success' })}>공유</MenuItem>
                       <MenuItem icon={<Heart />}>즐겨찾기 해제</MenuItem>
                       <MenuSeparator />
-                      <MenuItem icon={<Trash2 />} tone="danger" onSelect={() => toast({ title: `${p.name}을(를) 삭제했어요`, action: { label: '실행 취소', onClick: () => {} } })}>삭제</MenuItem>
+                      <MenuItem icon={<Trash2 />} tone="danger" onSelect={() => toast({ title: `‘${p.name}’ 장소를 삭제했어요`, action: { label: '실행 취소', onClick: () => {} } })}>삭제</MenuItem>
                     </>}>
                       <button type="button" className="places__card" onClick={() => setHero(p.scene % 4)}>
                         <Photo scene={p.scene} style={{ borderRadius: 18 }}>
@@ -83,7 +84,7 @@ export function Showcase() {
                 <ListSection header="가까운 곳">
                   <List>
                     {PLACES.slice(0, 5).map((p) => (
-                      <ListItem key={p.name} leading={<Compass />} tileColor={sceneTint(p.scene)} title={p.name} subtitle={`${p.dist} · ${p.kind}`}
+                      <ListItem key={p.name} leading={<Compass />} tileColor={sceneTint(p.scene)} title={p.name} subtitle={`${p.dist} · ${KIND[p.kind]}`}
                         trailing={<IconButton size="sm" icon={<Info />} label={`${p.name} 정보`} onClick={(e) => setInfo({ el: e.currentTarget, name: p.name })} />} />
                     ))}
                   </List>
@@ -99,7 +100,7 @@ export function Showcase() {
           </div>
           <div className="phone__fade" />
           <div className="phone__bottom">
-            <TabBar value={tab} onChange={setTab} aria-label="메인">
+            <TabBar draggable value={tab} onChange={setTab} aria-label="메인">
               <Tab value="home" label="홈" icon={<Home />} />
               <Tab value="map" label="지도" icon={<Map />} />
               <Tab value="saved" label="저장" icon={<Bookmark />} badge={<Badge>2</Badge>} />
@@ -110,7 +111,7 @@ export function Showcase() {
       </div>
 
       <Menu open={menu} onClose={() => setMenu(false)} anchor={moreBtn.current} placement="bottom-end" aria-label="더 보기">
-        <MenuItem icon={<Plus />} onSelect={() => toast({ title: '새 장소' })}>장소 추가</MenuItem>
+        <MenuItem icon={<Plus />} onSelect={() => toast({ title: '새 장소를 추가했어요' })}>장소 추가</MenuItem>
         <MenuItem icon={<Share />}>목록 공유</MenuItem>
         <MenuSeparator />
         <MenuItem icon={<Settings2 />} onSelect={() => setSettings(true)}>설정</MenuItem>
@@ -118,7 +119,7 @@ export function Showcase() {
       <Popover open={!!info} onClose={() => setInfo(null)} anchor={info?.el} placement="left" aria-label="장소 정보">
         <Stack gap={2} style={{ width: 230 }}>
           <Text variant="headline">{info?.name}</Text>
-          <Text variant="subhead" tone="secondary">오늘 18:42 일몰 · 주차 가능 · 반려동물 동반</Text>
+          <Text variant="subhead" tone="secondary">오늘 일몰 18:42 · 주차 가능 · 반려동물 동반 가능</Text>
           <Button size="sm" variant="filled" onClick={() => setInfo(null)} style={{ marginTop: 6 }}>길찾기</Button>
         </Stack>
       </Popover>

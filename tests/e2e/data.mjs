@@ -184,7 +184,7 @@ await go('table');
   ok('table: a meter cell\'s number is on the row\'s text line', Math.abs(mid[0] - mid[1]) <= 1, mid.map((v) => v.toFixed(1)).join(' vs '));
 
   /* selection */
-  const sg = p.getByRole('grid', { name: '고를 수 있는 상품 목록', exact: true });
+  const sg = p.getByRole('grid', { name: '선택할 수 있는 상품 목록', exact: true });
   const boxes = sg.locator('tbody:last-of-type input[type=checkbox]');
   await sg.scrollIntoViewIfNeeded();
   await boxes.nth(0).click(); await boxes.nth(3).click({ modifiers: ['Shift'] }); await p.waitForTimeout(150);
@@ -247,7 +247,7 @@ await go('table');
   await p.waitForTimeout(1700);
   await st.getByRole('switch', { name: '빈 결과 보기' }).click(); await p.waitForTimeout(200);
   ok('table: no rows shows the empty state', (await st.getByText('조건에 맞는 상품이 없어요').count()) === 1);
-  await st.getByRole('button', { name: '필터 지우기' }).click(); await p.waitForTimeout(200);
+  await st.getByRole('button', { name: '필터 초기화' }).click(); await p.waitForTimeout(200);
   ok('table: its action brings the rows back', (await bodyRows(st.getByRole('grid')).count()) === 5);
 
   /* server mode */
@@ -369,7 +369,7 @@ await go('dashboard');
   ok('dashboard: the period switch reloads the stats (skeletons, then the 30-day numbers)', busy === 4 && (await d.locator('.sg-stat[aria-busy=true]').count()) === 0 && (await d.locator('.sg-stat__value').first().textContent()) !== before);
   ok('dashboard: …and redraws the chart with 30 days', (await d.locator('.sg-chart').first().locator('table tbody tr').count()) === 30);
   await d.getByRole('radio', { name: '주문', exact: true }).click(); await p.waitForTimeout(600);
-  ok('dashboard: the card\'s segmented control swaps the chart (one series)', (await d.locator('.sg-chart').first().locator('.sg-chart__line').count()) === 1 && (await d.getByRole('heading', { name: '하루 주문' }).count()) === 1);
+  ok('dashboard: the card\'s segmented control swaps the chart (one series)', (await d.locator('.sg-chart').first().locator('.sg-chart__line').count()) === 1 && (await d.getByRole('heading', { name: '일별 주문' }).count()) === 1);
 
   await d.getByRole('button', { name: '상품 보기' }).click(); await p.waitForTimeout(700);
   const lowChip = d.getByRole('button', { name: '재고 부족만' });
@@ -405,7 +405,7 @@ await go('dashboard');
   ok('dashboard: the status filter narrows the orders', st.length > 0 && st.every((s) => s === '환불'), `${st.length} rows`);
   await d.getByRole('searchbox', { name: '주문 찾기' }).or(d.getByRole('textbox', { name: '주문 찾기' })).first().fill('없는주문'); await p.waitForTimeout(300);
   ok('dashboard: no match shows the empty state, with a way out', (await d.getByText('조건에 맞는 주문이 없어요').count()) === 1);
-  await d.locator('.sg-empty').getByRole('button', { name: '필터 지우기' }).click(); await p.waitForTimeout(300);
+  await d.locator('.sg-empty').getByRole('button', { name: '필터 초기화' }).click(); await p.waitForTimeout(300);
   ok('dashboard: …which clears every filter', (await og.locator('tbody tr').count()) === 15 && (await status.textContent()).includes('전체'));
 
   const axe = readFileSync(new URL('../../node_modules/axe-core/axe.min.js', import.meta.url), 'utf8');
