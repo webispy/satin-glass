@@ -4,6 +4,7 @@
 //   render matrix: theme × contrast × reduce transparency × reduce motion, every page, desktop + phone
 //   interactions, selection, display, data components & dashboard, many-item strips, wheels / time / weekdays /
 //     navigation stack: behaviour of every component
+//   every control, there and back: each control on each page operated and turned back, no page error or hang
 //   reduced motion: in-app toggle and system setting
 //   finger drags with real touch input: sheet, switch, slider, segmented control, tab bar, wheel fling, swipe back (Chromium)
 //   edge cases: rapid repeats, mid-animation changes, bounds, disabled/refused, long text, touch, keyboard,
@@ -65,6 +66,9 @@ perEngine(checks, 'edge cases', 'edge.mjs');
 sharded(checks, 'render matrix', 'matrix.mjs', (b) => (b === 'chromium' ? 4 : 2));
 perEngine(checks, 'data components & dashboard', 'data.mjs');
 perEngine(checks, 'settings decide at the nearest boundary', 'settings.mjs');
+/* every control on every page, there and back: no page error, no hang — by page in shares; phone width once, in Chromium */
+for (const b of ENGINES) for (let i = 1; i <= 4; i++) checks.push([`every control, there and back · ${b} ${i}/4`, 'sweep.mjs', { BROWSER: b, SHARD: `${i}/4` }]);
+if (ENGINES.includes('chromium')) for (let i = 1; i <= 3; i++) checks.push([`every control, there and back · chromium 390 px ${i}/3`, 'sweep.mjs', { WIDTH: '390', SHARD: `${i}/3` }]);
 /* the cascade is the same in every engine: the per-category stylesheet check runs once, in Chromium */
 /* the longest suite, in three parts by page so they can run side by side */
 if (ENGINES.includes('chromium')) for (let i = 1; i <= 3; i++) checks.push([`stylesheets split by category · chromium ${i}/3`, 'css-split.mjs', { E2E_PART: `${i}/3` }]);
@@ -109,7 +113,7 @@ const only = (l) => l.filter(([label, file, env]) => {
    engines a third longer); every runner computes the same split */
 const EST = { 'css-split.mjs': 126, 'focus.mjs': 174, 'edge.mjs': 102, 'overflow.mjs': 95, 'overflow.mjs#browse': 15, 'matrix.mjs': 67, 'interact.mjs': 59, 'data.mjs': 57,
   'corners.mjs': 51, 'reduce-motion.mjs': 49, 'pickers.mjs': 37, 'wheel-motion.mjs': 33, 'display.mjs': 32, 'selection.mjs': 28,
-  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'settings.mjs': 4 };
+  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'sweep.mjs': 140, 'settings.mjs': 4 };
 const SHARD = /^(\d+)\/(\d+)$/.exec(process.env.E2E_SHARD || '');
 const est = ([, file, env]) => (EST[env.OVF_PART === 'browse' ? 'overflow.mjs#browse' : file] ?? 60) * ((env.BROWSER ?? 'chromium') === 'chromium' ? 1 : 1.3);
 let mine = null;

@@ -9,7 +9,7 @@ import * as pw from 'playwright';
 const out = process.argv[2];
 const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
-const PAGES = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'lab'];
+const PAGES = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'evaluation', 'lab'];
 const WIDTHS = [1280, 390];
 const all = [];
 for (const mode of ['light', 'dark']) for (const hc of [0, 1]) for (const rt of [0, 1]) for (const rm of [0, 1]) all.push({ mode, hc, rt, rm });

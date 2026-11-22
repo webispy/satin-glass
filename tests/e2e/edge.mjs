@@ -353,7 +353,7 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
 {
   const p = await newPage({ viewport: { width: 320, height: 640 } });
   const wide = [];
-  for (const id of ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'lab']) {
+  for (const id of ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'evaluation', 'lab']) {
     await p.goto(U(id)); await settle(p, 450);
     const o = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     if (o > 1) wide.push(`${id} +${o}`);
@@ -385,7 +385,7 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   const found = new Map();
   for (const q of ['', '?mode=dark&hc=1']) {
     const p = await newPage();
-    for (const id of ['overview', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'lab']) {
+    for (const id of ['overview', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'evaluation', 'lab']) {
       await p.goto(U(id, q)); await settle(p, 500);
       /* let entrance animations (fades) finish first — half-faded text would read as low contrast; endless ones
          (spinners, shimmer) are left running */
