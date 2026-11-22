@@ -186,7 +186,7 @@ describe('ScatterChart', () => {
     const RO0 = globalThis.ResizeObserver;
     globalThis.ResizeObserver = class { cb: ResizeObserverCallback; constructor(cb: ResizeObserverCallback) { this.cb = cb; } observe() { this.cb([{ contentRect: { width: 480 } } as ResizeObserverEntry], this as unknown as ResizeObserver); } unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
     const wide = [{ name: 'a', price: 9000, sold: 40 }, { name: 'b', price: 120000, sold: 12 }, { name: 'c', price: 31000, sold: 25 }];
-    const chart = (s: 'linear' | 'log') => <ScatterChart aria-label="가격 대비 판매량" data={wide} x="price" y="sold" pointLabel="name" xScale={s} />;
+    const chart = (s: 'linear' | 'log') => <ScatterChart aria-label="가격 대비 판매량" data={wide} x="price" y="sold" pointLabel="name" xScale={s} locale="en-US" />;
     const { container, rerender } = render(chart('log'));
     /* let the move to linear finish (the springs run on animation frames), so the next move starts from a linear range */
     vi.useFakeTimers();
@@ -197,7 +197,7 @@ describe('ScatterChart', () => {
     vi.useRealTimers();
     expect(container.querySelectorAll('.sg-scatter__point')).toHaveLength(3);
     const ticks = [...container.querySelectorAll('.sg-chart__tick')].map((t) => t.textContent);
-    expect(ticks).toEqual(expect.arrayContaining(['1만', '10만']));
+    expect(ticks).toEqual(expect.arrayContaining(['10K', '100K'])   /* locale fixed: the default follows the machine's (1만 on a Korean one) */);
     globalThis.ResizeObserver = RO0;
   });
 });
