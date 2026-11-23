@@ -18,6 +18,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  commits:
+    name: Commit messages (CONTRIBUTING.md)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # the commits this push or pull request brings (a new branch: none to compare against, so nothing is checked)
+      - name: Check subjects, wrapping and trailers
+        env:
+          BEFORE: ${{ github.event.before }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          FROM="${BASE:-$BEFORE}"
+          if [ -z "$FROM" ] || [ "$FROM" = "0000000000000000000000000000000000000000" ]; then echo "no range to check"; exit 0; fi
+          node scripts/check-commits.mjs "$FROM..$HEAD"
   check:
     name: Build, typecheck, unit tests
     runs-on: ubuntu-latest

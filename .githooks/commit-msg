@@ -1,0 +1,4 @@
+#!/bin/sh
+# Checks the message against CONTRIBUTING.md (subject, wrapping, Signed-off-by, trailers). Installed by `pnpm install`
+# (core.hooksPath = .githooks). Bypass once with `git commit --no-verify` only for a local wip commit.
+exec node scripts/check-commits.mjs --msg "$1"
