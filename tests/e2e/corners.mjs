@@ -7,20 +7,21 @@
 // overlap (CSS Backgrounds 3, corner overlap). Not checked: table cells (content, edge to edge), the docs'
 // deliberately wrong examples ([data-corners-skip]), and nothing is measured against the docs' stages (demo frames,
 // the phone mock, navigation stack, media viewer: they stand for a screen, whose corners the library cannot know).
-// Runs on every docs page the router knows (read from apps/docs/src/main.tsx), in light and dark, at desktop and
+// Runs on every docs page the router knows (read from apps/docs/src/routes.ts), in light and dark, at desktop and
 // phone width; then with a menu, a select list, a time panel and an action sheet open. Fixtures first:
 // a wrong radius and an unclipped flush box must be caught, a right one and an off-centre one must pass, and a page
 // pass (a theme at a width) or an open panel that compares nothing fails — a check that sees nothing proves nothing
 // (a single page may have no nested corners in view). Animations are stopped at rest first.
 // usage: node tests/e2e/corners.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 import { readFileSync } from 'node:fs';
 const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const PAGES = [...readFileSync(new URL('../../apps/docs/src/main.tsx', import.meta.url), 'utf8').matchAll(/\{ id: '([a-z-]+)', label:/g)].map((m) => m[1]);
+const PAGES = [...readFileSync(new URL('../../apps/docs/src/routes.ts', import.meta.url), 'utf8').matchAll(/\{ id: '([a-z-]+)', label:/g)].map((m) => m[1]);
+if (PAGES.length < 15) throw new Error(`found only ${PAGES.length} docs pages in routes.ts`);   /* a moved list must not pass by comparing nothing */
 const TOL = 2, MIN = 4;   /* ±2 px cannot be told apart */
 
 const scan = ({ TOL, MIN, root }) => {

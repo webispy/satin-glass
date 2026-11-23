@@ -4,7 +4,7 @@
 //   charts: stat, line, bar, donut · dashboard: how the parts work together, axe on every section.
 // usage: node tests/e2e/data.mjs   (BROWSER=webkit|firefox; PORT (default 4173); Q for settings)
 // covers: data, navigation, feedback, overlays, layout   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 import { readFileSync } from 'node:fs';
 const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '', PORT = process.env.PORT || '4173';
 const b = await pw[engine].launch();
@@ -164,7 +164,9 @@ await go('table');
   ok('table: end-aligned header text ends where the numbers end', edges.every((d) => d < 1), edges.map((d) => d.toFixed(1)).join(','));
   /* the sort direction is drawn by transform + opacity (the CSS d property, used before, does not exist in WebKit) */
   const dir = await grid.evaluate((t) => { const th = t.querySelector('th[aria-sort=descending], th[aria-sort=ascending]'); const op = (s) => +getComputedStyle(th.querySelector(s)).opacity; return { sort: th.getAttribute('aria-sort'), up: op('.sg-table__sort-up'), down: op('.sg-table__sort-down') }; });
-  ok('table: the sort icon shows one chevron, pointing the sorted way', dir.sort === 'descending' ? dir.down === 1 && dir.up === 0 : dir.up === 1 && dir.down === 0, JSON.stringify(dir));
+  /* within 0.02: the other chevron's fade can still be in its last frames on a loaded machine */
+  const on = (v) => v > 0.98, off = (v) => v < 0.02;
+  ok('table: the sort icon shows one chevron, pointing the sorted way', dir.sort === 'descending' ? on(dir.down) && off(dir.up) : on(dir.up) && off(dir.down), JSON.stringify(dir));
   const digits = await grid.evaluate((t) => { const s = document.createElement('span'); s.style.position = 'absolute'; t.querySelector('tbody td').appendChild(s); const w = (x) => { s.textContent = x; return s.getBoundingClientRect().width; }; const r = [w('1111'), w('8888')]; s.remove(); return r; });
   ok('table: numbers use tabular figures (every digit the same width)', Math.abs(digits[0] - digits[1]) < 0.1, digits.map((d) => d.toFixed(2)).join(' vs '));
   await demo('table-basic').getByRole('radio', { name: '촘촘하게' }).click(); await p.waitForTimeout(200);

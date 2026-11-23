@@ -1,7 +1,7 @@
 // Wheels, time and weekday pickers, the calendar's month / year wheels, and the navigation stack.
 // usage: node tests/e2e/pickers.mjs   (BROWSER=webkit|firefox; PORT (default 4173); Q for settings)
 // covers: selection, navigation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '', PORT = process.env.PORT || '4173';
 const b = await pw[engine].launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
@@ -163,7 +163,7 @@ await go('selection');
   await cchips.first().click(); await p.waitForTimeout(600);
   const h2 = await box();
   const range = () => cal.locator('.sg-calendar__caption').textContent();
-  const r0 = await range(); await cal.getByRole('button', { name: '이전 연도들' }).click(); await p.waitForTimeout(800); const r1 = await range();
+  const r0 = await range(); await cal.getByRole('button', { name: '이전 연도 보기' }).click(); await p.waitForTimeout(800); const r1 = await range();
   ok('calendar: the month chip opens 12 months and the year chip the years, in place (same size); ‹ pages the years back', h1 === h0 && h2 === h0 && months === 12 && parseInt(r1) < parseInt(r0), `${h0}/${h1}/${h2} px, ${months} months, ${r0} → ${r1}`);
   await cchips.first().click(); await p.waitForTimeout(500);
   ok('calendar: the open chip again shows the days', (await cal.locator('.sg-calendar__grid').count()) === 1 && (await cchips.first().getAttribute('aria-expanded')) === 'false' && parseInt(await cchips.first().textContent()) === y0);

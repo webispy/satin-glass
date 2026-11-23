@@ -4,7 +4,7 @@
 // travels, grows or bounces becomes a fade; the pointer light is off; progress indicators keep moving gently.
 // usage: node tests/e2e/reduce-motion.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const b = await pw[process.env.BROWSER || 'chromium'].launch();
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
@@ -54,7 +54,7 @@ async function check(label, setup) {
   const csl = calm(sl);
   ok(`${label}: slider glides briefly without overshoot`, csl.ok && csl.moved >= 2, JSON.stringify(csl));
 
-  const st = await trace(p, `() => document.querySelector('.docs__page [aria-label^="Increase"]').click()`, `() => { const s = document.querySelector('.docs__page .sg-stepper__value [data-roll]'); return s ? new DOMMatrix(getComputedStyle(s).transform).f : 0; }`, 250);
+  const st = await trace(p, `() => document.querySelector('.docs__page [aria-label$="늘리기"]').click()`, `() => { const s = document.querySelector('.docs__page .sg-stepper__value [data-roll]'); return s ? new DOMMatrix(getComputedStyle(s).transform).f : 0; }`, 250);
   ok(`${label}: stepper number fades (no rolling)`, st.every(([, y]) => Math.abs(y) < 0.5), `max offset ${Math.max(...st.map(([, y]) => Math.abs(y))).toFixed(1)}`);
 
   await go('overlays');
@@ -91,7 +91,7 @@ async function check(label, setup) {
   const still = (r) => r.scale < 0.005 && r.move < 0.5;
 
   await go('inputs');
-  const stp = await watch(`() => document.querySelector('.docs__page [aria-label^="Increase"]').click()`, '.docs__page .sg-stepper__value > span');
+  const stp = await watch(`() => document.querySelector('.docs__page [aria-label$="늘리기"]').click()`, '.docs__page .sg-stepper__value > span');
   const visibleNums = await p.locator('.docs__page .sg-stepper__value').first().evaluate((v) => [...v.children].filter((c) => getComputedStyle(c).display !== 'none').length);
   ok(`${label}: stepper — the number just changes (one number, no roll, no cross-fade)`, still(stp) && visibleNums === 1, JSON.stringify({ ...stp, visibleNums }));
   const field = p.locator('.docs__page input.sg-field__input').first();
@@ -140,7 +140,7 @@ async function check(label, setup) {
   ok(`${label}: tab bar — the icon does not press in`, Math.abs(tis - 1) < 0.005, `scale ${tis}`);
 
   await go('motion');
-  const bdg = await watch(`() => document.querySelector('.grid--3 > *:nth-child(2) [aria-label$="개수"] [aria-label^="Increase"]').click()`, '.grid--3 > *:nth-child(2) .sg-badge');
+  const bdg = await watch(`() => document.querySelector('.grid--3 > *:nth-child(2) [aria-label$="개수"] [aria-label$="늘리기"]').click()`, '.grid--3 > *:nth-child(2) .sg-badge');
   ok(`${label}: badge — the count changes without a bump`, still(bdg), JSON.stringify(bdg));
 
   await go('overlays');
@@ -214,7 +214,10 @@ if (process.env.SANITY) {
 }
 await check('in-app toggle', async (p) => {
   await p.goto('http://localhost:4173/#/overview'); await p.waitForTimeout(500);
-  await p.locator('.docs__settings--bar').getByRole('switch', { name: '동작 줄이기' }).click();
+  /* at 1280 px the settings sit behind their button (the bar shows from 1360 px): the switch in its popover */
+  await p.locator('.docs__settings-btn').click(); await p.waitForTimeout(400);
+  await p.locator('.sg-popover').getByRole('switch', { name: '동작 줄이기' }).click();
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   /* the docs keep this in React state: navigate inside the app */
   return async (id) => { await p.evaluate((h) => { location.hash = h; }, `#/${id}`); await p.waitForTimeout(600); };
 });

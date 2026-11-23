@@ -9,17 +9,17 @@
 // test followed by the docs app's own stylesheet (the same for every variant).
 // usage: node tests/e2e/css-split.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173; E2E_PART=i/n for a slice of the pages)
 // covers: css   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 import { readFileSync } from 'node:fs';
 const engine = process.env.BROWSER || 'chromium';
 const dist = (p) => readFileSync(new URL(`../../packages/react/dist/${p}`, import.meta.url), 'utf8');
 const docsCss = readFileSync(new URL('../../apps/docs/src/docs.css', import.meta.url), 'utf8');
 const CATS = ['foundation', 'controls', 'layout', 'navigation', 'selection', 'overlays', 'feedback', 'data'];
 /* what each category needs besides foundation — keep in step with the README's table */
-export const DEPS = { controls: [], layout: [], navigation: [], selection: ['controls', 'overlays'], overlays: [], feedback: [], data: ['controls', 'selection'] };
+export const DEPS = { controls: [], layout: [], navigation: [], selection: ['controls', 'overlays'], overlays: [], feedback: [], data: ['controls', 'selection', 'overlays', 'layout'] };
 const cat = Object.fromEntries(CATS.map((c) => [c, dist(`css/${c}.css`)]));
 const full = dist('styles.css'), layered = dist('styles.layer.css');
-const ALL_PAGES = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'lab'];
+import { PAGES as ALL_PAGES } from './pages.mjs';
 /* E2E_PART=i/n: every n-th page from the i-th (the runner splits this, the longest suite, into parts) */
 const [PART, PARTS] = (process.env.E2E_PART || '1/1').split('/').map(Number);
 const PAGES = ALL_PAGES.filter((_, i) => i % PARTS === PART - 1);
@@ -43,7 +43,9 @@ async function snapshot(css, page, qs, only, foreign) {
     /* in the per-category check an element's size follows its contents, which may belong to a category that is
        not loaded; what a missing dependency would show is a declared value (colour, padding, radius, display…) */
     const GEOMETRY = ['width', 'height', 'inline-size', 'block-size', 'perspective-origin', 'transform-origin', 'transform', 'top', 'left', 'right', 'bottom',
-      'inset-block-start', 'inset-block-end', 'inset-inline-start', 'inset-inline-end', 'mask-image', '-webkit-mask-image', 'touch-action'];
+      'inset-block-start', 'inset-block-end', 'inset-inline-start', 'inset-inline-end', 'mask-image', '-webkit-mask-image', 'touch-action',
+      /* resolved from the layout around it: grid tracks in px, and min sizes that read auto only in a flex parent */
+      'grid-template-columns', 'grid-template-rows', 'min-height', 'min-block-size', 'min-width', 'min-inline-size'];
     const animated = new Set();
     for (const a of document.getAnimations()) { try { a.pause(); a.currentTime = 0; } catch {} if (a.effect?.target) animated.add(a.effect.target); }
     const rx = (l) => new RegExp(`(^|\\s)sg-(${l.join('|')})(__|--|$|\\s)`);

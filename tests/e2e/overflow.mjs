@@ -7,7 +7,7 @@
 // usage: node tests/e2e/overflow.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173, PORT=… to change;
 //        DIST=1 serves apps/docs/dist through request interception instead — no server needed)
 // covers: controls, navigation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 import { readFile } from 'node:fs/promises';
 const engine = process.env.BROWSER || 'chromium';
 const PORT = process.env.PORT || 4173;

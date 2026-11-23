@@ -1,5 +1,5 @@
 // Zoomed screenshot of one element. usage: node tests/e2e/zoom.mjs <url-hash> <selector> <out.png> [dark]
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const [hash, sel, out, dark] = process.argv.slice(2);
 const b = await pw[process.env.BROWSER || 'chromium'].launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 1000 }, deviceScaleFactor: 3, colorScheme: dark ? 'dark' : 'light' });

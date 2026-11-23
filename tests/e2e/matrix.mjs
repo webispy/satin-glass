@@ -5,11 +5,11 @@
 // usage: node tests/e2e/matrix.mjs [shotDir]   (BROWSER=webkit|firefox, FULL=1 for all 16 combos in other engines,
 //        SHARD=2/4 to run only every 4th combo starting at the 2nd — the runner splits the matrix this way)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const out = process.argv[2];
 const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
-const PAGES = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'evaluation', 'lab'];
+import { PAGES } from './pages.mjs';
 const WIDTHS = [1280, 390];
 const all = [];
 for (const mode of ['light', 'dark']) for (const hc of [0, 1]) for (const rt of [0, 1]) for (const rm of [0, 1]) all.push({ mode, hc, rt, rm });

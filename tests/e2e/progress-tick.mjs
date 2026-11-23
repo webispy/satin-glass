@@ -1,6 +1,6 @@
 // A progress bar fed twice, 110 ms apart: when the second value arrives mid-flight, the fill should keep its
 // speed (JS spring) rather than drop to rest and ease out again (a restarted CSS transition).
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const b = await pw[process.env.BROWSER || 'chromium'].launch(); const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
 const r = await p.locator('.grid--3 > *').nth(1).evaluate((col) => new Promise((res) => {

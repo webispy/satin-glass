@@ -1,5 +1,5 @@
 // Frame pacing while each interaction animates, CPU throttled ×4 (Chromium, headless). usage: node tests/e2e/perf.mjs
-import { chromium } from 'playwright';
+import { chromium } from './pw.mjs';
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 const cdp = await p.context().newCDPSession(p);

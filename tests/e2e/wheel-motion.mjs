@@ -11,7 +11,7 @@
 //   · a disabled wheel (an alarm that is off) does not turn and leaves the tab order
 // usage: node tests/e2e/wheel-motion.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
 // covers: selection   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
 let failed = 0;

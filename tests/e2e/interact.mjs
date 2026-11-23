@@ -1,6 +1,6 @@
 // Interaction checks on the docs app (vite preview on :4173). usage: node tests/e2e/interact.mjs [shotDir]
 // covers: controls, navigation, overlays, layout   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const chromium = pw[process.env.BROWSER || 'chromium'];
 const out = process.argv[2];
 const b = await chromium.launch();
@@ -256,7 +256,7 @@ await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(600);
   ok('slider: a press on the track travels there with motion (not a jump)', mids >= 2 && Math.abs(after - before) > 40, `in-between frames ${mids}, ${before.toFixed(0)} → ${after.toFixed(0)}`);
 }
 {
-  const plus = p.getByRole('button', { name: 'Increase 인원' });
+  const plus = p.getByRole('button', { name: '인원 늘리기' });
   await plus.click();
   await p.waitForTimeout(30);
   const roll = await p.locator('.docs__page .sg-stepper__value').first().evaluate((box) => {

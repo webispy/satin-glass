@@ -78,6 +78,8 @@ if (ENGINES.includes('chromium')) for (let i = 1; i <= 4; i++) checks.push([`eve
 if (ENGINES.includes('chromium')) for (let i = 1; i <= 3; i++) checks.push([`stylesheets split by category · chromium ${i}/3`, 'css-split.mjs', { E2E_PART: `${i}/3` }]);
 /* nested corners stay concentric (design-language.md 9): a static layout check, once, in Chromium */
 if (ENGINES.includes('chromium')) checks.push(['concentric corners · chromium', 'corners.mjs', {}]);
+/* the docs in both languages (no Korean left in English pages, every option described): content, not rendering — once, in Chromium */
+if (ENGINES.includes('chromium')) checks.push(['docs in both languages · chromium', 'i18n.mjs', {}]);
 perEngine(checks, 'blur budget', 'blur-budget.mjs');
 /* keyboard focus visible in every theme and with forced colours (emulated in Chromium) */
 /* one share per theme (five): as one suite it was the longest of the run */

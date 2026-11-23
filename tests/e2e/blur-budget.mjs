@@ -9,12 +9,12 @@
 // its computed backdrop-filter has a blur above 0.
 // usage: node tests/e2e/blur-budget.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
 // covers: css, foundation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const PAGES = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'lab'];
+import { PAGES } from './pages.mjs';
 
 const measure = (p) => p.evaluate(() => {
   const blurs = (el) => { const cs = getComputedStyle(el); const f = cs.backdropFilter || cs.webkitBackdropFilter || 'none'; const m = /blur\(([\d.]+)px\)/.exec(f); return Boolean(m && parseFloat(m[1]) > 0); };

@@ -26,7 +26,7 @@ import { changedFiles } from '../../scripts/changed-files.mjs';
 const ROOT = new URL('../../', import.meta.url);
 const read = (p) => readFileSync(new URL(p, ROOT), 'utf8');
 const CATS = ['foundation', 'controls', 'layout', 'navigation', 'selection', 'overlays', 'feedback', 'data'];
-const DEPENDENTS = { controls: ['selection', 'data'], overlays: ['selection'], selection: ['data'] };
+const DEPENDENTS = { controls: ['selection', 'data'], overlays: ['selection', 'data'], layout: ['data'], selection: ['data'] };
 const PAGES = {
   'components.tsx': ['controls', 'navigation', 'layout', 'overlays'],   // buttons, inputs, navigation, lists, overlays
   'selection.tsx': ['selection'], 'display.tsx': ['layout', 'navigation'], 'feedback.tsx': ['feedback', 'overlays'],
@@ -121,7 +121,7 @@ for (const f of files) {
   } else if (f === `${DOCS_DIR}docs.css` && docsCssPages(base)?.every((pg) => pageCats(pg))) {
     const pg = docsCssPages(base), c = [...new Set(pg.flatMap((x) => pageCats(x)))];
     c.forEach((x) => cats.add(x)); why.push(`${f}: the classes changed are used on ${pg.join(', ') || 'no page'} -> ${c.join(', ') || '(nothing)'}`);
-  } else if ((m = f.match(/^tests\/e2e\/([\w-]+\.mjs)$/)) && m[1] !== 'run.mjs' && m[1] !== 'changed.mjs') {
+  } else if ((m = f.match(/^tests\/e2e\/([\w-]+\.mjs)$/)) && !['run.mjs', 'changed.mjs', 'pw.mjs', 'pages.mjs'].includes(m[1])) {
     suites.add(m[1]); why.push(`${f}: that suite`);
   } else if (/^packages\/tokens\//.test(f)) { css = true; everything(f, 'design tokens'); }
   else everything(f, /^packages\/core\/src\//.test(f) ? 'core behaviour shared by every category' : /^apps\/docs\//.test(f) ? 'the docs app frame' : 'not mapped to a category');

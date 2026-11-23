@@ -1,5 +1,5 @@
 // Screenshots of every docs page in a theme. usage: node tests/e2e/shots.mjs <outDir> [theme] [width]
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const chromium = pw[process.env.BROWSER || 'chromium'];
 const [out, theme = 'light', width = '1280'] = process.argv.slice(2);
 const pages = ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'navigation', 'lists', 'overlays', 'showcase'];

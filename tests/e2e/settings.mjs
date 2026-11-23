@@ -9,7 +9,7 @@
 //   · tokens reach the controls: a control text role and a spacing step changed by a theme change buttons, labels, Stack
 // usage: node tests/e2e/settings.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
 let failed = 0;
@@ -118,6 +118,78 @@ const menu = await p.evaluate(() => {
   return { filter: cs.backdropFilter || cs.webkitBackdropFilter || 'none', alpha: a, portalRT: m.closest('.sg-portal')?.classList.contains('sg-reduce-transparency') };
 });
 ok('reduce transparency: an open menu is solid, with no backdrop blur', menu && menu.portalRT && (menu.filter === 'none' || menu.filter === '') && menu.alpha === 1, JSON.stringify(menu));
+
+/* the docs' language: the switch under the brand is there (it was once squeezed to nothing by the sidebar's column),
+   the browser's language decides first, a choice is kept across reloads, ?lang= wins, and <html lang> follows */
+{
+  const ctx = await b.newContext({ viewport: { width: 1280, height: 800 }, locale: 'en-US' });
+  const q = await ctx.newPage();
+  await q.goto('http://localhost:4173/#/table'); await q.waitForTimeout(900);
+  const sw = await q.locator('.docs__lang').evaluate((e) => ({ h: e.getBoundingClientRect().height, w: e.getBoundingClientRect().width }));
+  ok('docs language: the switch under the brand is a full control', sw.h >= 28 && sw.w >= 120, JSON.stringify(sw));
+  ok('docs language: an English browser opens in English', (await q.evaluate(() => document.documentElement.lang)) === 'en');
+  await q.locator('.docs__lang').getByRole('radio', { name: '한국어' }).click(); await q.waitForTimeout(400);
+  ok('docs language: choosing Korean sets ?lang=ko and <html lang="ko">', (await q.evaluate(() => [new URL(location.href).searchParams.get('lang'), document.documentElement.lang].join())) === 'ko,ko');
+  await q.goto('http://localhost:4173/#/table'); await q.waitForTimeout(900);
+  ok('docs language: the choice is kept without ?lang=', (await q.evaluate(() => document.documentElement.lang)) === 'ko');
+  await q.goto('http://localhost:4173/?lang=en#/table'); await q.waitForTimeout(900);
+  ok('docs language: ?lang= wins over the saved choice', (await q.evaluate(() => document.documentElement.lang)) === 'en');
+  await ctx.close();
+}
+
+/* the docs' top bar: below 1360 px it holds only 40 px glass buttons (menu under 900, contents, settings) on one line;
+   from 1360 the settings bar and the contents rail. Nothing in it moves while the page scrolls, whatever section the
+   contents button names (its width once followed the name and pushed the settings bar on every scroll). */
+for (const [w, locale] of [[390, 'en-US'], [1000, 'ko-KR'], [1359, 'en-US'], [1360, 'ko-KR'], [1600, 'en-US']]) {
+  const ctx = await b.newContext({ viewport: { width: w, height: 800 }, locale });
+  const q = await ctx.newPage();
+  await q.goto('http://localhost:4173/#/table'); await q.waitForTimeout(900);
+  const snap = () => q.evaluate(() => {
+    const out = {};
+    for (const [k, sel] of Object.entries({ menu: '.docs__menu-btn', contents: '.docs__contents-btn', settingsBtn: '.docs__settings-btn', bar: '.docs__settings--bar', rail: '.docs__toc' })) {
+      const e = document.querySelector(sel);
+      if (e && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().width > 0) { const r = e.getBoundingClientRect(); out[k] = [r.left, r.top, r.width, r.height].map((v) => Math.round(v * 2) / 2); }
+    }
+    out.name = document.querySelector('.docs__contents-cur')?.textContent ?? null;
+    return out;
+  });
+  const first = await snap(), wide = w >= 1360;
+  const shown = ['menu', 'contents', 'settingsBtn', 'bar', 'rail'].filter((k) => first[k]).join(',');
+  const want = wide ? 'bar,rail' : w <= 900 ? 'menu,contents,settingsBtn' : 'contents,settingsBtn';
+  ok(`docs top bar at ${w} px: ${want}`, shown === want, shown);
+  const btns = ['menu', 'contents', 'settingsBtn'].filter((k) => first[k]).map((k) => first[k]);
+  ok(`docs top bar at ${w} px: one height and one middle`, btns.every((r) => r[3] === btns[0][3] && r[1] + r[3] / 2 === btns[0][1] + btns[0][3] / 2), JSON.stringify(btns));
+  const H = await q.evaluate(() => document.documentElement.scrollHeight - innerHeight);
+  let moved = '', names = new Set([first.name]);
+  for (let k = 1; k <= 6; k++) {
+    await q.evaluate((y) => scrollTo(0, y), Math.round((H * k) / 6)); await q.waitForTimeout(150);
+    const s2 = await snap(); names.add(s2.name);
+    for (const key of ['menu', 'contents', 'settingsBtn', 'bar']) if (JSON.stringify(s2[key]) !== JSON.stringify(first[key])) moved ||= `${key} at ${k}/6`;
+  }
+  ok(`docs top bar at ${w} px: nothing moves while the page scrolls`, !moved, moved);
+  if (!wide) ok(`docs top bar at ${w} px: the contents button names the section in view`, names.size >= 3, [...names].join(' / '));
+  await ctx.close();
+}
+
+/* an anchored panel whose anchor goes away closes (it once jumped to the top left): the settings popover opened from
+   its button, then the window widened until the bar replaced the button; a select whose anchor stays keeps its list
+   open, beside it */
+{
+  const ctx = await b.newContext({ viewport: { width: 1000, height: 800 }, locale: 'ko-KR' });
+  const q = await ctx.newPage();
+  const panels = () => q.evaluate(() => [...document.querySelectorAll('.sg-popover, .sg-menu, .sg-listbox')].filter((e) => getComputedStyle(e).visibility !== 'hidden' && e.getBoundingClientRect().width > 0).length);
+  await q.goto('http://localhost:4173/#/table'); await q.waitForTimeout(900);
+  await q.locator('.docs__settings-btn').click(); await q.waitForTimeout(500);
+  const before = await panels();
+  await q.setViewportSize({ width: 1500, height: 800 }); await q.waitForTimeout(700);
+  ok('anchored panel: closes when its anchor is hidden (settings popover, window widened)', before === 1 && (await panels()) === 0, `${before} → ${await panels()}`);
+  await q.setViewportSize({ width: 1300, height: 800 }); await q.waitForTimeout(400);
+  const sel = q.locator('[data-demo="filterbar"] .sg-select'); await sel.scrollIntoViewIfNeeded(); await sel.click(); await q.waitForTimeout(500);
+  await q.setViewportSize({ width: 1200, height: 800 }); await q.waitForTimeout(600);
+  const gap = await q.evaluate(() => { const a = document.querySelector('[data-demo="filterbar"] .sg-select').getBoundingClientRect(), l = document.querySelector('.sg-listbox')?.getBoundingClientRect(); return l ? Math.round(l.top - a.bottom) : null; });
+  ok('anchored panel: stays open beside an anchor that stays (select, window narrowed)', gap !== null && gap >= 0 && gap <= 16, String(gap));
+  await ctx.close();
+}
 
 await b.close();
 console.log(failed ? `\n${failed} FAILED` : '\nALL PASSED');

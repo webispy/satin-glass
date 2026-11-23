@@ -1,5 +1,5 @@
 // Frame strip of an interaction. usage: node tests/e2e/frames.mjs <hash> <clickSelector> <clipSelector> <outPrefix> [n] [every]
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const [hash, clickSel, clipSel, out, n = '6', every = '45'] = process.argv.slice(2);
 const b = await pw.chromium.launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 3 });

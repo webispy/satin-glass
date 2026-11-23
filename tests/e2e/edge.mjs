@@ -3,8 +3,9 @@
 // open/close cycles, and an axe accessibility scan. Uses the docs "lab" page plus the regular pages.
 // usage: node tests/e2e/edge.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 import { readFileSync } from 'node:fs';
+import { PAGES } from './pages.mjs';
 const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
 let failed = 0;
@@ -138,7 +139,7 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   ok('refused (controlled) segmented: selection and indicator stay on A; the parent was asked each time', segR.selected === 1 && Math.abs(segR.dx) < 1 && (await ref.getByRole('radio', { name: 'A' }).getAttribute('aria-checked')) === 'true' && /[1-9]/.test(tries), `${JSON.stringify(segR)} ${tries}`);
 
   const bnd = lab(p, 'bounds');
-  const plus = bnd.getByRole('button', { name: 'Increase 경계 스테퍼' }), minus = bnd.getByRole('button', { name: 'Decrease 경계 스테퍼' });
+  const plus = bnd.getByRole('button', { name: '경계 스테퍼 늘리기' }), minus = bnd.getByRole('button', { name: '경계 스테퍼 줄이기' });
   await plus.scrollIntoViewIfNeeded(); const pb = await plus.boundingBox();
   await p.mouse.move(pb.x + pb.width / 2, pb.y + pb.height / 2); await p.mouse.down(); await p.waitForTimeout(1400); await p.mouse.up(); await settle(p, 300);
   const top = await bnd.locator('.sg-stepper__value [data-roll], .sg-stepper__value > span:last-child').last().textContent();
@@ -353,7 +354,7 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
 {
   const p = await newPage({ viewport: { width: 320, height: 640 } });
   const wide = [];
-  for (const id of ['overview', 'material', 'colors', 'type', 'motion', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'evaluation', 'lab']) {
+  for (const id of PAGES) {
     await p.goto(U(id)); await settle(p, 450);
     const o = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     if (o > 1) wide.push(`${id} +${o}`);
@@ -385,7 +386,8 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   const found = new Map();
   for (const q of ['', '?mode=dark&hc=1']) {
     const p = await newPage();
-    for (const id of ['overview', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'feedback', 'overlays', 'display', 'table', 'charts', 'showcase', 'dashboard', 'evaluation', 'lab']) {
+    /* every page but the foundation specimens (colour swatches and type samples are shown, not read) */
+    for (const id of PAGES.filter((x) => !['material', 'colors', 'type', 'motion'].includes(x))) {
       await p.goto(U(id, q)); await settle(p, 500);
       /* let entrance animations (fades) finish first — half-faded text would read as low contrast; endless ones
          (spinners, shimmer) are left running */

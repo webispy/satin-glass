@@ -7,7 +7,7 @@
 // Dates come from the page (today, the sold-out days), so the checks hold on any day of the month.
 // usage: node tests/e2e/range.mjs   (BROWSER=webkit|firefox; PORT (default 4173); Q for settings)
 // covers: selection
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '', PORT = process.env.PORT || '4173';
 const b = await pw[engine].launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
@@ -41,7 +41,7 @@ await p.goto(`http://localhost:${PORT}/${Q}#/selection`); await wait(900);
   const rc = p.locator('[data-demo="range-calendar"]');
   await rc.scrollIntoViewIfNeeded(); await wait(300);
   const status = () => rc.locator('.sg-calendar__status').textContent();
-  ok('range calendar: the status line asks for the start first', (await status()) === '가는 날을 고르세요', await status());
+  ok('range calendar: the status line asks for the start first', (await status()) === '가는 날을 선택하세요', await status());
 
   const d0 = await run(rc, 5);
   ok('range calendar: five pickable days in a row on show', !!d0, String(d0));
@@ -49,7 +49,7 @@ await p.goto(`http://localhost:${PORT}/${Q}#/selection`); await wait(900);
   await dayIn(rc, s).click(); await wait(250);
   const st1 = await status();
   ok('range calendar: the first pick is the start; the line says it and asks for the end',
-    (await pressed(rc)).join() === s && st1.startsWith('가는 날 ') && st1.endsWith('오는 날을 고르세요'), st1);
+    (await pressed(rc)).join() === s && st1.startsWith('가는 날 ') && st1.endsWith('오는 날을 선택하세요'), st1);
 
   await dayIn(rc, e).hover(); await wait(300);
   const prev = await rc.locator('td[data-band]').evaluateAll((ts) => ts.map((t) => `${t.dataset.band}${t.hasAttribute('data-preview') ? '*' : ''}`).join(' '));
@@ -73,9 +73,9 @@ await p.goto(`http://localhost:${PORT}/${Q}#/selection`); await wait(900);
   /* a complete range: the next pick starts again; an earlier day than the start starts over from there */
   await dayIn(rc, plus(d0, 2)).click(); await wait(200);
   await dayIn(rc, d0).click(); await wait(200);
-  ok('range calendar: a day before the start starts over from that day', (await pressed(rc)).join() === d0 && (await status()).endsWith('오는 날을 고르세요'), (await pressed(rc)).join());
+  ok('range calendar: a day before the start starts over from that day', (await pressed(rc)).join() === d0 && (await status()).endsWith('오는 날을 선택하세요'), (await pressed(rc)).join());
   await dayIn(rc, d0).click(); await wait(200);
-  ok('range calendar: the start again clears it (minLength 1)', (await pressed(rc)).length === 0 && (await status()) === '가는 날을 고르세요', await status());
+  ok('range calendar: the start again clears it (minLength 1)', (await pressed(rc)).length === 0 && (await status()) === '가는 날을 선택하세요', await status());
 
   /* the keyboard: Enter picks, arrows move */
   await dayIn(rc, d0).focus(); await p.keyboard.press('Enter'); await wait(150);
@@ -111,7 +111,7 @@ await p.goto(`http://localhost:${PORT}/${Q}#/selection`); await wait(900);
   await tBtn.click(); await wait(200);
   const mid = await panelStatus();
   await p.keyboard.press('Escape'); await wait(400);
-  ok('range field: Escape halfway closes it and keeps the range', (await dlg.count()) === 0 && mid.includes('체크아웃을 고르세요') && (await input.inputValue()) === `${s}/${e}` && (await field.textContent()) === shown, mid);
+  ok('range field: Escape halfway closes it and keeps the range', (await dlg.count()) === 0 && mid.includes('체크아웃을 선택하세요') && (await input.inputValue()) === `${s}/${e}` && (await field.textContent()) === shown, mid);
 
   /* so does a click outside */
   await open();
@@ -135,7 +135,7 @@ await p.goto(`http://localhost:${PORT}/${Q}#/selection`); await wait(900);
     await dayIn(dlg, plus(off, -1)).click(); await wait(150);
     await dayIn(dlg, plus(off, 1)).click(); await wait(400);
     ok('range field: an end past a sold-out day starts over from it (the panel stays open)',
-      (await dlg.count()) === 1 && (await pressed(dlg)).join() === plus(off, 1) && (await panelStatus()).includes('체크아웃을 고르세요'), (await pressed(dlg)).join());
+      (await dlg.count()) === 1 && (await pressed(dlg)).join() === plus(off, 1) && (await panelStatus()).includes('체크아웃을 선택하세요'), (await pressed(dlg)).join());
   }
   await p.keyboard.press('Escape'); await wait(400);
   ok('range field: still the first range after all that', (await input.inputValue()) === `${s}/${e}`, await input.inputValue());
@@ -158,7 +158,7 @@ await p.goto(`http://localhost:${PORT}/${Q}#/selection`); await wait(900);
   for (const k of ['ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowRight', 'ArrowRight']) await p.keyboard.press(k);
   await wait(300); await p.keyboard.press('Enter'); await wait(500);
   const st = await dlg.locator('.sg-calendar__status').textContent();
-  ok('range field: one day past maxLength starts over instead (the panel stays open)', (await dlg.count()) === 1 && st.includes('종료일을 고르세요') && (await pressed(dlg)).length === 1, st);
+  ok('range field: one day past maxLength starts over instead (the panel stays open)', (await dlg.count()) === 1 && st.includes('종료일을 선택하세요') && (await pressed(dlg)).length === 1, st);
   await p.keyboard.press('Escape'); await wait(400);
   ok('range field: Escape keeps the 30-day range', (await field.textContent()) === shown, await field.textContent());
 }

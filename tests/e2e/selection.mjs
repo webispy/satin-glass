@@ -1,7 +1,7 @@
 // Selection & input components in a real browser: checkbox, radio, choice list, select, calendar, date picker.
 // usage: node tests/e2e/selection.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173; Q for settings)
 // covers: selection   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '';
 const b = await pw[engine].launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });

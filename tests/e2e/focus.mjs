@@ -5,7 +5,7 @@
 // states painted over it). Chromium only (forced colours are emulated there).
 // usage: node tests/e2e/focus.mjs   (vite preview on :4173; SHARD=k/n for a share of the themes)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const b = await pw.chromium.launch();
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };

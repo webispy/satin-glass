@@ -9,7 +9,7 @@
 // a single accordion keeps one open.
 // usage: node tests/e2e/v05.mjs   (BROWSER=webkit|firefox; PORT (default 4173); Q for settings)
 // covers: data, controls, layout, overlays, selection
-import * as pw from 'playwright';
+import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '', PORT = process.env.PORT || '4173';
 const b = await pw[engine].launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });

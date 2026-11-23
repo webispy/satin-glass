@@ -1,5 +1,5 @@
 // Join PNG frames into one horizontal strip. usage: node tests/e2e/strip.mjs <out.png> <frame1.png> <frame2.png> ...
-import { chromium } from 'playwright';
+import { chromium } from './pw.mjs';
 import { readFileSync } from 'node:fs';
 const [out, ...frames] = process.argv.slice(2);
 const imgs = frames.map((f, i) => `<figure><img src="data:image/png;base64,${readFileSync(f).toString('base64')}"><figcaption>${i}</figcaption></figure>`).join('');
