@@ -139,6 +139,35 @@ describe('charts', () => {
     fireEvent.click(keys[1]);
     expect(keys[1].getAttribute('aria-pressed')).toBe('true');
   });
+  it('line chart: a gap breaks the line and the area, and closes or opens at once when the data changes', async () => {
+    const RO0 = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class { cb: ResizeObserverCallback; constructor(cb: ResizeObserverCallback) { this.cb = cb; } observe() { this.cb([{ contentRect: { width: 480 } } as ResizeObserverEntry], this as unknown as ResizeObserver); } unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
+    const gappy = [{ d: '월', a: 2 }, { d: '화', a: 4 }, { d: '수', a: null }, { d: '목', a: 8 }, { d: '금', a: 6 }, { d: '토', a: Number.NaN }, { d: '일', a: 4 }];
+    const full = gappy.map((d, i) => ({ ...d, a: i === 2 ? 10 : i === 5 ? 5 : d.a }));
+    const one = [{ key: 'a', label: '방문' }];
+    const subpaths = (el: Element | null) => (el?.getAttribute('d')!.match(/M/g) ?? []).length;
+    /* every point of the line, as [x, y] */
+    const points = (el: Element) => [...el.getAttribute('d')!.matchAll(/[ML]([\d.]+),([\d.]+)/g)].map((m) => [+m[1], +m[2]]);
+    const { container, rerender } = render(<LineChart aria-label="방문" data={gappy} x="d" series={one} area curve="linear" />);
+    const line = () => container.querySelector('.sg-chart__line')!;
+    const fill = () => container.querySelector('path[data-fade]');
+    /* three runs (월–화, 목–금, 일 alone, a dot); the area only under the runs of two or more */
+    expect(subpaths(line())).toBe(3);
+    expect(line().getAttribute('d')).toContain('h0');
+    expect(subpaths(fill())).toBe(2);
+    expect(points(line())).toHaveLength(5);
+    expect(within(container.querySelector('table')!).getAllByRole('row')[3].textContent).toContain('—');
+    /* filled in: one line at once, the new point (10) rising from the straight line between its neighbours (4, 8) */
+    rerender(<LineChart aria-label="방문" data={full} x="d" series={one} area curve="linear" />);
+    expect(subpaths(line())).toBe(1);
+    const [, b, c, d] = points(line());
+    expect(c[1]).toBeCloseTo((b[1] + d[1]) / 2, 1);
+    await waitFor(() => { const [, b1, c1, d1] = points(line()); expect(c1[1]).toBeLessThan(Math.min(b1[1], d1[1]) - 1); }, { timeout: 3000 });
+    /* gaps again: broken at once */
+    rerender(<LineChart aria-label="방문" data={gappy} x="d" series={one} area curve="linear" />);
+    expect(subpaths(line())).toBe(3);
+    globalThis.ResizeObserver = RO0;
+  });
   it('bar chart: arrow keys announce the category', () => {
     const { container } = render(<BarChart aria-label="채널" data={data} x="d" series={series} />);
     const plot = container.querySelector('.sg-chart__plot')!;

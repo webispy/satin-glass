@@ -3,14 +3,17 @@
 import type { CSSProperties } from 'react';
 import { cx } from './utils';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
+import { useMessages } from './messages';
 
 export type PaginationProps = {
-  /** 1-based */
+  /** the current page, from 1 (controlled; use with `onChange`) */
   page: number;
+  /** how many pages there are (at least 1) */
   pageCount: number;
   onChange: (page: number) => void;
   /** pages shown on each side of the current one */
   siblings?: number;
+  /** name of the landmark (default "Pagination") */
   'aria-label'?: string;
   labels?: { previous?: string; next?: string; page?: (n: number) => string };
   className?: string; style?: CSSProperties;
@@ -27,14 +30,15 @@ export function pageWindow(page: number, count: number, siblings = 1): (number |
   return [1, null, ...Array.from({ length: right - left + 1 }, (_, i) => left + i), null, count];
 }
 
-export function Pagination({ page, pageCount, onChange, siblings = 1, 'aria-label': label = 'Pagination', labels = {}, className, style }: PaginationProps) {
+export function Pagination({ page, pageCount, onChange, siblings = 1, 'aria-label': labelProp, labels = {}, className, style }: PaginationProps) {
+  const m = useMessages().pagination, label = labelProp ?? m.nav;
   const count = Math.max(1, pageCount), cur = Math.min(Math.max(1, page), count);
-  const pageLabel = labels.page ?? ((n: number) => `Page ${n}`);
+  const pageLabel = labels.page ?? m.page;
   const go = (n: number) => { if (n >= 1 && n <= count && n !== cur) onChange(n); };
   return (
     /* --_digits: every slot as wide as the widest page number, so nothing shifts while the window moves */
     <nav aria-label={label} className={cx('sg-pagination', className)} data-wide={siblings > 1 || undefined} style={{ ['--_digits' as string]: String(count).length, ...style } as CSSProperties}>
-      <button type="button" className="sg-pagination__step" aria-label={labels.previous ?? 'Previous page'} disabled={cur <= 1} onClick={() => go(cur - 1)}><ChevronLeftIcon /></button>
+      <button type="button" className="sg-pagination__step" aria-label={labels.previous ?? m.previous} disabled={cur <= 1} onClick={() => go(cur - 1)}><ChevronLeftIcon /></button>
       <ol className="sg-pagination__pages">
         {pageWindow(cur, count, siblings).map((n, i) => (
           <li key={n ?? `gap${i}`}>
@@ -45,7 +49,7 @@ export function Pagination({ page, pageCount, onChange, siblings = 1, 'aria-labe
         ))}
       </ol>
       <span className="sg-pagination__compact" aria-hidden="true">{cur} / {count}</span>
-      <button type="button" className="sg-pagination__step" aria-label={labels.next ?? 'Next page'} disabled={cur >= count} onClick={() => go(cur + 1)}><ChevronRightIcon /></button>
+      <button type="button" className="sg-pagination__step" aria-label={labels.next ?? m.next} disabled={cur >= count} onClick={() => go(cur + 1)}><ChevronRightIcon /></button>
     </nav>
   );
 }

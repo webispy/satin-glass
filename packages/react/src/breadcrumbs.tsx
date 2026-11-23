@@ -4,24 +4,28 @@ import { useRef, useState, type CSSProperties, type MouseEvent, type ReactNode }
 import { cx } from './utils';
 import { ChevronRightIcon } from './icons';
 import { Menu, MenuItem } from './overlays';
+import { useMessages } from './messages';
 
 export type Crumb = { label: ReactNode; href?: string; onClick?: (e: MouseEvent) => void; icon?: ReactNode };
 export type BreadcrumbsProps = {
+  /** the levels, from the top down; the last is the current page (aria-current, not a link) */
   items: Crumb[];
   /** fold the middle when there are more levels than this (0: never) */
   maxItems?: number;
-  /** levels kept before / after the fold */
+  /** levels kept before the fold, from the top */
   itemsBeforeCollapse?: number;
+  /** levels kept after the fold, the current page among them */
   itemsAfterCollapse?: number;
   /** name of the landmark (default "Breadcrumb") */
   'aria-label'?: string;
-  /** label of the "…" button */
+  /** label of the "…" button (default "Show hidden levels") */
   moreLabel?: string;
   className?: string;
   style?: CSSProperties;
 };
 
-export function Breadcrumbs({ items, maxItems = 5, itemsBeforeCollapse = 1, itemsAfterCollapse = 2, 'aria-label': label = 'Breadcrumb', moreLabel = 'Show hidden levels', className, style }: BreadcrumbsProps) {
+export function Breadcrumbs({ items, maxItems = 5, itemsBeforeCollapse = 1, itemsAfterCollapse = 2, 'aria-label': labelProp, moreLabel: moreProp, className, style }: BreadcrumbsProps) {
+  const m = useMessages(), label = labelProp ?? m.breadcrumb, moreLabel = moreProp ?? m.hiddenLevels;
   const [open, setOpen] = useState(false);
   const more = useRef<HTMLButtonElement>(null);
   const fold = maxItems > 0 && items.length > maxItems && itemsBeforeCollapse + itemsAfterCollapse < items.length;

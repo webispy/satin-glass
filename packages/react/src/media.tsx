@@ -10,6 +10,7 @@ import { Portal, useTheme } from './foundation';
 import { IconButton } from './controls';
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from './icons';
 import { useOverlayLifecycle, useRelease, type CloseReason } from './overlay-hooks';
+import { useMessages } from './messages';
 
 export type MediaItem = {
   /** image URL (or use `render` for anything else: an SVG, a canvas, a video) */
@@ -25,14 +26,19 @@ export type MediaItem = {
 export type MediaViewerProps = {
   open: boolean;
   onClose: (reason: CloseReason) => void;
+  /** the photos (or rendered items), in the order they are paged through */
   items: MediaItem[];
+  /** the item shown, from 0 (controlled; use with `onIndexChange`) */
   index?: number;
+  /** the item shown first when uncontrolled, from 0 */
   defaultIndex?: number;
+  /** called with the new index when the user pages (a swipe, the arrows, the arrow keys) */
   onIndexChange?: (index: number) => void;
-  /** the thumbnail item `i` opens out of and closes back into */
+  /** the thumbnail item `index` opens out of and closes back into */
   getOrigin?: (index: number) => HTMLElement | null | undefined;
   /** extra buttons in the top bar */
   actions?: ReactNode;
+  /** the dialog's name (default "Media viewer") */
   'aria-label'?: string;
   labels?: { close?: string; previous?: string; next?: string };
   className?: string;
@@ -41,7 +47,8 @@ export type MediaViewerProps = {
 const GAP = 24, MAX_ZOOM = 4, DOUBLE_TAP_ZOOM = 2.5;
 type Z = { s: number; x: number; y: number };
 
-export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onIndexChange, getOrigin, actions, 'aria-label': label = 'Media viewer', labels = {}, className }: MediaViewerProps) {
+export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onIndexChange, getOrigin, actions, 'aria-label': labelProp, labels = {}, className }: MediaViewerProps) {
+  const words = useMessages(), label = labelProp ?? words.mediaViewer;
   const n = items.length;
   const [cur, setCur] = useControllable(index, defaultIndex, onIndexChange);
   const at = Math.min(Math.max(0, cur), Math.max(0, n - 1));
@@ -171,6 +178,8 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
   }, () => {
     const before = document.activeElement;
     release.run();
+    /* where the focus trap gave focus back (the opener: the first thumbnail pressed, not the one you are on now) */
+    const returned = document.activeElement;
     const el = root.current!;
     /* the photo folds back into the thumbnail of the item you were on: focus lands there too (once visible) */
     const restore = () => {
@@ -178,7 +187,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
       if (t) t.style.visibility = '';
       hiddenThumb.current = null;
       const a = document.activeElement;
-      if (t && document.contains(t) && (!a || a === document.body || !el.isConnected || el.contains(a) || a === before)) t.focus({ preventScroll: true });
+      if (t && document.contains(t) && (!a || a === document.body || !el.isConnected || el.contains(a) || a === before || a === returned)) t.focus({ preventScroll: true });
     };
     if (prefersReducedMotion(el)) return fade(el, 1, 0, timing.leave).then(restore);
     const l = layer(), f = frame();
@@ -392,14 +401,14 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
           </div>
         </div>
         <div className="sg-media__bar">
-          <IconButton data-sg-close variant="glass" icon={<CloseIcon />} label={labels.close ?? 'Close'} onClick={() => close.current('action')} />
+          <IconButton data-sg-close variant="glass" icon={<CloseIcon />} label={labels.close ?? words.close} onClick={() => close.current('action')} />
           {n > 1 && <span className="sg-media__count" aria-live="polite" aria-atomic="true">{at + 1} / {n}</span>}
           <div className="sg-media__actions">{actions}</div>
         </div>
         {n > 1 && (
           <>
-            <IconButton className="sg-media__nav sg-media__nav--prev" variant="glass" icon={<ChevronLeftIcon />} label={labels.previous ?? 'Previous'} disabled={at === 0} onClick={() => go(at - 1)} />
-            <IconButton className="sg-media__nav sg-media__nav--next" variant="glass" icon={<ChevronRightIcon />} label={labels.next ?? 'Next'} disabled={at === n - 1} onClick={() => go(at + 1)} />
+            <IconButton className="sg-media__nav sg-media__nav--prev" variant="glass" icon={<ChevronLeftIcon />} label={labels.previous ?? words.previous} disabled={at === 0} onClick={() => go(at - 1)} />
+            <IconButton className="sg-media__nav sg-media__nav--next" variant="glass" icon={<ChevronRightIcon />} label={labels.next ?? words.next} disabled={at === n - 1} onClick={() => go(at + 1)} />
           </>
         )}
         {item?.caption && <div className="sg-media__caption">{item.caption}</div>}

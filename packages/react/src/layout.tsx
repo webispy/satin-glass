@@ -4,7 +4,12 @@ import { glassClass, useGlassLight } from './foundation';
 import { ChevronRightIcon } from './icons';
 
 /* ================================================================================================ List */
-export function ListSection({ header, footer, children, className, ...rest }: HTMLAttributes<HTMLElement> & { header?: ReactNode; footer?: ReactNode }) {
+export function ListSection({ header, footer, children, className, ...rest }: HTMLAttributes<HTMLElement> & {
+  /** a heading above the list (an h3) */
+  header?: ReactNode;
+  /** a note under the list: what the settings above do */
+  footer?: ReactNode;
+}) {
   return (
     <section className={cx('sg-list-section', className)} {...rest}>
       {header && <h3 className="sg-list-section__header">{header}</h3>}
@@ -14,23 +19,33 @@ export function ListSection({ header, footer, children, className, ...rest }: HT
   );
 }
 
-export const List = forwardRef<HTMLUListElement, HTMLAttributes<HTMLUListElement> & { plain?: boolean }>(function List({ plain, className, ...rest }, ref) {
+export const List = forwardRef<HTMLUListElement, HTMLAttributes<HTMLUListElement> & {
+  /** rows without the grouped background, corners and shadow, for a list inside a card or a panel */
+  plain?: boolean;
+}>(function List({ plain, className, ...rest }, ref) {
   return <ul ref={ref} role="list" className={cx('sg-list', plain && 'sg-list--plain', className)} {...rest} />;
 });
 
 export type ListItemProps = Omit<HTMLAttributes<HTMLElement>, 'title'> & {
+  /** the row's main text */
   title: ReactNode;
+  /** a second, smaller line under the title */
   subtitle?: ReactNode;
   /** an icon in a coloured tile (tileColor) or plain */
   leading?: ReactNode;
+  /** the tile's colour, any CSS colour (default: the accent) */
   tileColor?: string;
+  /** the leading icon without a tile, in the accent colour */
   plainLeading?: boolean;
   /** detail text, a Switch, a Badge… */
   trailing?: ReactNode;
+  /** a chevron at the end: the row leads to another page */
   chevron?: boolean;
+  /** colours the title: accent for an action row, danger for a destructive one */
   tone?: 'default' | 'accent' | 'danger';
   /** makes the whole row a button (or a link with href) */
   onClick?: () => void;
+  /** makes the whole row a link to this URL (takes the place of `onClick`) */
   href?: string;
   disabled?: boolean;
 };
@@ -72,8 +87,11 @@ export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(function ListIt
 
 /* ================================================================================================ AppBar */
 export type AppBarProps = Omit<HTMLAttributes<HTMLElement>, 'title'> & {
+  /** the page's title, in the bar as its h1 */
   title?: ReactNode;
+  /** buttons at the start of the bar: back, a menu */
   leading?: ReactNode;
+  /** buttons at the end of the bar: actions on the page */
   trailing?: ReactNode;
   /** a large title below the bar that hands over to the small one when scrolled away */
   largeTitle?: boolean;
@@ -82,7 +100,7 @@ export type AppBarProps = Omit<HTMLAttributes<HTMLElement>, 'title'> & {
   /** scroll container to watch (defaults to window) */
   scrollTarget?: HTMLElement | null;
   /** flush with the top edge as an opaque surface (no glass): for dense web screens, or when another glass bar
-      already floats on the screen (one floating bar per screen reads best; design-language.md 8.4) */
+      already floats on the screen (one floating bar per screen reads best) */
   attached?: boolean;
 };
 
@@ -131,12 +149,19 @@ export const AppBar = forwardRef<HTMLElement, AppBarProps>(function AppBar({ tit
 });
 
 /** A colour fade under a floating bar (cheap: no blur). */
-export function ScrollFade({ edge = 'top', className, style }: { edge?: 'top' | 'bottom'; className?: string; style?: CSSProperties }) {
+export function ScrollFade({ edge = 'top', className, style }: {
+  /** the edge it fades from: under a top bar, or above a bottom bar */
+  edge?: 'top' | 'bottom';
+  className?: string; style?: CSSProperties;
+}) {
   return <div aria-hidden="true" className={cx('sg-scroll-fade', `sg-scroll-fade--${edge}`, className)} style={style} />;
 }
 
 /* ================================================================================================ Sidebar */
-export const Sidebar = forwardRef<HTMLElement, HTMLAttributes<HTMLElement> & { glass?: boolean }>(function Sidebar({ glass = true, className, children, ...rest }, ref) {
+export const Sidebar = forwardRef<HTMLElement, HTMLAttributes<HTMLElement> & {
+  /** a floating glass panel; false puts the items straight on the page's background */
+  glass?: boolean;
+}>(function Sidebar({ glass = true, className, children, ...rest }, ref) {
   const lightRef = useGlassLight(glass);
   return (
     <nav ref={mergeRefs(ref, lightRef)} className={cx('sg-sidebar', glass && glassClass('regular'), className)} {...rest}>
@@ -147,7 +172,17 @@ export const Sidebar = forwardRef<HTMLElement, HTMLAttributes<HTMLElement> & { g
 export function SidebarSection({ children }: { children: ReactNode }) {
   return <div className="sg-sidebar__section">{children}</div>;
 }
-export type SidebarItemProps = HTMLAttributes<HTMLElement> & { icon?: ReactNode; selected?: boolean; count?: ReactNode; href?: string; onClick?: () => void };
+export type SidebarItemProps = HTMLAttributes<HTMLElement> & {
+  /** an icon before the text */
+  icon?: ReactNode;
+  /** the current page: highlighted, and aria-current="page" */
+  selected?: boolean;
+  /** a number at the end of the row, e.g. unread items */
+  count?: ReactNode;
+  /** makes the item a link to this URL instead of a button */
+  href?: string;
+  onClick?: () => void;
+};
 export function SidebarItem({ icon, selected, count, href, children, className, ...rest }: SidebarItemProps) {
   const Comp = (href ? 'a' : 'button') as ElementType;
   return (

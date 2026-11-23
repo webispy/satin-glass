@@ -5,9 +5,11 @@ import { cx, type Tone } from './utils';
 
 export type TagProps = Omit<HTMLAttributes<HTMLSpanElement>, 'children'> & {
   children: ReactNode;
+  /** the colour; it backs up the words and never carries the meaning alone */
   tone?: Tone;
   /** soft fill (default) or a hairline outline (quieter, for many tags side by side) */
   variant?: 'soft' | 'outline';
+  /** a small icon before the text */
   icon?: ReactNode;
 };
 export function Tag({ children, tone = 'neutral', variant = 'soft', icon, className, ...rest }: TagProps) {

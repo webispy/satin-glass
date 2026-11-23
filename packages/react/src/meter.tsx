@@ -5,26 +5,37 @@
    With low / high / optimum the tone follows the bands the way HTML's <meter> rates them: in the optimum band it is
    good (success), one band off suboptimal (warning), two bands off bad (danger). Meaning goes in words too: `status`
    is shown under the bar and read with it. */
-import type { CSSProperties, ReactNode } from 'react';
+import { useMemo, type CSSProperties, type ReactNode } from 'react';
 import { cx, useStableId, type Tone } from './utils';
+import { messagesFor, useLocaleOf } from './messages';
 
 export type MeterProps = {
+  /** the measured amount; drawn clamped to the range, and "Unavailable" when it is not a finite number */
   value: number;
-  /** the range (default 0–100) */
-  min?: number; max?: number;
+  /** the bottom of the range (default 0) */
+  min?: number;
+  /** the top of the range (default 100) */
+  max?: number;
   /** the visible label, also the meter's name */
   label: ReactNode;
-  /** the visible value, also what a screen reader says (default: the share of the range in percent) */
+  /** the visible value, also what a screen reader says (default: the share of the range as a percentage,
+      written the locale's way) */
   format?: (value: number) => string;
   /** what a screen reader says instead of the visible value, e.g. "37 GB of 50 GB" */
   valueText?: string;
   /** bands as in <meter>: below low is low, above high is high; optimum says which band is best */
-  low?: number; high?: number; optimum?: number;
+  low?: number;
+  /** above this the value is in the high band (see `low`) */
+  high?: number;
+  /** a value in the best band: it decides whether low or high values are good (see `low`) */
+  optimum?: number;
   /** the fill's tone; overrides the one the bands give (default accent) */
   tone?: Tone;
   /** a line under the bar that says what the value means ("Almost full"); read with the meter */
   status?: ReactNode;
+  /** the value at the end of the label row; false hides it from sight only (it is still read out) */
   showValue?: boolean;
+  /** 'sm' is a thinner bar and smaller text */
   size?: 'sm' | 'md';
   labels?: { unavailable?: string };
   className?: string; style?: CSSProperties;
@@ -45,10 +56,12 @@ export function meterTone(value: number, min: number, max: number, low?: number,
 
 export function Meter({ value, min = 0, max = 100, label, format, valueText, low, high, optimum, tone, status, showValue = true, size = 'md', labels, className, style }: MeterProps) {
   const id = useStableId('sg-meter');
+  const locale = useLocaleOf();
+  const pct = useMemo(() => new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 }), [locale]);
   const ok = Number.isFinite(value) && Number.isFinite(min) && Number.isFinite(max) && max > min;
   const v = ok ? clamp(value, min, max) : 0;
   const p = ok ? (v - min) / (max - min) : 0;
-  const shown = ok ? (format ? format(v) : `${Math.round(p * 100)}%`) : labels?.unavailable ?? 'Unavailable';
+  const shown = ok ? (format ? format(v) : pct.format(p)) : labels?.unavailable ?? messagesFor(locale).unavailable;
   const t = tone ?? (ok ? meterTone(v, min, max, low, high, optimum) : null) ?? 'accent';
   return (
     <div className={cx('sg-meter', size === 'sm' && 'sg-meter--sm', className)} style={style} data-tone={t}>

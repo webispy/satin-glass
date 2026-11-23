@@ -12,6 +12,8 @@ import { ChevronDownIcon } from './icons';
 
 export type AccordionItem = { value: string; title: ReactNode; meta?: ReactNode; content: ReactNode; disabled?: boolean };
 export type AccordionProps = {
+  /** the sections, top to bottom; each `value` is the key that `value` / `onChange` list when it is open, and `meta`
+      is quiet text at the end of the heading */
   items: AccordionItem[];
   /** several open at once (default) or one at a time */
   multiple?: boolean;

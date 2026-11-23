@@ -6,13 +6,24 @@ import { cx, useIsoLayoutEffect } from './utils';
 
 const SWEEP_MS = 1600;
 
-type Box = { width?: number | string; height?: number | string; radius?: number | string };
+type Box = {
+  /** the width in px, or any CSS length (default: the container's) */
+  width?: number | string;
+  /** the height in px, or any CSS length (default: a line of text's, or 120 px for a rectangle) */
+  height?: number | string;
+  /** the corner radius in px, or any CSS length (default: the theme's) */
+  radius?: number | string;
+};
 export type SkeletonProps = { className?: string; style?: CSSProperties } & (
-  /** text: number of lines (the last one is shorter) */
-  | ({ variant?: 'text'; lines?: number } & Box)
+  | ({
+      /** the shape: lines of text (default), a rectangle, or a circle */
+      variant?: 'text';
+      /** how many lines (the last one is shorter) */
+      lines?: number } & Box)
   | ({ variant: 'rect' } & Box)
-  /** circle: diameter in px */
-  | { variant: 'circle'; size?: number }
+  | { variant: 'circle';
+      /** the diameter in px (default 40) */
+      size?: number }
 );
 
 const len = (v: number | string | undefined) => (typeof v === 'number' ? `${v}px` : v);

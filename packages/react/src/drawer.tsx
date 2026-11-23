@@ -21,34 +21,71 @@ import { Portal, glassClass, useGlassLight } from './foundation';
 import { IconButton } from './controls';
 import { CloseIcon } from './icons';
 import { useOverlayLifecycle, useRelease, type CloseReason } from './overlay-hooks';
+import { useMessages } from './messages';
 
 type DrawerBase = {
   open: boolean;
   onClose: (reason: CloseReason) => void;
-  /** header buttons before the title and before the close button */
-  leading?: ReactNode; trailing?: ReactNode;
+  /** header buttons before the title */
+  leading?: ReactNode;
+  /** header buttons after the title, before the close button */
+  trailing?: ReactNode;
   children?: ReactNode;
-  /** a click on the scrim or a swipe toward the edge closes it (default true); Escape and the close button always do */
+  /** a click on the scrim or a swipe towards the edge closes it (default true); Escape and the close button always do */
   dismissible?: boolean;
   labels?: { close?: string; resize?: string };
   className?: string;
 };
 type Length = number | string;
-type Fixed = { resizable?: false; minHeight?: never; maxHeight?: never; defaultHeight?: never; onHeightChange?: never };
+type Fixed = {
+  /** top / bottom only: a grip on the free edge lets the user set the height, between minHeight and maxHeight */
+  resizable?: false; minHeight?: never; maxHeight?: never; defaultHeight?: never; onHeightChange?: never;
+};
 /** top / bottom only: the user sets the height with a grip on the free edge (onHeightChange gets px) */
-type Resizable = { resizable: true; minHeight?: Length; maxHeight?: Length } & (
-  | { height: Length; defaultHeight?: never; onHeightChange: (height: number) => void }
-  | { height?: never; defaultHeight?: Length; onHeightChange?: (height: number) => void }
+type Resizable = {
+  /** top / bottom only: a grip on the free edge lets the user set the height, between minHeight and maxHeight */
+  resizable: true;
+  /** the minimum height the grip allows (default: the header plus a few lines) */
+  minHeight?: Length;
+  /** the maximum height the grip allows (default: the screen) */
+  maxHeight?: Length;
+} & (
+  | {
+      /** the height of a top / bottom drawer: px or any CSS length (default half the screen); with `resizable`, set it
+          to control the height (use with `onHeightChange`) */
+      height: Length; defaultHeight?: never;
+      /** called with the new height in px when the user resizes it */
+      onHeightChange: (height: number) => void }
+  | {
+      height?: never;
+      /** the starting height when uncontrolled; what the user sets is kept while the drawer stays mounted */
+      defaultHeight?: Length;
+      /** called with the new height in px when the user resizes it */
+      onHeightChange?: (height: number) => void }
 );
 /** where it comes from, and its size across that edge (a number is px, a string any CSS length; never more than the
     screen allows) */
 export type DrawerPlacement =
   /** 'end' (default) or 'start', following the writing direction; width default 360 px */
-  | (Fixed & { side?: 'start' | 'end'; width?: Length; height?: never })
+  | (Fixed & {
+      /** the edge it comes in from: 'end' (default) or 'start' follow the writing direction; 'top' and 'bottom' span the
+      full width */
+      side?: 'start' | 'end';
+      /** the width of a start / end drawer: px or any CSS length */
+      width?: Length; height?: never })
   /** from the top or bottom edge, the full width; height default half the screen */
-  | ({ side: 'top' | 'bottom'; width?: never } & ((Fixed & { height?: Length }) | Resizable));
+  | ({
+      /** the edge it comes in from: 'end' (default) or 'start' follow the writing direction; 'top' and 'bottom' span the
+      full width */
+      side: 'top' | 'bottom'; width?: never } & ((Fixed & {
+      /** the height of a top / bottom drawer: px or any CSS length (default half the screen); with `resizable`, set it
+          to control the height (use with `onHeightChange`) */
+      height?: Length }) | Resizable));
 /** a drawer needs a name: a visible title, or an aria-label */
-export type DrawerProps = DrawerBase & DrawerPlacement & ({ title: ReactNode; 'aria-label'?: never } | { title?: never; 'aria-label': string });
+export type DrawerProps = DrawerBase & DrawerPlacement & ({
+  /** the heading in the header; it names the drawer (without one, `aria-label` is required) */
+  title: ReactNode; 'aria-label'?: never;
+} | { title?: never; 'aria-label': string });
 
 /* a drag that starts on a form control, a slider or inside something that scrolls sideways belongs to that */
 const ownsDrag = (t: EventTarget | null, panel: HTMLElement) => {
@@ -62,6 +99,7 @@ const ownsDrag = (t: EventTarget | null, panel: HTMLElement) => {
 
 export function Drawer(props: DrawerProps) {
   const { open, onClose, side = 'end', title, leading, trailing, children, width = 360, dismissible = true, labels, className, 'aria-label': ariaLabel } = props;
+  const m = useMessages();
   const { resizable, minHeight, maxHeight, defaultHeight, onHeightChange } = props as DrawerBase & Resizable;
   /* the height: controlled, or what the user last set (kept while the drawer stays mounted), or the given one */
   const [ownH, setOwnH] = useState<number | null>(null);
@@ -169,7 +207,7 @@ export function Drawer(props: DrawerProps) {
   if (!mounted) return null;
   const w = typeof width === 'number' ? `${width}px` : width, h = typeof height === 'number' ? `${height}px` : height;
   const gripEl = top && resizable ? (
-    <div ref={grip} className="sg-drawer__grip" role="separator" aria-orientation="horizontal" tabIndex={0} aria-label={labels?.resize ?? 'Resize'}
+    <div ref={grip} className="sg-drawer__grip" role="separator" aria-orientation="horizontal" tabIndex={0} aria-label={labels?.resize ?? m.resize}
       aria-controls={`${id}-b`} aria-valuenow={gripNow?.now} aria-valuemin={gripNow ? Math.round(gripNow.lo) : undefined} aria-valuemax={gripNow ? Math.round(gripNow.hi) : undefined}
       onKeyDown={(e) => { onGripKey(e); const p = panel.current; if (p) setGripNow({ now: Math.round(p.offsetHeight), ...bounds(p) }); }} />
   ) : null;
@@ -184,7 +222,7 @@ export function Drawer(props: DrawerProps) {
             {leading}
             {title ? <h2 id={`${id}-t`} className="sg-drawer__title">{title}</h2> : <span className="sg-drawer__title" />}
             {trailing}
-            <IconButton icon={<CloseIcon />} label={labels?.close ?? 'Close'} onClick={() => onClose('action')} data-sg-close />
+            <IconButton icon={<CloseIcon />} label={labels?.close ?? m.close} onClick={() => onClose('action')} data-sg-close />
           </div>
           <div id={`${id}-b`} className="sg-drawer__body">{children}</div>
           {side === 'top' && gripEl}

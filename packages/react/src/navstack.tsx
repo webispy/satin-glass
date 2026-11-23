@@ -11,6 +11,7 @@ import { cx, useIsoLayoutEffect } from './utils';
 import { AppBar } from './layout';
 import { Button } from './controls';
 import { ChevronLeftIcon } from './icons';
+import { useMessages } from './messages';
 
 export type NavigationApi = {
   /** open a page on top (an element, usually a NavigationPage or a component that renders one) */
@@ -39,7 +40,7 @@ type Move = { dir: 'push' | 'pop' | 'drag'; top: number; to?: number } | null;
 export type NavigationStackProps = {
   /** the first page */
   children: ReactNode;
-  /** the back button's accessible prefix (default 'Back'): "Back: Settings" */
+  /** the back button's accessible prefix (default "Back", or 뒤로 in Korean): "Back: Settings" */
   labels?: { back?: string };
   /** called after the depth changes */
   onDepthChange?: (depth: number) => void;
@@ -49,6 +50,7 @@ export type NavigationStackProps = {
 const SHIFT = 0.3;   /* how far the page below drifts back */
 
 export function NavigationStack({ children, labels, onDepthChange, className, style }: NavigationStackProps) {
+  const words = useMessages();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [move, setMove] = useState<Move>(null);
   const [titles, setTitles] = useState<ReactNode[]>([]);
@@ -198,7 +200,7 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
           <div key={l.key} ref={(el) => { pages.current[i] = el; }} className="sg-nav__page" data-depth={i}
             data-hidden={!showing(i) || undefined} inert={i !== top || undefined} aria-hidden={i !== top || undefined}>
             <div className="sg-nav__scroll">
-              <PageCtx.Provider value={{ index: i, back: i > 0 ? titles[i - 1] ?? null : null, scroller: (els[i]?.firstElementChild as HTMLElement) ?? null, setTitle, backLabel: labels?.back ?? 'Back', pop }}>
+              <PageCtx.Provider value={{ index: i, back: i > 0 ? titles[i - 1] ?? null : null, scroller: (els[i]?.firstElementChild as HTMLElement) ?? null, setTitle, backLabel: labels?.back ?? words.back, pop }}>
                 {l.node}
               </PageCtx.Provider>
             </div>
@@ -211,6 +213,7 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
 }
 
 export type NavigationPageProps = {
+  /** the page's title in the bar; the next page's back button shows it, and focus goes to it when the page opens */
   title: ReactNode;
   /** actions at the trailing end of the bar */
   trailing?: ReactNode;

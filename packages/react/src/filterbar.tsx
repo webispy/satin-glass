@@ -6,6 +6,7 @@
 import { useRef, type CSSProperties, type ReactNode } from 'react';
 import { cx } from './utils';
 import { Button } from './controls';
+import { useMessages } from './messages';
 
 export type FilterBarProps = {
   children: ReactNode;
@@ -20,14 +21,15 @@ export type FilterBarProps = {
 
 export function FilterBar({ children, count, onClear, 'aria-label': label, labels = {}, className, style }: FilterBarProps) {
   const box = useRef<HTMLDivElement>(null);
+  const m = useMessages().filters;
   const clear = () => { onClear(); box.current?.querySelector<HTMLElement>('input, button, [tabindex="0"]')?.focus(); };
   return (
     <div ref={box} role="group" aria-label={label} className={cx('sg-filterbar', className)} style={style}>
       {children}
       {count > 0 && (
         <span className="sg-filterbar__applied">
-          <span className="sg-filterbar__count">{labels.applied?.(count) ?? `${count} applied`}</span>
-          <Button size="sm" variant="plain" onClick={clear}>{labels.clear ?? 'Clear'}</Button>
+          <span className="sg-filterbar__count">{labels.applied?.(count) ?? m.applied(count)}</span>
+          <Button size="sm" variant="plain" onClick={clear}>{labels.clear ?? m.clear}</Button>
         </span>
       )}
     </div>

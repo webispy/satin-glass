@@ -14,9 +14,17 @@ import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from 
 import { Portal, glassClass, useGlassLight } from './foundation';
 import { Button } from './controls';
 import { useAnchored } from './overlay-hooks';
+import { messagesFor, useLocaleOf } from './messages';
 
-export type WheelOption<T> = { value: T; label: string; disabled?: boolean };
+export type WheelOption<T> = {
+  /** the value this option stands for: what `value` and `onChange` carry when it is chosen */
+  value: T;
+  /** the row's text, read as the value; typing its first letters on the column jumps to it */
+  label: string;
+  disabled?: boolean;
+};
 export type WheelProps<T> = {
+  /** the rows, top to bottom; disabled ones are passed over */
   options: WheelOption<T>[];
   value?: T; defaultValue?: T;
   /** called once the wheel comes to rest on a row (or at once from the keyboard) */
@@ -346,7 +354,12 @@ export function Wheel<T>({ options, value, defaultValue, onChange, 'aria-label':
 }
 
 /** Columns side by side under one selection band (a time: hour · minute · period; a month and a year). */
-export function WheelGroup({ children, rows = 5, disabled = false, 'aria-label': label, className, style }: { children: ReactNode; rows?: number; disabled?: boolean; 'aria-label'?: string; className?: string; style?: CSSProperties }) {
+export function WheelGroup({ children, rows = 5, disabled = false, 'aria-label': label, className, style }: {
+  children: ReactNode;
+  /** how many rows show (36 px each), the chosen one in the middle; an odd number keeps it centred */
+  rows?: number;
+  disabled?: boolean; 'aria-label'?: string; className?: string; style?: CSSProperties;
+}) {
   const ctx = useMemo(() => ({ disabled }), [disabled]);
   return (
     <div role="group" aria-label={label} aria-disabled={disabled || undefined} data-disabled={disabled || undefined} className={cx('sg-wheels', className)} style={{ ...style, '--_rows': rows } as CSSProperties}>
@@ -373,33 +386,38 @@ function timeLocale(locale: string, hour12?: boolean) {
   const am = parts(new Date(2000, 0, 1, 9)), pm = parts(new Date(2000, 0, 1, 21));
   const period = (p: Intl.DateTimeFormatPart[]) => p.find((x) => x.type === 'dayPeriod')?.value ?? '';
   const periodFirst = am.findIndex((x) => x.type === 'dayPeriod') < am.findIndex((x) => x.type === 'hour');
-  const ko = locale.toLowerCase().startsWith('ko');
+  const words = messagesFor(locale);
   return {
     h12, periodFirst, periods: [period(am) || 'AM', period(pm) || 'PM'],
     format: (h: number, m: number) => new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', hour12: h12 }).format(new Date(2000, 0, 1, h, m)),
-    labels: ko ? { hour: '시', minute: '분', period: '오전/오후', choose: '시간 선택', placeholder: '시간 선택', cancel: '취소', done: '완료' } : { hour: 'Hour', minute: 'Minute', period: 'AM/PM', choose: 'Choose a time', placeholder: 'Select a time', cancel: 'Cancel', done: 'Done' },
+    labels: { ...words.time, cancel: words.cancel },
   };
 }
 
 export type TimeWheelProps = {
-  /** "HH:mm", 24-hour */
+  /** the time as "HH:mm", 24-hour (controlled). Use with `onChange` */
   value?: string | null; defaultValue?: string | null; onChange?: (value: string) => void;
   /** minutes between rows (default 1; 5 is common for alarms and bookings) */
   minuteStep?: number;
   /** 12-hour clock with a period column; default: what the locale uses */
   hour12?: boolean;
+  /** BCP 47 locale for the clock (12- or 24-hour, where the period goes) and the names read out (default: the ThemeProvider's
+      `locale`, else 'en-US') */
   locale?: string;
+  /** how many rows show (36 px each), the chosen one in the middle */
   rows?: number;
+  /** Enter / Space on a column (a picker uses it to close) */
   onCommit?: () => void;
-  /** shown but not turned (an alarm that is off) */
+  /** shown, but the time cannot be changed (an alarm that is off) */
   disabled?: boolean;
   'aria-label'?: string;
   className?: string; style?: CSSProperties;
 };
 
 /** Hour, minute (and period) wheels for a time of day. Shows `value`, or 09:00 until one is chosen. */
-export function TimeWheel({ value, defaultValue = null, onChange, minuteStep = 1, hour12, locale = 'ko-KR', rows = 5, onCommit, disabled, 'aria-label': label, className, style }: TimeWheelProps) {
+export function TimeWheel({ value, defaultValue = null, onChange, minuteStep = 1, hour12, locale: localeProp, rows = 5, onCommit, disabled, 'aria-label': label, className, style }: TimeWheelProps) {
   const [v, setV] = useControllable<string | null>(value, defaultValue, onChange as (x: string | null) => void);
+  const locale = useLocaleOf(localeProp);
   const L = useMemo(() => timeLocale(locale, hour12), [locale, hour12]);
   const t = parse(v) ?? { h: 9, m: 0 };
   const step = Math.max(1, Math.min(30, Math.floor(minuteStep)));
@@ -433,6 +451,7 @@ export function TimeWheel({ value, defaultValue = null, onChange, minuteStep = 1
 
 export type TimePickerProps = Omit<TimeWheelProps, 'rows' | 'onCommit' | 'className' | 'style'> & {
   placeholder?: ReactNode;
+  /** the visible label above the field; it names the field's button, with the value */
   label?: ReactNode; helperText?: ReactNode; error?: ReactNode | boolean;
   disabled?: boolean;
   /** submits HH:mm with forms */
@@ -448,10 +467,10 @@ const ClockIcon = () => (
 );
 
 /** A field that opens time wheels in an anchored panel. The wheels change a draft, shown in the field while the
-    panel is open; Done, Enter or a click outside takes it (onChange fires once), Cancel or Escape puts the time back
-    as it was (empty, if it was). Opening without a value starts the draft at `openTo` (or now). */
+    panel is open; Done, Enter or a click outside takes it (onChange fires once), Cancel or Escape drops the draft and
+    keeps the time as it was (or none). Opening without a value starts the draft at `openTo` (or now). */
 export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(function TimePicker(
-  { value, defaultValue = null, onChange, minuteStep = 1, hour12, locale = 'ko-KR', placeholder, label, helperText, error, disabled, name, openTo, placement = 'bottom-start', id, className, style, 'aria-label': ariaLabel }, ref,
+  { value, defaultValue = null, onChange, minuteStep = 1, hour12, locale: localeProp, placeholder, label, helperText, error, disabled, name, openTo, placement = 'bottom-start', id, className, style, 'aria-label': ariaLabel }, ref,
 ) {
   const [v, setV] = useControllable<string | null>(value, defaultValue, onChange as (x: string | null) => void);
   const [open, setOpen] = useState(false);
@@ -459,6 +478,7 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(functio
   const trigger = useRef<HTMLButtonElement>(null);
   const auto = useStableId('sg-time');
   const fid = id ?? auto;
+  const locale = useLocaleOf(localeProp);
   const L = useMemo(() => timeLocale(locale, hour12), [locale, hour12]);
   const lightRef = useGlassLight();
   const commit = () => { if (draft && draft !== v) setV(draft); setOpen(false); };
@@ -480,7 +500,7 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(functio
   const t = parse(open ? draft : v);
   return (
     <>
-      <div className={cx('sg-field', className)} style={style} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
+      <div className={cx('sg-field', className)} style={style} lang={localeProp} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
         {label && <span id={labelId} className="sg-field__label">{label}</span>}
         <button ref={mergeRefs(ref, trigger)} id={fid} type="button" className="sg-select" disabled={disabled}
           aria-haspopup="dialog" aria-expanded={open} aria-labelledby={labelId ? `${labelId} ${fid}` : undefined} aria-label={labelId ? undefined : ariaLabel ?? L.labels.choose}
@@ -494,7 +514,7 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(functio
       {name && <input type="hidden" name={name} value={v ?? ''} />}
       {mounted && (
         <Portal className="sg-portal--passthrough sg-portal--anchored">
-          <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : L.labels.choose} tabIndex={-1} className={cx('sg-timepicker-panel', glassClass('strong'))}>
+          <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : L.labels.choose} lang={localeProp} tabIndex={-1} className={cx('sg-timepicker-panel', glassClass('strong'))}>
             <div data-sg-content>
               <TimeWheel value={draft} onChange={setDraft} minuteStep={minuteStep} hour12={hour12} locale={locale} onCommit={commit} />
               <div className="sg-timepicker-panel__actions">

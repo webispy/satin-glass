@@ -5,22 +5,29 @@ import { animate, prefersReducedMotion } from '@satin-glass/core';
 import { cx, useIsoLayoutEffect } from './utils';
 import { Skeleton } from './skeleton';
 import { Sparkline } from './charts';
+import { useMessages } from './messages';
 
 export type StatProps = {
+  /** what the number is, above it */
   label: ReactNode;
+  /** the number itself, formatted as it should be shown */
   value: ReactNode;
-  /** change against the comparison period, e.g. "+12.4%"; direction from the sign unless given */
+  /** change against the comparison period, e.g. "+12.4%"; the direction follows its sign unless `direction` is set */
   delta?: ReactNode;
+  /** which way the change went (arrow, colour and the words read out); set it when `delta` is not a signed string
+      or number */
   direction?: 'up' | 'down' | 'flat';
   /** a rise is bad for this metric (costs, errors, churn) */
   invert?: boolean;
-  /** e.g. "vs. last week" */
+  /** a note after the change, e.g. "vs last week" */
   hint?: ReactNode;
   /** recent values for the sparkline */
   trend?: number[];
+  /** a small icon before the label (decorative) */
   icon?: ReactNode;
+  /** skeletons in place of the value and the change, and aria-busy; the label stays */
   loading?: boolean;
-  /** spoken words for the direction (default English), as `labels` elsewhere */
+  /** spoken words for the direction (default: Up / Down / No change, in Korean for a Korean locale) */
   labels?: { up?: string; down?: string; flat?: string };
   className?: string; style?: CSSProperties;
 };
@@ -32,6 +39,7 @@ const Arrow = ({ d }: { d: 'up' | 'down' | 'flat' }) => (
 export function Stat({ label, value, delta, direction, invert, hint, trend, icon, loading, labels = {}, className, style }: StatProps) {
   const val = useRef<HTMLDivElement>(null);
   const first = useRef(true);
+  const words = useMessages().stat;
   const text = typeof delta === 'string' || typeof delta === 'number' ? String(delta) : '';
   const dir = direction ?? (/^\s*[-−–]/.test(text) ? 'down' : /^\s*\+/.test(text) || (parseFloat(text) > 0) ? 'up' : 'flat');
   const good = dir === 'flat' ? 'neutral' : (dir === 'up') !== !!invert ? 'good' : 'bad';
@@ -53,7 +61,7 @@ export function Stat({ label, value, delta, direction, invert, hint, trend, icon
             <div className="sg-stat__foot">
               {delta !== undefined && (
                 <span className="sg-stat__delta" data-good={good}>
-                  <Arrow d={dir} /><span className="sg-visually-hidden">{(dir === 'up' ? labels.up ?? 'Up' : dir === 'down' ? labels.down ?? 'Down' : labels.flat ?? 'No change')} </span>{delta}
+                  <Arrow d={dir} /><span className="sg-visually-hidden">{(dir === 'up' ? labels.up ?? words.up : dir === 'down' ? labels.down ?? words.down : labels.flat ?? words.flat)} </span>{delta}
                 </span>
               )}
               {hint && <span className="sg-stat__hint">{hint}</span>}

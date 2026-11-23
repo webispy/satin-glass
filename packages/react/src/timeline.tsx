@@ -17,6 +17,7 @@ import { Children, cloneElement, createContext, isValidElement, useContext, useR
 import { animate, loop, motionFor, prefersReducedMotion, Spring } from '@satin-glass/core';
 import { cx, useIsoLayoutEffect, type Tone } from './utils';
 import { CheckIcon } from './icons';
+import { useMessages } from './messages';
 
 export type TimelineStatus = 'done' | 'current' | 'upcoming';
 type Labels = { status?: Partial<Record<TimelineStatus, string>> };
@@ -26,7 +27,9 @@ export type TimelineProps = {
   children: ReactNode;
   /** what a screen reader hears for each status (default Completed / Current / Upcoming) */
   labels?: Labels;
-  'aria-label'?: string; 'aria-labelledby'?: string;
+  'aria-label'?: string;
+  /** the id of a heading that names the list (in place of `aria-label`) */
+  'aria-labelledby'?: string;
   className?: string; style?: CSSProperties;
 };
 
@@ -207,9 +210,13 @@ export function Timeline({ children, labels, className, style, ...aria }: Timeli
 }
 
 type ItemBase = {
-  /** (internal: set by Timeline — the item's key, and 'leave' on one folding away) */
-  itemKey?: string; phase?: 'leave';
+  /** (internal: set by Timeline to the item's key; do not set it) */
+  itemKey?: string;
+  /** (internal: set by Timeline on an item folding away; do not set it) */
+  phase?: 'leave';
+  /** what happened, or the step's name; a step's status is read out after it */
   title: ReactNode;
+  /** more detail under the title */
   description?: ReactNode;
   /** when it happened; a <time dateTime="…"> is best */
   time?: ReactNode;
@@ -217,15 +224,20 @@ type ItemBase = {
 };
 export type TimelineItemProps = ItemBase & (
   /** a step in a sequence */
-  | { status: TimelineStatus; tone?: never; icon?: never }
+  | {
+      /** makes it a step: done (a check), current (aria-current="step") or upcoming (an empty ring); not with tone or icon */
+      status: TimelineStatus; tone?: never; icon?: never }
   /** an event in a log */
-  | { status?: never; tone?: Tone; icon?: ReactNode }
+  | {
+      status?: never;
+      /** an event's colour: its dot, or the disc behind its icon (default neutral) */
+      tone?: Tone;
+      /** an event's icon, on a soft disc of its tone, in place of the dot (decorative) */
+      icon?: ReactNode }
 );
 
-const STATUS: Record<TimelineStatus, string> = { done: 'Completed', current: 'Current', upcoming: 'Upcoming' };
-
 export function TimelineItem({ title, description, time, status, tone, icon, itemKey, phase, className, style }: TimelineItemProps) {
-  const labels = useContext(LabelsCtx);
+  const labels = useContext(LabelsCtx), words = useMessages().timeline;
   const kind = status ? 'step' : icon ? 'icon' : 'event';
   return (
     <li className={cx('sg-timeline__item', className)} style={style} data-key={itemKey} data-phase={phase} data-kind={kind} data-status={status ?? kind} data-look={status ?? kind} data-tone={status ? undefined : tone ?? 'neutral'}
@@ -237,7 +249,7 @@ export function TimelineItem({ title, description, time, status, tone, icon, ite
         <div className="sg-timeline__head">
           <span className="sg-timeline__title">
             {title}
-            {status && <span className="sg-visually-hidden">{`, ${labels?.status?.[status] ?? STATUS[status]}`}</span>}
+            {status && <span className="sg-visually-hidden">{`, ${labels?.status?.[status] ?? words[status]}`}</span>}
           </span>
           {time && <span className="sg-timeline__time">{time}</span>}
         </div>

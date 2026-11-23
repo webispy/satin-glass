@@ -18,12 +18,15 @@ import { Skeleton } from './skeleton';
 import { Checkbox } from './selection';
 import { Button, type ButtonVariant } from './controls';
 import { Popover } from './overlays';
+import { messagesFor, useLocaleOf, useMessages } from './messages';
 
 export type SortDir = 'asc' | 'desc';
 export type SortState = { key: string; dir: SortDir } | null;
 
 export type Column<T> = {
+  /** identifies the column (sorting, hiding, React keys); also the row field shown when there is no `render` */
   key: string;
+  /** the column's title in the header */
   header: ReactNode;
   /** second header line: units, sample size… */
   subheader?: ReactNode;
@@ -31,13 +34,17 @@ export type Column<T> = {
   description?: ReactNode;
   /** consecutive columns with the same group share a header above them */
   group?: string;
+  /** width in px (default 120); the table is as wide as its columns and scrolls sideways when narrower */
   width?: number;
+  /** where the content sits; numbers usually go at the end, in tabular figures */
   align?: 'start' | 'center' | 'end';
+  /** the header becomes a button that sorts by this column (ascending, descending, off) */
   sortable?: boolean;
   /** first direction when sorting by this column (numbers where higher is better: 'desc') */
   firstSort?: SortDir;
   /** value to sort by (default: row[key]) */
   value?: (row: T) => unknown;
+  /** the cell's content (default: `row[key]`); `pinned` is true in a summary row */
   render?: (row: T, ctx: { index: number; selected: boolean; pinned: boolean }) => ReactNode;
   /** stays in view when the table scrolls sideways (leading columns only) */
   sticky?: boolean;
@@ -46,31 +53,53 @@ export type Column<T> = {
 };
 
 export type DataTableProps<T> = {
+  /** the rows, in the order shown when nothing is sorted */
   rows: T[];
+  /** the columns, left to right */
   columns: Column<T>[];
   /** keys of columns not shown (a ColumnChooser edits this); a hidden sorted column stops sorting */
   hiddenColumns?: string[];
+  /** a stable key per row (selection and focus follow it through sorting and filtering) */
   rowKey: (row: T) => string;
+  /** names the table for assistive technology */
   'aria-label': string;
-  sort?: SortState; defaultSort?: SortState; onSortChange?: (s: SortState) => void;
+  /** the sorted column and direction, or null (controlled; use with `onSortChange`) */
+  sort?: SortState;
+  /** the starting sort when uncontrolled */
+  defaultSort?: SortState;
+  /** called with the new sort when a header is pressed */
+  onSortChange?: (s: SortState) => void;
   /** rows are already sorted (by a server): only report sort changes */
   manualSort?: boolean;
+  /** a checkbox column for choosing rows (Shift-click for a range, Space, Ctrl/Cmd+A) */
   selectable?: boolean;
-  selected?: string[]; defaultSelected?: string[]; onSelectedChange?: (keys: string[]) => void;
+  /** keys of the chosen rows (controlled; use with `onSelectedChange`) */
+  selected?: string[];
+  /** the keys chosen at first when uncontrolled */
+  defaultSelected?: string[];
+  /** called with the chosen keys whenever they change */
+  onSelectedChange?: (keys: string[]) => void;
   /** vertical lines between columns: where the header group changes, or between every column (default none) */
   columnLines?: 'none' | 'groups' | 'all';
   /** summary rows above the data; not sorted, not selectable */
   pinnedRows?: T[];
+  /** row height for repeated rows: 44 px regular, 36 px compact */
   density?: 'compact' | 'regular';
   /** the table scrolls inside this height (sticky header; virtualised beyond ~80 rows) */
   maxHeight?: number | string;
+  /** shows skeleton rows when there are none yet, or dims the rows with a progress line over them */
   loading?: boolean;
+  /** what to show when there are no rows (an EmptyState, usually) */
   empty?: ReactNode;
+  /** makes rows actionable: called on a click or on Enter in the row */
   onRowClick?: (row: T) => void;
   /** total rows on the server (for screen readers when paging) */
   rowCount?: number;
   /** extra props per row: muted (e.g. too few samples) */
   rowState?: (row: T) => { muted?: boolean } | undefined;
+  /** BCP 47 locale for the default text sort and the words the table writes (default: the ThemeProvider's `locale`,
+      else 'en-US') */
+  locale?: string;
   labels?: { selectAll?: string; selectRow?: (row: T) => string; empty?: string; sortedAsc?: string; sortedDesc?: string };
   className?: string; style?: CSSProperties;
 };
@@ -81,20 +110,28 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 /* controls inside cells that are still in the tab order */
 const INNER_TABBABLE = ['a[href]', 'button', 'input', 'select', 'textarea', '[tabindex]'].map((s) => `[data-r] ${s}:not([tabindex="-1"])`).join(', ');
 
-function compareValues(a: unknown, b: unknown): number {
+/* text sorts the locale's way, digits by value ("item 2" before "item 10"), ignoring case and accents */
+const collators = new Map<string, Intl.Collator>();
+const collatorFor = (locale: string) => {
+  let c = collators.get(locale);
+  if (!c) { c = new Intl.Collator(locale, { numeric: true, sensitivity: 'base' }); collators.set(locale, c); }
+  return c;
+};
+function compareValues(a: unknown, b: unknown, collator: Intl.Collator): number {
   const ea = a === null || a === undefined || a === '' || (typeof a === 'number' && isNaN(a));
   const eb = b === null || b === undefined || b === '' || (typeof b === 'number' && isNaN(b));
   if (ea || eb) return ea === eb ? 0 : ea ? 1 : -1;   /* handled again below so empties stay last in both directions */
   if (typeof a === 'number' && typeof b === 'number') return a - b;
-  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+  return collator.compare(String(a), String(b));
 }
 const isEmpty = (v: unknown) => v === null || v === undefined || v === '' || (typeof v === 'number' && isNaN(v));
 
 export function DataTable<T>({
   rows, columns: allColumns, hiddenColumns, rowKey, 'aria-label': label, sort, defaultSort = null, onSortChange, manualSort, selectable,
   selected, defaultSelected = [], onSelectedChange, pinnedRows = [], columnLines = 'none', density = 'regular', maxHeight, loading, empty,
-  onRowClick, rowCount, rowState, labels = {}, className, style,
+  onRowClick, rowCount, rowState, locale: localeProp, labels = {}, className, style,
 }: DataTableProps<T>) {
+  const locale = useLocaleOf(localeProp), t = messagesFor(locale).table;
   const [sortState, setSort] = useControllable<SortState>(sort, defaultSort, onSortChange);
   const [sel, setSel] = useControllable<string[]>(selected, defaultSelected, onSelectedChange);
   const selSet = useMemo(() => new Set(sel), [sel]);
@@ -112,13 +149,13 @@ export function DataTable<T>({
     const col = columns.find((c) => c.key === sortState.key);
     if (!col) return rows;
     const get = col.value ?? ((r: T) => (r as Record<string, unknown>)[col.key]);
-    const sign = sortState.dir === 'asc' ? 1 : -1;
+    const sign = sortState.dir === 'asc' ? 1 : -1, collator = collatorFor(locale);
     return rows.map((r, i) => ({ r, i, v: get(r) })).sort((a, b) => {
       const ea = isEmpty(a.v), eb = isEmpty(b.v);
       if (ea || eb) return ea === eb ? a.i - b.i : ea ? 1 : -1;
-      return sign * compareValues(a.v, b.v) || a.i - b.i;
+      return sign * compareValues(a.v, b.v, collator) || a.i - b.i;
     }).map((x) => x.r);
-  }, [rows, columns, sortState, manualSort]);
+  }, [rows, columns, sortState, manualSort, locale]);
   const nextSort = (c: Column<T>) => {
     const first = c.firstSort ?? 'asc', other = first === 'asc' ? 'desc' : 'asc';
     if (!sortState || sortState.key !== c.key) return setSort({ key: c.key, dir: first });
@@ -321,7 +358,7 @@ export function DataTable<T>({
     return out;
   };
   const selectAllBox = (
-    <Checkbox className="sg-table__checkbox" aria-label={labels.selectAll ?? 'Select all rows'} checked={allOn} indeterminate={someOn} onChange={toggleAll} disabled={!N} />
+    <Checkbox className="sg-table__checkbox" aria-label={labels.selectAll ?? t.selectAll} checked={allOn} indeterminate={someOn} onChange={toggleAll} disabled={!N} />
   );
 
   /* ---- body */
@@ -333,7 +370,7 @@ export function DataTable<T>({
               <Checkbox> per row — no hooks per row while a virtualised table mounts rows by the dozen */}
           {!pinned && (
             <label className="sg-check sg-table__checkbox">
-              <input type="checkbox" className="sg-check__input" aria-label={labels.selectRow?.(row) ?? 'Select row'} checked={isSel}
+              <input type="checkbox" className="sg-check__input" aria-label={labels.selectRow?.(row) ?? t.selectRow} checked={isSel}
                 onChange={() => {}} onClick={(e) => { e.stopPropagation(); toggleRow(ri, e.shiftKey); }} />
               <span className="sg-check__box" aria-hidden="true"><svg className="sg-check__mark" viewBox="0 0 16 16"><path className="sg-check__tick" d="M3.5 8.4l3 3 6-6.6" /></svg></span>
             </label>
@@ -399,7 +436,7 @@ export function DataTable<T>({
             })}</tr>
           ))}
           {!loading && N === 0 && (
-            <tr><td colSpan={C} className="sg-table__empty">{empty ?? labels.empty ?? 'No data'}</td></tr>
+            <tr><td colSpan={C} className="sg-table__empty">{empty ?? labels.empty ?? t.empty}</td></tr>
           )}
           {virtual && range.start > 0 && <tr aria-hidden="true" style={{ height: range.start * rowH }} />}
           {sorted.slice(range.start, range.end).map((row, k) => {
@@ -416,7 +453,7 @@ export function DataTable<T>({
           {virtual && range.end < N && <tr aria-hidden="true" style={{ height: (N - range.end) * rowH }} />}
         </tbody>
       </table>
-      <span className="sg-visually-hidden" aria-live="polite">{sortState ? `${((h) => (typeof h === 'string' || typeof h === 'number' ? String(h) : sortState.key))(columns.find((c) => c.key === sortState.key)?.header)} ${sortState.dir === 'asc' ? labels.sortedAsc ?? 'sorted ascending' : labels.sortedDesc ?? 'sorted descending'}` : ''}</span>
+      <span className="sg-visually-hidden" aria-live="polite">{sortState ? `${((h) => (typeof h === 'string' || typeof h === 'number' ? String(h) : sortState.key))(columns.find((c) => c.key === sortState.key)?.header)} ${sortState.dir === 'asc' ? labels.sortedAsc ?? t.sortedAsc : labels.sortedDesc ?? t.sortedDesc}` : ''}</span>
     </div>
   );
 }
@@ -427,19 +464,26 @@ export function DataTable<T>({
    — sticky ones by default, they say which row is which — are listed checked and locked, and the last shown
    column cannot be hidden. The page owns the hidden keys and gives the same list to the table. */
 export type ColumnChooserProps<T> = {
+  /** the same columns the table gets (their groups become the panel's sections) */
   columns: Column<T>[];
+  /** keys of the hidden columns; pass the same list to the table's `hiddenColumns` */
   hidden: string[];
+  /** called with the new hidden keys when a box is changed */
   onHiddenChange: (keys: string[]) => void;
-  /** the button's text (default "Columns") */
+  /** the button's text (default "Columns", or 열 in Korean) */
   label?: ReactNode;
+  /** the button's look */
   variant?: ButtonVariant;
+  /** the button's size */
   size?: 'sm' | 'md';
+  /** an icon before the button's text */
   icon?: ReactNode;
   labels?: { panel?: string; showAll?: string; count?: (shown: number, total: number) => string };
   className?: string;
 };
 
-export function ColumnChooser<T>({ columns, hidden, onHiddenChange, label = 'Columns', variant = 'neutral', size = 'sm', icon, labels = {}, className }: ColumnChooserProps<T>) {
+export function ColumnChooser<T>({ columns, hidden, onHiddenChange, label: labelProp, variant = 'neutral', size = 'sm', icon, labels = {}, className }: ColumnChooserProps<T>) {
+  const t = useMessages().table, label = labelProp ?? t.columns;
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
   const can = (c: Column<T>) => c.hideable ?? !c.sticky;
@@ -466,7 +510,7 @@ export function ColumnChooser<T>({ columns, hidden, onHiddenChange, label = 'Col
         aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         {label}{off.size > 0 && <span className="sg-colchooser__count">{count}</span>}
       </Button>
-      <Popover open={open} onClose={() => setOpen(false)} anchor={btn.current} placement="bottom-end" aria-label={labels.panel ?? (typeof label === 'string' ? label : 'Columns')} className="sg-colchooser">
+      <Popover open={open} onClose={() => setOpen(false)} anchor={btn.current} placement="bottom-end" aria-label={labels.panel ?? (typeof label === 'string' ? label : t.columns)} className="sg-colchooser">
         {sections.map((sec, i) => {
           const keys = sec.cols.filter(can).map((c) => c.key);
           const on = keys.filter((k) => !off.has(k)).length;
@@ -485,7 +529,7 @@ export function ColumnChooser<T>({ columns, hidden, onHiddenChange, label = 'Col
         })}
         {off.size > 0 && (
           <div className="sg-colchooser__foot">
-            <Button size="sm" variant="plain" onClick={() => onHiddenChange([])}>{labels.showAll ?? 'Show all'}</Button>
+            <Button size="sm" variant="plain" onClick={() => onHiddenChange([])}>{labels.showAll ?? t.showAll}</Button>
           </div>
         )}
       </Popover>

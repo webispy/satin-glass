@@ -76,6 +76,15 @@ describe('Select', () => {
     expect(document.activeElement).toBe(cb);
     await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
   });
+  it('describes itself only by help text it shows (the filter pill shows none)', () => {
+    const { rerender } = render(<Select label="과일" options={opts} helperText="하나만" error="골라 주세요" />);
+    const field = screen.getByRole('combobox', { name: /과일/ });
+    expect(document.getElementById(field.getAttribute('aria-describedby')!)!.textContent).toBe('골라 주세요');
+    rerender(<Select variant="filter" label="과일" options={opts} helperText="하나만" error="골라 주세요" />);
+    const pill = screen.getByRole('combobox', { name: /과일/ });
+    expect(pill.hasAttribute('aria-describedby')).toBe(false);
+    expect(pill.getAttribute('aria-invalid')).toBe('true');
+  });
   it('type-to-select: typing opens at the match; repeating a letter cycles', async () => {
     render(<Select aria-label="과일" options={opts} />);
     const cb = screen.getByRole('combobox');

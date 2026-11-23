@@ -28,16 +28,26 @@ export type Theme = {
   /** grooves (rails, fields, segmented and stepper troughs): 'inset' (default) cuts them in; 'flat' draws the same
       parts as a flat tint. Only level −1 changes: handles, glass and shadows stay. Unset inherits the outer theme */
   grooves?: GrooveStyle;
+  /** the language, a BCP 47 tag ('ko-KR', 'en-US', 'ja-JP'): how dates, times and numbers are written, how text sorts,
+      and the words components write themselves. Formats follow any locale; built-in words exist in English and Korean
+      (other languages get English). Set it once for the app; a component's own `locale` prop wins, and unset inherits
+      the outer theme, then 'en-US'. The element gets it as `lang`, and so do its portals */
+  locale?: string;
 };
 /** the theme with every 'system' setting resolved: what its element (and its portals) actually show */
-export type ResolvedTheme = Theme & { scheme: 'light' | 'dark'; name: 'light' | 'dark' | 'light-hc' | 'dark-hc'; reducedTransparency: boolean; reducedMotion: boolean; grooves: GrooveStyle };
+export type ResolvedTheme = Theme & { scheme: 'light' | 'dark'; name: 'light' | 'dark' | 'light-hc' | 'dark-hc'; reducedTransparency: boolean; reducedMotion: boolean; grooves: GrooveStyle; locale: string };
 
 export function createTheme(t: Partial<Theme> = {}): Theme {
   return { mode: 'system', contrast: 'system', reduceTransparency: 'system', reduceMotion: 'system', light: true, ...t };
 }
 
-const ThemeCtx = createContext<ResolvedTheme>({ ...createTheme(), scheme: 'light', name: 'light', reducedTransparency: false, reducedMotion: false, grooves: 'inset' });
+const ThemeCtx = createContext<ResolvedTheme>({ ...createTheme(), scheme: 'light', name: 'light', reducedTransparency: false, reducedMotion: false, grooves: 'inset', locale: 'en-US' });
 export const useTheme = () => useContext(ThemeCtx);
+/* the locale some provider above set, if any: only a set one becomes `lang` (else the page's own lang stands) */
+const LangCtx = createContext<string | undefined>(undefined);
+/** The locale in effect: the nearest ThemeProvider's `locale`, else 'en-US'. Components with a `locale` prop prefer
+    their own. Not read from the browser: the server and the client must render the same words */
+export const useLocale = (): string => useContext(ThemeCtx).locale;
 /* whether a ThemeProvider is above: without one a portal writes no settings, so the page's own (system) ones apply */
 const ProvidedCtx = createContext(false);
 
@@ -45,7 +55,11 @@ const ProvidedCtx = createContext(false);
 const MotionCtx = createContext<MotionName | undefined>(undefined);
 export const useMotion = () => useContext(MotionCtx);
 
-export type MotionScopeProps = { motion?: MotionName; children?: ReactNode };
+export type MotionScopeProps = {
+  /** the personality inside: 'calm', 'lively' or 'playful'; unset inherits the one outside */
+  motion?: MotionName;
+  children?: ReactNode;
+};
 /** Sets the motion personality for everything inside: CSS springs via [data-sg-motion], JS springs and portals via
     context. This is the one way to give part of an app, or a single component, its own personality; components take
     no motion prop. The wrapper is display: contents but still a DOM parent, so put it around a whole group (a
@@ -74,7 +88,12 @@ function useMedia(q: string): boolean {
 const tokenStyle = (tokens?: Record<string, string>): CSSProperties | undefined =>
   tokens ? (Object.fromEntries(Object.entries(tokens).map(([k, v]) => [`--sg-${k}`, v])) as CSSProperties) : undefined;
 
-export type ThemeProviderProps = HTMLAttributes<HTMLDivElement> & { theme?: Theme; children?: ReactNode };
+export type ThemeProviderProps = HTMLAttributes<HTMLDivElement> & {
+  /** the settings, made with createTheme; 'system' ones follow the user's OS preferences, and an unset `motion`,
+      `grooves` or `locale` inherits from the provider outside */
+  theme?: Theme;
+  children?: ReactNode;
+};
 
 /** Sets the theme on its own element (themes nest: a dark island inside a light page works). */
 export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(function ThemeProvider({ theme = createTheme(), className, style, children, ...rest }, ref) {
@@ -84,6 +103,8 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
   const sysRM = useMedia('(prefers-reduced-motion: reduce)');
   const outerMotion = useContext(MotionCtx);
   const outerGrooves = useContext(ThemeCtx).grooves;
+  const outerLang = useContext(LangCtx);
+  const lang = theme.locale ?? outerLang;
   const resolved = useMemo<ResolvedTheme>(() => {
     const scheme = theme.mode === 'system' ? (sysDark ? 'dark' : 'light') : theme.mode;
     const more = theme.contrast === 'system' ? sysMore : theme.contrast === 'more';
@@ -92,8 +113,9 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
       reducedTransparency: theme.reduceTransparency === 'system' ? sysRT : theme.reduceTransparency,
       reducedMotion: theme.reduceMotion === 'system' ? sysRM : theme.reduceMotion,
       grooves: theme.grooves ?? outerGrooves,
+      locale: lang ?? 'en-US',
     };
-  }, [theme, sysDark, sysMore, sysRT, sysRM, outerGrooves]);
+  }, [theme, sysDark, sysMore, sysRT, sysRM, outerGrooves, lang]);
   /* every setting is written resolved on the element, so the nearest provider decides for CSS, JS and portals alike */
   const motion = theme.motion ?? outerMotion;
   const rt = resolved.reducedTransparency;
@@ -101,9 +123,11 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
     <ThemeCtx.Provider value={resolved}>
      <ProvidedCtx.Provider value={true}>
      <MotionCtx.Provider value={motion}>
-      <div ref={ref} data-sg-theme={resolved.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(resolved.reducedMotion)} data-sg-grooves={resolved.grooves} className={cx('sg-root', rt && 'sg-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
+     <LangCtx.Provider value={lang}>
+      <div ref={ref} lang={theme.locale} data-sg-theme={resolved.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(resolved.reducedMotion)} data-sg-grooves={resolved.grooves} className={cx('sg-root', rt && 'sg-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
         {children}
       </div>
+     </LangCtx.Provider>
      </MotionCtx.Provider>
      </ProvidedCtx.Provider>
     </ThemeCtx.Provider>
@@ -115,12 +139,13 @@ export function Portal({ children, className }: { children: ReactNode; className
   const t = useTheme();
   const motion = useMotion();
   const provided = useContext(ProvidedCtx);
+  const lang = useContext(LangCtx);
   /* synchronous host so the panel exists in the same commit (enter animations measure it in a layout effect) */
   const host = typeof document !== 'undefined' ? document.body : null;
   if (!host) return null;
   return createPortal(
     provided
-      ? <div className={cx('sg-root sg-portal', t.reducedTransparency && 'sg-reduce-transparency', className)} data-sg-theme={t.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(t.reducedMotion)} data-sg-grooves={t.grooves} style={tokenStyle(t.tokens)}>{children}</div>
+      ? <div className={cx('sg-root sg-portal', t.reducedTransparency && 'sg-reduce-transparency', className)} data-sg-theme={t.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(t.reducedMotion)} data-sg-grooves={t.grooves} lang={lang} style={tokenStyle(t.tokens)}>{children}</div>
       /* no theme above: the page's own settings and the system's apply (a default light, motion-on value would
          override prefers-color-scheme and prefers-reduced-motion) */
       : <div className={cx('sg-root sg-portal', className)} data-sg-motion={motion}>{children}</div>,
@@ -129,7 +154,11 @@ export function Portal({ children, className }: { children: ReactNode; className
 }
 
 /* ================================================================================================ Glass */
-type PolyProps<E extends ElementType, P> = P & { as?: E } & Omit<ComponentPropsWithoutRef<E>, keyof P | 'as'>;
+type PolyProps<E extends ElementType, P> = P & {
+  /** the element or component to render, e.g. 'section' or 'button', whose props it then takes (default: a div; Text
+      picks one from its variant) */
+  as?: E;
+} & Omit<ComponentPropsWithoutRef<E>, keyof P | 'as'>;
 
 export type GlassVariant = 'regular' | 'strong' | 'subtle' | 'clear';
 /** how high the glass sits: floating (level 3: bars, menus, panels, toasts) or an overlay over a scrim (level 4:
@@ -138,12 +167,16 @@ export type GlassLevel = 'float' | 'overlay';
 export type GlassOwnProps = {
   /** how dense the glass is: regular, strong (panels to read from), subtle, clear (over photos) */
   variant?: GlassVariant;
+  /** how high it sits: 'float' (default: bars, menus, panels) or 'overlay' over a scrim (sheets, dialogs), with a deeper shadow */
   level?: GlassLevel;
   /** pointer-following highlight (default: theme.light) */
   light?: boolean;
   /** colour that seeps into the fill (e.g. from useImageTint) */
   tint?: string;
+  /** corner radius, a step of the radius scale (default 'xl') */
   radius?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+  /** shrinks a little while pressed, with a pointer cursor; for glass that acts as a button (render it `as="button"`,
+      or give it a role and keyboard handling) */
   pressable?: boolean;
 };
 
@@ -178,9 +211,14 @@ export const Glass = forwardRef(function Glass<E extends ElementType = 'div'>(
 
 /* ================================================================================================ Text, Stack, Divider */
 export type TextProps<E extends ElementType = 'p'> = PolyProps<E, {
+  /** the type style (default 'body'); also picks the element: display and title-1 render h1, title-2 h2, title-3 h3,
+      headline h4, the rest p */
   variant?: TextStyle;
+  /** the colour: secondary and tertiary for less important text, or a status colour */
   tone?: 'default' | 'secondary' | 'tertiary' | 'accent' | 'danger' | 'success';
+  /** one line, cut off with an ellipsis when it does not fit */
   truncate?: boolean;
+  /** tabular figures: digits line up in columns and do not shift as a number changes */
   tabular?: boolean;
 }>;
 const defaultTag: Partial<Record<TextStyle, ElementType>> = { display: 'h1', 'title-1': 'h1', 'title-2': 'h2', 'title-3': 'h3', headline: 'h4' };
@@ -199,13 +237,19 @@ const space = (v: number | string | undefined) => (v === undefined ? undefined :
   ? (SPACE_STEPS.has(v) ? `var(--sg-space-${String(v).replace('.', '_')}, ${v * 4}px)` : `${v * 4}px`) : v);
 
 export type StackProps = HTMLAttributes<HTMLDivElement> & {
+  /** lays the children out in a column (default) or a row */
   direction?: 'row' | 'column';
   /** gap in 4 px units, or any CSS length */
   gap?: number | string;
+  /** where the children sit across the direction (CSS `align-items`) */
   align?: CSSProperties['alignItems'];
+  /** how the children are spread along the direction (CSS `justify-content`) */
   justify?: CSSProperties['justifyContent'];
+  /** lets the children wrap onto more lines */
   wrap?: boolean;
+  /** padding in 4 px units, or any CSS length */
   padding?: number | string;
+  /** the element to render (default 'div') */
   as?: ElementType;
 };
 export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack({ direction = 'column', gap, align, justify, wrap, padding, as, className, style, ...rest }, ref) {
@@ -213,7 +257,10 @@ export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack({ dir
   return <Comp ref={ref} className={cx('sg-stack', direction === 'row' && 'sg-stack--row', className)} style={{ gap: space(gap), alignItems: align, justifyContent: justify, flexWrap: wrap ? 'wrap' : undefined, padding: space(padding), ...style }} {...rest} />;
 });
 
-export function Divider({ vertical, className, ...rest }: HTMLAttributes<HTMLHRElement> & { vertical?: boolean }) {
+export function Divider({ vertical, className, ...rest }: HTMLAttributes<HTMLHRElement> & {
+  /** a vertical line between items in a row (aria-orientation vertical) */
+  vertical?: boolean;
+}) {
   return <hr className={cx('sg-divider', vertical && 'sg-divider--vertical', className)} aria-orientation={vertical ? 'vertical' : undefined} {...rest} />;
 }
 

@@ -14,7 +14,9 @@ export type CheckboxProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' |
   /** shows a dash; the checked value is unchanged (e.g. "select all" with some selected) */
   indeterminate?: boolean;
   onChange?: (checked: boolean) => void;
+  /** the text beside the box; a click on it toggles the box, and it names the checkbox */
   label?: ReactNode;
+  /** a smaller line under the label, read as the checkbox's description */
   description?: ReactNode;
 };
 
@@ -47,7 +49,13 @@ const RadioContext = createContext<RadioCtx | null>(null);
 
 export type RadioGroupProps = {
   value?: string; defaultValue?: string; onChange?: (value: string) => void;
-  name?: string; label?: ReactNode; disabled?: boolean; direction?: 'column' | 'row';
+  /** the radios' shared name, submitted with forms (default: a generated one) */
+  name?: string;
+  /** the group's visible title (a legend); it names the group */
+  label?: ReactNode;
+  disabled?: boolean;
+  /** stacks the radios (default) or puts them in a row */
+  direction?: 'column' | 'row';
   children: ReactNode; className?: string; style?: CSSProperties; 'aria-label'?: string;
 };
 /** Native radios with one name: arrow keys move and select, Tab enters at the checked one. */
@@ -64,7 +72,14 @@ export function RadioGroup({ value, defaultValue, onChange, name, label, disable
   );
 }
 
-export type RadioProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size' | 'name' | 'value' | 'checked' | 'onChange'> & { value: string; label?: ReactNode; description?: ReactNode };
+export type RadioProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size' | 'name' | 'value' | 'checked' | 'onChange'> & {
+  /** what the group's `value` becomes when this radio is chosen; submitted with forms */
+  value: string;
+  /** the text beside the circle; a click on it selects the radio, and it names the radio */
+  label?: ReactNode;
+  /** a smaller line under the label, read as the radio's description */
+  description?: ReactNode;
+};
 export const Radio = forwardRef<HTMLInputElement, RadioProps>(function Radio({ value, label, description, className, style, disabled, id, ...rest }, ref) {
   const ctx = useContext(RadioContext);
   if (!ctx) throw new Error('Radio must be inside a RadioGroup');
@@ -87,13 +102,33 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(function Radio({ v
 });
 
 /* ================================================================================================ ChoiceList */
-export type ChoiceOption<T extends string = string> = { value: T; label: ReactNode; description?: ReactNode; icon?: ReactNode; tileColor?: string; disabled?: boolean };
-type ChoiceBase<T extends string> = { options: ChoiceOption<T>[]; 'aria-label'?: string; className?: string; style?: CSSProperties };
+export type ChoiceOption<T extends string = string> = {
+  /** the value this option stands for: what `value` and `onChange` carry when it is chosen */
+  value: T;
+  /** the row's title */
+  label: ReactNode;
+  /** a second, smaller line under the title */
+  description?: ReactNode;
+  /** an icon in a coloured tile at the start of the row */
+  icon?: ReactNode;
+  /** the icon tile's colour, any CSS colour (default: the accent) */
+  tileColor?: string;
+  disabled?: boolean;
+};
+type ChoiceBase<T extends string> = {
+  /** the rows, top to bottom */
+  options: ChoiceOption<T>[];
+  'aria-label'?: string; className?: string; style?: CSSProperties;
+};
 export type ChoiceListProps<T extends string = string> =
-  | (ChoiceBase<T> & { multiple?: false; value?: T; defaultValue?: T; onChange?: (value: T) => void })
-  | (ChoiceBase<T> & { multiple: true; value?: T[]; defaultValue?: T[]; onChange?: (value: T[]) => void });
+  | (ChoiceBase<T> & {
+      /** several can be chosen (checkboxes, and the value is an array); otherwise one (a radiogroup) */
+      multiple?: false; value?: T; defaultValue?: T; onChange?: (value: T) => void })
+  | (ChoiceBase<T> & {
+      /** several can be chosen (checkboxes, and the value is an array); otherwise one (a radiogroup) */
+      multiple: true; value?: T[]; defaultValue?: T[]; onChange?: (value: T[]) => void });
 
-/** Rows of a grouped list are the options; a checkmark marks the chosen ones (settings-style). Single choice is a
+/** Rows of a grouped list are the options; a check mark marks the chosen ones (settings-style). Single choice is a
     radiogroup (arrow keys move and select), multiple choice a group of checkboxes (arrow keys move, Space toggles). */
 export function ChoiceList<T extends string = string>(props: ChoiceListProps<T>) {
   const { options, className, style, 'aria-label': label } = props;

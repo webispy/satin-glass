@@ -1,17 +1,25 @@
 import {
   Children, cloneElement, forwardRef, isValidElement, useEffect, useRef, useState,
-  type ButtonHTMLAttributes, type CSSProperties, type ElementType, type HTMLAttributes, type InputHTMLAttributes,
+  type AnchorHTMLAttributes, type ButtonHTMLAttributes, type CSSProperties, type ElementType, type HTMLAttributes, type InputHTMLAttributes,
   type KeyboardEvent, type MouseEvent, type ReactElement, type ReactNode, type TextareaHTMLAttributes,
 } from 'react';
 import { animate, createBridge, createOverflowStrip, drag, loop, motionFor, prefersReducedMotion, Spring, springTiming, type Bridge, type OverflowStrip } from '@satin-glass/core';
 import { cx, mergeRefs, tabStop, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { glassClass, useGlassLight } from './foundation';
+import { useMessages } from './messages';
 import { ClearIcon, MinusIcon, PlusIcon, SearchIcon, CloseIcon } from './icons';
 
 /* ================================================================================================ Spinner */
-export function Spinner({ size = 20, label = 'Loading', className, style }: { size?: number; label?: string; className?: string; style?: CSSProperties }) {
+export function Spinner({ size = 20, label, className, style }: {
+  /** diameter in px */
+  size?: number;
+  /** the accessible name (it is a progressbar with no value; default "Loading") */
+  label?: string;
+  className?: string; style?: CSSProperties;
+}) {
+  const words = useMessages();
   return (
-    <svg className={cx('sg-spinner', className)} viewBox="0 0 24 24" role="progressbar" aria-label={label} style={{ '--_s': `${size}px`, ...style } as CSSProperties}>
+    <svg className={cx('sg-spinner', className)} viewBox="0 0 24 24" role="progressbar" aria-label={label ?? words.loading} style={{ '--_s': `${size}px`, ...style } as CSSProperties}>
       <circle className="sg-spinner__track" cx="12" cy="12" r="9" />
       <circle cx="12" cy="12" r="9" strokeDasharray="18 100" />
     </svg>
@@ -21,35 +29,59 @@ export function Spinner({ size = 20, label = 'Loading', className, style }: { si
 /* ================================================================================================ Button */
 export type ButtonVariant = 'filled' | 'tinted' | 'glass' | 'plain' | 'neutral';
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  /** the look, from most to least emphasis: filled, tinted, glass (on glass, over content), neutral, plain (no background) */
   variant?: ButtonVariant;
+  /** the height, and the size of the text and icons */
   size?: 'sm' | 'md' | 'lg';
+  /** the colour: accent, danger for destructive actions, or neutral */
   tone?: 'accent' | 'danger' | 'neutral';
+  /** 'round' makes the ends fully round (a capsule, or a circle with only an icon) */
   shape?: 'rounded' | 'round';
+  /** fills the width of its container */
   block?: boolean;
+  /** shows a spinner in place of the content and sets aria-busy; until it ends the button cannot be pressed (a link
+      loses its href, as with `disabled`) */
   loading?: boolean;
+  /** an icon before the text */
   startIcon?: ReactNode;
+  /** an icon after the text */
   endIcon?: ReactNode;
-  /** render as another element, e.g. 'a' */
+  /** render as another element, e.g. a router link (default: 'a' when there is an `href`, else 'button') */
   component?: ElementType;
+  /** the link target: the button is then a link (an `<a>`, unless `component` says otherwise) */
   href?: string;
+  /** with `href`: where the link opens, e.g. '_blank' (add `rel="noopener"` for another site) */
+  target?: AnchorHTMLAttributes<HTMLAnchorElement>['target'];
+  /** with `href`: how the linked page relates to this one, e.g. 'noopener' */
+  rel?: string;
+  /** with `href`: download the linked file instead of opening it, optionally under this name */
+  download?: boolean | string;
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'tinted', size = 'md', tone = 'accent', shape = 'rounded', block, loading, startIcon, endIcon, component, className, children, disabled, type, ...rest }, ref,
+  { variant = 'tinted', size = 'md', tone = 'accent', shape = 'rounded', block, loading, startIcon, endIcon, component, className, children, disabled, type, href, onClick, ...rest }, ref,
 ) {
-  const Comp = (component ?? 'button') as ElementType;
+  /* an href makes a link, as a native button cannot navigate */
+  const Comp = (component ?? (href !== undefined ? 'a' : 'button')) as ElementType;
+  const native = Comp === 'button';
+  /* a link has no disabled state: it loses its href (so it cannot be followed) but keeps its role, says so with
+     aria-disabled, and its clicks do nothing — a router link sees the prevented default and stays put */
+  const off = !native && (disabled || loading);
   const glass = variant === 'glass';
   const lightRef = useGlassLight(glass);
   return (
     <Comp
       ref={mergeRefs(ref, glass ? lightRef : undefined)}
-      type={Comp === 'button' ? type ?? 'button' : undefined}
-      disabled={Comp === 'button' ? disabled || loading : undefined}
-      aria-disabled={Comp !== 'button' && disabled ? true : undefined}
+      type={native ? type ?? 'button' : undefined}
+      disabled={native ? disabled || loading : undefined}
+      href={off ? undefined : href}
+      role={off && Comp === 'a' && href !== undefined ? 'link' : undefined}
+      aria-disabled={off || undefined}
       aria-busy={loading || undefined}
       data-loading={loading || undefined}
       data-tone={tone !== 'accent' ? tone : undefined}
       className={cx('sg-button', `sg-button--${variant}`, size !== 'md' && `sg-button--${size}`, shape === 'round' && 'sg-button--round', block && 'sg-button--block', glass && glassClass('regular'), className)}
+      onClick={off ? (e: MouseEvent<HTMLButtonElement>) => e.preventDefault() : onClick}
       {...rest}
     >
       {startIcon}
@@ -60,13 +92,25 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   );
 });
 
-export type IconButtonProps = Omit<ButtonProps, 'startIcon' | 'endIcon' | 'children'> & { icon: ReactNode; label: string };
+export type IconButtonProps = Omit<ButtonProps, 'startIcon' | 'endIcon' | 'children'> & {
+  /** the icon, the only visible content */
+  icon: ReactNode;
+  /** the accessible name, also shown as a tooltip (`title`) unless one is given */
+  label: string;
+};
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton({ icon, label, className, variant = 'plain', ...rest }, ref) {
   return <Button ref={ref} variant={variant} aria-label={label} title={rest.title ?? label} className={cx('sg-button--icon', className)} startIcon={icon} {...rest} />;
 });
 
 /** One glass shared by several buttons; as tall as a standalone button of the same size. */
-export const ButtonGroup = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { vertical?: boolean; glass?: boolean; size?: 'sm' | 'md' | 'lg' }>(function ButtonGroup({ vertical, glass = true, size = 'md', className, ...rest }, ref) {
+export const ButtonGroup = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & {
+  /** stacks the buttons in a column */
+  vertical?: boolean;
+  /** the shared glass behind the buttons; false leaves them on their own */
+  glass?: boolean;
+  /** the group's height and corners; match the buttons' own `size` (it does not set theirs) */
+  size?: 'sm' | 'md' | 'lg';
+}>(function ButtonGroup({ vertical, glass = true, size = 'md', className, ...rest }, ref) {
   const lightRef = useGlassLight(glass);
   return <div ref={mergeRefs(ref, lightRef)} role="group" className={cx('sg-button-group', size !== 'md' && `sg-button-group--${size}`, vertical && 'sg-button-group--vertical', glass && glassClass('regular'), className)} {...rest} />;
 });
@@ -76,6 +120,7 @@ export type SwitchProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChang
   checked?: boolean;
   defaultChecked?: boolean;
   onChange?: (checked: boolean) => void;
+  /** 'sm' is a smaller switch, for dense rows */
   size?: 'sm' | 'md';
 };
 
@@ -267,12 +312,16 @@ export type SliderProps = Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'def
   onChange?: (value: number) => void;
   /** fires once when the user lets go */
   onChangeEnd?: (value: number) => void;
+  /** the lowest value, at the start of the track */
   min?: number;
+  /** the highest value, at the end of the track */
   max?: number;
+  /** the value moves in multiples of this from `min` (arrow keys move one step; Page Up / Down a tenth of the range) */
   step?: number;
   disabled?: boolean;
   /** text in the bubble and for screen readers */
   format?: (value: number) => string;
+  /** a bubble above the thumb shows the value while it is dragged */
   showValue?: boolean;
 };
 
@@ -412,9 +461,19 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
 /* ================================================================================================ Stepper */
 export type StepperProps = Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'defaultValue'> & {
   value?: number; defaultValue?: number; onChange?: (v: number) => void;
-  min?: number; max?: number; step?: number; format?: (v: number) => ReactNode; label?: string;
+  /** the lowest value; the − button is disabled there (default: no limit) */
+  min?: number;
+  /** the highest value; the + button is disabled there (default: no limit) */
+  max?: number;
+  /** how much one press adds or takes away; holding a button repeats it */
+  step?: number;
+  /** how the value is shown, e.g. with a unit (default: the number) */
+  format?: (v: number) => ReactNode;
+  /** names the group and the buttons for assistive technology ("Decrease {label}", "Increase {label}"; default "Value") */
+  label?: string;
 };
-export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper({ value, defaultValue = 0, onChange, min = -Infinity, max = Infinity, step = 1, format = (v) => v, label = 'Value', className, ...rest }, ref) {
+export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper({ value, defaultValue = 0, onChange, min = -Infinity, max = Infinity, step = 1, format = (v) => v, label: labelProp, className, ...rest }, ref) {
+  const m = useMessages(), label = labelProp ?? m.value;
   const [v, setV] = useControllable(value, defaultValue, onChange);
   const vr = useRef(v); vr.current = v;            /* latest value, for hold-to-repeat */
   /* direction of the last change, for the roll: up when increasing, down when decreasing */
@@ -448,23 +507,33 @@ export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper
   useEffect(() => stop, []);
   return (
     <div ref={mergeRefs(ref, root)} role="group" aria-label={label} className={cx('sg-stepper', className)} {...rest}>
-      <button type="button" className="sg-stepper__btn" aria-label={`Decrease ${label}`} disabled={v <= min} onClick={() => bump(-step)} onPointerDown={hold(-step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><MinusIcon /></button>
+      <button type="button" className="sg-stepper__btn" aria-label={m.decrease(label)} disabled={v <= min} onClick={() => bump(-step)} onPointerDown={hold(-step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><MinusIcon /></button>
       <span className="sg-stepper__value" aria-live="polite">
         {leaving.map((l) => (
           <span key={`out-${l.id}`} data-leave={l.dir} aria-hidden="true" onAnimationEnd={() => setLeaving((xs) => xs.filter((x) => x.id !== l.id))}>{format(l.v)}</span>
         ))}
         <span key={v} data-roll={dir}>{format(v)}</span>
       </span>
-      <button type="button" className="sg-stepper__btn" aria-label={`Increase ${label}`} disabled={v >= max} onClick={() => bump(step)} onPointerDown={hold(step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><PlusIcon /></button>
+      <button type="button" className="sg-stepper__btn" aria-label={m.increase(label)} disabled={v >= max} onClick={() => bump(step)} onPointerDown={hold(step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><PlusIcon /></button>
     </div>
   );
 });
 
 /* ================================================================================================ Segmented control */
-export type SegmentOption<T extends string> = { value: T; label: ReactNode; icon?: ReactNode; disabled?: boolean };
+export type SegmentOption<T extends string> = {
+  /** the value this option stands for: what `value` and `onChange` carry when it is chosen */
+  value: T;
+  /** the segment's text; with `iconOnly` it names the segment for assistive technology and as a tooltip */
+  label: ReactNode;
+  /** an icon before the label (required on every option with `iconOnly`) */
+  icon?: ReactNode;
+  disabled?: boolean;
+};
 export type SegmentedControlProps<T extends string> = Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'defaultValue'> & {
+  /** the segments, in order; without a value the first enabled one is selected */
   options: SegmentOption<T>[];
   value?: T; defaultValue?: T; onChange?: (v: T) => void;
+  /** 'sm' is shorter, for toolbars and card headers */
   size?: 'sm' | 'md';
   /** only the icons show (each option needs one); the labels still name the options, to assistive technology and as
       a tooltip, as an IconButton's label does */
@@ -566,13 +635,15 @@ export type TabBarProps = Omit<HTMLAttributes<HTMLElement>, 'onChange' | 'defaul
   action?: ReactNode;
   /** the selection can be dragged across the tabs and lands where it is released (off by default: a tap selects) */
   draggable?: boolean;
-  /** false: icons only in a shorter bar; the labels stay for screen readers, and a tab without an icon keeps
-      its label visible */
+  /** `false` shows icons only, in a shorter bar; the labels stay for screen readers, and a tab without an icon
+      keeps its label visible */
   showLabels?: boolean;
+  /** the bar's name (default "Tabs") */
   'aria-label'?: string;
 };
 
-export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ value, defaultValue, onChange, children, action, draggable = false, showLabels = true, className, 'aria-label': label = 'Tabs', ...rest }, ref) {
+export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ value, defaultValue, onChange, children, action, draggable = false, showLabels = true, className, 'aria-label': labelProp, ...rest }, ref) {
+  const words = useMessages(), label = labelProp ?? words.tabs;
   const tabs = Children.toArray(children).filter(isValidElement).map((c) => (c as ReactElement<TabProps>).props);
   const [v, setV] = useControllable(value, defaultValue ?? (tabs.find((t) => !t.disabled) ?? tabs[0])?.value, onChange);
   const bar = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null);
@@ -600,7 +671,12 @@ export const TabBar = forwardRef<HTMLElement, TabBarProps>(function TabBar({ val
 });
 
 /** An action in a TabBar's `action` slot: an icon at the end of the bar, on the same glass, pressed like a tab. */
-export const TabBarAction = forwardRef<HTMLButtonElement, Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & { icon: ReactNode; label: string }>(function TabBarAction({ icon, label, className, ...rest }, ref) {
+export const TabBarAction = forwardRef<HTMLButtonElement, Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {
+  /** the icon, the only visible content */
+  icon: ReactNode;
+  /** the accessible name, also shown as a tooltip */
+  label: string;
+}>(function TabBarAction({ icon, label, className, ...rest }, ref) {
   return (
     <button ref={ref} type="button" aria-label={label} title={label} className={cx('sg-tabbar__action', className)} {...rest}>
       <span className="sg-tabbar__icon" aria-hidden="true">{icon}</span>
@@ -610,18 +686,37 @@ export const TabBarAction = forwardRef<HTMLButtonElement, Omit<ButtonHTMLAttribu
 
 /* ================================================================================================ TextField */
 type FieldBase = {
-  label?: ReactNode; helperText?: ReactNode; error?: ReactNode | boolean;
-  startAdornment?: ReactNode; endAdornment?: ReactNode;
-  clearable?: boolean; onClear?: () => void;
+  /** the visible label above the field, tied to it with htmlFor */
+  label?: ReactNode;
+  /** a hint under the field, read with it as its description; an `error` message takes its place */
+  helperText?: ReactNode;
+  /** marks the field invalid (aria-invalid); text is shown under the field in place of `helperText` */
+  error?: ReactNode | boolean;
+  /** inside the field, before the text: an icon, a currency sign */
+  startAdornment?: ReactNode;
+  /** inside the field, after the text: a unit, a button */
+  endAdornment?: ReactNode;
+  /** a clear button while the field has text; it empties an uncontrolled field (a controlled one: clear it in `onClear`) */
+  clearable?: boolean;
+  /** called when the clear button is pressed, before focus returns to the field */
+  onClear?: () => void;
+  /** class names for the outer wrapper (label, control and help text); `className` goes on the control */
   fieldClassName?: string;
 };
 /** `size` here is the native input attribute (the width in characters), not the design scale */
-export type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & FieldBase & { multiline?: false };
-export type TextAreaFieldProps = TextareaHTMLAttributes<HTMLTextAreaElement> & FieldBase & { multiline: true };
+export type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & FieldBase & {
+  /** `true` renders a `<textarea>` (taking textarea attributes) instead of an `<input>`; a SearchField is always an input */
+  multiline?: false;
+};
+export type TextAreaFieldProps = TextareaHTMLAttributes<HTMLTextAreaElement> & FieldBase & {
+  /** `true` renders a `<textarea>` (taking textarea attributes) instead of an `<input>`; a SearchField is always an input */
+  multiline: true;
+};
 
 export const TextField = forwardRef<HTMLInputElement | HTMLTextAreaElement, TextFieldProps | TextAreaFieldProps>(function TextField(props, ref) {
   const { label, helperText, error, startAdornment, endAdornment, clearable, onClear, fieldClassName, className, id, multiline, disabled, ...rest } = props as TextFieldProps & { multiline?: boolean };
   const auto = useStableId('sg-field');
+  const m = useMessages();
   const fid = id ?? auto;
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const [filled, setFilled] = useState(Boolean(rest.value ?? rest.defaultValue));
@@ -649,7 +744,7 @@ export const TextField = forwardRef<HTMLInputElement | HTMLTextAreaElement, Text
         {multiline
           ? <textarea ref={mergeRefs(ref as React.Ref<HTMLTextAreaElement>, inputRef as React.Ref<HTMLTextAreaElement>)} {...common} {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)} onInput={onInput} />
           : <input ref={mergeRefs(ref as React.Ref<HTMLInputElement>, inputRef as React.Ref<HTMLInputElement>)} {...common} {...(rest as InputHTMLAttributes<HTMLInputElement>)} onInput={onInput} />}
-        {clearable && filled && !disabled && <button type="button" className="sg-field__clear" aria-label="Clear" onClick={clear}><ClearIcon /></button>}
+        {clearable && filled && !disabled && <button type="button" className="sg-field__clear" aria-label={m.clear} onClick={clear}><ClearIcon /></button>}
         {endAdornment && <span className="sg-field__adorn">{endAdornment}</span>}
       </div>
       {help && <span id={helpId} className="sg-field__help">{help}</span>}
@@ -658,21 +753,25 @@ export const TextField = forwardRef<HTMLInputElement | HTMLTextAreaElement, Text
 });
 
 export type SearchFieldProps = Omit<TextFieldProps, 'startAdornment' | 'type' | 'label'> & {
+  /** the field on glass, for search over content (in a bar, over a photo) */
   glass?: boolean;
-  /** shows a Cancel button while focused or filled */
+  /** shows a Cancel button while the field has focus */
   onCancel?: () => void;
+  /** the Cancel button's text (default "Cancel") */
   cancelLabel?: string;
+  /** the field's accessible name (there is no visible label; default "Search") */
   label?: string;
 };
-export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(function SearchField({ glass, onCancel, cancelLabel = 'Cancel', label = 'Search', placeholder = 'Search', className, ...rest }, ref) {
+export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(function SearchField({ glass, onCancel, cancelLabel, label, placeholder, className, ...rest }, ref) {
+  const m = useMessages();
   const [focused, setFocused] = useState(false);
   return (
     <div className={cx('sg-search', glass && 'sg-search--glass', className)} role="search" onFocus={() => setFocused(true)} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setFocused(false); }}>
       <TextField
         ref={ref as React.Ref<HTMLInputElement>}
         type="search"
-        aria-label={label}
-        placeholder={placeholder}
+        aria-label={label ?? m.search}
+        placeholder={placeholder ?? m.search}
         clearable
         startAdornment={<SearchIcon />}
         className={glass ? glassClass('regular') : undefined}
@@ -681,7 +780,7 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
       />
       {onCancel && (
         <Button variant="plain" className={cx('sg-search__cancel', focused && 'is-shown')} tabIndex={focused ? undefined : -1} aria-hidden={focused ? undefined : true}
-          onMouseDown={(e) => e.preventDefault() /* keep focus in the field until the click */} onClick={onCancel}>{cancelLabel}</Button>
+          onMouseDown={(e) => e.preventDefault() /* keep focus in the field until the click */} onClick={onCancel}>{cancelLabel ?? m.cancel}</Button>
       )}
     </div>
   );
@@ -689,29 +788,51 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
 
 /* ================================================================================================ Chip, Badge, Avatar */
 export type ChipProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'> & {
-  selected?: boolean; onSelectedChange?: (v: boolean) => void; icon?: ReactNode; onRemove?: () => void;
+  /** set (true or false) to make a toggle chip (aria-pressed); leave unset for an action chip */
+  selected?: boolean;
+  /** called with the opposite of `selected` on a click (a toggle chip is always controlled) */
+  onSelectedChange?: (v: boolean) => void;
+  /** an icon before the text */
+  icon?: ReactNode;
+  /** makes an input chip with a remove button, named "Remove {text}"; the chip itself is then not a button, so
+      `selected` and `onClick` do not apply; `ref` and the other attributes go to the chip, and `disabled` to its
+      remove button */
+  onRemove?: () => void;
 };
-export const Chip = forwardRef<HTMLButtonElement, ChipProps>(function Chip({ selected, onSelectedChange, icon, onRemove, className, children, onClick, style, ...rest }, ref) {
+/* the ref is the chip's root: the button, or with `onRemove` the group around the label and the remove button */
+export const Chip = forwardRef<HTMLElement, ChipProps>(function Chip({ selected, onSelectedChange, icon, onRemove, className, children, onClick, style, ...rest }, ref) {
   const toggle = selected !== undefined;
+  const m = useMessages();
   if (onRemove) {
     /* an input chip: a group with a label and its own remove button (a button may not contain another button) */
     const name = typeof children === 'string' ? children : undefined;
+    const { disabled, ...attrs } = rest;
     return (
-      <span role="group" aria-label={name} className={cx('sg-chip', 'sg-chip--removable', className)} style={style}>
+      <span ref={ref} role="group" aria-label={name} className={cx('sg-chip', 'sg-chip--removable', className)} style={style} {...(attrs as HTMLAttributes<HTMLSpanElement>)}>
         {icon}<span className="sg-chip__label">{children}</span>
-        <button ref={ref} type="button" className="sg-chip__remove" aria-label={name ? `Remove ${name}` : 'Remove'} onClick={onRemove} disabled={rest.disabled}><CloseIcon width={14} height={14} /></button>
+        <button type="button" className="sg-chip__remove" aria-label={m.remove(name)} onClick={onRemove} disabled={disabled}><CloseIcon width={14} height={14} /></button>
       </span>
     );
   }
   return (
-    <button ref={ref} type="button" aria-pressed={toggle ? selected : undefined} className={cx('sg-chip', className)} style={style}
+    <button ref={ref as React.Ref<HTMLButtonElement>} type="button" aria-pressed={toggle ? selected : undefined} className={cx('sg-chip', className)} style={style}
       onClick={(e) => { onClick?.(e); if (toggle) onSelectedChange?.(!selected); }} {...rest}>
       {icon}<span className="sg-chip__label">{children}</span>
     </button>
   );
 });
 
-export function Badge({ children, tone = 'danger', dot, max = 99, className, ...rest }: HTMLAttributes<HTMLSpanElement> & { tone?: 'danger' | 'accent' | 'neutral'; dot?: boolean; /** numbers above this show as "99+" */ max?: number }) {
+export function Badge({ children, tone = 'danger', dot, max = 99, label, className, ...rest }: HTMLAttributes<HTMLSpanElement> & {
+  /** the colour */
+  tone?: 'danger' | 'accent' | 'neutral';
+  /** a small dot without the content; it has no text, so name it with `label` or say what it means elsewhere */
+  dot?: boolean;
+  /** what the badge means, for assistive technology ("3 unread messages", "New"): it is then read as an image with
+      this name in place of its text */
+  label?: string;
+  /** numbers above this show as "99+" */
+  max?: number;
+}) {
   const shown = typeof children === 'number' && children > max ? `${max}+` : children;
   const el = useRef<HTMLSpanElement>(null);
   const prev = useRef<ReactNode>(undefined);
@@ -725,14 +846,29 @@ export function Badge({ children, tone = 'danger', dot, max = 99, className, ...
     else if (prev.current !== shown && !reduced) animate(b, [{ transform: 'scale(1.28)' }, { transform: 'scale(1)' }], 'bouncy');
     prev.current = shown;
   }, [shown]);
-  return <span ref={el} className={cx('sg-badge', tone !== 'danger' && `sg-badge--${tone}`, dot && 'sg-badge--dot', className)} {...rest}>{dot ? null : shown}</span>;
+  /* a name needs a role: aria-label on a plain span is ignored */
+  const name = label ?? rest['aria-label'];
+  return <span ref={el} role={name ? 'img' : undefined} className={cx('sg-badge', tone !== 'danger' && `sg-badge--${tone}`, dot && 'sg-badge--dot', className)} {...rest} aria-label={name}>{dot ? null : shown}</span>;
 }
-export function BadgeAnchor({ badge, children }: { badge: ReactNode; children: ReactNode }) {
+export function BadgeAnchor({ badge, children }: {
+  /** a Badge, pinned to the top-right corner of the children */
+  badge: ReactNode;
+  children: ReactNode;
+}) {
   return <span className="sg-badge-anchor">{children}{badge}</span>;
 }
 
 const AVATAR_HUES = ['iris', 'azure', 'teal', 'jade', 'amber', 'coral', 'rose', 'orchid'];
-export type AvatarProps = { name?: string; src?: string; size?: number; className?: string; style?: CSSProperties };
+export type AvatarProps = {
+  /** the person's name: the accessible name, the initials (first letters of the first two words) and the colour;
+      without one the avatar is decorative, hidden from assistive technology */
+  name?: string;
+  /** the picture's URL; the initials show when it is missing or fails to load */
+  src?: string;
+  /** diameter in px */
+  size?: number;
+  className?: string; style?: CSSProperties;
+};
 /** A person's picture, or their initials on a colour picked from the name. A picture that fails to load falls back
     to the initials. */
 export function Avatar({ name = '', src, size = 40, className, style }: AvatarProps) {
@@ -741,7 +877,8 @@ export function Avatar({ name = '', src, size = 40, className, style }: AvatarPr
   const [broken, setBroken] = useState<string | null>(null);
   const showImg = !!src && broken !== src;
   return (
-    <span className={cx('sg-avatar', className)} role="img" aria-label={name || undefined}
+    /* without a name the portrait says nothing, so it is left out rather than read as an unnamed image */
+    <span className={cx('sg-avatar', className)} role={name ? 'img' : undefined} aria-label={name || undefined} aria-hidden={name ? undefined : true}
       style={{ '--_s': `${size}px`, '--_bg': `var(--sg-${hue}-200)`, '--_fg': `var(--sg-${hue}-800)`, '--_fg-hc': `var(--sg-${hue}-950)`, ...style } as CSSProperties}>
       {showImg ? <img src={src} alt="" onError={() => setBroken(src!)} /> : initials}
     </span>
@@ -759,7 +896,7 @@ export type AvatarGroupProps = {
   max?: number;
   /** how many people there are, when that is more than the portraits given (a count from the server) */
   total?: number;
-  /** px, given to every portrait (default 32) */
+  /** the diameter in px, given to every portrait (default 32) */
   size?: number;
   /** +N becomes a button; anchor a Popover to event.currentTarget */
   onMoreClick?: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -772,11 +909,12 @@ export function AvatarGroup({ children, max = 4, total, size = 32, onMoreClick, 
   const shown = portraits.slice(0, Math.max(0, Math.floor(Number.isFinite(max) ? max : 4)));
   const count = Math.max(Math.floor(Number.isFinite(total) ? total! : 0), portraits.length);
   const hidden = Math.max(0, count - shown.length);
-  const more = labels?.more?.(hidden) ?? `${hidden} more`;
+  const m = useMessages();
+  const more = labels?.more?.(hidden) ?? m.more(hidden);
   /* the circle holds two digits; the name keeps the real count */
   const shownMore = hidden > 99 ? '99+' : `+${hidden}`;
   return (
-    <div role="group" aria-label={ariaLabel ?? labels?.group?.(count) ?? `${count} ${count === 1 ? 'person' : 'people'}`}
+    <div role="group" aria-label={ariaLabel ?? labels?.group?.(count) ?? m.people(count)}
       className={cx('sg-avatar-group', className)} style={{ '--_s': `${size}px`, ...style } as CSSProperties}>
       {shown.map((a, i) => cloneElement(a, { key: a.key ?? i, size }))}
       {hidden > 0 && (onMoreClick
@@ -789,15 +927,32 @@ export function AvatarGroup({ children, max = 4, total, size = 32, onMoreClick, 
 }
 
 /* ================================================================================================ Card */
-export type CardProps = HTMLAttributes<HTMLDivElement> & { variant?: 'elevated' | 'outlined'; interactive?: boolean; as?: ElementType };
-export const Card = forwardRef<HTMLDivElement, CardProps>(function Card({ variant = 'elevated', interactive, as, className, ...rest }, ref) {
+type CardBase = {
+  /** elevated (a shadow) or outlined (a hairline border, no shadow) */
+  variant?: 'elevated' | 'outlined';
+  /** the element to render (default: 'button' when interactive, else 'div'), e.g. 'a' or 'article' */
+  as?: ElementType;
+};
+/* an interactive card is a button, so it takes a button's attributes (type, a click on a button); a plain one a div's */
+export type CardProps =
+  | (HTMLAttributes<HTMLDivElement> & CardBase & {
+      /** the whole card is one button (rendered as a button unless `as` says otherwise), pressed like one */
+      interactive?: false;
+    })
+  | (ButtonHTMLAttributes<HTMLButtonElement> & CardBase & {
+      /** the whole card is one button (rendered as a button unless `as` says otherwise), pressed like one */
+      interactive: true;
+    });
+export const Card = forwardRef<HTMLElement, CardProps>(function Card({ variant = 'elevated', interactive, as, className, ...rest }, ref) {
   const Comp = (as ?? (interactive ? 'button' : 'div')) as ElementType;
   return <Comp ref={ref} className={cx('sg-card', variant === 'outlined' && 'sg-card--outlined', interactive && 'sg-card--interactive', className)} {...(Comp === 'button' ? { type: 'button' } : null)} {...rest} />;
 });
 export const CardMedia = (p: React.ImgHTMLAttributes<HTMLImageElement>) => <img className="sg-card__media" alt="" {...p} />;
 export const CardBody = ({ className, ...p }: HTMLAttributes<HTMLDivElement>) => <div className={cx('sg-card__body', className)} {...p} />;
 export type CardHeaderProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'> & {
+  /** the card's heading (an h3 unless `level` says otherwise) */
   title: ReactNode;
+  /** a line under the title: the period, the source, the unit */
   description?: ReactNode;
   /** trailing controls: a segmented control, a filter, a "more" button */
   actions?: ReactNode;
@@ -816,7 +971,18 @@ export function CardHeader({ title, description, actions, level = 3, className, 
 }
 
 /* ================================================================================================ Progress */
-export function Progress({ value, max = 100, size = 'md', label = 'Progress', className }: { value?: number; max?: number; size?: 'sm' | 'md'; label?: string; className?: string }) {
+export function Progress({ value, max = 100, size = 'md', label, className }: {
+  /** progress from 0 to `max`; leave unset while the amount is not known (an indeterminate bar) */
+  value?: number;
+  /** the value at which it is complete */
+  max?: number;
+  /** 'sm' is a thinner bar */
+  size?: 'sm' | 'md';
+  /** the accessible name: what is in progress (default "Progress") */
+  label?: string;
+  className?: string;
+}) {
+  const words = useMessages();
   const indeterminate = value === undefined;
   const p = indeterminate ? 0 : Math.min(1, Math.max(0, value / max));
   const el = useRef<HTMLDivElement>(null);
@@ -835,7 +1001,7 @@ export function Progress({ value, max = 100, size = 'md', label = 'Progress', cl
   }, [p, indeterminate]);
   useEffect(() => () => { eng.current?.stop?.(); }, []);
   return (
-    <div ref={el} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={indeterminate ? undefined : value}
+    <div ref={el} role="progressbar" aria-label={label ?? words.progress} aria-valuemin={0} aria-valuemax={max} aria-valuenow={indeterminate ? undefined : value}
       className={cx('sg-progress', size === 'sm' && 'sg-progress--sm', indeterminate && 'sg-progress--indeterminate', className)}>
       <span className="sg-progress__bar" />
     </div>
@@ -844,11 +1010,22 @@ export function Progress({ value, max = 100, size = 'md', label = 'Progress', cl
 
 /* ================================================================================================ Page control */
 export type PageControlProps = Omit<HTMLAttributes<HTMLDivElement>, 'onChange'> & {
-  count: number; page?: number; defaultPage?: number; onChange?: (p: number) => void;
+  /** how many pages (one dot each) */
+  count: number;
+  /** the current page, from 0 (controlled; use with `onChange`) */
+  page?: number;
+  /** the first page shown when uncontrolled, from 0 */
+  defaultPage?: number;
+  onChange?: (p: number) => void;
   /** glass capsule behind the dots */
-  glass?: boolean; onMedia?: boolean; label?: string;
+  glass?: boolean;
+  /** white dots for use over photos and video; with `glass`, the capsule is clear glass */
+  onMedia?: boolean;
+  /** names the group and each dot ("{label} 2 of 5") for assistive technology (default "Page") */
+  label?: string;
 };
-export const PageControl = forwardRef<HTMLDivElement, PageControlProps>(function PageControl({ count, page, defaultPage = 0, onChange, glass, onMedia, label = 'Page', className, ...rest }, ref) {
+export const PageControl = forwardRef<HTMLDivElement, PageControlProps>(function PageControl({ count, page, defaultPage = 0, onChange, glass, onMedia, label: labelProp, className, ...rest }, ref) {
+  const m = useMessages(), label = labelProp ?? m.page;
   const [p, setP] = useControllable(page, defaultPage, onChange);
   const el = useRef<HTMLDivElement>(null);
   const lightRef = useGlassLight(Boolean(glass));
@@ -873,7 +1050,7 @@ export const PageControl = forwardRef<HTMLDivElement, PageControlProps>(function
       onKeyDown={(e) => { if (e.key === 'ArrowRight' && p < count - 1) { e.preventDefault(); setP(p + 1); } if (e.key === 'ArrowLeft' && p > 0) { e.preventDefault(); setP(p - 1); } }}
       {...rest}>
       {Array.from({ length: count }, (_, i) => (
-        <button key={i} type="button" tabIndex={-1} className="sg-pagecontrol__dot" aria-current={i === p ? 'true' : undefined} aria-label={`${label} ${i + 1} of ${count}`} onClick={() => setP(i)} />
+        <button key={i} type="button" tabIndex={-1} className="sg-pagecontrol__dot" aria-current={i === p ? 'true' : undefined} aria-label={m.pageOf(label, i + 1, count)} onClick={() => setP(i)} />
       ))}
     </div>
   );

@@ -10,6 +10,7 @@
 import { startTransition, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { Spring, animate, fade, loop, motionFor, prefersReducedMotion, timing } from '@satin-glass/core';
 import { cx, useIsoLayoutEffect, useStableId, type Tone } from './utils';
+import { messagesFor, useLocaleOf } from './messages';
 
 /* ------------------------------------------------------------------------------------------------ shared */
 export type ChartSeries = { key: string; label: string; color?: string };
@@ -19,19 +20,19 @@ type Fmt = (v: number) => string;
 const COLOR = (i: number) => `var(--sg-chart-${(i % 6) + 1})`;
 /* Intl formatters are costly to build: one per locale and options, shared by every chart */
 const formatters = new Map<string, Intl.NumberFormat>();
-const nf = (locale: string | undefined, opts: Intl.NumberFormatOptions) => {
-  const k = `${locale ?? ''}|${JSON.stringify(opts)}`;
+const nf = (locale: string, opts: Intl.NumberFormatOptions) => {
+  const k = `${locale}|${JSON.stringify(opts)}`;
   let f = formatters.get(k);
   if (!f) { f = new Intl.NumberFormat(locale, opts); formatters.set(k, f); }
   return f;
 };
 const fmts = new Map<string, Fmt>();
-const defaultFmt = (locale?: string): Fmt => {
-  let fn = fmts.get(locale ?? '');
+const defaultFmt = (locale: string): Fmt => {
+  let fn = fmts.get(locale);
   if (!fn) {
     const f = nf(locale, { maximumFractionDigits: 1 }), c = nf(locale, { notation: 'compact', maximumFractionDigits: 1 });
     fn = (v) => (Math.abs(v) >= 10000 ? c.format(v) : f.format(v));
-    fmts.set(locale ?? '', fn);
+    fmts.set(locale, fn);
   }
   return fn;
 };
@@ -138,6 +139,22 @@ function tickLayer(next: number[], prev: number[], p: number): { t: number; o: n
   return [...all].map(([t, o]) => ({ t, o }));
 }
 
+/** a value to plot: a finite number (anything else is a gap) */
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+/** A series' values with each gap set on the straight line between the values around it (the nearest one at an
+    end; `none` when the series has no value at all). */
+function bridged(vals: unknown[], none: number): number[] {
+  const at = vals.map((v, i) => (isNum(v) ? i : -1)).filter((i) => i >= 0);
+  if (!at.length) return vals.map(() => none);
+  return vals.map((v, i) => {
+    if (isNum(v)) return v;
+    const b = at.findIndex((j) => j > i), hi = at[b], lo = at[b < 0 ? at.length - 1 : b - 1];
+    if (b === 0) return vals[hi] as number;
+    if (b < 0) return vals[lo] as number;
+    return (vals[lo] as number) + (((vals[hi] as number) - (vals[lo] as number)) * (i - lo)) / (hi - lo);
+  });
+}
+
 /** Monotone cubic path through points (no overshoot between data points: a smooth line never invents a peak). */
 function pathOf(pts: [number, number][], smooth: boolean): string {
   if (!pts.length) return '';
@@ -171,15 +188,16 @@ type Active = number | null;
 type ChartChromeProps = {
   label: string; series: ChartSeries[]; hidden: Set<string>; toggle: (k: string) => void; legend: boolean;
   rows: { head: string; cells: string[] }[]; announce: string; children: ReactNode; className?: string; style?: CSSProperties; caption?: ReactNode;
-  legendLabel?: string;
+  /** the chart's resolved locale, for the words it writes */
+  locale: string;
   /** the data table's column titles when they are not the series (a scatter's axes) */
   head?: string[];
 };
-function ChartChrome({ label, series, hidden, toggle, legend, rows, announce, children, className, style, caption, head }: ChartChromeProps) {
+function ChartChrome({ label, series, hidden, toggle, legend, rows, announce, children, className, style, caption, head, locale }: ChartChromeProps) {
   return (
     <figure className={cx('sg-chart', className)} style={style} aria-label={label}>
       {legend && series.length > 1 && (
-        <div className="sg-chart__legend" role="group" aria-label={`${label} — series`}>
+        <div className="sg-chart__legend" role="group" aria-label={messagesFor(locale).chartSeries(label)}>
           {series.map((s, i) => (
             <button key={s.key} type="button" className="sg-chart__key" aria-pressed={!hidden.has(s.key)} onClick={() => toggle(s.key)}>
               <span className="sg-chart__swatch" style={{ background: s.color ?? COLOR(i) }} aria-hidden="true" />{s.label}
@@ -240,26 +258,39 @@ const yAxisWidth = (labels: string[]) => Math.max(28, Math.max(...labels.map((l)
 
 /* ------------------------------------------------------------------------------------------------ LineChart */
 export type LineChartProps = {
+  /** one object per x position, in order: its label under `x` and each series' value under the series' key; a
+      value that is not a number (null, missing) is a gap: the line breaks there, and a bar chart draws no bar */
   data: ChartDatum[];
   /** key of the x label in each datum */
   x: string;
+  /** what to draw: each series' `key` in the data, its `label` (legend, tooltip, table) and `color` (default: the
+      theme's chart colours, in order) */
   series: ChartSeries[];
   /** fill under the lines */
   area?: boolean;
+  /** 'smooth' (monotone: it never overshoots a point) or 'linear' (straight segments) */
   curve?: 'smooth' | 'linear';
   /** start the y axis at zero (default: for areas) */
   zero?: boolean;
+  /** the plot's height in px; the width follows the container */
   height?: number;
+  /** writes the values on the axis, in the tooltip and in the table (default: the locale's numbers, compact from 10,000) */
   yFormat?: Fmt;
+  /** writes the x labels (axis, tooltip, table) */
   xFormat?: (v: string) => string;
+  /** keys above the plot that hide and show series (with two or more) */
   legend?: boolean;
+  /** BCP 47 locale for the default number formats and the words the chart writes (default: the ThemeProvider's
+      `locale`, else 'en-US') */
   locale?: string;
   'aria-label': string;
+  /** a note under the chart (source, units), its figcaption */
   caption?: ReactNode;
   className?: string; style?: CSSProperties;
 };
 
-export function LineChart({ data, x, series, area, curve = 'smooth', zero, height = 240, yFormat, xFormat = (v) => v, legend = true, locale, 'aria-label': label, caption, className, style }: LineChartProps) {
+export function LineChart({ data, x, series, area, curve = 'smooth', zero, height = 240, yFormat, xFormat = (v) => v, legend = true, locale: localeProp, 'aria-label': label, caption, className, style }: LineChartProps) {
+  const locale = useLocaleOf(localeProp);
   const fmt = yFormat ?? defaultFmt(locale);
   const [box, measured] = useWidth<HTMLDivElement>();
   const width = measured ?? 0;
@@ -269,15 +300,16 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
   const [kbd, setKbd] = useState(false);
   const gid = useStableId('sg-lc');
   const shown = series.filter((s) => !hidden.has(s.key));
-  const vals = shown.flatMap((s) => data.map((d) => d[s.key]).filter((v): v is number => typeof v === 'number'));
+  const vals = shown.flatMap((s) => data.map((d) => d[s.key]).filter(isNum));
   const lo = Math.min(...vals, zero ?? area ? 0 : Infinity), hi = Math.max(...vals);
   const ticks = niceTicks(lo, hi, Math.max(2, Math.round(height / 56)));
   const y0 = ticks[0], y1 = ticks[ticks.length - 1];
   const left = yAxisWidth(ticks.map(fmt));
   const iw = Math.max(10, width - left - M.right), ih = height - M.top - M.bottom;
   const X = (i: number) => left + (data.length <= 1 ? iw / 2 : (i / (data.length - 1)) * iw);
-  /* the scale and every point (per series × point, in data units) move as one (useMorph) */
-  const morph = useMorph([y0, y1, ...series.flatMap((s) => data.map((d) => (typeof d[s.key] === 'number' ? (d[s.key] as number) : y0)))], box);
+  /* the scale and every point (per series × point, in data units) move as one (useMorph). A gap stands on the
+     straight line between its neighbours: unseen while it is a gap, and where a value that fills it rises from */
+  const morph = useMorph([y0, y1, ...series.flatMap((s) => bridged(data.map((d) => d[s.key]), y0))], box);
   const [sy0, sy1] = morph.now, [py0, py1] = morph.from;
   const Y = (v: number) => M.top + ih - ((v - sy0) / (sy1 - sy0 || 1)) * ih;
   const ys = morph.now.slice(2).map(Y);
@@ -290,11 +322,12 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
     setKbd(false);
     setActive(Math.max(0, Math.min(data.length - 1, Math.round(((px - left) / iw) * (data.length - 1)))));
   };
-  const rowsFor = (i: number) => shown.map((s) => ({ color: s.color ?? COLOR(series.indexOf(s)), label: s.label, value: typeof data[i][s.key] === 'number' ? fmt(data[i][s.key] as number) : '—' }));
+  const cell = (v: ChartDatum[string]) => (isNum(v) ? fmt(v) : '—');
+  const rowsFor = (i: number) => shown.map((s) => ({ color: s.color ?? COLOR(series.indexOf(s)), label: s.label, value: cell(data[i][s.key]) }));
   const announce = kbd && active !== null ? `${xFormat(String(data[active][x]))}: ${rowsFor(active).map((r) => `${r.label} ${r.value}`).join(', ')}` : '';
   return (
-    <ChartChrome label={label} series={series} hidden={hidden} toggle={toggle} legend={legend} announce={announce} caption={caption} className={className} style={style}
-      rows={data.map((d) => ({ head: xFormat(String(d[x])), cells: series.map((s) => (typeof d[s.key] === 'number' ? fmt(d[s.key] as number) : '—')) }))}>
+    <ChartChrome label={label} locale={locale} series={series} hidden={hidden} toggle={toggle} legend={legend} announce={announce} caption={caption} className={className} style={style}
+      rows={data.map((d) => ({ head: xFormat(String(d[x])), cells: series.map((s) => cell(d[s.key])) }))}>
       <div ref={box} className="sg-chart__plot" tabIndex={0} role="img" aria-label={label}
         onPointerMove={onMove} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}
         onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }}>
@@ -310,11 +343,21 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
           <g ref={g}>
             {series.map((s, si) => {
               if (hidden.has(s.key)) return null;
-              const pts = data.map((_, i) => [X(i), ys[si * data.length + i] ?? Y(y0)] as [number, number]);
-              const line = pathOf(pts, curve === 'smooth');
+              /* a gap breaks the line and the area: one piece per run of values (the data as it is now, so a gap
+                 opens or closes at once and the points then move) */
+              const runs: [number, number][][] = [];
+              data.forEach((d, i) => {
+                if (!isNum(d[s.key])) return;
+                const pt: [number, number] = [X(i), ys[si * data.length + i] ?? Y(y0)];
+                if (i > 0 && isNum(data[i - 1][s.key])) runs[runs.length - 1].push(pt); else runs.push([pt]);
+              });
+              const base = Y(Math.max(sy0, 0));
+              /* a value alone between gaps is a dot: a zero-length piece drawn with the line's round caps */
+              const line = runs.map((r) => pathOf(r, curve === 'smooth') + (r.length === 1 ? 'h0' : '')).join('');
+              const fill = runs.filter((r) => r.length > 1).map((r) => `${pathOf(r, curve === 'smooth')}L${r[r.length - 1][0]},${base}L${r[0][0]},${base}Z`).join('');
               return (
                 <g key={s.key} style={{ color: s.color ?? COLOR(si) }}>
-                  {area && <path data-fade d={`${line}L${X(data.length - 1)},${Y(Math.max(sy0, 0))}L${X(0)},${Y(Math.max(sy0, 0))}Z`} fill={`url(#${gid}-${si})`} />}
+                  {area && fill && <path data-fade d={fill} fill={`url(#${gid}-${si})`} />}
                   <path data-draw className="sg-chart__line" d={line} pathLength={1} />
                 </g>
               );
@@ -323,7 +366,7 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
           {active !== null && (
             <g className="sg-chart__cross">
               <line x1={X(active)} x2={X(active)} y1={M.top} y2={M.top + ih} />
-              {shown.map((s) => { const si = series.indexOf(s); const v = data[active][s.key]; return typeof v === 'number' ? <circle key={s.key} cx={X(active)} cy={Y(v)} r={4} style={{ fill: s.color ?? COLOR(si) }} /> : null; })}
+              {shown.map((s) => { const si = series.indexOf(s); const v = data[active][s.key]; return isNum(v) ? <circle key={s.key} cx={X(active)} cy={Y(v)} r={4} style={{ fill: s.color ?? COLOR(si) }} /> : null; })}
             </g>
           )}
         </svg>}
@@ -341,24 +384,42 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
    walk the points from left to right; the data table lists every point. Points pop in on 'pop'; new data and a new
    scale move together on one spring (as the other charts). */
 export type ScatterChartProps = {
+  /** one object per point: its two values under `x` and `y` and its name under `pointLabel`; a point without both
+      numbers (or not above 0 on a log axis) is left out */
   data: ChartDatum[];
-  /** keys of the numeric values on the two axes */
-  x: string; y: string;
+  /** key of the value on the horizontal axis */
+  x: string;
+  /** key of the value on the vertical axis */
+  y: string;
   /** key of each point's name (tooltip, labels, the data table) */
   pointLabel: string;
   /** key whose value puts a point in a group; `groups` names them (key = that value), colours and orders them */
   group?: string;
+  /** the groups, in legend order: `key` is a value of the `group` field, with its `label` and `color` */
   groups?: ChartSeries[];
   /** names of points to pick out */
   highlight?: string[];
-  xScale?: 'linear' | 'log'; yScale?: 'linear' | 'log';
-  /** axis titles (also the data table's columns) */
-  xLabel?: string; yLabel?: string;
-  xFormat?: Fmt; yFormat?: Fmt;
+  /** 'log' for values that span orders of magnitude, such as prices (only values above 0 are plotted) */
+  xScale?: 'linear' | 'log';
+  /** 'log' for values that span orders of magnitude, such as prices (only values above 0 are plotted) */
+  yScale?: 'linear' | 'log';
+  /** the horizontal axis's title (also a data table column) */
+  xLabel?: string;
+  /** the vertical axis's title (also a data table column) */
+  yLabel?: string;
+  /** writes the x values (axis, tooltip, table; default: the locale's numbers, compact from 10,000) */
+  xFormat?: Fmt;
+  /** writes the y values (axis, tooltip, table; default: the locale's numbers, compact from 10,000) */
+  yFormat?: Fmt;
+  /** the plot's height in px; the width follows the container */
   height?: number;
+  /** keys above the plot that hide and show groups (with two or more) */
   legend?: boolean;
+  /** BCP 47 locale for the default number formats and the words the chart writes (default: the ThemeProvider's
+      `locale`, else 'en-US') */
   locale?: string;
   'aria-label': string;
+  /** a note under the chart (source, units), its figcaption */
   caption?: ReactNode;
   className?: string; style?: CSSProperties;
 };
@@ -387,7 +448,8 @@ function axisOf(vals: number[], log: boolean, count: number): Axis {
   return { lo: t[0], hi: t[t.length - 1], ticks: t };
 }
 
-export function ScatterChart({ data, x, y, pointLabel, group, groups = [], highlight, xScale = 'linear', yScale = 'linear', xLabel = x, yLabel = y, xFormat, yFormat, height = 280, legend = true, locale, 'aria-label': label, caption, className, style }: ScatterChartProps) {
+export function ScatterChart({ data, x, y, pointLabel, group, groups = [], highlight, xScale = 'linear', yScale = 'linear', xLabel = x, yLabel = y, xFormat, yFormat, height = 280, legend = true, locale: localeProp, 'aria-label': label, caption, className, style }: ScatterChartProps) {
+  const locale = useLocaleOf(localeProp);
   const fx = xFormat ?? defaultFmt(locale), fy = yFormat ?? defaultFmt(locale);
   const [box, measured] = useWidth<HTMLDivElement>();
   const width = measured ?? 0;
@@ -483,7 +545,7 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups = [], highl
   const announce = kbd && active !== null ? `${name(active)}: ${xLabel} ${fx(num(data[active], x, xl)!)}, ${yLabel} ${fy(num(data[active], y, yl)!)}` : '';
   const cell = (d: ChartDatum, k: string, f: Fmt) => (typeof d[k] === 'number' ? f(d[k] as number) : '—');
   return (
-    <ChartChrome label={label} series={groups} hidden={hidden} toggle={toggle} legend={legend && !!group} announce={announce} caption={caption} className={className} style={style}
+    <ChartChrome label={label} locale={locale} series={groups} hidden={hidden} toggle={toggle} legend={legend && !!group} announce={announce} caption={caption} className={className} style={style}
       head={[xLabel, yLabel, ...(group ? [''] : [])]}
       rows={data.map((d) => ({ head: String(d[pointLabel] ?? ''), cells: [cell(d, x, fx), cell(d, y, fy), ...(group ? [groups[gi(d)]?.label ?? String(d[group] ?? '')] : [])] }))}>
       <div ref={box} className="sg-chart__plot sg-scatter" tabIndex={0} role="img" aria-label={label}
@@ -510,7 +572,10 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups = [], highl
 }
 
 /* ------------------------------------------------------------------------------------------------ BarChart */
-export type BarChartProps = Omit<LineChartProps, 'area' | 'curve' | 'zero'> & { stacked?: boolean };
+export type BarChartProps = Omit<LineChartProps, 'area' | 'curve' | 'zero'> & {
+  /** one bar per category with the series stacked in it, instead of side by side */
+  stacked?: boolean;
+};
 
 /* a bar standing on the baseline: square at the foot, its top corners rounded by r (as far as its size allows) */
 function barPath(x: number, y: number, w: number, h: number, r: number): string {
@@ -519,7 +584,8 @@ function barPath(x: number, y: number, w: number, h: number, r: number): string 
   return `M${x},${y + h}V${y + r}a${r},${r} 0 0 1 ${r},${-r}h${w - 2 * r}a${r},${r} 0 0 1 ${r},${r}V${y + h}Z`;
 }
 
-export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFormat = (v) => v, legend = true, locale, 'aria-label': label, caption, className, style }: BarChartProps) {
+export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFormat = (v) => v, legend = true, locale: localeProp, 'aria-label': label, caption, className, style }: BarChartProps) {
+  const locale = useLocaleOf(localeProp);
   const fmt = yFormat ?? defaultFmt(locale);
   const [box, measured] = useWidth<HTMLDivElement>();
   const width = measured ?? 0;
@@ -575,11 +641,12 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
     setKbd(false);
     setActive(Math.max(0, Math.min(data.length - 1, Math.floor((e.clientX - r.left - left) / band))));
   };
-  const rowsFor = (i: number) => shown.map((s) => ({ color: s.color ?? COLOR(series.indexOf(s)), label: s.label, value: typeof data[i][s.key] === 'number' ? fmt(data[i][s.key] as number) : '—' }));
+  const cell = (v: ChartDatum[string]) => (isNum(v) ? fmt(v) : '—');
+  const rowsFor = (i: number) => shown.map((s) => ({ color: s.color ?? COLOR(series.indexOf(s)), label: s.label, value: cell(data[i][s.key]) }));
   const announce = kbd && active !== null ? `${xFormat(String(data[active][x]))}: ${rowsFor(active).map((r) => `${r.label} ${r.value}`).join(', ')}` : '';
   return (
-    <ChartChrome label={label} series={series} hidden={hidden} toggle={toggle} legend={legend} announce={announce} caption={caption} className={className} style={style}
-      rows={data.map((d) => ({ head: xFormat(String(d[x])), cells: series.map((s) => (typeof d[s.key] === 'number' ? fmt(d[s.key] as number) : '—')) }))}>
+    <ChartChrome label={label} locale={locale} series={series} hidden={hidden} toggle={toggle} legend={legend} announce={announce} caption={caption} className={className} style={style}
+      rows={data.map((d) => ({ head: xFormat(String(d[x])), cells: series.map((s) => cell(d[s.key])) }))}>
       <div ref={box} className="sg-chart__plot" tabIndex={0} role="img" aria-label={label}
         onPointerMove={onMove} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}
         onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }}>
@@ -632,19 +699,28 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
 /* ------------------------------------------------------------------------------------------------ DonutChart */
 export type DonutSlice = { label: string; value: number; color?: string };
 export type DonutChartProps = {
+  /** the slices, clockwise from the top; each one's share is its value over the total (negative values count as 0) */
   data: DonutSlice[];
+  /** the ring's diameter in px */
   size?: number;
+  /** the ring's width in px */
   thickness?: number;
-  /** in the middle (defaults to the total) */
+  /** a line under the number in the middle (e.g. "Total"); an active slice's name takes its place */
   centerLabel?: ReactNode;
+  /** the number in the middle (default: the total); an active slice's share takes its place */
   centerValue?: ReactNode;
+  /** writes the values in the legend, the middle and what is read out (default: the locale's numbers, compact from
+      10,000) */
   format?: Fmt;
+  /** BCP 47 locale for the default number formats and the percentages (default: the ThemeProvider's
+      `locale`, else 'en-US') */
   locale?: string;
   'aria-label': string;
   className?: string; style?: CSSProperties;
 };
 
-export function DonutChart({ data, size = 180, thickness = 22, centerLabel, centerValue, format, locale, 'aria-label': label, className, style }: DonutChartProps) {
+export function DonutChart({ data, size = 180, thickness = 22, centerLabel, centerValue, format, locale: localeProp, 'aria-label': label, className, style }: DonutChartProps) {
+  const locale = useLocaleOf(localeProp);
   const fmt = format ?? defaultFmt(locale);
   const total = data.reduce((a, d) => a + Math.max(0, d.value), 0) || 1;
   const pct = nf(locale, { style: 'percent', maximumFractionDigits: 1 });
@@ -729,9 +805,13 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
 
 /* ------------------------------------------------------------------------------------------------ Sparkline */
 export type SparklineProps = {
+  /** the points, oldest first; the line spans their range top to bottom and ends in a dot */
   values: number[];
+  /** the line's colour */
   tone?: Tone;
+  /** a soft fill under the line */
   area?: boolean;
+  /** in px; the width follows the container */
   height?: number;
   /** decorative by default (the number next to it carries the meaning); give a label to expose it */
   'aria-label'?: string;
@@ -767,8 +847,15 @@ export function Sparkline({ values, tone = 'accent', area = true, height = 32, '
 
 /* ------------------------------------------------------------------------------------------------ in-cell marks */
 export type BarMeterProps = {
-  value: number; max?: number; min?: number;
+  /** the amount the bar shows, between `min` and `max` (clamped) */
+  value: number;
+  /** the value of a full bar */
+  max?: number;
+  /** the value of an empty bar */
+  min?: number;
+  /** the bar's colour */
   tone?: Tone;
+  /** the full bar's width in px */
   width?: number;
   className?: string; style?: CSSProperties;
 };
@@ -783,14 +870,21 @@ export function BarMeter({ value, max = 100, min = 0, tone = 'neutral', width = 
 }
 
 export type IntervalPlotProps = {
+  /** the estimate, drawn as a point */
   value: number;
-  /** interval (e.g. 95 % confidence) */
-  low?: number; high?: number;
-  /** axis range */
-  min?: number; max?: number;
+  /** the interval's lower end (e.g. of a 95% confidence interval) */
+  low?: number;
+  /** the interval's upper end; the interval is drawn only with both `low` and `high` */
+  high?: number;
+  /** the axis's lower end */
+  min?: number;
+  /** the axis's upper end; values beyond the range are drawn at its ends */
+  max?: number;
   /** a reference mark (e.g. chance level, a baseline) */
   reference?: number;
+  /** the track's width in px */
   width?: number;
+  /** the point's and interval's colour */
   tone?: 'accent' | 'neutral';
   'aria-label'?: string;
   className?: string; style?: CSSProperties;

@@ -9,20 +9,25 @@ import { Button } from './controls';
 import { CheckIcon, InfoIcon, SuccessIcon, AlertIcon } from './icons';
 
 import { useAnchored, useOverlayLifecycle, useRelease, type Anchor, type CloseReason } from './overlay-hooks';
+import { useMessages } from './messages';
 export type { CloseReason } from './overlay-hooks';
 
 /* ================================================================================================ Dialog */
 export type DialogProps = {
   open: boolean;
   onClose: (reason: CloseReason) => void;
+  /** the heading; it names the dialog */
   title: ReactNode;
   children?: ReactNode;
+  /** an icon in a tile above the title */
   icon?: ReactNode;
+  /** the icon tile's colour: danger for a destructive confirmation */
   tone?: 'accent' | 'danger';
   /** buttons; give each a variant. Stacked automatically when there are three or more. */
   actions?: ReactNode;
-  /** close by clicking the backdrop (off for confirmations) */
+  /** a click on the scrim closes it too (leave it off for confirmations); Escape always does */
   dismissible?: boolean;
+  /** 'alertdialog' for a confirmation that interrupts; 'dialog' for one that does not need an answer at once */
   role?: 'dialog' | 'alertdialog';
   className?: string;
 };
@@ -67,15 +72,18 @@ export function Dialog({ open, onClose, title, children, icon, tone = 'accent', 
 export type SheetProps = {
   open: boolean;
   onClose: (reason: CloseReason) => void;
+  /** the heading in the sheet's header; it names the sheet (without one, give an aria-label) */
   title?: ReactNode;
-  /** header buttons */
+  /** header buttons at the start: Cancel, Back */
   leading?: ReactNode;
+  /** header buttons at the end: Done, Save */
   trailing?: ReactNode;
   children?: ReactNode;
   /** 'auto' fits the content; 'full' takes the available height */
   height?: 'auto' | 'full';
   /** centred dialog on wide screens */
   adaptive?: boolean;
+  /** a click on the scrim or a swipe down closes it (default true); Escape always does */
   dismissible?: boolean;
   className?: string;
   'aria-label'?: string;
@@ -88,6 +96,8 @@ export function Sheet({ open, onClose, title, leading, trailing, children, heigh
   const release = useRelease();
   const swiped = useRef(false);
   const close = useRef(onClose); close.current = onClose;
+  /* read during the drag, so a change while open applies at once (as in the drawer) */
+  const canSwipe = useRef(dismissible); canSwipe.current = dismissible;
   const wide = () => adaptive && typeof matchMedia === 'function' && matchMedia('(min-width: 900px)').matches;
 
   const { mounted } = useOverlayLifecycle(open, () => {
@@ -102,13 +112,14 @@ export function Sheet({ open, onClose, title, leading, trailing, children, heigh
     const off = drag(handle, {
       axis: 'y', threshold: 4,
       move: ({ dy }) => {
-        y = dy > 0 ? dy : -Math.sqrt(-dy) * 2; /* resists upward */
+        /* resists upward; a sheet that will not be dismissed resists downward too, so the refusal is felt */
+        y = dy > 0 && canSwipe.current ? dy : Math.sign(dy) * Math.sqrt(Math.abs(dy)) * 2;
         p.getAnimations().forEach((a) => a.cancel());
         p.style.transform = `translateY(${y}px)`;
         if (scrim.current) scrim.current.style.opacity = String(Math.max(0, 1 - y / (p.offsetHeight * 1.2)));
       },
       end: ({ vy }) => {
-        if (y > p.offsetHeight * 0.3 || vy > 900) { swiped.current = true; close.current('swipe'); return; }
+        if (canSwipe.current && (y > p.offsetHeight * 0.3 || vy > 900)) { swiped.current = true; close.current('swipe'); return; }
         p.style.transform = '';
         if (scrim.current) scrim.current.style.opacity = '';
         animate(p, [{ transform: `translateY(${y}px)` }, { transform: 'none' }], 'smooth');
@@ -158,7 +169,16 @@ type MenuCtx = { select: (onSelect?: () => void) => void };
 const MenuContext = createContext<MenuCtx>({ select: () => {} });
 
 export type MenuItemProps = Omit<HTMLAttributes<HTMLButtonElement>, 'onSelect'> & {
-  icon?: ReactNode; hint?: ReactNode; tone?: 'default' | 'danger'; disabled?: boolean; checked?: boolean;
+  /** an icon before the text */
+  icon?: ReactNode;
+  /** quiet text at the end, e.g. a keyboard shortcut */
+  hint?: ReactNode;
+  /** 'danger' colours a destructive item */
+  tone?: 'default' | 'danger';
+  disabled?: boolean;
+  /** set (true or false) to make a checkable item (menuitemcheckbox) with a check mark when true */
+  checked?: boolean;
+  /** called when the item is chosen, after the menu has asked to close */
   onSelect?: () => void;
 };
 export function MenuItem({ icon, hint, tone = 'default', disabled, checked, onSelect, children, className, ...rest }: MenuItemProps) {
@@ -196,6 +216,8 @@ function menuKeys(e: KeyboardEvent<HTMLElement>) {
 export type MenuProps = {
   open: boolean;
   onClose: (reason: CloseReason) => void;
+  /** the element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does
+      not close the panel, and the panel closes when it leaves the layout */
   anchor: Anchor;
   placement?: Placement;
   children: ReactNode;
@@ -225,7 +247,11 @@ export function Menu({ open, onClose, anchor, placement = 'bottom-start', childr
 }
 
 /* ================================================================================================ Popover */
-export type PopoverProps = Omit<MenuProps, 'aria-label' | 'lockScroll'> & { 'aria-label'?: string; 'aria-labelledby'?: string };
+export type PopoverProps = Omit<MenuProps, 'aria-label' | 'lockScroll'> & {
+  'aria-label'?: string;
+  /** the id of a heading inside that names the popover (in place of `aria-label`) */
+  'aria-labelledby'?: string;
+};
 export function Popover({ open, onClose, anchor, placement = 'bottom', children, className, ...aria }: PopoverProps) {
   const lightRef = useGlassLight();
   const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => { (focusables(p)[0] ?? p).focus({ preventScroll: true }); });
@@ -243,9 +269,21 @@ export function Popover({ open, onClose, anchor, placement = 'bottom', children,
 export type ActionSheetAction = { label: ReactNode; onSelect?: () => void; tone?: 'default' | 'danger'; icon?: ReactNode; disabled?: boolean };
 export type ActionSheetProps = {
   open: boolean; onClose: (reason: CloseReason) => void;
-  title?: ReactNode; message?: ReactNode; actions: ActionSheetAction[]; cancelLabel?: ReactNode;
+  /** a quiet heading above the actions; it names the sheet */
+  title?: ReactNode;
+  /** a line under the title: what the choice is about */
+  message?: ReactNode;
+  /** the rows, top to bottom; choosing one closes the sheet (onClose 'action'), then calls its onSelect */
+  actions: ActionSheetAction[];
+  /** the text of the closing row at the foot, which takes focus when the sheet opens (default "Cancel") */
+  cancelLabel?: ReactNode;
+  /** the sheet's accessible name when it has no `title` */
+  'aria-label'?: string;
+  /** the id of an element that names the sheet, when it has no `title` (in place of `aria-label`) */
+  'aria-labelledby'?: string;
 };
-export function ActionSheet({ open, onClose, title, message, actions, cancelLabel = 'Cancel' }: ActionSheetProps) {
+export function ActionSheet({ open, onClose, title, message, actions, cancelLabel: cancelProp, 'aria-label': ariaLabel, 'aria-labelledby': labelledBy }: ActionSheetProps) {
+  const words = useMessages(), cancelLabel = cancelProp ?? words.cancel;
   const box = useRef<HTMLDivElement>(null), scrim = useRef<HTMLDivElement>(null);
   const release = useRelease();
   const id = useStableId('sg-as');
@@ -278,7 +316,8 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
       <div ref={scrim} className="sg-scrim" onClick={() => onClose('backdrop')} />
       <div className="sg-actionsheet-wrap">
         {/* one glass panel: a heading, the actions as menu rows, and a quiet close row at the foot */}
-        <div ref={mergeRefs(box, l1)} className={cx('sg-actionsheet', glassClass('strong', false, 'overlay'))} role="dialog" aria-modal="true" aria-labelledby={title ? `${id}-t` : undefined} onKeyDown={onKeyDown}>
+        <div ref={mergeRefs(box, l1)} className={cx('sg-actionsheet', glassClass('strong', false, 'overlay'))} role="dialog" aria-modal="true"
+          aria-labelledby={title ? `${id}-t` : labelledBy} aria-label={title || labelledBy ? undefined : ariaLabel} onKeyDown={onKeyDown}>
           {(title || message) && (
             <div className="sg-actionsheet__head">
               {title && <p id={`${id}-t`} className="sg-actionsheet__title">{title}</p>}
@@ -300,7 +339,7 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
 
 /* ================================================================================================ Context menu */
 export type ContextMenuProps = {
-  /** MenuItems */
+  /** the menu's content: MenuItem, MenuLabel and MenuSeparator elements */
   menu: ReactNode;
   /** a single element; long press, right click, Shift+F10 or the Menu key open the menu */
   children: ReactElement;
@@ -366,9 +405,14 @@ type ToastItem = ToastOptions & { id: number };
 const ToastCtx = createContext<(t: ToastOptions) => () => void>(() => () => {});
 export const useToast = () => useContext(ToastCtx);
 
-export function Toaster({ children, position = 'top' }: { children?: ReactNode; position?: 'top' | 'bottom' }) {
+export function Toaster({ children, position = 'top' }: {
+  children?: ReactNode;
+  /** the edge the toasts appear at, and swipe towards to dismiss */
+  position?: 'top' | 'bottom';
+}) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const seq = useRef(0);
+  const words = useMessages();
   const remove = useCallback((id: number) => setItems((l) => l.filter((t) => t.id !== id)), []);
   const push = useCallback((t: ToastOptions) => {
     const id = ++seq.current;
@@ -379,7 +423,7 @@ export function Toaster({ children, position = 'top' }: { children?: ReactNode; 
     <ToastCtx.Provider value={push}>
       {children}
       <Portal className="sg-portal--passthrough sg-portal--toasts">
-        <div className={cx('sg-toaster', position === 'bottom' && 'sg-toaster--bottom')} role="region" aria-label="Notifications">
+        <div className={cx('sg-toaster', position === 'bottom' && 'sg-toaster--bottom')} role="region" aria-label={words.notifications}>
           {items.map((t) => <ToastView key={t.id} t={t} edge={position} onDone={() => remove(t.id)} />)}
         </div>
       </Portal>

@@ -13,11 +13,13 @@ import { Badge, useBridge } from './controls';
 
 export type TabItem<T extends string = string> = { value: T; label: ReactNode; icon?: ReactNode; badge?: ReactNode; disabled?: boolean; content?: ReactNode };
 export type TabsProps<T extends string = string> = {
+  /** the tabs, in order; a selected item's `content` shows in the panel below (without any, render the panel
+      yourself); a number or string `badge` becomes a neutral Badge */
   items: TabItem<T>[];
   value?: T; defaultValue?: T; onChange?: (value: T) => void;
-  /** underline (default): one line, scrolls when it overflows; pill: wraps onto more lines */
+  /** 'underline' (default): one line, scrolls when it overflows; 'pill': wraps onto more lines */
   variant?: 'underline' | 'pill';
-  /** auto: arrow keys select; manual: arrow keys move focus, Enter/Space select */
+  /** 'auto': arrow keys move focus and select; 'manual': arrow keys move focus, and Enter or Space selects */
   activation?: 'auto' | 'manual';
   'aria-label'?: string;
   className?: string; style?: CSSProperties;

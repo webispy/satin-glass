@@ -16,22 +16,29 @@ import { Portal, glassClass, useGlassLight } from './foundation';
 import { useAnchored } from './overlay-hooks';
 import { CheckIcon, ChevronDownIcon, ClearIcon, CloseIcon } from './icons';
 import type { SelectGroup, SelectOption } from './select';
+import { useMessages } from './messages';
 
 export type ComboboxInputReason = 'input' | 'select' | 'clear' | 'restore';
 type ComboboxCommon<T extends string> = {
   /** options and named groups, as Select; a rich (non-string) label needs textValue to be typed and matched */
   options: (SelectOption<T> | SelectGroup<T>)[];
   /** the text in the field (control it to search a server) */
-  inputValue?: string; defaultInputValue?: string;
+  inputValue?: string;
+  /** the starting text when uncontrolled (default: the chosen value's text) */
+  defaultInputValue?: string;
+  /** called with the new text and why it changed: typed ('input'), a choice ('select'), the clear button ('clear'),
+      or put back to the value's text ('restore') */
   onInputChange?: (text: string, reason: ComboboxInputReason) => void;
   /** which options match the text (default: the text appears in the option's text, ignoring case); 'none' when the
       options already come filtered (a server search) */
   filter?: 'none' | ((option: SelectOption<T>, text: string) => boolean);
   /** the text of a chosen value that is not among the options (results that no longer include it) */
   getOptionText?: (value: T) => string;
+  /** results are on their way: the list says so (labels.loading) in place of "No results" */
   loading?: boolean;
   /** a button that clears the value (default true) */
   clearable?: boolean;
+  /** the visible label above the field, tied to the input */
   label?: ReactNode; placeholder?: string; helperText?: ReactNode; error?: ReactNode | boolean;
   disabled?: boolean;
   /** submits the value with forms */
@@ -41,8 +48,14 @@ type ComboboxCommon<T extends string> = {
   id?: string; className?: string; style?: CSSProperties; 'aria-label'?: string;
 };
 export type ComboboxProps<T extends string = string> = ComboboxCommon<T> & (
-  | { multiple?: false; value?: T | null; defaultValue?: T | null; onChange?: (value: T | null) => void }
-  | { multiple: true; value?: T[]; defaultValue?: T[]; onChange?: (values: T[]) => void;
+  | {
+      /** several values, shown as removable chips; `value`, `defaultValue` and `onChange` then take an array, and
+          choosing toggles an option and keeps the list open */
+      multiple?: false; value?: T | null; defaultValue?: T | null; onChange?: (value: T | null) => void }
+  | {
+      /** several values, shown as removable chips; `value`, `defaultValue` and `onChange` then take an array, and
+          choosing toggles an option and keeps the list open */
+      multiple: true; value?: T[]; defaultValue?: T[]; onChange?: (values: T[]) => void;
       /** when more than this many are chosen, a count ("3 selected") stands in for the chips, so the field keeps one
           line (a filter bar); a partial row of chips would hide most of the choice anyway */
       maxChips?: number }
@@ -67,6 +80,7 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
     label, placeholder, helperText, error, disabled, name, placement = 'bottom-start', labels, id, className, style, 'aria-label': ariaLabel, ...rest }: ComboboxProps<T>,
   ref: React.Ref<HTMLInputElement>,
 ) {
+  const m = useMessages();
   const multi = multiple === true;
   const maxChips = (rest as { maxChips?: number }).maxChips ?? Infinity;
   const [raw, setRaw] = useControllable<T | null | T[]>(value, defaultValue ?? (multi ? [] : null), onChange as (v: T | null | T[]) => void);
@@ -172,7 +186,7 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
   const invalid = Boolean(error);
   const help = typeof error === 'string' || (error && typeof error !== 'boolean') ? error : helperText;
   const labelId = label ? `${fid}-label` : undefined;
-  const status = loading ? labels?.loading ?? 'Loading…' : !flat.length ? labels?.empty ?? 'No results' : null;
+  const status = loading ? labels?.loading ?? m.combobox.loading : !flat.length ? labels?.empty ?? m.combobox.empty : null;
   let n = -1;
   const renderOption = (o: SelectOption<T>) => {
     const i = ++n;
@@ -205,13 +219,13 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
               <span key={val} className="sg-combobox__chip">
                 <span className="sg-combobox__chip-text">{t}</span>
                 {!disabled && (
-                  <button type="button" tabIndex={-1} className="sg-combobox__chip-remove" aria-label={labels?.remove?.(t) ?? `Remove ${t}`}
+                  <button type="button" tabIndex={-1} className="sg-combobox__chip-remove" aria-label={labels?.remove?.(t) ?? m.remove(t)}
                     onMouseDown={(e) => e.preventDefault()} onClick={() => remove(val)}><CloseIcon /></button>
                 )}
               </span>
             );
           })}
-          {multi && list.length > maxChips && <span className="sg-combobox__count" aria-hidden="true">{labels?.count?.(list.length) ?? `${list.length} selected`}</span>}
+          {multi && list.length > maxChips && <span className="sg-combobox__count" aria-hidden="true">{labels?.count?.(list.length) ?? m.combobox.count(list.length)}</span>}
           <input ref={mergeRefs(ref, input)} id={fid} className="sg-field__input" type="text" role="combobox" autoComplete="off" spellCheck={false}
             aria-autocomplete="list" aria-expanded={open} aria-controls={open ? listId : undefined}
             aria-activedescendant={open && active >= 0 ? optId(active) : undefined}
@@ -223,9 +237,9 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
             onBlur={() => leave()} />
           </Values>
           {clearable && !disabled && (v != null || list.length > 0 || text) && (
-            <button type="button" className="sg-field__clear" tabIndex={-1} aria-label={labels?.clear ?? 'Clear'} onMouseDown={(e) => e.preventDefault()} onClick={clear}><ClearIcon /></button>
+            <button type="button" className="sg-field__clear" tabIndex={-1} aria-label={labels?.clear ?? m.clear} onMouseDown={(e) => e.preventDefault()} onClick={clear}><ClearIcon /></button>
           )}
-          <button type="button" className="sg-combobox__toggle" tabIndex={-1} disabled={disabled} aria-label={labels?.toggle ?? 'Show suggestions'} aria-expanded={open} aria-controls={open ? listId : undefined}
+          <button type="button" className="sg-combobox__toggle" tabIndex={-1} disabled={disabled} aria-label={labels?.toggle ?? m.combobox.toggle} aria-expanded={open} aria-controls={open ? listId : undefined}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => { if (open) restore(); else { openAt(selectedIndex >= 0 ? selectedIndex : enabled[0] ?? -1); input.current?.focus({ preventScroll: true }); } }}>
             <ChevronDownIcon />

@@ -6,6 +6,7 @@ import {
 import { animate, fade, place, prefersReducedMotion, pushLayer, type Placement, timing } from '@satin-glass/core';
 import { cx, mergeRefs, useIsoLayoutEffect, usePresence, useStableId } from './utils';
 import { Portal } from './foundation';
+import { useMessages } from './messages';
 import { IconButton } from './controls';
 import { AlertIcon, CloseIcon, InfoIcon, SuccessIcon } from './icons';
 
@@ -17,11 +18,15 @@ let warmUntil = 0;
 let shown: (() => void) | null = null;
 
 export type TooltipProps = {
+  /** the tooltip's text; it becomes the trigger's description (aria-describedby), so keep it short and not the only
+      name an icon-only control has */
   content: ReactNode;
+  /** the trigger: one element that takes a ref and pointer and focus handlers */
   children: ReactElement;
   placement?: Placement;
-  /** ms before it appears on hover (instant when another tooltip was just open) */
+  /** the wait in ms before it appears on hover (instant when another tooltip was just open) */
   delay?: number;
+  /** shows no tooltip; the trigger itself is unchanged */
   disabled?: boolean;
 };
 
@@ -97,14 +102,18 @@ export function Tooltip({ content, children, placement = 'top', delay = 500, dis
 
 /* ================================================================================================ Banner */
 export type BannerProps = {
+  /** the colour and the default icon */
   tone?: 'info' | 'success' | 'warning' | 'danger' | 'neutral';
+  /** a bold first line */
   title?: ReactNode;
   children?: ReactNode;
+  /** replaces the tone's icon; false shows none */
   icon?: ReactNode | false;
   /** buttons on the trailing side (or below on narrow widths) */
   actions?: ReactNode;
   /** shows a close button; called once the banner has folded away */
   onDismiss?: () => void;
+  /** the close button's accessible name (default "Dismiss", or 닫기 in Korean) */
   dismissLabel?: string;
   /** announce it when it appears (role alert for danger/warning, status otherwise) */
   live?: boolean;
@@ -114,7 +123,8 @@ export type BannerProps = {
 const TONE_ICON = { info: <InfoIcon />, success: <SuccessIcon />, warning: <AlertIcon />, danger: <AlertIcon />, neutral: <InfoIcon /> };
 
 /** An inline message in the flow of the page. Dismissing folds it away (the content below closes the gap). */
-export function Banner({ tone = 'info', title, children, icon, actions, onDismiss, dismissLabel = 'Dismiss', live, className, style }: BannerProps) {
+export function Banner({ tone = 'info', title, children, icon, actions, onDismiss, dismissLabel: dismissProp, live, className, style }: BannerProps) {
+  const words = useMessages(), dismissLabel = dismissProp ?? words.dismiss;
   const el = useRef<HTMLDivElement>(null);
   const [gone, setGone] = useState(false);
   const dismiss = () => {
@@ -148,9 +158,13 @@ export function Banner({ tone = 'info', title, children, icon, actions, onDismis
 
 /* ================================================================================================ EmptyState */
 export type EmptyStateProps = {
+  /** a large icon above the title (decorative) */
   icon?: ReactNode;
+  /** what is missing: "No results" */
   title: ReactNode;
+  /** why, or what to do about it */
   description?: ReactNode;
+  /** buttons that fix it: create the first item, clear the filters */
   actions?: ReactNode;
   /** 'sm': less padding, for an empty state inside a table or a card */
   size?: 'sm' | 'md';

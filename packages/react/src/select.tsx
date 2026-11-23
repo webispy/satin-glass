@@ -7,19 +7,36 @@ import { cx, mergeRefs, useControllable, useStableId } from './utils';
 import { Portal, glassClass, useGlassLight } from './foundation';
 import { useAnchored } from './overlay-hooks';
 import { CheckIcon, ChevronDownIcon } from './icons';
+import { useMessages } from './messages';
 
 export type SelectOption<T extends string = string> = {
-  value: T; label: ReactNode; description?: ReactNode; icon?: ReactNode; disabled?: boolean;
+  /** the value this option stands for: what `value` and `onChange` carry when it is chosen */
+  value: T;
+  /** the option's text, also shown in the field once chosen */
+  label: ReactNode;
+  /** a second, smaller line under the label, in the list only */
+  description?: ReactNode;
+  /** an icon before the label, in the list and in the field once chosen */
+  icon?: ReactNode;
+  disabled?: boolean;
   /** text used for type-to-select when the label is not a string */
   textValue?: string;
 };
 export type SelectGroup<T extends string = string> = { label: ReactNode; options: SelectOption<T>[] };
 
 export type SelectProps<T extends string = string> = {
+  /** the choices, in order, and named groups of them ({ label, options }) */
   options: (SelectOption<T> | SelectGroup<T>)[];
   value?: T | null; defaultValue?: T | null; onChange?: (value: T) => void;
+  /** shown while nothing is chosen (default "Select…") */
   placeholder?: ReactNode;
-  label?: ReactNode; helperText?: ReactNode; error?: ReactNode | boolean;
+  /** the visible label (above the field; inside the pill for 'filter'); it names the select */
+  label?: ReactNode;
+  /** a hint under the field, read with it as its description; an `error` message takes its place. Not shown by 'filter' */
+  helperText?: ReactNode;
+  /** marks the select invalid (aria-invalid); a message (anything but `true`) is shown under it in place of
+      `helperText`, except by 'filter', which has no room for one */
+  error?: ReactNode | boolean;
   disabled?: boolean;
   /** submits with forms */
   name?: string;
@@ -37,10 +54,11 @@ const isGroup = <T extends string>(x: SelectOption<T> | SelectGroup<T>): x is Se
 const textOf = <T extends string>(o: SelectOption<T>) => (o.textValue ?? (typeof o.label === 'string' ? o.label : String(o.value))).toLocaleLowerCase();
 
 export const Select = forwardRef(function Select<T extends string = string>(
-  { options, value, defaultValue = null, onChange, placeholder = 'Select…', label, helperText, error, disabled, name, variant = 'field', placement = 'bottom-start', id, className, style, 'aria-label': ariaLabel }: SelectProps<T>,
+  { options, value, defaultValue = null, onChange, placeholder: placeholderProp, label, helperText, error, disabled, name, variant = 'field', placement = 'bottom-start', id, className, style, 'aria-label': ariaLabel }: SelectProps<T>,
   ref: React.Ref<HTMLButtonElement>,
 ) {
   const [v, setV] = useControllable<T | null>(value, defaultValue, onChange as (v: T | null) => void);
+  const words = useMessages(), placeholder = placeholderProp ?? words.selectPlaceholder;
   const flat = useMemo(() => options.flatMap((x) => (isGroup(x) ? x.options : [x])), [options]);
   const enabled = useMemo(() => flat.map((o, i) => (o.disabled ? -1 : i)).filter((i) => i >= 0), [flat]);
   const selectedIndex = flat.findIndex((o) => o.value === v);
@@ -124,6 +142,8 @@ export const Select = forwardRef(function Select<T extends string = string>(
 
   const invalid = Boolean(error);
   const help = typeof error === 'string' || (error && typeof error !== 'boolean') ? error : helperText;
+  /* the filter pill has no room under it: it shows neither, so nothing may point at them */
+  const helpId = help && variant !== 'filter' ? `${fid}-help` : undefined;
   const labelId = label ? `${fid}-label` : undefined;
   let n = -1;
   const renderOption = (o: SelectOption<T>) => {
@@ -154,7 +174,7 @@ export const Select = forwardRef(function Select<T extends string = string>(
       aria-labelledby={labelId ? `${labelId} ${fid}` : undefined}
       aria-label={labelId ? undefined : ariaLabel}
       aria-invalid={invalid || undefined}
-      aria-describedby={help ? `${fid}-help` : undefined}
+      aria-describedby={helpId}
       disabled={disabled}
       className={cx('sg-select', variant === 'inline' && 'sg-select--inline', variant === 'filter' && 'sg-select--filter', variant !== 'inline' ? className : undefined)}
       style={variant !== 'inline' ? style : undefined}
@@ -176,7 +196,7 @@ export const Select = forwardRef(function Select<T extends string = string>(
         <div className={cx('sg-field', variant === 'inline' ? className : undefined)} style={variant === 'inline' ? style : undefined} data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
           {label && <span id={labelId} className="sg-field__label">{label}</span>}
           {button}
-          {help && <span id={`${fid}-help`} className="sg-field__help">{help}</span>}
+          {helpId && <span id={helpId} className="sg-field__help">{help}</span>}
         </div>
       )}
       {name && <input type="hidden" name={name} value={v ?? ''} />}
