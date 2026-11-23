@@ -38,7 +38,21 @@ async function snapshot(css, page, qs, only, foreign) {
   await p.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
   await p.goto(`http://localhost:4173/${qs}#/${page}`);
   await p.evaluate(() => document.fonts.ready);
-  await p.waitForTimeout(1000);
+  /* wait until the page has stopped building itself: charts measure their box and draw a frame later, which took
+     longer than a fixed second under load, and a snapshot taken before a chart drew compared a missing element
+     with a drawn one (issue #2). A chart draws in a React transition once its width is known, which a busy machine
+     can hold back while nothing else changes, so: every chart box on screen has its drawing, and then the same
+     elements for 3 checks 150 ms apart (10 s at most) */
+  await p.evaluate(async () => {
+    const sig = () => { const all = document.body.querySelectorAll('*'); let h = all.length; for (const e of all) h = (h * 31 + e.tagName.length + e.childElementCount) | 0; return h; };
+    const drawn = () => [...document.querySelectorAll('.sg-chart__plot, .sg-sparkline')].every((e) => !e.getClientRects().length || e.querySelector('svg'));
+    let last = sig(), same = 0;
+    for (const t0 = performance.now(); (same < 3 || !drawn()) && performance.now() - t0 < 10000;) {
+      await new Promise((r) => setTimeout(r, 150));
+      const now = sig(); same = now === last ? same + 1 : 0; last = now;
+    }
+  });
+  await p.waitForTimeout(300);
   const snap = await p.evaluate(({ only, foreign }) => {
     /* in the per-category check an element's size follows its contents, which may belong to a category that is
        not loaded; what a missing dependency would show is a declared value (colour, padding, radius, display…) */
@@ -63,10 +77,11 @@ async function snapshot(css, page, qs, only, foreign) {
       const cs = getComputedStyle(e), v = [];
       /* animation-delay is set from a shared clock (skeleton sweep); an animated element's opacity and transform
          depend on when it started */
-      const skip = new Set(['animation-delay', ...(animated.has(e) ? ['opacity', 'transform'] : []), ...(only ? GEOMETRY : []),
+      const skip = new Set(['animation-delay', ...(only ? GEOMETRY : []),
         /* the docs column is centred with auto margins: they follow whether the page scrollbar is showing yet */
         ...(e.classList.contains('docs__page') ? ['margin-left', 'margin-right', 'margin-inline-start', 'margin-inline-end'] : [])]);
       for (let i = 0; i < cs.length; i++) { const k = cs[i]; if (k.startsWith('--') || skip.has(k)) continue; v.push(k + ':' + cs.getPropertyValue(k)); }
+      if (animated.has(e)) v.push('@animated');
       for (const pe of ['::before', '::after']) { const ps = getComputedStyle(e, pe); if (ps.content && ps.content !== 'none' && ps.content !== 'normal') v.push(pe + ps.background + ps.borderRadius + ps.boxShadow + (only ? '' : ps.transform + ps.inset + ps.width + ps.height)); }
       out[path(e)] = v.join(';');
     }
@@ -77,9 +92,16 @@ async function snapshot(css, page, qs, only, foreign) {
 }
 const diff = (a, bb) => {
   const keys = Object.keys(a), bad = [];
+  /* an element animating in either snapshot (an entrance still running on one side, finished on the other) has its
+     opacity and transform from the clock, not from the styles: leave them out of both sides */
+  const loose = (l) => l.filter((s) => s !== '@animated' && !s.startsWith('opacity:') && !s.startsWith('transform:'));
   for (const k of keys) if (a[k] !== bb[k]) {
-    const x = (a[k] ?? '').split(';'), y = new Set((bb[k] ?? '').split(';'));
-    bad.push(`${k.split('>').slice(-3).join('>')}: ${x.filter((s) => !y.has(s)).slice(0, 3).join(' | ')}`);
+    let x = (a[k] ?? '').split(';'), y = (bb[k] ?? '').split(';');
+    if (x.includes('@animated') || y.includes('@animated')) { x = loose(x); y = loose(y); if (x.join(';') === y.join(';')) continue; }
+    const xs = new Set(x), ys = new Set(y);
+    /* both sides of the difference: what the reference has that the variant lacks, and the other way round */
+    const only = (l, other) => l.filter((s) => !other.has(s)).slice(0, 3).join(' | ') || '–';
+    bad.push(`${k.split('>').slice(-3).join('>')}: ${only(x, ys)} ⇄ ${only(y, xs)}`);
   }
   return { n: keys.length, bad };
 };
