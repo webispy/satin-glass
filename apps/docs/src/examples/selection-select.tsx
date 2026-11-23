@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Select } from '@satin-glass/react';
+import { Select, Stack } from '@satin-glass/react';
 import { Bike, Car, Footprints } from 'lucide-react';
 
 export default function Example() {
   const [mode, setMode] = useState('walk');
   const [city, setCity] = useState<string | null>(null);
   return (
-    <>
+    <Stack gap={4} style={{ maxWidth: 360 }}>
       <Select label="Travel mode" value={mode} onChange={setMode} options={[
         { value: 'walk', label: 'Walk', icon: <Footprints /> },
         { value: 'bike', label: 'Cycle', icon: <Bike /> },
@@ -18,6 +18,6 @@ export default function Example() {
           { label: 'North', options: [{ value: 'seoul', label: 'Seoul' }, { value: 'incheon', label: 'Incheon' }] },
           { label: 'South', options: [{ value: 'busan', label: 'Busan' }, { value: 'jeju', label: 'Jeju', disabled: true }] },
         ]} />
-    </>
+    </Stack>
   );
 }
