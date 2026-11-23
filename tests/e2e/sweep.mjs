@@ -9,11 +9,15 @@
 import * as pw from 'playwright';
 const engine = process.env.BROWSER || 'chromium';
 const width = Number(process.env.WIDTH) || 1280;
-/* heaviest first, so the shares come out even */
-const PAGES = ['lab', 'selection', 'evaluation', 'navigation', 'motion', 'table', 'display', 'charts', 'showcase', 'dashboard', 'inputs',
-  'buttons', 'material', 'overlays', 'feedback', 'lists', 'colors', 'overview', 'type'];
+/* pages with how many controls each had (2026-11-23): the time goes with the count, so the shares are dealt by it —
+   each page to the lightest share so far, heaviest first (a page not listed counts as 40) */
+const WEIGHT = { selection: 165, lab: 144, navigation: 80, table: 75, evaluation: 73, motion: 72, display: 56, showcase: 42, dashboard: 34,
+  charts: 33, inputs: 32, buttons: 31, material: 27, overlays: 26, feedback: 23, lists: 21, colors: 13, overview: 13, type: 13 };
+const PAGES = Object.keys(WEIGHT);
 const [k, n] = (process.env.SHARD || '1/1').split('/').map(Number);
-const mine = PAGES.filter((_, i) => i % n === k - 1);
+const shares = Array.from({ length: n }, () => ({ w: 0, pages: [] }));
+for (const id of [...PAGES].sort((a, c) => (WEIGHT[c] ?? 40) - (WEIGHT[a] ?? 40))) { const s = shares.reduce((m, x) => (x.w < m.w ? x : m)); s.pages.push(id); s.w += WEIGHT[id] ?? 40; }
+const mine = shares[k - 1].pages;
 const SEL = ['button:not([disabled])', '[role=tab]', '[role=radio]', '[role=checkbox]', '[role=switch]', '[role=combobox]', '[role=slider]', 'summary'].map((s) => `main ${s}`).join(', ');
 const TOGGLES = new Set(['tab', 'radio', 'checkbox', 'switch']);
 

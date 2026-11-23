@@ -78,9 +78,10 @@ pnpm test           # unit tests (Vitest)
 pnpm e2e            # build, then the full check: render matrix, interactions, reduced motion, edge cases (3 engines) + performance
 pnpm test:changed   # only the unit tests for what changed
 pnpm e2e:changed    # only the e2e suites for what changed (--dry: list them, --base <ref>: compare with a ref)
+pnpm e2e:changed:quick   # the same in Chromium only, without the setting variants (while working; 3 engines before a push)
 ```
 
-`e2e:changed` maps changed files to categories (components by their category entry point and imports, CSS by file name, docs pages by the category they show) and runs the suites that cover those categories (the `// covers:` line in each file) in all three engines. The render matrix, edge cases and reduced motion run once in Chromium. A change to something every category relies on (tokens, core behaviour, foundation) or to a file it cannot place runs everything. The base is the merge base with main on a branch, and uncommitted changes on main. Run the full `pnpm e2e` before a release.
+`e2e:changed` maps changed files to categories (components by their category entry point and imports, CSS by file name, docs pages by the category they show or the components they import, the docs stylesheet by the pages that use the classes on its changed lines) and runs the suites that cover those categories (the `// covers:` line in each file) in all three engines. The render matrix, edge cases and reduced motion run once in Chromium. A change to something every category relies on (tokens, core behaviour, foundation) or to a file it cannot place runs everything. The base is the merge base with main on a branch, and uncommitted changes on main. Run the full `pnpm e2e` before a release. Every run writes each suite's whole output to `tests/e2e/last-run.log` and names the failed suites last.
 
 The docs app takes display settings from the URL (`?mode=dark&hc=1&rt=1&rm=1&motion=calm`). The `#/lab` page collects edge cases.
 

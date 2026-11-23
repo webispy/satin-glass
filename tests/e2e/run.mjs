@@ -27,7 +27,8 @@
 //   3. timing   performance and timing suites: one at a time, after a pause for the machine to go quiet. A timing
 //               suite that fails runs once more — a real regression fails twice, a one-off stall does not; the
 //               summary says when a pass needed the second run.
-// Each suite's output is held back and printed whole when it ends (in full when it failed, its last line otherwise).
+// Each suite's output is held back and printed whole when it ends (in full when it failed, its last line otherwise);
+// all of it goes to tests/e2e/last-run.log, and the summary names the failed suites last.
 //
 // Environment:
 //   E2E_JOBS=16 / E2E_MOTION_JOBS=8   how many suites run at once in phases 1 and 2
@@ -42,6 +43,8 @@
 import { spawn } from 'node:child_process';
 import { availableParallelism } from 'node:os';
 import { setTimeout as wait } from 'node:timers/promises';
+import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const ENGINES = (process.env.E2E_ENGINES || 'chromium,webkit,firefox').split(',').map((s) => s.trim()).filter(Boolean);
 const QUICK = !ENGINES.includes('webkit') || !ENGINES.includes('firefox');
@@ -67,8 +70,9 @@ sharded(checks, 'render matrix', 'matrix.mjs', (b) => (b === 'chromium' ? 4 : 2)
 perEngine(checks, 'data components & dashboard', 'data.mjs');
 perEngine(checks, 'settings decide at the nearest boundary', 'settings.mjs');
 /* every control on every page, there and back: no page error, no hang — by page in shares; phone width once, in Chromium */
-for (const b of ENGINES) for (let i = 1; i <= 4; i++) checks.push([`every control, there and back · ${b} ${i}/4`, 'sweep.mjs', { BROWSER: b, SHARD: `${i}/4` }]);
-if (ENGINES.includes('chromium')) for (let i = 1; i <= 3; i++) checks.push([`every control, there and back · chromium 390 px ${i}/3`, 'sweep.mjs', { WIDTH: '390', SHARD: `${i}/3` }]);
+/* six shares at 1280 and four at 390 px, dealt by each page's control count (sweep.mjs), so no share holds the run up */
+for (const b of ENGINES) for (let i = 1; i <= 6; i++) checks.push([`every control, there and back · ${b} ${i}/6`, 'sweep.mjs', { BROWSER: b, SHARD: `${i}/6` }]);
+if (ENGINES.includes('chromium')) for (let i = 1; i <= 4; i++) checks.push([`every control, there and back · chromium 390 px ${i}/4`, 'sweep.mjs', { WIDTH: '390', SHARD: `${i}/4` }]);
 /* the cascade is the same in every engine: the per-category stylesheet check runs once, in Chromium */
 /* the longest suite, in three parts by page so they can run side by side */
 if (ENGINES.includes('chromium')) for (let i = 1; i <= 3; i++) checks.push([`stylesheets split by category · chromium ${i}/3`, 'css-split.mjs', { E2E_PART: `${i}/3` }]);
@@ -76,7 +80,8 @@ if (ENGINES.includes('chromium')) for (let i = 1; i <= 3; i++) checks.push([`sty
 if (ENGINES.includes('chromium')) checks.push(['concentric corners · chromium', 'corners.mjs', {}]);
 perEngine(checks, 'blur budget', 'blur-budget.mjs');
 /* keyboard focus visible in every theme and with forced colours (emulated in Chromium) */
-if (ENGINES.includes('chromium')) checks.push(['focus visible · chromium', 'focus.mjs', {}]);
+/* one share per theme (five): as one suite it was the longest of the run */
+if (ENGINES.includes('chromium')) for (let i = 1; i <= 5; i++) checks.push([`focus visible · chromium ${i}/5`, 'focus.mjs', { SHARD: `${i}/5` }]);
 variants(checks, 'data components & dashboard', 'data.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 
 perEngine(motion, 'interactions', 'interact.mjs');
@@ -111,9 +116,9 @@ const only = (l) => l.filter(([label, file, env]) => {
 /* E2E_SHARD=k/n: this machine runs the k-th of n shares (CI runs the shares on separate runners). Suites go,
    longest first, to the share with the least so far, by the time each took on a CI runner (Chromium; other
    engines a third longer); every runner computes the same split */
-const EST = { 'css-split.mjs': 126, 'focus.mjs': 174, 'edge.mjs': 102, 'overflow.mjs': 95, 'overflow.mjs#browse': 15, 'matrix.mjs': 67, 'interact.mjs': 59, 'data.mjs': 57,
+const EST = { 'css-split.mjs': 126, 'focus.mjs': 40, 'edge.mjs': 102, 'overflow.mjs': 95, 'overflow.mjs#browse': 15, 'matrix.mjs': 67, 'interact.mjs': 59, 'data.mjs': 57,
   'corners.mjs': 51, 'reduce-motion.mjs': 49, 'pickers.mjs': 37, 'wheel-motion.mjs': 33, 'display.mjs': 32, 'selection.mjs': 28,
-  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'sweep.mjs': 140, 'settings.mjs': 4 };
+  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'sweep.mjs': 95, 'settings.mjs': 4 };
 const SHARD = /^(\d+)\/(\d+)$/.exec(process.env.E2E_SHARD || '');
 const est = ([, file, env]) => (EST[env.OVF_PART === 'browse' ? 'overflow.mjs#browse' : file] ?? 60) * ((env.BROWSER ?? 'chromium') === 'chromium' ? 1 : 1.3);
 let mine = null;
@@ -127,7 +132,8 @@ if (SHARD) {
 }
 const share = (l) => (mine ? l.filter((s) => mine.has(s[0])) : l);
 
-const results = [];
+const results = [], logs = [];
+const LOG = new URL('./last-run.log', import.meta.url);   /* every suite's whole output (git ignores *.log) */
 const secs = (t) => `${((performance.now() - t) / 1000).toFixed(0)}s`;
 const run = ([label, file, env], record = true) => new Promise((res) => {
   const t = performance.now(), out = [];
@@ -136,6 +142,7 @@ const run = ([label, file, env], record = true) => new Promise((res) => {
   c.on('exit', (n) => {
     const pass = n === 0, text = Buffer.concat(out).toString().trimEnd();
     console.log(`\n=== ${pass ? 'PASS' : 'FAIL'}  ${label}  (${secs(t)})`);
+    logs.push(`=== ${pass ? 'PASS' : 'FAIL'}  ${label}  (${secs(t)})\n${text}\n`);
     if (VERBOSE || !pass) console.log(text);
     else console.log(text.split('\n').pop());
     if (record) results.push([label, pass]);
@@ -181,7 +188,10 @@ try {
   }
 } finally { preview.kill(); }
 console.log(`\n=== summary (${secs(t0)})`);
-for (const [l, okk] of results) console.log(`${okk ? 'PASS' : 'FAIL'}  ${l}`);
+/* failures last, so the end of the output names them (a `| tail` keeps them) */
+for (const [l, okk] of [...results.filter(([, o]) => o), ...results.filter(([, o]) => !o)]) console.log(`${okk ? 'PASS' : 'FAIL'}  ${l}`);
 const bad = results.filter(([, okk]) => !okk).length;
+writeFileSync(LOG, logs.join('\n'));
+console.log(`full output: ${fileURLToPath(LOG)}`);
 console.log(bad ? `${bad} suite(s) failed` : `all ${results.length} suites passed${QUICK ? ' (quick: not every engine)' : ''}`);
 process.exit(bad ? 1 : 0);

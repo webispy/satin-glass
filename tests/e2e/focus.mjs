@@ -3,7 +3,7 @@
 // In the four themes and with forced colours (Windows high contrast), where the browser drops box-shadows: the
 // focus mark is an outline, never a shadow (a shadow list with a `none` depth token in it was void, and selected
 // states painted over it). Chromium only (forced colours are emulated there).
-// usage: node tests/e2e/focus.mjs   (vite preview on :4173)
+// usage: node tests/e2e/focus.mjs   (vite preview on :4173; SHARD=k/n for a share of the themes)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from 'playwright';
 const b = await pw.chromium.launch();
@@ -13,7 +13,9 @@ const PAGES = ['buttons', 'inputs', 'selection', 'navigation', 'lists', 'display
 const STOPS = 18;
 const MODES = [['light', '?mode=light&rm=1', {}], ['dark', '?mode=dark&rm=1', {}], ['light-hc', '?mode=light&hc=1&rm=1', {}], ['dark-hc', '?mode=dark&hc=1&rm=1', {}], ['forced colours', '?mode=light&rm=1', { forcedColors: 'active' }]];
 
-for (const [mode, qs, media] of MODES) {
+/* SHARD=2/5: only every 5th theme from the 2nd (the run gives each theme its own share) */
+const [k, n] = (process.env.SHARD || '1/1').split('/').map(Number);
+for (const [mode, qs, media] of MODES.filter((_, i) => i % n === k - 1)) {
   const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
   await p.emulateMedia({ reducedMotion: 'reduce', ...media });
   for (const page of PAGES) {
