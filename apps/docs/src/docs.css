@@ -67,17 +67,17 @@ body { background: var(--sg-bg); }
 .usage { margin-top: 12px; }
 /* the outline is a layer over the card (an inset shadow on the card itself would sit under the header's fill, and a
    border would hold the header 1 px off the card's curve); the header is flush and the card's curve clips it */
-.usage .sg-accordion { position: relative; border: 0; background: var(--sg-surface); border-radius: var(--sg-radius-xl); box-shadow: var(--sg-lit-edge); overflow: clip; }
-.usage .sg-accordion::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--sg-separator); pointer-events: none; }
-.usage .sg-accordion__item { border-bottom: 0; }
-.usage .sg-accordion__trigger { border-radius: 0; min-height: 52px; padding: 12px 20px; background-color: var(--sg-surface); }
-@media (hover: hover) { .usage .sg-accordion__trigger:hover:not(:disabled) { background-color: color-mix(in srgb, var(--sg-surface), var(--sg-label) 4%); } }
-.usage .sg-accordion__item[data-open] .sg-accordion__trigger { box-shadow: inset 0 -1px 0 var(--sg-separator); }
+.usage > .sg-accordion { position: relative; border: 0; background: var(--sg-surface); border-radius: var(--sg-radius-xl); box-shadow: var(--sg-lit-edge); overflow: clip; }
+.usage > .sg-accordion::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--sg-separator); pointer-events: none; }
+.usage > .sg-accordion > .sg-accordion__item { border-bottom: 0; }
+.usage > .sg-accordion > .sg-accordion__item > .sg-accordion__heading > .sg-accordion__trigger { border-radius: 0; min-height: 52px; padding: 12px 20px; background-color: var(--sg-surface); }
+@media (hover: hover) { .usage > .sg-accordion > .sg-accordion__item > .sg-accordion__heading > .sg-accordion__trigger:hover:not(:disabled) { background-color: color-mix(in srgb, var(--sg-surface), var(--sg-label) 4%); } }
+.usage > .sg-accordion > .sg-accordion__item[data-open] > .sg-accordion__heading > .sg-accordion__trigger { box-shadow: inset 0 -1px 0 var(--sg-separator); }
 /* focus inside the header, on the card's curve (the card clips anything drawn outside it): all four corners while
    folded, the top two when open */
-.usage .sg-accordion__trigger:focus-visible { outline-offset: calc(-1 * var(--sg-focus-width)); border-radius: var(--sg-radius-xl); }
-.usage .sg-accordion__item[data-open] .sg-accordion__trigger:focus-visible { border-radius: var(--sg-radius-xl) var(--sg-radius-xl) 0 0; }
-.usage .sg-accordion__content { padding: 16px; }
+.usage > .sg-accordion > .sg-accordion__item > .sg-accordion__heading > .sg-accordion__trigger:focus-visible { outline-offset: calc(-1 * var(--sg-focus-width)); border-radius: var(--sg-radius-xl); }
+.usage > .sg-accordion > .sg-accordion__item[data-open] > .sg-accordion__heading > .sg-accordion__trigger:focus-visible { border-radius: var(--sg-radius-xl) var(--sg-radius-xl) 0 0; }
+.usage > .sg-accordion > .sg-accordion__item > .sg-accordion__region > .sg-accordion__content { padding: 16px; }
 .usage__body { display: flex; flex-direction: column; gap: 16px; }
 .usage__preview { margin: 0; border-radius: var(--sg-radius-md); box-shadow: inset 0 0 0 1px var(--sg-separator); overflow: hidden; }
 .usage__preview-head { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-bottom: 1px solid var(--sg-separator); color: var(--sg-label-tertiary); font-size: 12.5px; font-weight: 560; }
@@ -88,7 +88,7 @@ body { background: var(--sg-bg); }
 .usage__live { display: flow-root; padding: 20px; }
 .usage__live > * { max-width: 100%; }
 .usage__live > * + * { margin-top: 16px; }
-[data-sg-theme$="-hc"] .usage .sg-accordion::after { box-shadow: inset 0 0 0 1px var(--sg-separator-strong); }
+[data-sg-theme$="-hc"] .usage > .sg-accordion::after { box-shadow: inset 0 0 0 1px var(--sg-separator-strong); }
 [data-sg-theme$="-hc"] .usage__preview { box-shadow: inset 0 0 0 1px var(--sg-separator-strong); }
 [data-sg-theme$="-hc"] .usage__preview-head { border-bottom-color: var(--sg-separator-strong); }
 

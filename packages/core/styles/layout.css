@@ -139,16 +139,18 @@
 .sg-accordion__meta { font-size: 13px; font-weight: 450; color: var(--sg-label-secondary); }
 /* the chevron turns with the region's spring (script); at rest the open state holds it */
 .sg-accordion__chevron { flex: none; width: 18px; height: 18px; color: var(--sg-label-secondary); }
-.sg-accordion__item[data-open] .sg-accordion__chevron { transform: rotate(180deg); }
+/* open-state rules reach only the item's own parts (child combinators), so an accordion inside an open section keeps
+   its own sections closed */
+.sg-accordion__item[data-open] > .sg-accordion__heading .sg-accordion__chevron { transform: rotate(180deg); }
 /* the one layout animation here: the region unfolds (grid rows 0fr → 1fr) so the content below makes room */
 /* the region's height runs on a spring (script) and rests at auto when open, 0 when closed; the content is shown and
    covered by it, with no motion of its own. Reduced motion: the height changes at once, the content fades in */
 .sg-accordion__region { height: 0; overflow: hidden; }
-.sg-accordion__item[data-open] .sg-accordion__region { height: auto; }
+.sg-accordion__item[data-open] > .sg-accordion__region { height: auto; }
 .sg-accordion__content { padding: 0 12px 16px; }   /* on the heading's text line */
-[data-sg-reduce-motion="true"] .sg-accordion__item[data-open] .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease backwards; }
+[data-sg-reduce-motion="true"] .sg-accordion__item[data-open] > .sg-accordion__region > .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease backwards; }
 @media (prefers-reduced-motion: reduce) {
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-accordion__item[data-open] .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease backwards; }
+  .sg-root:not([data-sg-reduce-motion="false"]) .sg-accordion__item[data-open] > .sg-accordion__region > .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease backwards; }
 }
 
 /* ============================================================================================
