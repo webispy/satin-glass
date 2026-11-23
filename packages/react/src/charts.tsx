@@ -512,6 +512,13 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups = [], highl
 /* ------------------------------------------------------------------------------------------------ BarChart */
 export type BarChartProps = Omit<LineChartProps, 'area' | 'curve' | 'zero'> & { stacked?: boolean };
 
+/* a bar standing on the baseline: square at the foot, its top corners rounded by r (as far as its size allows) */
+function barPath(x: number, y: number, w: number, h: number, r: number): string {
+  if (w <= 0 || h <= 0) return '';
+  r = Math.max(0, Math.min(r, w / 2, h));
+  return `M${x},${y + h}V${y + r}a${r},${r} 0 0 1 ${r},${-r}h${w - 2 * r}a${r},${r} 0 0 1 ${r},${r}V${y + h}Z`;
+}
+
 export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFormat = (v) => v, legend = true, locale, 'aria-label': label, caption, className, style }: BarChartProps) {
   const fmt = yFormat ?? defaultFmt(locale);
   const [box, measured] = useWidth<HTMLDivElement>();
@@ -528,7 +535,6 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
   const left = yAxisWidth(ticks.map(fmt));
   const iw = Math.max(10, width - left - M.right), ih = height - M.top - M.bottom;
   const band = iw / Math.max(1, data.length), pad = Math.min(band * 0.28, 18);
-  const inner = band - pad;
   /* the scale's top and every bar (base and end per series × category, in data units) move as one (useMorph) */
   const ends: number[] = [];
   data.forEach((d) => {
@@ -538,24 +544,31 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
       if (stacked) { ends.push(acc, acc + v); acc += v; } else ends.push(0, v);
     });
   });
-  const morph = useMorph([top, ...ends], box);
+  /* where each series' bar sits across its category, as fractions (no pixels, so a resize still redraws at once):
+     stacked, every series spans the whole bar; grouped, the shown series share it and a hidden one closes to nothing
+     where it was. With "stackedness" they move with the heights, so switching layouts is one motion. */
+  const slots: number[] = [];
+  series.forEach((s) => {
+    const before = shown.filter((o) => series.indexOf(o) < series.indexOf(s)).length;
+    if (stacked) slots.push(0, 1);
+    else slots.push(before / Math.max(1, shown.length), hidden.has(s.key) ? 0 : 1 / Math.max(1, shown.length));
+  });
+  const morph = useMorph([top, ...ends, stacked ? 1 : 0, ...slots], box);
   const sTop = morph.now[0], pTop = morph.from[0];
   const Y = (v: number) => M.top + ih - (v / (sTop || 1)) * ih;
   const gv: number[] = [];
-  for (let j = 1; j < morph.now.length; j += 2) { const a = morph.now[j], b2 = morph.now[j + 1]; gv.push(Y(b2), Y(a) - Y(b2)); }
+  for (let j = 1; j < 1 + ends.length; j += 2) { const a = morph.now[j], b2 = morph.now[j + 1]; gv.push(Y(b2), Y(a) - Y(b2)); }
   const prevTicks = pTop === top ? ticks : niceTicks(0, pTop || 1, Math.max(2, Math.round(height / 56))).filter((t) => t <= pTop);
-  /* entrance: bars rise from the baseline, one category after another */
+  /* entrance: each category rises from the baseline as one bar (its pieces stay stacked), one after another */
   useIsoLayoutEffect(() => {
     const el = g.current;
     if (!el || measured === null) return;
     if (prefersReducedMotion(el)) { fade(el as unknown as HTMLElement, 0, 1, timing.appear); return; }
-    el.querySelectorAll<SVGRectElement>('rect[data-bar]').forEach((r) => {
+    el.querySelectorAll<SVGGElement>('g[data-col]').forEach((r) => {
       const i = +(r.dataset.i ?? 0);
       animate(r, [{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], 'bouncy', { delay: Math.min(i * 28, 300), fill: 'backwards' });
     });
   }, [measured !== null]);
-  const groupW = stacked ? inner : inner / Math.max(1, shown.length);
-  const k = (s: ChartSeries) => shown.indexOf(s);
   const step = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor(iw / 64))));
   const onMove = (e: React.PointerEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -575,14 +588,38 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
           {tickLayer(ticks, prevTicks, morph.p).map(({ t, o }) => <g key={t} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{fmt(t)}</text></g>)}
           {data.map((d, i) => (i % step === 0 ? <text key={i} className="sg-chart__tick" x={left + i * band + band / 2} y={height - 6} textAnchor="middle">{xFormat(String(d[x]))}</text> : null))}
           <g ref={g}>
-            {data.map((_, i) => series.map((s, si) => {
-              if (hidden.has(s.key)) return null;
-              const at = (i * series.length + si) * 2;
-              const y = gv[at] ?? Y(0), h = Math.max(0, gv[at + 1] ?? 0);
-              const bx = left + i * band + pad / 2 + (stacked ? 0 : k(s) * groupW);
-              const w = Math.max(1, groupW - (stacked || shown.length === 1 ? 0 : 2));
-              return <rect key={`${i}-${s.key}`} data-bar data-i={i} className="sg-chart__bar" x={bx} y={y} width={w} height={h} rx={Math.min(4, w / 2)} style={{ fill: s.color ?? COLOR(si) }} />;
-            }))}
+            {data.map((_, i) => {
+              const nS = morph.now[1 + ends.length], slot0 = 2 + ends.length;
+              const n = Math.max(1, shown.length);
+              /* narrower bars than the band allows: a stack at most 40 px, a group's bars 22 px each */
+              const wS = Math.min(band - pad, 40), wG = Math.min(band - pad, n * 22 + (n - 1) * 2);
+              const inner = wG + (wS - wG) * nS, x0 = left + i * band + (band - inner) / 2;
+              const gapX = shown.length > 1 ? 2 * (1 - nS) : 0;
+              const segs = series.map((s, si) => {
+                const at = (i * series.length + si) * 2;
+                const base = morph.now[1 + at], y = gv[at] ?? Y(0), h = Math.max(0, gv[at + 1] ?? 0);
+                const st = morph.now[slot0 + si * 2], sw = morph.now[slot0 + si * 2 + 1];
+                return { s, si, base, y, h, x: x0 + st * inner + gapX / 2, w: Math.max(0, sw * inner - gapX) };
+              });
+              const live = segs.filter((q) => !hidden.has(q.s.key) || q.h > 0.5 || q.w > 0.5);
+              const topY = Math.min(...live.filter((q) => q.h > 0.5).map((q) => q.y), Y(0));
+              return (
+                <g key={i} data-col data-i={i} className="sg-chart__col">
+                  {live.map(({ s, si, base, y, h, x: bx, w }) => {
+                    const R = Math.min(6, w / 2.5);
+                    const onStack = base > (top || 1) * 1e-4;   /* something under it in the stack */
+                    /* top corners: a grouped bar rounds its own top; in a stack only the stack's top is round (a piece
+                       just under a shrinking top piece rounds in as it reaches the top, so a hidden series hands the
+                       roundness over without a jump) */
+                    const rt = R * (1 - nS) + Math.max(0, R - (y - topY)) * nS;
+                    /* a seam (2 px of the plot showing through) under every piece that sits on another, so the parts
+                       read apart without leaning on their colours alone, as the donut's slices */
+                    const gapY = onStack ? 2 * nS : 0;
+                    return <path key={s.key} data-bar data-i={i} className="sg-chart__bar" d={barPath(bx, y, w, h - Math.min(gapY, h), rt)} style={{ fill: s.color ?? COLOR(si) }} />;
+                  })}
+                </g>
+              );
+            })}
           </g>
           <line className="sg-chart__axis" x1={left} x2={left + iw} y1={Y(0)} y2={Y(0)} />
         </svg>}

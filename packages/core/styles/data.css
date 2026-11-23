@@ -33,7 +33,7 @@
 .sg-chart__line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 0; }
 [data-sg-theme$="-hc"] .sg-chart__line { stroke-width: 2.75; }
 .sg-chart__line[data-draw] { stroke-dasharray: 1 1; stroke-dashoffset: 0; }
-.sg-chart__bar { transform-box: fill-box; transform-origin: 50% 100%; }
+.sg-chart__col { transform-box: fill-box; transform-origin: 50% 100%; }   /* a category's bar grows from the baseline */
 .sg-chart__band { fill: var(--sg-fill); }
 .sg-chart__cross line { stroke: var(--sg-label-tertiary); stroke-width: 1; stroke-dasharray: 3 3; }
 .sg-chart__cross circle { stroke: var(--sg-surface); stroke-width: 2; }

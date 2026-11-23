@@ -84,7 +84,7 @@ function Lines() {
 function Bars() {
   const [stacked, setStacked] = useState<'group' | 'stack'>('group');
   return (
-    <Section title="막대" intro="계열을 나란히 놓거나(묶음) 쌓아서(누적) 보여 줍니다. 막대는 바닥에서 자라고, 묶음과 누적을 바꾸면 제자리에서 다시 배치됩니다.">
+    <Section title="막대" intro="계열을 나란히 놓거나(묶음) 쌓아서(누적) 보여 줍니다. 막대는 바닥에 직각으로 서고 윗면만 둥글며, 누적에서는 쌓인 막대 전체의 윗면만 둥글고 조각 사이에 가는 틈이 있어 색에 기대지 않고도 나뉩니다. 처음에는 달마다 한 막대로 바닥에서 자라고, 묶음과 누적을 바꾸면 위치·폭·높이가 함께 움직여 다시 배치됩니다.">
       <Demo col data-demo="bar">
         <SegmentedControl size="sm" aria-label="막대 배치" value={stacked} onChange={setStacked} options={[{ value: 'group', label: '묶음' }, { value: 'stack', label: '누적' }]} style={{ alignSelf: 'flex-start' }} />
         <BarChart aria-label="경로별 월 주문" data={MONTHS} x="month" stacked={stacked === 'stack'} height={240} locale="ko-KR"

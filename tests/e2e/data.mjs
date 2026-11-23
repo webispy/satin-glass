@@ -361,9 +361,33 @@ await go('charts');
   const bar = demo('bar');
   await bar.scrollIntoViewIfNeeded(); await p.waitForTimeout(300);
   const grouped = await bar.locator('.sg-chart__bar').count();
-  await bar.getByRole('radio', { name: '누적' }).click(); await p.waitForTimeout(600);
+  /* switching layouts moves the bars (position, width and height) on one progress: no frame jumps sideways */
+  const frames = await bar.evaluate(async (el) => {
+    const read = () => [...el.querySelectorAll('.sg-chart__bar')].map((e) => { const r = e.getBBox(); return [r.x, r.width]; });
+    const out = [read()];
+    el.querySelectorAll('[role=radio]')[1].click();
+    for (let i = 0; i < 70; i++) { await new Promise(requestAnimationFrame); out.push(read()); }
+    return out;
+  });
+  let jump = 0, moved = 0;
+  for (let i = 1; i < frames.length; i++) { let m = false; frames[i].forEach((bx, k) => bx.forEach((v, j) => { const d = Math.abs(v - (frames[i - 1][k]?.[j] ?? v)); if (d > 0.05) m = true; jump = Math.max(jump, d); })); if (m) moved++; }
+  if (/rm=1/.test(Q)) ok('bar chart (reduced motion): grouped → stacked changes at once', moved <= 1, `${moved} moving frames`);
+  else ok('bar chart: grouped → stacked slides the bars together and widens them over many frames (no jump)', moved >= 8 && jump < 12, `${moved} moving frames, largest step ${jump.toFixed(1)} px`);
+  await p.waitForTimeout(600);
   const stacked = await bar.locator('.sg-chart__bar').count();
   ok('bar chart: one bar per series and month, grouped and stacked', grouped === 18 && stacked === 18, `${grouped} / ${stacked}`);
+  /* a stack is one bar: square on the baseline, only its top rounded, its pieces parted by a 2 px seam, at most 40 px wide */
+  const shape = await bar.evaluate((el) => {
+    const base = +el.querySelector('.sg-chart__axis').getAttribute('y1');
+    return [...el.querySelectorAll('.sg-chart__col')].map((g) => {
+      const ps = [...g.querySelectorAll('.sg-chart__bar')].map((e) => { const r = e.getBBox(); return { y: r.y, b: r.y + r.height, w: r.width, arcs: [...e.getAttribute('d').matchAll(/a([\d.]+)/g)].filter((m) => +m[1] > 0.01).length }; }).sort((a, b) => b.b - a.b);
+      const seams = ps.slice(1).map((q, i) => ps[i].y - q.b);
+      return { foot: ps[0].b - base, seams, w: Math.max(...ps.map((q) => q.w)), roundTop: ps[ps.length - 1].arcs === 2, roundBelow: ps.slice(0, -1).some((q) => q.arcs > 0 && q.y - ps[ps.length - 1].b > 6) };
+    });
+  });
+  ok('bar chart: a stack stands square on the baseline with only its top rounded', shape.every((c) => Math.abs(c.foot) < 0.5 && c.roundTop && !c.roundBelow), JSON.stringify(shape[0]));
+  ok('bar chart: …its pieces parted by 2 px seams, and at most 40 px wide', shape.every((c) => c.seams.every((g) => Math.abs(g - 2) < 0.3) && c.w <= 40.01), JSON.stringify(shape[0]));
+  await bar.getByRole('radio', { name: '묶음' }).click(); await p.waitForTimeout(700);
 
   const ring = demo('donut').locator('.sg-donut__ring');
   await ring.focus(); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(150);

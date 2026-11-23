@@ -15,6 +15,7 @@ Parts for comparing many things on many measures — choosing a table's columns,
 
 ### Changed
 - Controls that stand side by side take one height scale, the size tokens (32 / 40 / 48): `SegmentedControl` is 40 (36 before) and 32 at `size="sm"` (30 before), `Stepper` 40 (36 before), `SearchField` 40 through `--sg-size-control-md`. A small segmented control beside a small button, or a default one beside a default button, no longer misses by 2–4 px. Form text fields stay 44.
+- `BarChart`: bars stand square on the baseline with only their tops rounded (each piece of a stack was rounded at all four corners, which notched every seam). A stack is one bar: only its top is rounded and its pieces are parted by a 2 px seam, so they read apart without leaning on colour. Bars are narrower than their band (a stack at most 40 px, a group's bars 22 px each). On entrance each category rises as one bar instead of every piece springing from its own base; switching grouped ↔ stacked moves the bars' position and width together with their heights (they used to jump sideways at once), and hiding a series hands the rounded top to the piece below without a jump.
 - Docs: the dashboard's order and product filters use `FilterBar`; its period switch and download button are the same height.
 
 ### Fixed
