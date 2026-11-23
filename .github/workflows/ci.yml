@@ -31,6 +31,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm typecheck
+      - name: Docs option tables match the types, every option described
+        run: node scripts/docs-props.mjs --check
       - run: pnpm test
 
   e2e:

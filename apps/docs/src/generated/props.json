@@ -1,0 +1,6710 @@
+{
+ "MotionScope": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "Sets the motion personality for everything inside: CSS springs via [data-sg-motion], JS springs and portals via context. This is the one way to give part of an app, or a single component, its own personality; components take no motion prop. The wrapper is display: contents but still a DOM parent, so put it around a whole group (a ButtonGroup, a TabBar), not around one of its children. Without `motion` it inherits, keeping the same element so toggling the override never remounts what is inside.",
+  "props": [
+   {
+    "name": "motion",
+    "type": "MotionName",
+    "required": false,
+    "default": null,
+    "description": "The personality inside: 'calm', 'lively' or 'playful'; unset inherits the one outside."
+   },
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Divider": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [
+   {
+    "name": "vertical",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "A vertical line between items in a row (aria-orientation vertical)."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes"
+  ]
+ },
+ "VisuallyHidden": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes"
+  ]
+ },
+ "ThemeProvider": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "Sets the theme on its own element (themes nest: a dark island inside a light page works).",
+  "props": [
+   {
+    "name": "theme",
+    "type": "Theme",
+    "required": false,
+    "default": "createTheme()",
+    "description": "The settings, made with createTheme; 'system' ones follow the user's OS preferences, and an unset `motion`, `grooves` or `locale` inherits from the provider outside."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "Glass": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [
+   {
+    "name": "variant",
+    "type": "GlassVariant",
+    "required": false,
+    "default": "'regular'",
+    "description": "How dense the glass is: regular, strong (panels to read from), subtle, clear (over photos)."
+   },
+   {
+    "name": "level",
+    "type": "GlassLevel",
+    "required": false,
+    "default": "'float'",
+    "description": "How high it sits: 'float' (default: bars, menus, panels) or 'overlay' over a scrim (sheets, dialogs), with a deeper shadow."
+   },
+   {
+    "name": "light",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Pointer-following highlight (default: theme.light)."
+   },
+   {
+    "name": "tint",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Colour that seeps into the fill (e.g. from useImageTint)."
+   },
+   {
+    "name": "radius",
+    "type": "\"xs\" | \"sm\" | \"md\" | \"lg\" | \"xl\" | \"2xl\" | \"full\"",
+    "required": false,
+    "default": null,
+    "description": "Corner radius, a step of the radius scale (default 'xl')."
+   },
+   {
+    "name": "pressable",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Shrinks a little while pressed, with a pointer cursor; for glass that acts as a button (render it `as=\"button\"`, or give it a role and keyboard handling)."
+   },
+   {
+    "name": "as",
+    "type": "E",
+    "required": false,
+    "default": null,
+    "description": "The element or component to render, e.g. 'section' or 'button', whose props it then takes (default: a div; Text picks one from its variant)."
+   }
+  ],
+  "inherits": []
+ },
+ "Text": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [
+   {
+    "name": "variant",
+    "type": "\"body\" | \"caption\" | \"display\" | \"title-1\" | \"title-2\" | \"title-3\" | \"headline\" | \"callout\" | \"subhead\" | \"footnote\" | \"caption-2\"",
+    "required": false,
+    "default": "'body'",
+    "description": "The type style (default 'body'); also picks the element: display and title-1 render h1, title-2 h2, title-3 h3, headline h4, the rest p."
+   },
+   {
+    "name": "tone",
+    "type": "\"default\" | \"secondary\" | \"tertiary\" | \"accent\" | \"danger\" | \"success\"",
+    "required": false,
+    "default": "'default'",
+    "description": "The colour: secondary and tertiary for less important text, or a status colour."
+   },
+   {
+    "name": "truncate",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "One line, cut off with an ellipsis when it does not fit."
+   },
+   {
+    "name": "tabular",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Tabular figures: digits line up in columns and do not shift as a number changes."
+   },
+   {
+    "name": "as",
+    "type": "E",
+    "required": false,
+    "default": null,
+    "description": "The element or component to render, e.g. 'section' or 'button', whose props it then takes (default: a div; Text picks one from its variant)."
+   }
+  ],
+  "inherits": []
+ },
+ "Stack": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [
+   {
+    "name": "direction",
+    "type": "\"row\" | \"column\"",
+    "required": false,
+    "default": "'column'",
+    "description": "Lays the children out in a column (default) or a row."
+   },
+   {
+    "name": "gap",
+    "type": "string | number",
+    "required": false,
+    "default": null,
+    "description": "Gap in 4 px units, or any CSS length."
+   },
+   {
+    "name": "align",
+    "type": "Property.AlignItems",
+    "required": false,
+    "default": null,
+    "description": "Where the children sit across the direction (CSS `align-items`)."
+   },
+   {
+    "name": "justify",
+    "type": "Property.JustifyContent",
+    "required": false,
+    "default": null,
+    "description": "How the children are spread along the direction (CSS `justify-content`)."
+   },
+   {
+    "name": "wrap",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Lets the children wrap onto more lines."
+   },
+   {
+    "name": "padding",
+    "type": "string | number",
+    "required": false,
+    "default": null,
+    "description": "Padding in 4 px units, or any CSS length."
+   },
+   {
+    "name": "as",
+    "type": "ElementType",
+    "required": false,
+    "default": null,
+    "description": "The element to render (default 'div')."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "CheckIcon": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "RefAttributes",
+   "SVGAttributes"
+  ]
+ },
+ "ChevronRightIcon": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "RefAttributes",
+   "SVGAttributes"
+  ]
+ },
+ "ChevronDownIcon": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "RefAttributes",
+   "SVGAttributes"
+  ]
+ },
+ "ChevronLeftIcon": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "RefAttributes",
+   "SVGAttributes"
+  ]
+ },
+ "CloseIcon": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "RefAttributes",
+   "SVGAttributes"
+  ]
+ },
+ "PlusIcon": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "RefAttributes",
+   "SVGAttributes"
+  ]
+ },
+ "MinusIcon": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "RefAttributes",
+   "SVGAttributes"
+  ]
+ },
+ "SearchIcon": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "RefAttributes",
+   "SVGAttributes"
+  ]
+ },
+ "ClearIcon": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "RefAttributes",
+   "SVGAttributes"
+  ]
+ },
+ "InfoIcon": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "RefAttributes",
+   "SVGAttributes"
+  ]
+ },
+ "AlertIcon": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "RefAttributes",
+   "SVGAttributes"
+  ]
+ },
+ "SuccessIcon": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "RefAttributes",
+   "SVGAttributes"
+  ]
+ },
+ "Spinner": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "size",
+    "type": "number",
+    "required": false,
+    "default": "20",
+    "description": "Diameter in px."
+   },
+   {
+    "name": "label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name (it is a progressbar with no value; default \"Loading\")."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Button": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "variant",
+    "type": "ButtonVariant",
+    "required": false,
+    "default": "'tinted'",
+    "description": "The look, from most to least emphasis: filled, tinted, glass (on glass, over content), neutral, plain (no background)."
+   },
+   {
+    "name": "size",
+    "type": "\"sm\" | \"md\" | \"lg\"",
+    "required": false,
+    "default": "'md'",
+    "description": "The height, and the size of the text and icons."
+   },
+   {
+    "name": "tone",
+    "type": "\"accent\" | \"danger\" | \"neutral\"",
+    "required": false,
+    "default": "'accent'",
+    "description": "The colour: accent, danger for destructive actions, or neutral."
+   },
+   {
+    "name": "shape",
+    "type": "\"rounded\" | \"round\"",
+    "required": false,
+    "default": "'rounded'",
+    "description": "'round' makes the ends fully round (a capsule, or a circle with only an icon)."
+   },
+   {
+    "name": "block",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Fills the width of its container."
+   },
+   {
+    "name": "loading",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Shows a spinner in place of the content and sets aria-busy; until it ends the button cannot be pressed (a link loses its href, as with `disabled`)."
+   },
+   {
+    "name": "startIcon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An icon before the text."
+   },
+   {
+    "name": "endIcon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An icon after the text."
+   },
+   {
+    "name": "component",
+    "type": "ElementType",
+    "required": false,
+    "default": null,
+    "description": "Render as another element, e.g. a router link (default: 'a' when there is an `href`, else 'button')."
+   },
+   {
+    "name": "href",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The link target: the button is then a link (an `<a>`, unless `component` says otherwise)."
+   },
+   {
+    "name": "target",
+    "type": "HTMLAttributeAnchorTarget",
+    "required": false,
+    "default": null,
+    "description": "With `href`: where the link opens, e.g. '_blank' (add `rel=\"noopener\"` for another site)."
+   },
+   {
+    "name": "download",
+    "type": "string | boolean",
+    "required": false,
+    "default": null,
+    "description": "With `href`: download the linked file instead of opening it, optionally under this name."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "ButtonHTMLAttributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "IconButton": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "variant",
+    "type": "ButtonVariant",
+    "required": false,
+    "default": "'plain'",
+    "description": "The look, from most to least emphasis: filled, tinted, glass (on glass, over content), neutral, plain (no background)."
+   },
+   {
+    "name": "tone",
+    "type": "\"accent\" | \"danger\" | \"neutral\"",
+    "required": false,
+    "default": null,
+    "description": "The colour: accent, danger for destructive actions, or neutral."
+   },
+   {
+    "name": "size",
+    "type": "\"sm\" | \"md\" | \"lg\"",
+    "required": false,
+    "default": null,
+    "description": "The height, and the size of the text and icons."
+   },
+   {
+    "name": "shape",
+    "type": "\"rounded\" | \"round\"",
+    "required": false,
+    "default": null,
+    "description": "'round' makes the ends fully round (a capsule, or a circle with only an icon)."
+   },
+   {
+    "name": "block",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Fills the width of its container."
+   },
+   {
+    "name": "loading",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Shows a spinner in place of the content and sets aria-busy; until it ends the button cannot be pressed (a link loses its href, as with `disabled`)."
+   },
+   {
+    "name": "component",
+    "type": "ElementType",
+    "required": false,
+    "default": null,
+    "description": "Render as another element, e.g. a router link (default: 'a' when there is an `href`, else 'button')."
+   },
+   {
+    "name": "href",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The link target: the button is then a link (an `<a>`, unless `component` says otherwise)."
+   },
+   {
+    "name": "target",
+    "type": "HTMLAttributeAnchorTarget",
+    "required": false,
+    "default": null,
+    "description": "With `href`: where the link opens, e.g. '_blank' (add `rel=\"noopener\"` for another site)."
+   },
+   {
+    "name": "download",
+    "type": "string | boolean",
+    "required": false,
+    "default": null,
+    "description": "With `href`: download the linked file instead of opening it, optionally under this name."
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The icon, the only visible content."
+   },
+   {
+    "name": "label",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "The accessible name, also shown as a tooltip (`title`) unless one is given."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "ButtonHTMLAttributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "ButtonGroup": {
+  "kind": "component",
+  "category": "controls",
+  "description": "One glass shared by several buttons; as tall as a standalone button of the same size.",
+  "props": [
+   {
+    "name": "vertical",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Stacks the buttons in a column."
+   },
+   {
+    "name": "glass",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "The shared glass behind the buttons; false leaves them on their own."
+   },
+   {
+    "name": "size",
+    "type": "\"sm\" | \"md\" | \"lg\"",
+    "required": false,
+    "default": "'md'",
+    "description": "The group's height and corners; match the buttons' own `size` (it does not set theirs)."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "Switch": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "defaultChecked",
+    "type": "boolean",
+    "required": false,
+    "default": "false",
+    "description": "Whether it starts checked or on when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "checked",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Whether it is checked or on (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((checked: boolean) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "size",
+    "type": "\"sm\" | \"md\"",
+    "required": false,
+    "default": "'md'",
+    "description": "'sm' is a smaller switch, for dense rows."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "ButtonHTMLAttributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "Slider": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "value",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "number",
+    "required": false,
+    "default": "0",
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((value: number) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "onChangeEnd",
+    "type": "((value: number) => void)",
+    "required": false,
+    "default": null,
+    "description": "Fires once when the user lets go."
+   },
+   {
+    "name": "min",
+    "type": "number",
+    "required": false,
+    "default": "0",
+    "description": "The lowest value, at the start of the track."
+   },
+   {
+    "name": "max",
+    "type": "number",
+    "required": false,
+    "default": "100",
+    "description": "The highest value, at the end of the track."
+   },
+   {
+    "name": "step",
+    "type": "number",
+    "required": false,
+    "default": "1",
+    "description": "The value moves in multiples of this from `min` (arrow keys move one step; Page Up / Down a tenth of the range)."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   },
+   {
+    "name": "format",
+    "type": "((value: number) => string)",
+    "required": false,
+    "default": "(v) => String(v)",
+    "description": "Text in the bubble and for screen readers."
+   },
+   {
+    "name": "showValue",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "A bubble above the thumb shows the value while it is dragged."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "Stepper": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "value",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "number",
+    "required": false,
+    "default": "0",
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((v: number) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "min",
+    "type": "number",
+    "required": false,
+    "default": "-Infinity",
+    "description": "The lowest value; the − button is disabled there (default: no limit)."
+   },
+   {
+    "name": "max",
+    "type": "number",
+    "required": false,
+    "default": "Infinity",
+    "description": "The highest value; the + button is disabled there (default: no limit)."
+   },
+   {
+    "name": "step",
+    "type": "number",
+    "required": false,
+    "default": "1",
+    "description": "How much one press adds or takes away; holding a button repeats it."
+   },
+   {
+    "name": "format",
+    "type": "((v: number) => ReactNode)",
+    "required": false,
+    "default": "(v) => v",
+    "description": "How the value is shown, e.g. with a unit (default: the number)."
+   },
+   {
+    "name": "label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Names the group and the buttons for assistive technology (\"Decrease {label}\", \"Increase {label}\"; default \"Value\")."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "SegmentOption": {
+  "kind": "type",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "value",
+    "type": "T",
+    "required": true,
+    "default": null,
+    "description": "The value this option stands for: what `value` and `onChange` carry when it is chosen."
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The segment's text; with `iconOnly` it names the segment for assistive technology and as a tooltip."
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An icon before the label (required on every option with `iconOnly`)."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "SegmentedControl": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Defines a string value that labels the current element."
+   },
+   {
+    "name": "options",
+    "type": "SegmentOption<T>[]",
+    "required": true,
+    "default": null,
+    "description": "The segments, in order; without a value the first enabled one is selected."
+   },
+   {
+    "name": "value",
+    "type": "T",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "T",
+    "required": false,
+    "default": null,
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((v: T) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "size",
+    "type": "\"sm\" | \"md\"",
+    "required": false,
+    "default": "'md'",
+    "description": "'sm' is shorter, for toolbars and card headers."
+   },
+   {
+    "name": "iconOnly",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Only the icons show (each option needs one); the labels still name the options, to assistive technology and as a tooltip, as an IconButton's label does."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes"
+  ]
+ },
+ "TextField": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The visible label above the field, tied to it with htmlFor."
+   },
+   {
+    "name": "helperText",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A hint under the field, read with it as its description; an `error` message takes its place."
+   },
+   {
+    "name": "error",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Marks the field invalid (aria-invalid); text is shown under the field in place of `helperText`."
+   },
+   {
+    "name": "startAdornment",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Inside the field, before the text: an icon, a currency sign."
+   },
+   {
+    "name": "endAdornment",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Inside the field, after the text: a unit, a button."
+   },
+   {
+    "name": "clearable",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "A clear button while the field has text; it empties an uncontrolled field (a controlled one: clear it in `onClear`)."
+   },
+   {
+    "name": "onClear",
+    "type": "(() => void)",
+    "required": false,
+    "default": null,
+    "description": "Called when the clear button is pressed, before focus returns to the field."
+   },
+   {
+    "name": "fieldClassName",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names for the outer wrapper (label, control and help text); `className` goes on the control."
+   },
+   {
+    "name": "multiline",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "`true` renders a `<textarea>` (taking textarea attributes) instead of an `<input>`; a SearchField is always an input."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "InputHTMLAttributes",
+   "RefAttributes",
+   "TextareaHTMLAttributes"
+  ]
+ },
+ "SearchField": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "helperText",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A hint under the field, read with it as its description; an `error` message takes its place."
+   },
+   {
+    "name": "error",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Marks the field invalid (aria-invalid); text is shown under the field in place of `helperText`."
+   },
+   {
+    "name": "endAdornment",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Inside the field, after the text: a unit, a button."
+   },
+   {
+    "name": "clearable",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "A clear button while the field has text; it empties an uncontrolled field (a controlled one: clear it in `onClear`)."
+   },
+   {
+    "name": "onClear",
+    "type": "(() => void)",
+    "required": false,
+    "default": null,
+    "description": "Called when the clear button is pressed, before focus returns to the field."
+   },
+   {
+    "name": "fieldClassName",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names for the outer wrapper (label, control and help text); `className` goes on the control."
+   },
+   {
+    "name": "multiline",
+    "type": "false",
+    "required": false,
+    "default": null,
+    "description": "`true` renders a `<textarea>` (taking textarea attributes) instead of an `<input>`; a SearchField is always an input."
+   },
+   {
+    "name": "glass",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "The field on glass, for search over content (in a bar, over a photo)."
+   },
+   {
+    "name": "onCancel",
+    "type": "(() => void)",
+    "required": false,
+    "default": null,
+    "description": "Shows a Cancel button while the field has focus."
+   },
+   {
+    "name": "cancelLabel",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The Cancel button's text (default \"Cancel\")."
+   },
+   {
+    "name": "label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The field's accessible name (there is no visible label; default \"Search\")."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "InputHTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "Chip": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "selected",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Set (true or false) to make a toggle chip (aria-pressed); leave unset for an action chip."
+   },
+   {
+    "name": "onSelectedChange",
+    "type": "((v: boolean) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the opposite of `selected` on a click (a toggle chip is always controlled)."
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An icon before the text."
+   },
+   {
+    "name": "onRemove",
+    "type": "(() => void)",
+    "required": false,
+    "default": null,
+    "description": "Makes an input chip with a remove button, named \"Remove {text}\"; the chip itself is then not a button, so `selected` and `onClick` do not apply; `ref` and the other attributes go to the chip, and `disabled` to its remove button."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "ButtonHTMLAttributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "Badge": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "tone",
+    "type": "\"accent\" | \"danger\" | \"neutral\"",
+    "required": false,
+    "default": "'danger'",
+    "description": "The colour."
+   },
+   {
+    "name": "dot",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "A small dot without the content; it has no text, so name it with `label` or say what it means elsewhere."
+   },
+   {
+    "name": "label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "What the badge means, for assistive technology (\"3 unread messages\", \"New\"): it is then read as an image with this name in place of its text."
+   },
+   {
+    "name": "max",
+    "type": "number",
+    "required": false,
+    "default": "99",
+    "description": "Numbers above this show as \"99+\"."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes"
+  ]
+ },
+ "BadgeAnchor": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "badge",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "A Badge, pinned to the top-right corner of the children."
+   },
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Avatar": {
+  "kind": "component",
+  "category": "controls",
+  "description": "A person's picture, or their initials on a colour picked from the name. A picture that fails to load falls back to the initials.",
+  "props": [
+   {
+    "name": "name",
+    "type": "string",
+    "required": false,
+    "default": "''",
+    "description": "The person's name: the accessible name, the initials (first letters of the first two words) and the colour; without one the avatar is decorative, hidden from assistive technology."
+   },
+   {
+    "name": "src",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The picture's URL; the initials show when it is missing or fails to load."
+   },
+   {
+    "name": "size",
+    "type": "number",
+    "required": false,
+    "default": "40",
+    "description": "Diameter in px."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "AvatarGroup": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "<Avatar /> elements."
+   },
+   {
+    "name": "max",
+    "type": "number",
+    "required": false,
+    "default": "4",
+    "description": "How many portraits to show before +N (default 4)."
+   },
+   {
+    "name": "total",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "How many people there are, when that is more than the portraits given (a count from the server)."
+   },
+   {
+    "name": "size",
+    "type": "number",
+    "required": false,
+    "default": "32",
+    "description": "The diameter in px, given to every portrait (default 32)."
+   },
+   {
+    "name": "onMoreClick",
+    "type": "((event: MouseEvent<HTMLButtonElement>) => void)",
+    "required": false,
+    "default": null,
+    "description": "+N becomes a button; anchor a Popover to event.currentTarget."
+   },
+   {
+    "name": "labels",
+    "type": "{ group?: (count: number) => string; more?: (hidden: number) => string; }",
+    "required": false,
+    "default": null,
+    "description": "Text the component writes itself (names for assistive technology, button text…), for translation; by default in English, or Korean under a Korean locale.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Progress": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "value",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "Progress from 0 to `max`; leave unset while the amount is not known (an indeterminate bar)."
+   },
+   {
+    "name": "max",
+    "type": "number",
+    "required": false,
+    "default": "100",
+    "description": "The value at which it is complete."
+   },
+   {
+    "name": "size",
+    "type": "\"sm\" | \"md\"",
+    "required": false,
+    "default": "'md'",
+    "description": "'sm' is a thinner bar."
+   },
+   {
+    "name": "label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name: what is in progress (default \"Progress\")."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "PageControl": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "count",
+    "type": "number",
+    "required": true,
+    "default": null,
+    "description": "How many pages (one dot each)."
+   },
+   {
+    "name": "page",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "The current page, from 0 (controlled; use with `onChange`)."
+   },
+   {
+    "name": "defaultPage",
+    "type": "number",
+    "required": false,
+    "default": "0",
+    "description": "The first page shown when uncontrolled, from 0."
+   },
+   {
+    "name": "onChange",
+    "type": "((p: number) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "glass",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Glass capsule behind the dots."
+   },
+   {
+    "name": "onMedia",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "White dots for use over photos and video; with `glass`, the capsule is clear glass."
+   },
+   {
+    "name": "label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Names the group and each dot (\"{label} 2 of 5\") for assistive technology (default \"Page\")."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "FilterBar": {
+  "kind": "component",
+  "category": "controls",
+  "description": "",
+  "props": [
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "count",
+    "type": "number",
+    "required": true,
+    "default": null,
+    "description": "How many criteria apply (the app counts; 0 hides the count and the clear button)."
+   },
+   {
+    "name": "onClear",
+    "type": "() => void",
+    "required": true,
+    "default": null,
+    "description": "Reset every criterion the count counts."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "labels",
+    "type": "{ clear?: string; applied?: (n: number) => string; }",
+    "required": false,
+    "default": "{}",
+    "description": "Text the component writes itself (names for assistive technology, button text…), for translation; by default in English, or Korean under a Korean locale.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Card": {
+  "kind": "component",
+  "category": "layout",
+  "description": "",
+  "props": [
+   {
+    "name": "variant",
+    "type": "\"elevated\" | \"outlined\"",
+    "required": false,
+    "default": "'elevated'",
+    "description": "Elevated (a shadow) or outlined (a hairline border, no shadow)."
+   },
+   {
+    "name": "as",
+    "type": "ElementType",
+    "required": false,
+    "default": null,
+    "description": "The element to render (default: 'button' when interactive, else 'div'), e.g. 'a' or 'article'."
+   },
+   {
+    "name": "interactive",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "The whole card is one button (rendered as a button unless `as` says otherwise), pressed like one."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "ButtonHTMLAttributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "CardMedia": {
+  "kind": "component",
+  "category": "layout",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "ImgHTMLAttributes"
+  ]
+ },
+ "CardBody": {
+  "kind": "component",
+  "category": "layout",
+  "description": "",
+  "props": [],
+  "inherits": [
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes"
+  ]
+ },
+ "CardHeader": {
+  "kind": "component",
+  "category": "layout",
+  "description": "A card's title row: what the card shows, and controls that change it. Put a CardBody below.",
+  "props": [
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The card's heading (an h3 unless `level` says otherwise)."
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A line under the title: the period, the source, the unit."
+   },
+   {
+    "name": "actions",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Trailing controls: a segmented control, a filter, a \"more\" button."
+   },
+   {
+    "name": "level",
+    "type": "2 | 3 | 4 | 5 | 6",
+    "required": false,
+    "default": "3",
+    "description": "Heading level of the title (default 3)."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes"
+  ]
+ },
+ "ListSection": {
+  "kind": "component",
+  "category": "layout",
+  "description": "",
+  "props": [
+   {
+    "name": "header",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A heading above the list (an h3)."
+   },
+   {
+    "name": "footer",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A note under the list: what the settings above do."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes"
+  ]
+ },
+ "List": {
+  "kind": "component",
+  "category": "layout",
+  "description": "",
+  "props": [
+   {
+    "name": "plain",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Rows without the grouped background, corners and shadow, for a list inside a card or a panel."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "ListItem": {
+  "kind": "component",
+  "category": "layout",
+  "description": "",
+  "props": [
+   {
+    "name": "onClick",
+    "type": "(MouseEventHandler<HTMLElement> & (() => void))",
+    "required": false,
+    "default": null,
+    "description": "Makes the whole row a button (or a link with href)."
+   },
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The row's main text."
+   },
+   {
+    "name": "subtitle",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A second, smaller line under the title."
+   },
+   {
+    "name": "leading",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An icon in a coloured tile (tileColor) or plain."
+   },
+   {
+    "name": "tileColor",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The tile's colour, any CSS colour (default: the accent)."
+   },
+   {
+    "name": "plainLeading",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "The leading icon without a tile, in the accent colour."
+   },
+   {
+    "name": "trailing",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Detail text, a Switch, a Badge…"
+   },
+   {
+    "name": "chevron",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "A chevron at the end: the row leads to another page."
+   },
+   {
+    "name": "tone",
+    "type": "\"default\" | \"accent\" | \"danger\"",
+    "required": false,
+    "default": "'default'",
+    "description": "Colours the title: accent for an action row, danger for a destructive one."
+   },
+   {
+    "name": "href",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Makes the whole row a link to this URL (takes the place of `onClick`)."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "Accordion": {
+  "kind": "component",
+  "category": "layout",
+  "description": "",
+  "props": [
+   {
+    "name": "items",
+    "type": "AccordionItem[]",
+    "required": true,
+    "default": null,
+    "description": "The sections, top to bottom; each `value` is the key that `value` / `onChange` list when it is open, and `meta` is quiet text at the end of the heading."
+   },
+   {
+    "name": "multiple",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "Several open at once (default) or one at a time."
+   },
+   {
+    "name": "value",
+    "type": "string[]",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "string[]",
+    "required": false,
+    "default": "[]",
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((open: string[]) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "level",
+    "type": "2 | 3 | 4 | 5 | 6",
+    "required": false,
+    "default": "3",
+    "description": "Heading level of the titles (default 3)."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Skeleton": {
+  "kind": "component",
+  "category": "layout",
+  "description": "",
+  "props": [
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   },
+   {
+    "name": "variant",
+    "type": "\"circle\" | \"rect\" | \"text\"",
+    "required": false,
+    "default": null,
+    "description": "The shape: lines of text (default), a rectangle, or a circle."
+   },
+   {
+    "name": "lines",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "How many lines (the last one is shorter). Only with `variant=\"text\"`."
+   },
+   {
+    "name": "width",
+    "type": "string | number",
+    "required": false,
+    "default": null,
+    "description": "The width in px, or any CSS length (default: the container's). Only with `variant=\"text\"` or `variant=\"rect\"`."
+   },
+   {
+    "name": "height",
+    "type": "string | number",
+    "required": false,
+    "default": null,
+    "description": "The height in px, or any CSS length (default: a line of text's, or 120 px for a rectangle). Only with `variant=\"text\"` or `variant=\"rect\"`."
+   },
+   {
+    "name": "radius",
+    "type": "string | number",
+    "required": false,
+    "default": null,
+    "description": "The corner radius in px, or any CSS length (default: the theme's). Only with `variant=\"text\"` or `variant=\"rect\"`."
+   },
+   {
+    "name": "size",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "The diameter in px (default 40). Only with `variant=\"circle\"`."
+   }
+  ],
+  "inherits": []
+ },
+ "MediaViewer": {
+  "kind": "component",
+  "category": "layout",
+  "description": "",
+  "props": [
+   {
+    "name": "open",
+    "type": "boolean",
+    "required": true,
+    "default": null,
+    "description": "Whether it is open (controlled). Use with `onClose`.",
+    "common": true
+   },
+   {
+    "name": "onClose",
+    "type": "(reason: CloseReason) => void",
+    "required": true,
+    "default": null,
+    "description": "Called when the user asks to close it (Escape, a tap outside or a close button, depending on the component); set `open` to false to close it.",
+    "common": true
+   },
+   {
+    "name": "items",
+    "type": "MediaItem[]",
+    "required": true,
+    "default": null,
+    "description": "The photos (or rendered items), in the order they are paged through."
+   },
+   {
+    "name": "index",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "The item shown, from 0 (controlled; use with `onIndexChange`)."
+   },
+   {
+    "name": "defaultIndex",
+    "type": "number",
+    "required": false,
+    "default": "0",
+    "description": "The item shown first when uncontrolled, from 0."
+   },
+   {
+    "name": "onIndexChange",
+    "type": "((index: number) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new index when the user pages (a swipe, the arrows, the arrow keys)."
+   },
+   {
+    "name": "getOrigin",
+    "type": "((index: number) => HTMLElement | null | undefined)",
+    "required": false,
+    "default": null,
+    "description": "The thumbnail item `index` opens out of and closes back into."
+   },
+   {
+    "name": "actions",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Extra buttons in the top bar."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The dialog's name (default \"Media viewer\")."
+   },
+   {
+    "name": "labels",
+    "type": "{ close?: string; previous?: string; next?: string; }",
+    "required": false,
+    "default": "{}",
+    "description": "Text the component writes itself (names for assistive technology, button text…), for translation; by default in English, or Korean under a Korean locale.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Timeline": {
+  "kind": "component",
+  "category": "layout",
+  "description": "",
+  "props": [
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "labels",
+    "type": "Labels",
+    "required": false,
+    "default": null,
+    "description": "What a screen reader hears for each status (default Completed / Current / Upcoming)."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "aria-labelledby",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The id of a heading that names the list (in place of `aria-label`)."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "TimelineItem": {
+  "kind": "component",
+  "category": "layout",
+  "description": "",
+  "props": [
+   {
+    "name": "itemKey",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "(internal: set by Timeline to the item's key; do not set it)."
+   },
+   {
+    "name": "phase",
+    "type": "\"leave\"",
+    "required": false,
+    "default": null,
+    "description": "(internal: set by Timeline on an item folding away; do not set it)."
+   },
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "What happened, or the step's name; a step's status is read out after it."
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "More detail under the title."
+   },
+   {
+    "name": "time",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "When it happened; a <time dateTime=\"…\"> is best."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   },
+   {
+    "name": "status",
+    "type": "TimelineStatus",
+    "required": false,
+    "default": null,
+    "description": "Makes it a step: done (a check), current (aria-current=\"step\") or upcoming (an empty ring); not with tone or icon."
+   },
+   {
+    "name": "tone",
+    "type": "Tone",
+    "required": false,
+    "default": null,
+    "description": "An event's colour: its dot, or the disc behind its icon (default neutral)."
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An event's icon, on a soft disc of its tone, in place of the dot (decorative)."
+   }
+  ],
+  "inherits": []
+ },
+ "TabBar": {
+  "kind": "component",
+  "category": "navigation",
+  "description": "",
+  "props": [
+   {
+    "name": "draggable",
+    "type": "boolean",
+    "required": false,
+    "default": "false",
+    "description": "The selection can be dragged across the tabs and lands where it is released (off by default: a tap selects)."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Defines a string value that labels the current element. the bar's name (default \"Tabs\")."
+   },
+   {
+    "name": "children",
+    "type": "ReactNode & (ReactElement<TabProps, string | JSXElementConstructor<any>> | ReactElement<TabProps, string | JSXElementConstructor<any>>[])",
+    "required": true,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "value",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((v: string) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "action",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An action at the end of the bar, after a hairline (e.g. search): a TabBarAction. It is not a tab, so the selection never travels to it."
+   },
+   {
+    "name": "showLabels",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "`false` shows icons only, in a shorter bar; the labels stay for screen readers, and a tab without an icon keeps its label visible."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "TabBarAction": {
+  "kind": "component",
+  "category": "navigation",
+  "description": "An action in a TabBar's `action` slot: an icon at the end of the bar, on the same glass, pressed like a tab.",
+  "props": [
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The icon, the only visible content."
+   },
+   {
+    "name": "label",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "The accessible name, also shown as a tooltip."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "ButtonHTMLAttributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "AppBar": {
+  "kind": "component",
+  "category": "navigation",
+  "description": "",
+  "props": [
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The page's title, in the bar as its h1."
+   },
+   {
+    "name": "leading",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Buttons at the start of the bar: back, a menu."
+   },
+   {
+    "name": "trailing",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Buttons at the end of the bar: actions on the page."
+   },
+   {
+    "name": "largeTitle",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "A large title below the bar that hands over to the small one when scrolled away."
+   },
+   {
+    "name": "transparentAtTop",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "The bar is see-through until content scrolls under it."
+   },
+   {
+    "name": "scrollTarget",
+    "type": "HTMLElement | null",
+    "required": false,
+    "default": null,
+    "description": "Scroll container to watch (defaults to window)."
+   },
+   {
+    "name": "attached",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Flush with the top edge as an opaque surface (no glass): for dense web screens, or when another glass bar already floats on the screen (one floating bar per screen reads best)."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "ScrollFade": {
+  "kind": "component",
+  "category": "navigation",
+  "description": "A colour fade under a floating bar (cheap: no blur).",
+  "props": [
+   {
+    "name": "edge",
+    "type": "\"top\" | \"bottom\"",
+    "required": false,
+    "default": "'top'",
+    "description": "The edge it fades from: under a top bar, or above a bottom bar."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Sidebar": {
+  "kind": "component",
+  "category": "navigation",
+  "description": "",
+  "props": [
+   {
+    "name": "glass",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "A floating glass panel; false puts the items straight on the page's background."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "SidebarSection": {
+  "kind": "component",
+  "category": "navigation",
+  "description": "",
+  "props": [
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "SidebarItem": {
+  "kind": "component",
+  "category": "navigation",
+  "description": "",
+  "props": [
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An icon before the text."
+   },
+   {
+    "name": "selected",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "The current page: highlighted, and aria-current=\"page\"."
+   },
+   {
+    "name": "count",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A number at the end of the row, e.g. unread items."
+   },
+   {
+    "name": "href",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Makes the item a link to this URL instead of a button."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes"
+  ]
+ },
+ "Breadcrumbs": {
+  "kind": "component",
+  "category": "navigation",
+  "description": "",
+  "props": [
+   {
+    "name": "items",
+    "type": "Crumb[]",
+    "required": true,
+    "default": null,
+    "description": "The levels, from the top down; the last is the current page (aria-current, not a link)."
+   },
+   {
+    "name": "maxItems",
+    "type": "number",
+    "required": false,
+    "default": "5",
+    "description": "Fold the middle when there are more levels than this (0: never)."
+   },
+   {
+    "name": "itemsBeforeCollapse",
+    "type": "number",
+    "required": false,
+    "default": "1",
+    "description": "Levels kept before the fold, from the top."
+   },
+   {
+    "name": "itemsAfterCollapse",
+    "type": "number",
+    "required": false,
+    "default": "2",
+    "description": "Levels kept after the fold, the current page among them."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Name of the landmark (default \"Breadcrumb\")."
+   },
+   {
+    "name": "moreLabel",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Label of the \"…\" button (default \"Show hidden levels\")."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "NavigationStack": {
+  "kind": "component",
+  "category": "navigation",
+  "description": "",
+  "props": [
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The first page."
+   },
+   {
+    "name": "labels",
+    "type": "{ back?: string; }",
+    "required": false,
+    "default": null,
+    "description": "The back button's accessible prefix (default \"Back\", or 뒤로 in Korean): \"Back: Settings\"."
+   },
+   {
+    "name": "onDepthChange",
+    "type": "((depth: number) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called after the depth changes."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "NavigationPage": {
+  "kind": "component",
+  "category": "navigation",
+  "description": "One page of a NavigationStack: a bar with the title and a back button (from the second page on), then content.",
+  "props": [
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The page's title in the bar; the next page's back button shows it, and focus goes to it when the page opens."
+   },
+   {
+    "name": "trailing",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Actions at the trailing end of the bar."
+   },
+   {
+    "name": "largeTitle",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "A large title under the bar that hands over to the small one as the page scrolls."
+   },
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Tabs": {
+  "kind": "component",
+  "category": "navigation",
+  "description": "",
+  "props": [
+   {
+    "name": "items",
+    "type": "TabItem<T>[]",
+    "required": true,
+    "default": null,
+    "description": "The tabs, in order; a selected item's `content` shows in the panel below (without any, render the panel yourself); a number or string `badge` becomes a neutral Badge."
+   },
+   {
+    "name": "value",
+    "type": "T",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "T",
+    "required": false,
+    "default": null,
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((value: T) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "variant",
+    "type": "\"underline\" | \"pill\"",
+    "required": false,
+    "default": "'underline'",
+    "description": "'underline' (default): one line, scrolls when it overflows; 'pill': wraps onto more lines."
+   },
+   {
+    "name": "activation",
+    "type": "\"auto\" | \"manual\"",
+    "required": false,
+    "default": "'auto'",
+    "description": "'auto': arrow keys move focus and select; 'manual': arrow keys move focus, and Enter or Space selects."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   },
+   {
+    "name": "panelClassName",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class for the panel (when items carry content)."
+   }
+  ],
+  "inherits": []
+ },
+ "Pagination": {
+  "kind": "component",
+  "category": "navigation",
+  "description": "",
+  "props": [
+   {
+    "name": "page",
+    "type": "number",
+    "required": true,
+    "default": null,
+    "description": "The current page, from 1 (controlled; use with `onChange`)."
+   },
+   {
+    "name": "pageCount",
+    "type": "number",
+    "required": true,
+    "default": null,
+    "description": "How many pages there are (at least 1)."
+   },
+   {
+    "name": "onChange",
+    "type": "(page: number) => void",
+    "required": true,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "siblings",
+    "type": "number",
+    "required": false,
+    "default": "1",
+    "description": "Pages shown on each side of the current one."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Name of the landmark (default \"Pagination\")."
+   },
+   {
+    "name": "labels",
+    "type": "{ previous?: string; next?: string; page?: (n: number) => string; }",
+    "required": false,
+    "default": "{}",
+    "description": "Text the component writes itself (names for assistive technology, button text…), for translation; by default in English, or Korean under a Korean locale.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "RadioGroup": {
+  "kind": "component",
+  "category": "selection",
+  "description": "Native radios with one name: arrow keys move and select, Tab enters at the checked one.",
+  "props": [
+   {
+    "name": "value",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((value: string) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "name",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The radios' shared name, submitted with forms (default: a generated one)."
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The group's visible title (a legend); it names the group."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   },
+   {
+    "name": "direction",
+    "type": "\"row\" | \"column\"",
+    "required": false,
+    "default": "'column'",
+    "description": "Stacks the radios (default) or puts them in a row."
+   },
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "ChoiceList": {
+  "kind": "component",
+  "category": "selection",
+  "description": "Rows of a grouped list are the options; a check mark marks the chosen ones (settings-style). Single choice is a radiogroup (arrow keys move and select), multiple choice a group of checkboxes (arrow keys move, Space toggles).",
+  "props": [
+   {
+    "name": "options",
+    "type": "ChoiceOption<T>[]",
+    "required": true,
+    "default": null,
+    "description": "The rows, top to bottom."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   },
+   {
+    "name": "multiple",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Several can be chosen (checkboxes, and the value is an array); otherwise one (a radiogroup)."
+   },
+   {
+    "name": "value",
+    "type": "T | T[]",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "T | T[]",
+    "required": false,
+    "default": null,
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((value: T) => void) | ((value: T[]) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Checkbox": {
+  "kind": "component",
+  "category": "selection",
+  "description": "",
+  "props": [
+   {
+    "name": "checked",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Whether it is checked or on (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultChecked",
+    "type": "boolean",
+    "required": false,
+    "default": "false",
+    "description": "Whether it starts checked or on when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "indeterminate",
+    "type": "boolean",
+    "required": false,
+    "default": "false",
+    "description": "Shows a dash; the checked value is unchanged (e.g. \"select all\" with some selected)."
+   },
+   {
+    "name": "onChange",
+    "type": "((checked: boolean) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The text beside the box; a click on it toggles the box, and it names the checkbox."
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A smaller line under the label, read as the checkbox's description."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "InputHTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "Radio": {
+  "kind": "component",
+  "category": "selection",
+  "description": "",
+  "props": [
+   {
+    "name": "value",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "What the group's `value` becomes when this radio is chosen; submitted with forms."
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The text beside the circle; a click on it selects the radio, and it names the radio."
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A smaller line under the label, read as the radio's description."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "Attributes",
+   "DOMAttributes",
+   "HTMLAttributes",
+   "InputHTMLAttributes",
+   "RefAttributes"
+  ]
+ },
+ "ChoiceOption": {
+  "kind": "type",
+  "category": "selection",
+  "description": "",
+  "props": [
+   {
+    "name": "value",
+    "type": "T",
+    "required": true,
+    "default": null,
+    "description": "The value this option stands for: what `value` and `onChange` carry when it is chosen."
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The row's title."
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A second, smaller line under the title."
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An icon in a coloured tile at the start of the row."
+   },
+   {
+    "name": "tileColor",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The icon tile's colour, any CSS colour (default: the accent)."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "SelectOption": {
+  "kind": "type",
+  "category": "selection",
+  "description": "",
+  "props": [
+   {
+    "name": "value",
+    "type": "T",
+    "required": true,
+    "default": null,
+    "description": "The value this option stands for: what `value` and `onChange` carry when it is chosen."
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The option's text, also shown in the field once chosen."
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A second, smaller line under the label, in the list only."
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An icon before the label, in the list and in the field once chosen."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   },
+   {
+    "name": "textValue",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Text used for type-to-select when the label is not a string."
+   }
+  ],
+  "inherits": []
+ },
+ "Select": {
+  "kind": "component",
+  "category": "selection",
+  "description": "",
+  "props": [
+   {
+    "name": "options",
+    "type": "(SelectOption<T> | SelectGroup<T>)[]",
+    "required": true,
+    "default": null,
+    "description": "The choices, in order, and named groups of them ({ label, options })."
+   },
+   {
+    "name": "value",
+    "type": "T | null",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "T | null",
+    "required": false,
+    "default": "null",
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((value: T) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "placeholder",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Shown while nothing is chosen (default \"Select…\")."
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The visible label (above the field; inside the pill for 'filter'); it names the select."
+   },
+   {
+    "name": "helperText",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A hint under the field, read with it as its description; an `error` message takes its place. Not shown by 'filter'."
+   },
+   {
+    "name": "error",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Marks the select invalid (aria-invalid); a message (anything but `true`) is shown under it in place of `helperText`, except by 'filter', which has no room for one."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   },
+   {
+    "name": "name",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Submits with forms."
+   },
+   {
+    "name": "variant",
+    "type": "\"filter\" | \"field\" | \"inline\"",
+    "required": false,
+    "default": "'field'",
+    "description": "'field' (default); 'inline' — accent text without field chrome, for a list row's trailing slot; 'filter' — a compact pill that reads \"label value ▾\" (toolbars and filter bars)."
+   },
+   {
+    "name": "placement",
+    "type": "Placement",
+    "required": false,
+    "default": "'bottom-start'",
+    "description": "Where the panel opens against its anchor: a side, optionally with an alignment (e.g. \"bottom-start\"); it flips to the other side when there is no room.",
+    "common": true
+   },
+   {
+    "name": "id",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The id of the root element (or of the form control, on fields).",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Combobox": {
+  "kind": "component",
+  "category": "selection",
+  "description": "",
+  "props": [
+   {
+    "name": "options",
+    "type": "(SelectOption<T> | SelectGroup<T>)[]",
+    "required": true,
+    "default": null,
+    "description": "Options and named groups, as Select; a rich (non-string) label needs textValue to be typed and matched."
+   },
+   {
+    "name": "inputValue",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The text in the field (control it to search a server)."
+   },
+   {
+    "name": "defaultInputValue",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The starting text when uncontrolled (default: the chosen value's text)."
+   },
+   {
+    "name": "onInputChange",
+    "type": "((text: string, reason: ComboboxInputReason) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new text and why it changed: typed ('input'), a choice ('select'), the clear button ('clear'), or put back to the value's text ('restore')."
+   },
+   {
+    "name": "filter",
+    "type": "\"none\" | ((option: SelectOption<T>, text: string) => boolean)",
+    "required": false,
+    "default": null,
+    "description": "Which options match the text (default: the text appears in the option's text, ignoring case); 'none' when the options already come filtered (a server search)."
+   },
+   {
+    "name": "getOptionText",
+    "type": "((value: T) => string)",
+    "required": false,
+    "default": null,
+    "description": "The text of a chosen value that is not among the options (results that no longer include it)."
+   },
+   {
+    "name": "loading",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Results are on their way: the list says so (labels.loading) in place of \"No results\"."
+   },
+   {
+    "name": "clearable",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "A button that clears the value (default true)."
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The visible label above the field, tied to the input."
+   },
+   {
+    "name": "placeholder",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Shown while empty.",
+    "common": true
+   },
+   {
+    "name": "helperText",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A hint under the field, read with it as its description; an `error` message takes its place.",
+    "common": true
+   },
+   {
+    "name": "error",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Marks the field invalid (aria-invalid); a message (anything but `true`) is shown under the field in place of `helperText`.",
+    "common": true
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   },
+   {
+    "name": "name",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Submits the value with forms."
+   },
+   {
+    "name": "placement",
+    "type": "Placement",
+    "required": false,
+    "default": "'bottom-start'",
+    "description": "Where the panel opens against its anchor: a side, optionally with an alignment (e.g. \"bottom-start\"); it flips to the other side when there is no room.",
+    "common": true
+   },
+   {
+    "name": "labels",
+    "type": "{ empty?: string; loading?: string; clear?: string; toggle?: string; remove?: (text: string) => string; chosen?: (texts: string[]) => string; count?: (n: number) => string; }",
+    "required": false,
+    "default": null,
+    "description": "Text the component writes itself (names for assistive technology, button text…), for translation; by default in English, or Korean under a Korean locale.",
+    "common": true
+   },
+   {
+    "name": "id",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The id of the root element (or of the form control, on fields).",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "multiple",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Several values, shown as removable chips; `value`, `defaultValue` and `onChange` then take an array, and choosing toggles an option and keeps the list open."
+   },
+   {
+    "name": "value",
+    "type": "T | T[] | null",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "T | T[] | null",
+    "required": false,
+    "default": null,
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((value: T | null) => void) | ((values: T[]) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "maxChips",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "When more than this many are chosen, a count (\"3 selected\") stands in for the chips, so the field keeps one line (a filter bar); a partial row of chips would hide most of the choice anyway. Only with `multiple={true}`."
+   }
+  ],
+  "inherits": []
+ },
+ "Calendar": {
+  "kind": "component",
+  "category": "selection",
+  "description": "",
+  "props": [
+   {
+    "name": "value",
+    "type": "Date | null",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "Date | null",
+    "required": false,
+    "default": "null",
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((date: Date) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "min",
+    "type": "Date",
+    "required": false,
+    "default": null,
+    "description": "The earliest day that can be chosen; earlier days are disabled, and the keyboard, the month buttons and the year grid stop there."
+   },
+   {
+    "name": "max",
+    "type": "Date",
+    "required": false,
+    "default": null,
+    "description": "The latest day that can be chosen; later days are disabled, and the keyboard, the month buttons and the year grid stop there."
+   },
+   {
+    "name": "isDateDisabled",
+    "type": "((date: Date) => boolean)",
+    "required": false,
+    "default": null,
+    "description": "Return true for days that cannot be chosen (weekends, holidays…)."
+   },
+   {
+    "name": "locale",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "BCP 47 locale for month and weekday names and the words it writes (default: the ThemeProvider's `locale`, else 'en-US')."
+   },
+   {
+    "name": "weekStartsOn",
+    "type": "0 | 1",
+    "required": false,
+    "default": "0",
+    "description": "0 = Sunday (default), 1 = Monday."
+   },
+   {
+    "name": "autoFocus",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Move focus to the selected (or today's) day when shown."
+   },
+   {
+    "name": "defaultMonth",
+    "type": "Date",
+    "required": false,
+    "default": null,
+    "description": "The month shown while there is no value (default: this month), e.g. when the likely dates are far from today."
+   },
+   {
+    "name": "openTo",
+    "type": "\"month\" | \"day\" | \"year\"",
+    "required": false,
+    "default": "'day'",
+    "description": "Open on the days (default), the months or the years — a birth date is quicker to reach by its year."
+   },
+   {
+    "name": "monthPicker",
+    "type": "\"grid\" | \"wheel\"",
+    "required": false,
+    "default": "'grid'",
+    "description": "How the month and year are picked: grids (default) or wheels."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   }
+  ],
+  "inherits": [
+   "Attributes",
+   "RefAttributes"
+  ]
+ },
+ "DatePicker": {
+  "kind": "component",
+  "category": "selection",
+  "description": "A field that opens a Calendar in an anchored panel; choosing a day closes it and returns focus to the field.",
+  "props": [
+   {
+    "name": "defaultValue",
+    "type": "Date | null",
+    "required": false,
+    "default": "null",
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((date: Date) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "value",
+    "type": "Date | null",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "min",
+    "type": "Date",
+    "required": false,
+    "default": null,
+    "description": "The earliest day that can be chosen; earlier days are disabled, and the keyboard, the month buttons and the year grid stop there."
+   },
+   {
+    "name": "max",
+    "type": "Date",
+    "required": false,
+    "default": null,
+    "description": "The latest day that can be chosen; later days are disabled, and the keyboard, the month buttons and the year grid stop there."
+   },
+   {
+    "name": "isDateDisabled",
+    "type": "((date: Date) => boolean)",
+    "required": false,
+    "default": null,
+    "description": "Return true for days that cannot be chosen (weekends, holidays…)."
+   },
+   {
+    "name": "locale",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "BCP 47 locale for month and weekday names and the words it writes (default: the ThemeProvider's `locale`, else 'en-US')."
+   },
+   {
+    "name": "weekStartsOn",
+    "type": "0 | 1",
+    "required": false,
+    "default": null,
+    "description": "0 = Sunday (default), 1 = Monday."
+   },
+   {
+    "name": "defaultMonth",
+    "type": "Date",
+    "required": false,
+    "default": null,
+    "description": "The month shown while there is no value (default: this month), e.g. when the likely dates are far from today."
+   },
+   {
+    "name": "openTo",
+    "type": "\"month\" | \"day\" | \"year\"",
+    "required": false,
+    "default": null,
+    "description": "Open on the days (default), the months or the years — a birth date is quicker to reach by its year."
+   },
+   {
+    "name": "monthPicker",
+    "type": "\"grid\" | \"wheel\"",
+    "required": false,
+    "default": null,
+    "description": "How the month and year are picked: grids (default) or wheels."
+   },
+   {
+    "name": "placeholder",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Shown while empty.",
+    "common": true
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The visible label above the field; it names the field's button, with the value."
+   },
+   {
+    "name": "helperText",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A hint under the field, read with it as its description; an `error` message takes its place.",
+    "common": true
+   },
+   {
+    "name": "error",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Marks the field invalid (aria-invalid); a message (anything but `true`) is shown under the field in place of `helperText`.",
+    "common": true
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   },
+   {
+    "name": "name",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Submits yyyy-mm-dd with forms."
+   },
+   {
+    "name": "format",
+    "type": "((date: Date) => string)",
+    "required": false,
+    "default": null,
+    "description": "How the chosen date is written in the field (default: Intl dateStyle 'medium' for the locale)."
+   },
+   {
+    "name": "placement",
+    "type": "Placement",
+    "required": false,
+    "default": "'bottom-start'",
+    "description": "Where the panel opens against its anchor: a side, optionally with an alignment (e.g. \"bottom-start\"); it flips to the other side when there is no room.",
+    "common": true
+   },
+   {
+    "name": "id",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The id of the root element (or of the form control, on fields).",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": [
+   "Attributes",
+   "RefAttributes"
+  ]
+ },
+ "RangeCalendar": {
+  "kind": "component",
+  "category": "selection",
+  "description": "A calendar that chooses a start and an end. The first pick is the start; the second, the end (an earlier day, or one the range cannot reach — past maxLength or past a disabled day — starts over; the start again clears it). Days between start and end are joined by a band.",
+  "props": [
+   {
+    "name": "autoFocus",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Move focus to the selected (or today's) day when shown."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "min",
+    "type": "Date",
+    "required": false,
+    "default": null,
+    "description": "The earliest day that can be chosen; earlier days are disabled, and the keyboard, the month buttons and the year grid stop there."
+   },
+   {
+    "name": "max",
+    "type": "Date",
+    "required": false,
+    "default": null,
+    "description": "The latest day that can be chosen; later days are disabled, and the keyboard, the month buttons and the year grid stop there."
+   },
+   {
+    "name": "isDateDisabled",
+    "type": "((date: Date) => boolean)",
+    "required": false,
+    "default": null,
+    "description": "Return true for days that cannot be chosen (weekends, holidays…)."
+   },
+   {
+    "name": "locale",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "BCP 47 locale for month and weekday names and the words it writes (default: the ThemeProvider's `locale`, else 'en-US')."
+   },
+   {
+    "name": "weekStartsOn",
+    "type": "0 | 1",
+    "required": false,
+    "default": null,
+    "description": "0 = Sunday (default), 1 = Monday."
+   },
+   {
+    "name": "defaultMonth",
+    "type": "Date",
+    "required": false,
+    "default": null,
+    "description": "The month shown while there is no value (default: this month), e.g. when the likely dates are far from today."
+   },
+   {
+    "name": "monthPicker",
+    "type": "\"grid\" | \"wheel\"",
+    "required": false,
+    "default": null,
+    "description": "How the month and year are picked: grids (default) or wheels."
+   },
+   {
+    "name": "value",
+    "type": "DateRange | null",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "DateRange | null",
+    "required": false,
+    "default": "null",
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((range: DateRange) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called when both days are chosen."
+   },
+   {
+    "name": "onPartial",
+    "type": "((start: Date | null) => void)",
+    "required": false,
+    "default": null,
+    "description": "The first day was chosen (a date) or cleared (null), the second is awaited."
+   },
+   {
+    "name": "minLength",
+    "type": "number",
+    "required": false,
+    "default": "0",
+    "description": "Fewest days from the start to the end (default 0: the end may be the start day; 1 asks for at least one night)."
+   },
+   {
+    "name": "maxLength",
+    "type": "number",
+    "required": false,
+    "default": "Infinity",
+    "description": "Most days from the start to the end (default: no limit); a day beyond it starts a new range instead."
+   },
+   {
+    "name": "unit",
+    "type": "\"days\" | \"nights\"",
+    "required": false,
+    "default": "'days'",
+    "description": "How the length is written: 'days' (\"3 days\", default) or 'nights' (\"2 nights\"; \"2박 3일\" in Korean)."
+   },
+   {
+    "name": "labels",
+    "type": "{ start?: string; end?: string; }",
+    "required": false,
+    "default": null,
+    "description": "What the two days are called (check-in / check-out); default \"start date\" / \"end date\" (시작일 / 종료일 in Korean)."
+   },
+   {
+    "name": "status",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "The line under the days that says what to choose next and how long the range is (default true)."
+   }
+  ],
+  "inherits": [
+   "Attributes",
+   "RefAttributes"
+  ]
+ },
+ "DateRangePicker": {
+  "kind": "component",
+  "category": "selection",
+  "description": "A field that opens a RangeCalendar. Choosing the end closes it with the new range; Escape or a click outside before then leaves the range as it was.",
+  "props": [
+   {
+    "name": "defaultValue",
+    "type": "DateRange | null",
+    "required": false,
+    "default": "null",
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "autoFocus",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Move focus to the selected (or today's) day when shown."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((range: DateRange) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called when both days are chosen."
+   },
+   {
+    "name": "value",
+    "type": "DateRange | null",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "min",
+    "type": "Date",
+    "required": false,
+    "default": null,
+    "description": "The earliest day that can be chosen; earlier days are disabled, and the keyboard, the month buttons and the year grid stop there."
+   },
+   {
+    "name": "max",
+    "type": "Date",
+    "required": false,
+    "default": null,
+    "description": "The latest day that can be chosen; later days are disabled, and the keyboard, the month buttons and the year grid stop there."
+   },
+   {
+    "name": "maxLength",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "Most days from the start to the end (default: no limit); a day beyond it starts a new range instead."
+   },
+   {
+    "name": "minLength",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "Fewest days from the start to the end (default 0: the end may be the start day; 1 asks for at least one night)."
+   },
+   {
+    "name": "isDateDisabled",
+    "type": "((date: Date) => boolean)",
+    "required": false,
+    "default": null,
+    "description": "Return true for days that cannot be chosen (weekends, holidays…)."
+   },
+   {
+    "name": "locale",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "BCP 47 locale for month and weekday names and the words it writes (default: the ThemeProvider's `locale`, else 'en-US')."
+   },
+   {
+    "name": "weekStartsOn",
+    "type": "0 | 1",
+    "required": false,
+    "default": null,
+    "description": "0 = Sunday (default), 1 = Monday."
+   },
+   {
+    "name": "defaultMonth",
+    "type": "Date",
+    "required": false,
+    "default": null,
+    "description": "The month shown while there is no value (default: this month), e.g. when the likely dates are far from today."
+   },
+   {
+    "name": "monthPicker",
+    "type": "\"grid\" | \"wheel\"",
+    "required": false,
+    "default": null,
+    "description": "How the month and year are picked: grids (default) or wheels."
+   },
+   {
+    "name": "unit",
+    "type": "\"days\" | \"nights\"",
+    "required": false,
+    "default": "'days'",
+    "description": "How the length is written: 'days' (\"3 days\", default) or 'nights' (\"2 nights\"; \"2박 3일\" in Korean)."
+   },
+   {
+    "name": "labels",
+    "type": "{ start?: string; end?: string; }",
+    "required": false,
+    "default": null,
+    "description": "What the two days are called (check-in / check-out); default \"start date\" / \"end date\" (시작일 / 종료일 in Korean)."
+   },
+   {
+    "name": "placeholder",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Shown while empty.",
+    "common": true
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The visible label above the field; it names the field's button, with the value."
+   },
+   {
+    "name": "helperText",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A hint under the field, read with it as its description; an `error` message takes its place.",
+    "common": true
+   },
+   {
+    "name": "error",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Marks the field invalid (aria-invalid); a message (anything but `true`) is shown under the field in place of `helperText`.",
+    "common": true
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   },
+   {
+    "name": "name",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Submits the range with forms as an ISO 8601 interval, yyyy-mm-dd/yyyy-mm-dd."
+   },
+   {
+    "name": "format",
+    "type": "((range: DateRange) => string)",
+    "required": false,
+    "default": null,
+    "description": "How the range is written in the field (default: the locale's short span); its length always follows."
+   },
+   {
+    "name": "placement",
+    "type": "Placement",
+    "required": false,
+    "default": "'bottom-start'",
+    "description": "Where the panel opens against its anchor: a side, optionally with an alignment (e.g. \"bottom-start\"); it flips to the other side when there is no room.",
+    "common": true
+   },
+   {
+    "name": "id",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The id of the root element (or of the form control, on fields).",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": [
+   "Attributes",
+   "RefAttributes"
+  ]
+ },
+ "Wheel": {
+  "kind": "component",
+  "category": "selection",
+  "description": "",
+  "props": [
+   {
+    "name": "options",
+    "type": "WheelOption<T>[]",
+    "required": true,
+    "default": null,
+    "description": "The rows, top to bottom; disabled ones are passed over."
+   },
+   {
+    "name": "value",
+    "type": "T",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "T",
+    "required": false,
+    "default": null,
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((value: T) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called once the wheel comes to rest on a row (or at once from the keyboard)."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "pageStep",
+    "type": "number",
+    "required": false,
+    "default": "5",
+    "description": "Rows moved by PageUp / PageDown (default 5)."
+   },
+   {
+    "name": "align",
+    "type": "\"center\" | \"end\" | \"start\"",
+    "required": false,
+    "default": "'center'",
+    "description": "Where the text sits in the column (default 'center')."
+   },
+   {
+    "name": "onCommit",
+    "type": "(() => void)",
+    "required": false,
+    "default": null,
+    "description": "Enter / Space on the column (a picker can close, a calendar can go back to its days)."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Shown but not turned: no scrolling, dragging, clicks or keys, and out of the tab order."
+   },
+   {
+    "name": "id",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The id of the root element (or of the form control, on fields).",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "WheelGroup": {
+  "kind": "component",
+  "category": "selection",
+  "description": "Columns side by side under one selection band (a time: hour · minute · period; a month and a year).",
+  "props": [
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "rows",
+    "type": "number",
+    "required": false,
+    "default": "5",
+    "description": "How many rows show (36 px each), the chosen one in the middle; an odd number keeps it centred."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": "false",
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "TimeWheel": {
+  "kind": "component",
+  "category": "selection",
+  "description": "Hour, minute (and period) wheels for a time of day. Shows `value`, or 09:00 until one is chosen.",
+  "props": [
+   {
+    "name": "value",
+    "type": "string | null",
+    "required": false,
+    "default": null,
+    "description": "The time as \"HH:mm\", 24-hour (controlled). Use with `onChange`."
+   },
+   {
+    "name": "defaultValue",
+    "type": "string | null",
+    "required": false,
+    "default": "null",
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((value: string) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "minuteStep",
+    "type": "number",
+    "required": false,
+    "default": "1",
+    "description": "Minutes between rows (default 1; 5 is common for alarms and bookings)."
+   },
+   {
+    "name": "hour12",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "12-hour clock with a period column; default: what the locale uses."
+   },
+   {
+    "name": "locale",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "BCP 47 locale for the clock (12- or 24-hour, where the period goes) and the names read out (default: the ThemeProvider's `locale`, else 'en-US')."
+   },
+   {
+    "name": "rows",
+    "type": "number",
+    "required": false,
+    "default": "5",
+    "description": "How many rows show (36 px each), the chosen one in the middle."
+   },
+   {
+    "name": "onCommit",
+    "type": "(() => void)",
+    "required": false,
+    "default": null,
+    "description": "Enter / Space on a column (a picker uses it to close)."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Shown, but the time cannot be changed (an alarm that is off)."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "WheelOption": {
+  "kind": "type",
+  "category": "selection",
+  "description": "",
+  "props": [
+   {
+    "name": "value",
+    "type": "T",
+    "required": true,
+    "default": null,
+    "description": "The value this option stands for: what `value` and `onChange` carry when it is chosen."
+   },
+   {
+    "name": "label",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "The row's text, read as the value; typing its first letters on the column jumps to it."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "TimePicker": {
+  "kind": "component",
+  "category": "selection",
+  "description": "A field that opens time wheels in an anchored panel. The wheels change a draft, shown in the field while the panel is open; Done, Enter or a click outside takes it (onChange fires once), Cancel or Escape drops the draft and keeps the time as it was (or none). Opening without a value starts the draft at `openTo` (or now).",
+  "props": [
+   {
+    "name": "defaultValue",
+    "type": "string | null",
+    "required": false,
+    "default": "null",
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((value: string) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Shown, but the time cannot be changed (an alarm that is off)."
+   },
+   {
+    "name": "value",
+    "type": "string | null",
+    "required": false,
+    "default": null,
+    "description": "The time as \"HH:mm\", 24-hour (controlled). Use with `onChange`."
+   },
+   {
+    "name": "locale",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "BCP 47 locale for the clock (12- or 24-hour, where the period goes) and the names read out (default: the ThemeProvider's `locale`, else 'en-US')."
+   },
+   {
+    "name": "minuteStep",
+    "type": "number",
+    "required": false,
+    "default": "1",
+    "description": "Minutes between rows (default 1; 5 is common for alarms and bookings)."
+   },
+   {
+    "name": "hour12",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "12-hour clock with a period column; default: what the locale uses."
+   },
+   {
+    "name": "placeholder",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Shown while empty.",
+    "common": true
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The visible label above the field; it names the field's button, with the value."
+   },
+   {
+    "name": "helperText",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A hint under the field, read with it as its description; an `error` message takes its place.",
+    "common": true
+   },
+   {
+    "name": "error",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Marks the field invalid (aria-invalid); a message (anything but `true`) is shown under the field in place of `helperText`.",
+    "common": true
+   },
+   {
+    "name": "name",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Submits HH:mm with forms."
+   },
+   {
+    "name": "openTo",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The time the wheels open on while there is no value yet (default: now, rounded up to minuteStep)."
+   },
+   {
+    "name": "placement",
+    "type": "Placement",
+    "required": false,
+    "default": "'bottom-start'",
+    "description": "Where the panel opens against its anchor: a side, optionally with an alignment (e.g. \"bottom-start\"); it flips to the other side when there is no room.",
+    "common": true
+   },
+   {
+    "name": "id",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The id of the root element (or of the form control, on fields).",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": [
+   "Attributes",
+   "RefAttributes"
+  ]
+ },
+ "WeekdayPicker": {
+  "kind": "component",
+  "category": "selection",
+  "description": "Toggles for the seven days; the value is the chosen days, sorted from Sunday.",
+  "props": [
+   {
+    "name": "value",
+    "type": "number[]",
+    "required": false,
+    "default": null,
+    "description": "The current value (controlled). Use with `onChange`.",
+    "common": true
+   },
+   {
+    "name": "defaultValue",
+    "type": "number[]",
+    "required": false,
+    "default": "[]",
+    "description": "The starting value when uncontrolled.",
+    "common": true
+   },
+   {
+    "name": "onChange",
+    "type": "((days: number[]) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new value when the user changes it.",
+    "common": true
+   },
+   {
+    "name": "locale",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "BCP 47 locale for the day names (default: the ThemeProvider's `locale`, else 'en-US')."
+   },
+   {
+    "name": "weekStartsOn",
+    "type": "0 | 1",
+    "required": false,
+    "default": "0",
+    "description": "0 = Sunday (default), 1 = Monday."
+   },
+   {
+    "name": "size",
+    "type": "\"sm\" | \"md\"",
+    "required": false,
+    "default": "'md'",
+    "description": "'sm' is smaller days, for a list row."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Tooltip": {
+  "kind": "component",
+  "category": "overlays",
+  "description": "A short label for a control, on hover and on keyboard focus. It describes the control (aria-describedby), stays open while the pointer moves onto it, closes on Escape, and never takes focus. Not for touch.",
+  "props": [
+   {
+    "name": "content",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The tooltip's text; it becomes the trigger's description (aria-describedby), so keep it short and not the only name an icon-only control has."
+   },
+   {
+    "name": "children",
+    "type": "ReactElement<unknown, string | JSXElementConstructor<any>>",
+    "required": true,
+    "default": null,
+    "description": "The trigger: one element that takes a ref and pointer and focus handlers."
+   },
+   {
+    "name": "placement",
+    "type": "Placement",
+    "required": false,
+    "default": "'top'",
+    "description": "Where the panel opens against its anchor: a side, optionally with an alignment (e.g. \"bottom-start\"); it flips to the other side when there is no room.",
+    "common": true
+   },
+   {
+    "name": "delay",
+    "type": "number",
+    "required": false,
+    "default": "500",
+    "description": "The wait in ms before it appears on hover (instant when another tooltip was just open)."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Shows no tooltip; the trigger itself is unchanged."
+   }
+  ],
+  "inherits": []
+ },
+ "Dialog": {
+  "kind": "component",
+  "category": "overlays",
+  "description": "",
+  "props": [
+   {
+    "name": "open",
+    "type": "boolean",
+    "required": true,
+    "default": null,
+    "description": "Whether it is open (controlled). Use with `onClose`.",
+    "common": true
+   },
+   {
+    "name": "onClose",
+    "type": "(reason: CloseReason) => void",
+    "required": true,
+    "default": null,
+    "description": "Called when the user asks to close it (Escape, a tap outside or a close button, depending on the component); set `open` to false to close it.",
+    "common": true
+   },
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The heading; it names the dialog."
+   },
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An icon in a tile above the title."
+   },
+   {
+    "name": "tone",
+    "type": "\"accent\" | \"danger\"",
+    "required": false,
+    "default": "'accent'",
+    "description": "The icon tile's colour: danger for a destructive confirmation."
+   },
+   {
+    "name": "actions",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Buttons; give each a variant. Stacked automatically when there are three or more."
+   },
+   {
+    "name": "dismissible",
+    "type": "boolean",
+    "required": false,
+    "default": "false",
+    "description": "A click on the scrim closes it too (leave it off for confirmations); Escape always does."
+   },
+   {
+    "name": "role",
+    "type": "\"dialog\" | \"alertdialog\"",
+    "required": false,
+    "default": "'alertdialog'",
+    "description": "'alertdialog' for a confirmation that interrupts; 'dialog' for one that does not need an answer at once."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Sheet": {
+  "kind": "component",
+  "category": "overlays",
+  "description": "",
+  "props": [
+   {
+    "name": "open",
+    "type": "boolean",
+    "required": true,
+    "default": null,
+    "description": "Whether it is open (controlled). Use with `onClose`.",
+    "common": true
+   },
+   {
+    "name": "onClose",
+    "type": "(reason: CloseReason) => void",
+    "required": true,
+    "default": null,
+    "description": "Called when the user asks to close it (Escape, a tap outside or a close button, depending on the component); set `open` to false to close it.",
+    "common": true
+   },
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The heading in the sheet's header; it names the sheet (without one, give an aria-label)."
+   },
+   {
+    "name": "leading",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Header buttons at the start: Cancel, Back."
+   },
+   {
+    "name": "trailing",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Header buttons at the end: Done, Save."
+   },
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "height",
+    "type": "\"full\" | \"auto\"",
+    "required": false,
+    "default": "'auto'",
+    "description": "'auto' fits the content; 'full' takes the available height."
+   },
+   {
+    "name": "adaptive",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "Centred dialog on wide screens."
+   },
+   {
+    "name": "dismissible",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "A click on the scrim or a swipe down closes it (default true); Escape always does."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "MenuItem": {
+  "kind": "component",
+  "category": "overlays",
+  "description": "",
+  "props": [
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An icon before the text."
+   },
+   {
+    "name": "hint",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Quiet text at the end, e.g. a keyboard shortcut."
+   },
+   {
+    "name": "tone",
+    "type": "\"default\" | \"danger\"",
+    "required": false,
+    "default": "'default'",
+    "description": "'danger' colours a destructive item."
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Cannot be used, and says so to assistive technology.",
+    "common": true
+   },
+   {
+    "name": "checked",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Set (true or false) to make a checkable item (menuitemcheckbox) with a check mark when true."
+   },
+   {
+    "name": "onSelect",
+    "type": "(() => void)",
+    "required": false,
+    "default": null,
+    "description": "Called when the item is chosen, after the menu has asked to close."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes"
+  ]
+ },
+ "Menu": {
+  "kind": "component",
+  "category": "overlays",
+  "description": "",
+  "props": [
+   {
+    "name": "open",
+    "type": "boolean",
+    "required": true,
+    "default": null,
+    "description": "Whether it is open (controlled). Use with `onClose`.",
+    "common": true
+   },
+   {
+    "name": "onClose",
+    "type": "(reason: CloseReason) => void",
+    "required": true,
+    "default": null,
+    "description": "Called when the user asks to close it (Escape, a tap outside or a close button, depending on the component); set `open` to false to close it.",
+    "common": true
+   },
+   {
+    "name": "anchor",
+    "type": "Anchor",
+    "required": true,
+    "default": null,
+    "description": "The element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does not close the panel, and the panel closes when it leaves the layout."
+   },
+   {
+    "name": "placement",
+    "type": "Placement",
+    "required": false,
+    "default": "'bottom-start'",
+    "description": "Where the panel opens against its anchor: a side, optionally with an alignment (e.g. \"bottom-start\"); it flips to the other side when there is no room.",
+    "common": true
+   },
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "lockScroll",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Keep the page from scrolling while the menu is open (used by ContextMenu, whose lifted item and scrim are a moment of focus)."
+   }
+  ],
+  "inherits": []
+ },
+ "Popover": {
+  "kind": "component",
+  "category": "overlays",
+  "description": "",
+  "props": [
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "anchor",
+    "type": "Anchor",
+    "required": true,
+    "default": null,
+    "description": "The element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does not close the panel, and the panel closes when it leaves the layout."
+   },
+   {
+    "name": "placement",
+    "type": "Placement",
+    "required": false,
+    "default": "'bottom'",
+    "description": "Where the panel opens against its anchor: a side, optionally with an alignment (e.g. \"bottom-start\"); it flips to the other side when there is no room.",
+    "common": true
+   },
+   {
+    "name": "open",
+    "type": "boolean",
+    "required": true,
+    "default": null,
+    "description": "Whether it is open (controlled). Use with `onClose`.",
+    "common": true
+   },
+   {
+    "name": "onClose",
+    "type": "(reason: CloseReason) => void",
+    "required": true,
+    "default": null,
+    "description": "Called when the user asks to close it (Escape, a tap outside or a close button, depending on the component); set `open` to false to close it.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "aria-labelledby",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The id of a heading inside that names the popover (in place of `aria-label`)."
+   }
+  ],
+  "inherits": []
+ },
+ "ActionSheet": {
+  "kind": "component",
+  "category": "overlays",
+  "description": "",
+  "props": [
+   {
+    "name": "open",
+    "type": "boolean",
+    "required": true,
+    "default": null,
+    "description": "Whether it is open (controlled). Use with `onClose`.",
+    "common": true
+   },
+   {
+    "name": "onClose",
+    "type": "(reason: CloseReason) => void",
+    "required": true,
+    "default": null,
+    "description": "Called when the user asks to close it (Escape, a tap outside or a close button, depending on the component); set `open` to false to close it.",
+    "common": true
+   },
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A quiet heading above the actions; it names the sheet."
+   },
+   {
+    "name": "message",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A line under the title: what the choice is about."
+   },
+   {
+    "name": "actions",
+    "type": "ActionSheetAction[]",
+    "required": true,
+    "default": null,
+    "description": "The rows, top to bottom; choosing one closes the sheet (onClose 'action'), then calls its onSelect."
+   },
+   {
+    "name": "cancelLabel",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The text of the closing row at the foot, which takes focus when the sheet opens (default \"Cancel\")."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The sheet's accessible name when it has no `title`."
+   },
+   {
+    "name": "aria-labelledby",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The id of an element that names the sheet, when it has no `title` (in place of `aria-label`)."
+   }
+  ],
+  "inherits": []
+ },
+ "ContextMenu": {
+  "kind": "component",
+  "category": "overlays",
+  "description": "",
+  "props": [
+   {
+    "name": "menu",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The menu's content: MenuItem, MenuLabel and MenuSeparator elements."
+   },
+   {
+    "name": "children",
+    "type": "ReactElement<unknown, string | JSXElementConstructor<any>>",
+    "required": true,
+    "default": null,
+    "description": "A single element; long press, right click, Shift+F10 or the Menu key open the menu."
+   },
+   {
+    "name": "previewSelector",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Element inside the child to lift (defaults to the whole child)."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Toaster": {
+  "kind": "component",
+  "category": "overlays",
+  "description": "",
+  "props": [
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "position",
+    "type": "\"top\" | \"bottom\"",
+    "required": false,
+    "default": "'top'",
+    "description": "The edge the toasts appear at, and swipe towards to dismiss."
+   }
+  ],
+  "inherits": []
+ },
+ "MenuLabel": {
+  "kind": "component",
+  "category": "overlays",
+  "description": "",
+  "props": [
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Drawer": {
+  "kind": "component",
+  "category": "overlays",
+  "description": "",
+  "props": [
+   {
+    "name": "open",
+    "type": "boolean",
+    "required": true,
+    "default": null,
+    "description": "Whether it is open (controlled). Use with `onClose`.",
+    "common": true
+   },
+   {
+    "name": "onClose",
+    "type": "(reason: CloseReason) => void",
+    "required": true,
+    "default": null,
+    "description": "Called when the user asks to close it (Escape, a tap outside or a close button, depending on the component); set `open` to false to close it.",
+    "common": true
+   },
+   {
+    "name": "leading",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Header buttons before the title."
+   },
+   {
+    "name": "trailing",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Header buttons after the title, before the close button."
+   },
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "dismissible",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "A click on the scrim or a swipe towards the edge closes it (default true); Escape and the close button always do."
+   },
+   {
+    "name": "labels",
+    "type": "{ close?: string; resize?: string; }",
+    "required": false,
+    "default": null,
+    "description": "Text the component writes itself (names for assistive technology, button text…), for translation; by default in English, or Korean under a Korean locale.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "resizable",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Top / bottom only: a grip on the free edge lets the user set the height, between minHeight and maxHeight."
+   },
+   {
+    "name": "minHeight",
+    "type": "Length",
+    "required": false,
+    "default": null,
+    "description": "The minimum height the grip allows (default: the header plus a few lines)."
+   },
+   {
+    "name": "maxHeight",
+    "type": "Length",
+    "required": false,
+    "default": null,
+    "description": "The maximum height the grip allows (default: the screen)."
+   },
+   {
+    "name": "defaultHeight",
+    "type": "Length",
+    "required": false,
+    "default": null,
+    "description": "The starting height when uncontrolled; what the user sets is kept while the drawer stays mounted."
+   },
+   {
+    "name": "onHeightChange",
+    "type": "((height: number) => void) | ((height: number) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new height in px when the user resizes it."
+   },
+   {
+    "name": "side",
+    "type": "\"end\" | \"start\" | \"top\" | \"bottom\"",
+    "required": false,
+    "default": null,
+    "description": "The edge it comes in from: 'end' (default) or 'start' follow the writing direction; 'top' and 'bottom' span the full width."
+   },
+   {
+    "name": "width",
+    "type": "Length",
+    "required": false,
+    "default": null,
+    "description": "The width of a start / end drawer: px or any CSS length."
+   },
+   {
+    "name": "height",
+    "type": "Length",
+    "required": false,
+    "default": null,
+    "description": "The height of a top / bottom drawer: px or any CSS length (default half the screen); with `resizable`, set it to control the height (use with `onHeightChange`)."
+   },
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The heading in the header; it names the drawer (without one, `aria-label` is required)."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Banner": {
+  "kind": "component",
+  "category": "feedback",
+  "description": "An inline message in the flow of the page. Dismissing folds it away (the content below closes the gap).",
+  "props": [
+   {
+    "name": "tone",
+    "type": "\"danger\" | \"success\" | \"neutral\" | \"info\" | \"warning\"",
+    "required": false,
+    "default": "'info'",
+    "description": "The colour and the default icon."
+   },
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A bold first line."
+   },
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Replaces the tone's icon; false shows none."
+   },
+   {
+    "name": "actions",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Buttons on the trailing side (or below on narrow widths)."
+   },
+   {
+    "name": "onDismiss",
+    "type": "(() => void)",
+    "required": false,
+    "default": null,
+    "description": "Shows a close button; called once the banner has folded away."
+   },
+   {
+    "name": "dismissLabel",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The close button's accessible name (default \"Dismiss\", or 닫기 in Korean)."
+   },
+   {
+    "name": "live",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Announce it when it appears (role alert for danger/warning, status otherwise)."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "EmptyState": {
+  "kind": "component",
+  "category": "feedback",
+  "description": "What to show where content would be: what is missing and what to do about it.",
+  "props": [
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A large icon above the title (decorative)."
+   },
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "What is missing: \"No results\"."
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Why, or what to do about it."
+   },
+   {
+    "name": "actions",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Buttons that fix it: create the first item, clear the filters."
+   },
+   {
+    "name": "size",
+    "type": "\"sm\" | \"md\"",
+    "required": false,
+    "default": "'md'",
+    "description": "'sm': less padding, for an empty state inside a table or a card."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Tag": {
+  "kind": "component",
+  "category": "feedback",
+  "description": "",
+  "props": [
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The content.",
+    "common": true
+   },
+   {
+    "name": "tone",
+    "type": "Tone",
+    "required": false,
+    "default": "'neutral'",
+    "description": "The colour; it backs up the words and never carries the meaning alone."
+   },
+   {
+    "name": "variant",
+    "type": "\"soft\" | \"outline\"",
+    "required": false,
+    "default": "'soft'",
+    "description": "Soft fill (default) or a hairline outline (quieter, for many tags side by side)."
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A small icon before the text."
+   }
+  ],
+  "inherits": [
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes"
+  ]
+ },
+ "DataTable": {
+  "kind": "component",
+  "category": "data",
+  "description": "",
+  "props": [
+   {
+    "name": "rows",
+    "type": "T[]",
+    "required": true,
+    "default": null,
+    "description": "The rows, in the order shown when nothing is sorted."
+   },
+   {
+    "name": "columns",
+    "type": "Column<T>[]",
+    "required": true,
+    "default": null,
+    "description": "The columns, left to right."
+   },
+   {
+    "name": "hiddenColumns",
+    "type": "string[]",
+    "required": false,
+    "default": null,
+    "description": "Keys of columns not shown (a ColumnChooser edits this); a hidden sorted column stops sorting."
+   },
+   {
+    "name": "rowKey",
+    "type": "(row: T) => string",
+    "required": true,
+    "default": null,
+    "description": "A stable key per row (selection and focus follow it through sorting and filtering)."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "Names the table for assistive technology."
+   },
+   {
+    "name": "sort",
+    "type": "SortState",
+    "required": false,
+    "default": null,
+    "description": "The sorted column and direction, or null (controlled; use with `onSortChange`)."
+   },
+   {
+    "name": "defaultSort",
+    "type": "SortState",
+    "required": false,
+    "default": "null",
+    "description": "The starting sort when uncontrolled."
+   },
+   {
+    "name": "onSortChange",
+    "type": "((s: SortState) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the new sort when a header is pressed."
+   },
+   {
+    "name": "manualSort",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Rows are already sorted (by a server): only report sort changes."
+   },
+   {
+    "name": "selectable",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "A checkbox column for choosing rows (Shift-click for a range, Space, Ctrl/Cmd+A)."
+   },
+   {
+    "name": "selected",
+    "type": "string[]",
+    "required": false,
+    "default": null,
+    "description": "Keys of the chosen rows (controlled; use with `onSelectedChange`)."
+   },
+   {
+    "name": "defaultSelected",
+    "type": "string[]",
+    "required": false,
+    "default": "[]",
+    "description": "The keys chosen at first when uncontrolled."
+   },
+   {
+    "name": "onSelectedChange",
+    "type": "((keys: string[]) => void)",
+    "required": false,
+    "default": null,
+    "description": "Called with the chosen keys whenever they change."
+   },
+   {
+    "name": "columnLines",
+    "type": "\"none\" | \"groups\" | \"all\"",
+    "required": false,
+    "default": "'none'",
+    "description": "Vertical lines between columns: where the header group changes, or between every column (default none)."
+   },
+   {
+    "name": "pinnedRows",
+    "type": "T[]",
+    "required": false,
+    "default": "[]",
+    "description": "Summary rows above the data; not sorted, not selectable."
+   },
+   {
+    "name": "density",
+    "type": "\"regular\" | \"compact\"",
+    "required": false,
+    "default": "'regular'",
+    "description": "Row height for repeated rows: 44 px regular, 36 px compact."
+   },
+   {
+    "name": "maxHeight",
+    "type": "string | number",
+    "required": false,
+    "default": null,
+    "description": "The table scrolls inside this height (sticky header; virtualised beyond ~80 rows)."
+   },
+   {
+    "name": "loading",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Shows skeleton rows when there are none yet, or dims the rows with a progress line over them."
+   },
+   {
+    "name": "empty",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "What to show when there are no rows (an EmptyState, usually)."
+   },
+   {
+    "name": "onRowClick",
+    "type": "((row: T) => void)",
+    "required": false,
+    "default": null,
+    "description": "Makes rows actionable: called on a click or on Enter in the row."
+   },
+   {
+    "name": "rowCount",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "Total rows on the server (for screen readers when paging)."
+   },
+   {
+    "name": "rowState",
+    "type": "((row: T) => { muted?: boolean; } | undefined)",
+    "required": false,
+    "default": null,
+    "description": "Extra props per row: muted (e.g. too few samples)."
+   },
+   {
+    "name": "locale",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "BCP 47 locale for the default text sort and the words the table writes (default: the ThemeProvider's `locale`, else 'en-US')."
+   },
+   {
+    "name": "labels",
+    "type": "{ selectAll?: string; selectRow?: ((row: T) => string) | undefined; empty?: string; sortedAsc?: string; sortedDesc?: string; }",
+    "required": false,
+    "default": "{}",
+    "description": "Text the component writes itself (names for assistive technology, button text…), for translation; by default in English, or Korean under a Korean locale.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "ColumnChooser": {
+  "kind": "component",
+  "category": "data",
+  "description": "",
+  "props": [
+   {
+    "name": "columns",
+    "type": "Column<T>[]",
+    "required": true,
+    "default": null,
+    "description": "The same columns the table gets (their groups become the panel's sections)."
+   },
+   {
+    "name": "hidden",
+    "type": "string[]",
+    "required": true,
+    "default": null,
+    "description": "Keys of the hidden columns; pass the same list to the table's `hiddenColumns`."
+   },
+   {
+    "name": "onHiddenChange",
+    "type": "(keys: string[]) => void",
+    "required": true,
+    "default": null,
+    "description": "Called with the new hidden keys when a box is changed."
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The button's text (default \"Columns\", or 열 in Korean)."
+   },
+   {
+    "name": "variant",
+    "type": "ButtonVariant",
+    "required": false,
+    "default": "'neutral'",
+    "description": "The button's look."
+   },
+   {
+    "name": "size",
+    "type": "\"sm\" | \"md\"",
+    "required": false,
+    "default": "'sm'",
+    "description": "The button's size."
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "An icon before the button's text."
+   },
+   {
+    "name": "labels",
+    "type": "{ panel?: string; showAll?: string; count?: (shown: number, total: number) => string; }",
+    "required": false,
+    "default": "{}",
+    "description": "Text the component writes itself (names for assistive technology, button text…), for translation; by default in English, or Korean under a Korean locale.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Column": {
+  "kind": "type",
+  "category": "data",
+  "description": "",
+  "props": [
+   {
+    "name": "key",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "Identifies the column (sorting, hiding, React keys); also the row field shown when there is no `render`."
+   },
+   {
+    "name": "header",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The column's title in the header."
+   },
+   {
+    "name": "subheader",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Second header line: units, sample size…"
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "What the column means (shown on hover / focus of the header)."
+   },
+   {
+    "name": "group",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Consecutive columns with the same group share a header above them."
+   },
+   {
+    "name": "width",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "Width in px (default 120); the table is as wide as its columns and scrolls sideways when narrower."
+   },
+   {
+    "name": "align",
+    "type": "\"center\" | \"end\" | \"start\"",
+    "required": false,
+    "default": null,
+    "description": "Where the content sits; numbers usually go at the end, in tabular figures."
+   },
+   {
+    "name": "sortable",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "The header becomes a button that sorts by this column (ascending, descending, off)."
+   },
+   {
+    "name": "firstSort",
+    "type": "SortDir",
+    "required": false,
+    "default": null,
+    "description": "First direction when sorting by this column (numbers where higher is better: 'desc')."
+   },
+   {
+    "name": "value",
+    "type": "((row: T) => unknown)",
+    "required": false,
+    "default": null,
+    "description": "Value to sort by (default: row[key])."
+   },
+   {
+    "name": "render",
+    "type": "((row: T, ctx: { index: number; selected: boolean; pinned: boolean; }) => ReactNode)",
+    "required": false,
+    "default": null,
+    "description": "The cell's content (default: `row[key]`); `pinned` is true in a summary row."
+   },
+   {
+    "name": "sticky",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Stays in view when the table scrolls sideways (leading columns only)."
+   },
+   {
+    "name": "hideable",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Can be hidden from a ColumnChooser (default: yes, except sticky columns — they say which row is which)."
+   }
+  ],
+  "inherits": []
+ },
+ "LineChart": {
+  "kind": "component",
+  "category": "data",
+  "description": "",
+  "props": [
+   {
+    "name": "data",
+    "type": "ChartDatum[]",
+    "required": true,
+    "default": null,
+    "description": "One object per x position, in order: its label under `x` and each series' value under the series' key; a value that is not a number (null, missing) is a gap: the line breaks there, and a bar chart draws no bar."
+   },
+   {
+    "name": "x",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "Key of the x label in each datum."
+   },
+   {
+    "name": "series",
+    "type": "ChartSeries[]",
+    "required": true,
+    "default": null,
+    "description": "What to draw: each series' `key` in the data, its `label` (legend, tooltip, table) and `color` (default: the theme's chart colours, in order)."
+   },
+   {
+    "name": "area",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Fill under the lines."
+   },
+   {
+    "name": "curve",
+    "type": "\"smooth\" | \"linear\"",
+    "required": false,
+    "default": "'smooth'",
+    "description": "'smooth' (monotone: it never overshoots a point) or 'linear' (straight segments)."
+   },
+   {
+    "name": "zero",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Start the y axis at zero (default: for areas)."
+   },
+   {
+    "name": "height",
+    "type": "number",
+    "required": false,
+    "default": "240",
+    "description": "The plot's height in px; the width follows the container."
+   },
+   {
+    "name": "yFormat",
+    "type": "Fmt",
+    "required": false,
+    "default": null,
+    "description": "Writes the values on the axis, in the tooltip and in the table (default: the locale's numbers, compact from 10,000)."
+   },
+   {
+    "name": "xFormat",
+    "type": "((v: string) => string)",
+    "required": false,
+    "default": "(v) => v",
+    "description": "Writes the x labels (axis, tooltip, table)."
+   },
+   {
+    "name": "legend",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "Keys above the plot that hide and show series (with two or more)."
+   },
+   {
+    "name": "locale",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "BCP 47 locale for the default number formats and the words the chart writes (default: the ThemeProvider's `locale`, else 'en-US')."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "caption",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A note under the chart (source, units), its figcaption."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "ScatterChart": {
+  "kind": "component",
+  "category": "data",
+  "description": "",
+  "props": [
+   {
+    "name": "data",
+    "type": "ChartDatum[]",
+    "required": true,
+    "default": null,
+    "description": "One object per point: its two values under `x` and `y` and its name under `pointLabel`; a point without both numbers (or not above 0 on a log axis) is left out."
+   },
+   {
+    "name": "x",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "Key of the value on the horizontal axis."
+   },
+   {
+    "name": "y",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "Key of the value on the vertical axis."
+   },
+   {
+    "name": "pointLabel",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "Key of each point's name (tooltip, labels, the data table)."
+   },
+   {
+    "name": "group",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Key whose value puts a point in a group; `groups` names them (key = that value), colours and orders them."
+   },
+   {
+    "name": "groups",
+    "type": "ChartSeries[]",
+    "required": false,
+    "default": "[]",
+    "description": "The groups, in legend order: `key` is a value of the `group` field, with its `label` and `color`."
+   },
+   {
+    "name": "highlight",
+    "type": "string[]",
+    "required": false,
+    "default": null,
+    "description": "Names of points to pick out."
+   },
+   {
+    "name": "xScale",
+    "type": "\"log\" | \"linear\"",
+    "required": false,
+    "default": "'linear'",
+    "description": "'log' for values that span orders of magnitude, such as prices (only values above 0 are plotted)."
+   },
+   {
+    "name": "yScale",
+    "type": "\"log\" | \"linear\"",
+    "required": false,
+    "default": "'linear'",
+    "description": "'log' for values that span orders of magnitude, such as prices (only values above 0 are plotted)."
+   },
+   {
+    "name": "xLabel",
+    "type": "string",
+    "required": false,
+    "default": "x",
+    "description": "The horizontal axis's title (also a data table column)."
+   },
+   {
+    "name": "yLabel",
+    "type": "string",
+    "required": false,
+    "default": "y",
+    "description": "The vertical axis's title (also a data table column)."
+   },
+   {
+    "name": "xFormat",
+    "type": "Fmt",
+    "required": false,
+    "default": null,
+    "description": "Writes the x values (axis, tooltip, table; default: the locale's numbers, compact from 10,000)."
+   },
+   {
+    "name": "yFormat",
+    "type": "Fmt",
+    "required": false,
+    "default": null,
+    "description": "Writes the y values (axis, tooltip, table; default: the locale's numbers, compact from 10,000)."
+   },
+   {
+    "name": "height",
+    "type": "number",
+    "required": false,
+    "default": "280",
+    "description": "The plot's height in px; the width follows the container."
+   },
+   {
+    "name": "legend",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "Keys above the plot that hide and show groups (with two or more)."
+   },
+   {
+    "name": "locale",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "BCP 47 locale for the default number formats and the words the chart writes (default: the ThemeProvider's `locale`, else 'en-US')."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "caption",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A note under the chart (source, units), its figcaption."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "BarChart": {
+  "kind": "component",
+  "category": "data",
+  "description": "",
+  "props": [
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "caption",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A note under the chart (source, units), its figcaption."
+   },
+   {
+    "name": "data",
+    "type": "ChartDatum[]",
+    "required": true,
+    "default": null,
+    "description": "One object per x position, in order: its label under `x` and each series' value under the series' key; a value that is not a number (null, missing) is a gap: the line breaks there, and a bar chart draws no bar."
+   },
+   {
+    "name": "legend",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "Keys above the plot that hide and show series (with two or more)."
+   },
+   {
+    "name": "height",
+    "type": "number",
+    "required": false,
+    "default": "240",
+    "description": "The plot's height in px; the width follows the container."
+   },
+   {
+    "name": "locale",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "BCP 47 locale for the default number formats and the words the chart writes (default: the ThemeProvider's `locale`, else 'en-US')."
+   },
+   {
+    "name": "x",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "Key of the x label in each datum."
+   },
+   {
+    "name": "series",
+    "type": "ChartSeries[]",
+    "required": true,
+    "default": null,
+    "description": "What to draw: each series' `key` in the data, its `label` (legend, tooltip, table) and `color` (default: the theme's chart colours, in order)."
+   },
+   {
+    "name": "yFormat",
+    "type": "Fmt",
+    "required": false,
+    "default": null,
+    "description": "Writes the values on the axis, in the tooltip and in the table (default: the locale's numbers, compact from 10,000)."
+   },
+   {
+    "name": "xFormat",
+    "type": "((v: string) => string)",
+    "required": false,
+    "default": "(v) => v",
+    "description": "Writes the x labels (axis, tooltip, table)."
+   },
+   {
+    "name": "stacked",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "One bar per category with the series stacked in it, instead of side by side."
+   }
+  ],
+  "inherits": []
+ },
+ "DonutChart": {
+  "kind": "component",
+  "category": "data",
+  "description": "",
+  "props": [
+   {
+    "name": "data",
+    "type": "DonutSlice[]",
+    "required": true,
+    "default": null,
+    "description": "The slices, clockwise from the top; each one's share is its value over the total (negative values count as 0)."
+   },
+   {
+    "name": "size",
+    "type": "number",
+    "required": false,
+    "default": "180",
+    "description": "The ring's diameter in px."
+   },
+   {
+    "name": "thickness",
+    "type": "number",
+    "required": false,
+    "default": "22",
+    "description": "The ring's width in px."
+   },
+   {
+    "name": "centerLabel",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A line under the number in the middle (e.g. \"Total\"); an active slice's name takes its place."
+   },
+   {
+    "name": "centerValue",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "The number in the middle (default: the total); an active slice's share takes its place."
+   },
+   {
+    "name": "format",
+    "type": "Fmt",
+    "required": false,
+    "default": null,
+    "description": "Writes the values in the legend, the middle and what is read out (default: the locale's numbers, compact from 10,000)."
+   },
+   {
+    "name": "locale",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "BCP 47 locale for the default number formats and the percentages (default: the ThemeProvider's `locale`, else 'en-US')."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Sparkline": {
+  "kind": "component",
+  "category": "data",
+  "description": "",
+  "props": [
+   {
+    "name": "values",
+    "type": "number[]",
+    "required": true,
+    "default": null,
+    "description": "The points, oldest first; the line spans their range top to bottom and ends in a dot."
+   },
+   {
+    "name": "tone",
+    "type": "Tone",
+    "required": false,
+    "default": "'accent'",
+    "description": "The line's colour."
+   },
+   {
+    "name": "area",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "A soft fill under the line."
+   },
+   {
+    "name": "height",
+    "type": "number",
+    "required": false,
+    "default": "32",
+    "description": "In px; the width follows the container."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Decorative by default (the number next to it carries the meaning); give a label to expose it."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "BarMeter": {
+  "kind": "component",
+  "category": "data",
+  "description": "A short bar for a table cell, next to the number it shows (decorative: the number is the content).",
+  "props": [
+   {
+    "name": "value",
+    "type": "number",
+    "required": true,
+    "default": null,
+    "description": "The amount the bar shows, between `min` and `max` (clamped)."
+   },
+   {
+    "name": "max",
+    "type": "number",
+    "required": false,
+    "default": "100",
+    "description": "The value of a full bar."
+   },
+   {
+    "name": "min",
+    "type": "number",
+    "required": false,
+    "default": "0",
+    "description": "The value of an empty bar."
+   },
+   {
+    "name": "tone",
+    "type": "Tone",
+    "required": false,
+    "default": "'neutral'",
+    "description": "The bar's colour."
+   },
+   {
+    "name": "width",
+    "type": "number",
+    "required": false,
+    "default": "40",
+    "description": "The full bar's width in px."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "IntervalPlot": {
+  "kind": "component",
+  "category": "data",
+  "description": "A point and its interval on a thin track, with an optional reference tick — for estimates in table rows.",
+  "props": [
+   {
+    "name": "value",
+    "type": "number",
+    "required": true,
+    "default": null,
+    "description": "The estimate, drawn as a point."
+   },
+   {
+    "name": "low",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "The interval's lower end (e.g. of a 95% confidence interval)."
+   },
+   {
+    "name": "high",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "The interval's upper end; the interval is drawn only with both `low` and `high`."
+   },
+   {
+    "name": "min",
+    "type": "number",
+    "required": false,
+    "default": "0",
+    "description": "The axis's lower end."
+   },
+   {
+    "name": "max",
+    "type": "number",
+    "required": false,
+    "default": "100",
+    "description": "The axis's upper end; values beyond the range are drawn at its ends."
+   },
+   {
+    "name": "reference",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "A reference mark (e.g. chance level, a baseline)."
+   },
+   {
+    "name": "width",
+    "type": "number",
+    "required": false,
+    "default": "160",
+    "description": "The track's width in px."
+   },
+   {
+    "name": "tone",
+    "type": "\"accent\" | \"neutral\"",
+    "required": false,
+    "default": "'neutral'",
+    "description": "The point's and interval's colour."
+   },
+   {
+    "name": "aria-label",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The accessible name, when no visible label names it.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Stat": {
+  "kind": "component",
+  "category": "data",
+  "description": "",
+  "props": [
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "What the number is, above it."
+   },
+   {
+    "name": "value",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The number itself, formatted as it should be shown."
+   },
+   {
+    "name": "delta",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Change against the comparison period, e.g. \"+12.4%\"; the direction follows its sign unless `direction` is set."
+   },
+   {
+    "name": "direction",
+    "type": "\"flat\" | \"up\" | \"down\"",
+    "required": false,
+    "default": null,
+    "description": "Which way the change went (arrow, colour and the words read out); set it when `delta` is not a signed string or number."
+   },
+   {
+    "name": "invert",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "A rise is bad for this metric (costs, errors, churn)."
+   },
+   {
+    "name": "hint",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A note after the change, e.g. \"vs last week\"."
+   },
+   {
+    "name": "trend",
+    "type": "number[]",
+    "required": false,
+    "default": null,
+    "description": "Recent values for the sparkline."
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A small icon before the label (decorative)."
+   },
+   {
+    "name": "loading",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Skeletons in place of the value and the change, and aria-busy; the label stays."
+   },
+   {
+    "name": "labels",
+    "type": "{ up?: string; down?: string; flat?: string; }",
+    "required": false,
+    "default": "{}",
+    "description": "Spoken words for the direction (default: Up / Down / No change, in Korean for a Korean locale)."
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ },
+ "Meter": {
+  "kind": "component",
+  "category": "data",
+  "description": "",
+  "props": [
+   {
+    "name": "value",
+    "type": "number",
+    "required": true,
+    "default": null,
+    "description": "The measured amount; drawn clamped to the range, and \"Unavailable\" when it is not a finite number."
+   },
+   {
+    "name": "min",
+    "type": "number",
+    "required": false,
+    "default": "0",
+    "description": "The bottom of the range (default 0)."
+   },
+   {
+    "name": "max",
+    "type": "number",
+    "required": false,
+    "default": "100",
+    "description": "The top of the range (default 100)."
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "required": true,
+    "default": null,
+    "description": "The visible label, also the meter's name."
+   },
+   {
+    "name": "format",
+    "type": "((value: number) => string)",
+    "required": false,
+    "default": null,
+    "description": "The visible value, also what a screen reader says (default: the share of the range as a percentage, written the locale's way)."
+   },
+   {
+    "name": "valueText",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "What a screen reader says instead of the visible value, e.g. \"37 GB of 50 GB\"."
+   },
+   {
+    "name": "low",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "Bands as in <meter>: below low is low, above high is high; optimum says which band is best."
+   },
+   {
+    "name": "high",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "Above this the value is in the high band (see `low`)."
+   },
+   {
+    "name": "optimum",
+    "type": "number",
+    "required": false,
+    "default": null,
+    "description": "A value in the best band: it decides whether low or high values are good (see `low`)."
+   },
+   {
+    "name": "tone",
+    "type": "Tone",
+    "required": false,
+    "default": null,
+    "description": "The fill's tone; overrides the one the bands give (default accent)."
+   },
+   {
+    "name": "status",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A line under the bar that says what the value means (\"Almost full\"); read with the meter."
+   },
+   {
+    "name": "showValue",
+    "type": "boolean",
+    "required": false,
+    "default": "true",
+    "description": "The value at the end of the label row; false hides it from sight only (it is still read out)."
+   },
+   {
+    "name": "size",
+    "type": "\"sm\" | \"md\"",
+    "required": false,
+    "default": "'md'",
+    "description": "'sm' is a thinner bar and smaller text."
+   },
+   {
+    "name": "labels",
+    "type": "{ unavailable?: string; }",
+    "required": false,
+    "default": null,
+    "description": "Text the component writes itself (names for assistive technology, button text…), for translation; by default in English, or Korean under a Korean locale.",
+    "common": true
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "Class names added to the root element.",
+    "common": true
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "required": false,
+    "default": null,
+    "description": "Inline styles for the root element.",
+    "common": true
+   }
+  ],
+  "inherits": []
+ }
+}
