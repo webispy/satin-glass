@@ -10,7 +10,7 @@ rerun passed.
 
 | Since | Suite · case | Seen | Conditions | State |
 |---|---|---|---|---|
-| 2026-11-22 | css-split · reverse category order · dashboard `?mode=dark&hc=1&rm=1` | 3 | Chromium, full run, 16 at once; elements inside the charts' SVG differ (18 of 830) | open: suspect a chart still settling when the styles are read |
+| 2026-11-22 | css-split · reverse category order · dashboard `?mode=dark&hc=1&rm=1` | 4 | Chromium, full run, 16 at once, and once in CI (shard 1/4); elements inside the charts' SVG differ (18–36 of 830) | open ([#2](https://github.com/webispy/satin-glass/issues/2)): suspect a chart still settling when the styles are read |
 | 2026-11-23 | data · tabs: → selects the next tab and the underline travels under it | 1 | Chromium, full run, 16 at once; underline at 447 px, tab at 444 px | open |
 | 2026-11-23 | edge · tab bar: window resized mid-travel → indicator still lands on the tab | 1 | full run, 16 at once, Chromium | open |
 | 2026-11-23 | perf · showcase scroll under glass bars | 1 | Chromium, timing phase (alone); 2 frames over 25 ms | open |
