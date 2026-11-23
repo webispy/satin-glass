@@ -191,7 +191,7 @@ function Board({ models, filters, onClear, picked, setPicked, onCompare, onOpen 
             </span>
           )}
         </div>
-        <DataTable<Row> aria-label="모델 순위표" rows={rows} rowKey={(r) => r.id} columns={cols} hiddenColumns={[...outOfFamily, ...hidden]} pinnedRows={summary && rows.length > 1 ? summaries(rows) : []}
+        <DataTable<Row> aria-label="모델 순위표" rows={rows} rowKey={(r) => r.id} columns={cols} hiddenColumns={[...outOfFamily, ...hidden]} columnLines="groups" pinnedRows={summary && rows.length > 1 ? summaries(rows) : []}
           defaultSort={{ key: 'overall', dir: 'desc' }} density="compact" maxHeight={560} selectable selected={picked} onSelectedChange={setPicked}
           labels={{ ...TABLE_LABELS, selectRow: (r) => `${r.name} 비교에 넣기` }}
           empty={<EmptyState size="sm" icon={<SearchX />} title="조건에 맞는 모델이 없어요" actions={<Button size="sm" variant="neutral" onClick={onClear}>필터 초기화</Button>} />} />

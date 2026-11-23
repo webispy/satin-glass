@@ -162,6 +162,12 @@
 .sg-table__sticky { position: sticky; z-index: 1; }
 .sg-table thead .sg-table__sticky { z-index: 5; }
 .sg-table .sg-table__sticky--last { --_vline: var(--sg-separator); }
+/* columnLines (0.6): a line at a column's end, through the header rows, summary rows and body, in the row lines'
+   colour, so the grid reads as one weight */
+.sg-table .sg-table__vline { --_vline: var(--sg-separator); }
+[data-sg-theme$="-hc"] .sg-table .sg-table__vline { --_vline: var(--sg-separator-strong); }
+/* right to left: a column's end is its left edge (the row line spans the cell either way) */
+.sg-table:dir(rtl) :is(th, td) { background-position: left bottom, left top, 0 0; }
 .sg-table__check { padding: 0 !important; text-align: center !important; }
 .sg-table__checkbox { vertical-align: middle; }
 .sg-table thead .sg-table__check { padding-bottom: 8px !important; }   /* on the header text's line, like the other header cells */

@@ -57,6 +57,8 @@ export type DataTableProps<T> = {
   manualSort?: boolean;
   selectable?: boolean;
   selected?: string[]; defaultSelected?: string[]; onSelectedChange?: (keys: string[]) => void;
+  /** vertical lines between columns: where the header group changes, or between every column (default none) */
+  columnLines?: 'none' | 'groups' | 'all';
   /** summary rows above the data; not sorted, not selectable */
   pinnedRows?: T[];
   density?: 'compact' | 'regular';
@@ -90,7 +92,7 @@ const isEmpty = (v: unknown) => v === null || v === undefined || v === '' || (ty
 
 export function DataTable<T>({
   rows, columns: allColumns, hiddenColumns, rowKey, 'aria-label': label, sort, defaultSort = null, onSortChange, manualSort, selectable,
-  selected, defaultSelected = [], onSelectedChange, pinnedRows = [], density = 'regular', maxHeight, loading, empty,
+  selected, defaultSelected = [], onSelectedChange, pinnedRows = [], columnLines = 'none', density = 'regular', maxHeight, loading, empty,
   onRowClick, rowCount, rowState, labels = {}, className, style,
 }: DataTableProps<T>) {
   const [sortState, setSort] = useControllable<SortState>(sort, defaultSort, onSortChange);
@@ -153,6 +155,9 @@ export function DataTable<T>({
   const groups = cols.some((c) => c.group);
   const anySub = cols.some((c) => c.subheader);
   const stickyW = widths.reduce((a, w, i) => a + (stickyLeft[i] !== undefined ? w : 0), 0);
+  /* a line at the end of a column (by data column; from the columns shown, so hiding one moves it) */
+  const lineAfter = (ci: number) => ci < cols.length - 1 && (columnLines === 'all' || (columnLines === 'groups' && (cols[ci].group || '') !== (cols[ci + 1].group || '')));
+  const colClass = (colIdx: number, ci: number) => cx(stickyLeft[colIdx] !== undefined && 'sg-table__sticky', colIdx === lastSticky && 'sg-table__sticky--last', lineAfter(ci) && 'sg-table__vline');
 
   /* ---- virtual window */
   const virtual = maxHeight !== undefined && sorted.length > VIRTUAL_FROM;
@@ -294,7 +299,7 @@ export function DataTable<T>({
     ) : c.description ? <span tabIndex={-1} className="sg-table__headtxt">{inner}</span> : inner;
     return (
       <th key={c.key} scope="col" rowSpan={rowSpan} aria-sort={aria} data-r={-1} data-c={colIdx} tabIndex={-1} data-align={c.align ?? 'start'}
-        className={cx(stickyLeft[colIdx] !== undefined && 'sg-table__sticky', colIdx === lastSticky && 'sg-table__sticky--last')}
+        className={colClass(colIdx, ci)}
         style={stickyLeft[colIdx] !== undefined ? { left: stickyLeft[colIdx] } : undefined}>
         {c.description ? <Tooltip content={c.description} placement="top">{body}</Tooltip> : body}
       </th>
@@ -310,7 +315,7 @@ export function DataTable<T>({
       let j = i; while (j < cols.length && cols[j].group === g) j++;
       /* a group made only of frozen columns stays with them */
       const first = i + (selectable ? 1 : 0), frozen = cols.slice(i, j).every((_, k) => stickyLeft[first + k] !== undefined);
-      out.push(<th key={`g-${g}-${i}`} scope="colgroup" colSpan={j - i} className={cx('sg-table__group', frozen && 'sg-table__sticky', frozen && first + (j - i) - 1 === lastSticky && 'sg-table__sticky--last')} style={frozen ? { left: stickyLeft[first] } : undefined}><span>{g}</span></th>);
+      out.push(<th key={`g-${g}-${i}`} scope="colgroup" colSpan={j - i} className={cx('sg-table__group', frozen && 'sg-table__sticky', frozen && first + (j - i) - 1 === lastSticky && 'sg-table__sticky--last', lineAfter(j - 1) && 'sg-table__vline')} style={frozen ? { left: stickyLeft[first] } : undefined}><span>{g}</span></th>);
       i = j;
     }
     return out;
@@ -341,7 +346,7 @@ export function DataTable<T>({
         const Tag = colIdx === (selectable ? 1 : 0) ? 'th' : 'td';
         return (
           <Tag key={c.key} {...(Tag === 'th' ? { scope: 'row' } : {})} data-r={gridRow} data-c={colIdx} tabIndex={-1} data-align={c.align ?? 'start'}
-            className={cx(stickyLeft[colIdx] !== undefined && 'sg-table__sticky', colIdx === lastSticky && 'sg-table__sticky--last')}
+            className={colClass(colIdx, ci)}
             style={stickyLeft[colIdx] !== undefined ? { left: stickyLeft[colIdx] } : undefined}>
             {/* a missing value reads "–"; in a summary row an empty cell is "not applicable" and stays blank */}
             {isEmpty(v) ? (pinned ? null : <span className="sg-table__none" aria-label="—">–</span>) : (v as ReactNode)}
@@ -386,7 +391,7 @@ export function DataTable<T>({
               /* placed like the cells they stand in for: same alignment, same frozen columns */
               const col = selectable ? (j === 0 ? null : cols[j - 1]) : cols[j];
               return (
-                <td key={j} data-align={col?.align ?? (col ? 'start' : 'center')} className={cx(stickyLeft[j] !== undefined && 'sg-table__sticky', j === lastSticky && 'sg-table__sticky--last', !col && 'sg-table__check')}
+                <td key={j} data-align={col?.align ?? (col ? 'start' : 'center')} className={cx(col ? colClass(j, j - (selectable ? 1 : 0)) : 'sg-table__sticky sg-table__check')}
                   style={stickyLeft[j] !== undefined ? { left: stickyLeft[j] } : undefined}>
                   <Skeleton width={col ? `${50 + ((i * 7 + j * 13) % 40)}%` : 22} height={col ? undefined : 22} radius={col ? undefined : 7} />
                 </td>

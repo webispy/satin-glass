@@ -204,7 +204,7 @@ await go('table');
 
   /* keyboard grid (groups, pinned rows, sticky column) */
   const gg = p.getByRole('grid', { name: '상품 판매와 재고', exact: true });
-  await demo('table-groups').getByRole('button', { name: /^열/ }).focus();   /* the column chooser comes just before the grid */
+  await demo('table-groups').getByRole('radiogroup', { name: '세로줄' }).getByRole('radio', { checked: true }).focus();   /* the column-lines switch comes just before the grid */
   await p.keyboard.press(TAB);
   const a0 = await active();
   ok('table: one Tab stop leads into the grid', a0.grid === '상품 판매와 재고' && a0.r !== null, JSON.stringify(a0));
@@ -220,7 +220,44 @@ await go('table');
   const lastR = await gg.evaluate((e) => Math.max(...[...e.querySelectorAll('[data-r]')].map((c) => +c.dataset.r)));
   const gLastRow = await p.evaluate(() => document.activeElement.closest('tr')?.getAttribute('aria-rowindex'));
   ok('table: Ctrl+End jumps to the last cell', a5.r === lastR && a5.c === lastC && gLastRow === (await gg.getAttribute('aria-rowcount')), `${JSON.stringify(a5)}, row ${gLastRow}`);
-  ok('table: still exactly one tab stop', (await demo('table-groups').locator('[tabindex="0"]').count()) === 1);
+  ok('table: still exactly one tab stop', (await gg.locator('[tabindex="0"]').count()) === 1);
+
+  /* columnLines: where the group changes / every column / only the frozen seam; found between the columns shown */
+  const lineCols = () => gg.evaluate((t) => {
+    const row = [...t.querySelectorAll('tbody:last-of-type tr')].find((tr) => tr.querySelector('td'));
+    return [...row.children].filter((c) => getComputedStyle(c).getPropertyValue('--_vline').trim() !== 'transparent').map((c) => c.textContent.trim() === '' ? '?' : +c.dataset.c);
+  });
+  const groupEnds = () => gg.evaluate((t) => {
+    /* each column's group from the first header row (an ungrouped column spans both rows and has none); a line
+       belongs where the next column's group differs */
+    const g = [];
+    for (const th of t.querySelectorAll('thead tr:first-child th')) {
+      const span = +(th.getAttribute('colspan') || 1);
+      for (let k = 0; k < span; k++) g.push(th.classList.contains('sg-table__group') ? th.textContent : '');
+    }
+    return { ends: g.map((x, i) => (i < g.length - 1 && x !== g[i + 1] ? i : -1)).filter((i) => i >= 0) };
+  });
+  const lineSwitch = demo('table-groups').getByRole('radiogroup', { name: '세로줄' });
+  const gl = await lineCols(), ge = await groupEnds();
+  /* default 'groups' in the demo: the frozen name column (0), the column before 판매, and each group's end but the last */
+  const want = [...new Set([0, ...ge.ends])].sort((x, y) => x - y);
+  ok('table lines: \'groups\' draws a line at the frozen seam and wherever the header group changes', JSON.stringify(gl) === JSON.stringify(want), `${JSON.stringify(gl)} vs ${JSON.stringify(want)}`);
+  await lineSwitch.getByRole('radio', { name: '모든 열' }).click(); await p.waitForTimeout(150);
+  const all = await lineCols(), nCols = await gg.evaluate((t) => t.querySelectorAll('thead tr:last-child th').length + t.querySelectorAll('thead tr:first-child th[rowspan]').length);
+  ok('table lines: \'all\' draws one between every pair of columns (not after the last)', all.length === nCols - 1, `${all.length} lines, ${nCols} columns`);
+  const labelWhole = await gg.evaluate((t) => [...t.querySelectorAll('thead tr:first-child .sg-table__group')].every((th) => th.classList.contains('sg-table__vline') || th === t.querySelector('thead tr:first-child th:last-child')));
+  ok('table lines: …and a group label keeps one line at its end, none through it', labelWhole);
+  await lineSwitch.getByRole('radio', { name: '세로줄 없음' }).click(); await p.waitForTimeout(150);
+  ok('table lines: \'none\' keeps only the frozen seam', JSON.stringify(await lineCols()) === '[0]', JSON.stringify(await lineCols()));
+  await lineSwitch.getByRole('radio', { name: '그룹 사이' }).click(); await p.waitForTimeout(150);
+  /* hide the stock group's last column: the line moves to the column that now ends the group */
+  await demo('table-groups').getByRole('button', { name: /^열/ }).click(); await p.waitForTimeout(400);
+  await p.getByRole('checkbox', { name: '소진 예상', exact: true }).click(); await p.waitForTimeout(150);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+  const stockEnd = await gg.evaluate((t) => +[...t.querySelectorAll('thead tr:last-child th')].find((th) => th.textContent.includes('재고')).dataset.c);
+  ok('table lines: hiding the column at a group\'s end moves the line with the group', (await lineCols()).includes(stockEnd), `${JSON.stringify(await lineCols())}, stock at ${stockEnd}`);
+  await demo('table-groups').getByRole('button', { name: /^열/ }).click(); await p.waitForTimeout(400);
+  await p.getByRole('checkbox', { name: '소진 예상', exact: true }).click(); await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   const gbox = demo('table-groups').locator('.sg-table');
   await gbox.evaluate((e) => { e.scrollTop = 200; e.scrollLeft = 400; }); await p.waitForTimeout(200);
   const g = await gbox.evaluate((e) => {

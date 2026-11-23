@@ -90,6 +90,7 @@ function Filters() {
 
 function Groups() {
   const [hidden, setHidden] = useState<string[]>(['returnRate', 'reviews']);
+  const [lines, setLines] = useState<'none' | 'groups' | 'all'>('groups');
   const rows = PRODUCTS.filter((p) => !p.paused);
   const total = (k: 'sold' | 'revenue' | 'stock') => rows.reduce((a, p) => a + p[k], 0);
   const avg = (k: 'price' | 'rating' | 'returnRate') => rows.reduce((a, p) => a + p[k], 0) / rows.length;
@@ -111,10 +112,13 @@ function Groups() {
     { key: 'reviews', header: '후기 수', group: '후기', align: 'end', width: 84, sortable: true, firstSort: 'desc', render: (p, { pinned }) => (pinned ? '' : num(p.reviews)) },
   ];
   return (
-    <Section title="열 그룹 · 요약 행 · 고정 열 · 열 선택" intro="이어진 열은 그룹 머리글을 함께 씁니다. 머리글 둘째 줄에는 단위나 기간을 적고, 점선 밑줄이 있는 머리글에 마우스를 올리거나 포커스하면 설명을 띄웁니다. 합계·평균 같은 요약 행은 정렬과 상관없이 위에 고정되고, 가로로 스크롤해도 첫 열이 남습니다. 열이 많으면 열 선택(ColumnChooser)으로 표시할 열을 정합니다. 표의 그룹대로 묶인 체크박스이고, 그룹 체크박스는 그룹 전체를 켜고 끕니다. 고정 열은 어느 행인지 알려 주므로 숨길 수 없고, 마지막 남은 열도 숨길 수 없습니다. 정렬 중인 열을 숨기면 정렬이 풀립니다.">
+    <Section title="열 그룹 · 요약 행 · 고정 열 · 열 선택" intro="이어진 열은 그룹 머리글을 함께 씁니다. 머리글 둘째 줄에는 단위나 기간을 적고, 점선 밑줄이 있는 머리글에 마우스를 올리거나 포커스하면 설명을 띄웁니다. 합계·평균 같은 요약 행은 정렬과 상관없이 위에 고정되고, 가로로 스크롤해도 첫 열이 남습니다. 열이 많으면 열 선택(ColumnChooser)으로 표시할 열을 정합니다. 표의 그룹대로 묶인 체크박스이고, 그룹 체크박스는 그룹 전체를 켜고 끕니다. 고정 열은 어느 행인지 알려 주므로 숨길 수 없고, 마지막 남은 열도 숨길 수 없습니다. 정렬 중인 열을 숨기면 정렬이 풀립니다. 열이 많아 눈으로 따라가기 어려우면 columnLines로 세로줄을 긋습니다. 'groups'는 그룹이 바뀌는 곳에만, 'all'은 모든 열 사이에 긋고, 열을 숨기면 줄도 따라 옮겨집니다.">
       <Demo col data-demo="table-groups">
-        <ColumnChooser columns={cols} hidden={hidden} onHiddenChange={setHidden} label="열" icon={<Columns3 />} className="demo-start" labels={{ panel: '표시할 열', showAll: '모두 보기' }} />
-        <DataTable<Product> aria-label="상품 판매와 재고" rows={rows} rowKey={(p) => p.id} columns={cols} hiddenColumns={hidden} pinnedRows={pinned} maxHeight={420} labels={TABLE_LABELS} />
+        <Stack direction="row" gap={2} align="center" wrap>
+          <ColumnChooser columns={cols} hidden={hidden} onHiddenChange={setHidden} label="열" icon={<Columns3 />} labels={{ panel: '표시할 열', showAll: '모두 보기' }} />
+          <SegmentedControl size="sm" aria-label="세로줄" value={lines} onChange={setLines} options={[{ value: 'none', label: '세로줄 없음' }, { value: 'groups', label: '그룹 사이' }, { value: 'all', label: '모든 열' }]} />
+        </Stack>
+        <DataTable<Product> aria-label="상품 판매와 재고" rows={rows} rowKey={(p) => p.id} columns={cols} hiddenColumns={hidden} columnLines={lines} pinnedRows={pinned} maxHeight={420} labels={TABLE_LABELS} />
       </Demo>
     </Section>
   );
