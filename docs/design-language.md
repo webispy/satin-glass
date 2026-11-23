@@ -2,6 +2,22 @@
 
 > 디자인 언어에서 실제로 정한 값과 그 이유를 정리한다. 모든 결정은 0장의 원칙으로 설명할 수 있어야 한다.
 
+<details>
+<summary><strong>English summary</strong></summary>
+
+This document records the values the design language settles on and why; it is written in Korean. In brief:
+
+- **Principles (§0)**, in priority order: *satin glass* (a grained translucency that scatters light, never a refracting lens); *two lights* (a fixed light from above gives form and a soft sheen follows the pointer); *surface tension* (a selection stretches towards where it is going and sticks when it arrives, never leaving its rail); *touch* (what is pressed sinks and gathers light; what you hold or have chosen is raised, and the track it moves along is a groove); *small, rare delight* (one visible movement per action, nothing added to repeated actions); *smooth for everyone* (high contrast, reduced transparency and reduced motion are first-class, focus is always visible, 60 fps holds). The last one is a floor that is never traded away.
+- **Decisions (§1)**: blur plus grain on glass, no refraction; fixed radii by role; bars float 12 px from the screen edge; an OKLCH palette of 11 hues × 11 steps with an iris accent; Pretendard as the recommended font; a minimal built-in icon set; selections that move like a drop; popups that bloom from their anchor; five named springs.
+- **Tokens (§2)**: colours are checked for WCAG contrast at build time (7:1 body text, 4.5:1 secondary and accent text; 7:1 for all three in high contrast); spacing on a 4 px scale; text roles for controls; springs as CSS `linear()` easings with matching JS springs.
+- **Performance (§3)**: `transform` and `opacity` animate freely, paint-only properties only in short state changes, anything else only from one checked allowlist; values come from tokens. A blur budget: no blurred glass nested in blurred glass, at most three layers of blur at any point and six large glass surfaces on a screen. Finished animations release their compositing layers.
+- **Accessibility (§4)**: everything works from the keyboard; overlays trap and return focus; the language is set once in the theme and marked with `lang`, portals included; system settings are followed, and all but forced colours can also be set in the app (useful over remote desktops).
+- **Motion (§5–7)**: every state change is listed with its spring. A motion personality (calm, lively — the default — or playful) sets how the five springs overshoot and stretch. For a constant sense of speed, JS springs keep their velocity when the target changes, and short movements (a switch knob) use faster springs of the same personality.
+- **Depth (§8)**: three separate questions — the material of each part (groove −1, page 0, surface 1, raised 2, floating glass 3, overlay 4), how a choice is shown (decided by role: a raised segment on a track, a flat tint in a glass bar, an accent bead for a chosen value, a tint for a range), and how layers stack and close. Component notes follow in §8.6.
+- **Corners (§9)**: radius by role in px (mark 3, xs 6, sm 9, control 12, card 16, bar/panel 22, sheet 28; capsule), and nested boxes are concentric: a flush child is clipped by or shares its parent's curve; a child with a gap takes the parent's radius minus the gap. The `corners` e2e suite checks every docs page.
+
+</details>
+
 ## 0. 원칙
 
 | 원칙 | 뜻 | 이것으로 정해지는 것 |
@@ -76,7 +92,7 @@
    - **겹침은 3까지:** 화면의 어느 점에서도 블러가 3겹을 넘지 않는다(바, 패널 하나, 시트 하나).
    - **큰 유리는 6개까지:** 한 변이 120px을 넘는 블러 표면(바·패널·시트·카드)은 한 화면에 6개까지다. CPU 4배 감속에서 유리 카드 다섯 장과 사이드바가 프레임을 떨어뜨리지 않은 측정(`perf`)이 근거다. 작은 유리(버튼·칩·페이지 점)는 겹치지 않는 한 개수 제한이 없다.
    - 전체 화면 블러는 쓰지 않는다.
-3. **포인터 빛:** 포인터 이벤트는 창 하나에서만 받고 rAF로 묶는다. 요소 위치는 스크롤·크기 변화가 있을 때만 다시 잰다. 하이라이트는 합성 레이어의 transform으로만 움직인다.
+3. **포인터 광택:** 포인터 이벤트는 창 하나에서만 받고 rAF로 묶는다. 요소 위치는 스크롤·크기 변화가 있을 때만 다시 잰다. 하이라이트는 합성 레이어의 transform으로만 움직인다.
 4. **제스처 상태:** 끌기·눌림 상태는 React 상태나 data 속성에 둔다. 클래스에 두면 다시 그릴 때 지워진다.
 5. **유리 표면은 스스로 스크롤하지 않는다.**
    - **규칙:** 유리는 항상 바깥에서 잘라내고(`overflow: hidden`), 스크롤은 안쪽 요소가 맡는다. 사이드바는 `.sg-sidebar__scroll`, 대화상자는 `.sg-dialog__scroll`, 메뉴는 `[data-sg-content]`가 스크롤한다.
@@ -100,30 +116,31 @@
 9. **제스처 처리:** 끌기는 시작부터 끝까지 창 단위로 듣는다. 그래서 포인터가 어디서 떨어지든 제스처가 반쯤 끝난 채로 남지 않는다. 문턱(threshold)이 있는 끌기는 실제로 끌기가 시작될 때 포인터를 붙잡는다. 누르는 순간 붙잡으면 시트 머리의 취소·완료 같은 안쪽 버튼의 클릭이 사라지기 때문이다.
 
 측정 결과는 Chromium, CPU 4배 감속 기준이다(`tests/e2e/perf.mjs`).
-- **통과:** 탭 이동, 메뉴, 대화상자, 시트, 토스트, 스위치, 세그먼트, 포인터 빛, 유리 바 아래 스크롤에서 프레임 드롭 없음
+- **통과:** 탭 이동, 메뉴, 대화상자, 시트, 토스트, 스위치, 세그먼트, 포인터 광택, 유리 바 아래 스크롤에서 프레임 드롭 없음
 - **알려진 예외:** 페이지에서 처음 하는 동작은 코드와 스타일 준비 비용 때문에 첫 프레임이 1번 늦을 수 있다. 시트 첫 열기는 약 70ms였고, 두 번째부터는 약 8ms다.
 
 ## 4. 접근성
 
-- **키보드:** 모든 컴포넌트를 키보드로 조작할 수 있다. 탭·세그먼트는 방향키로 이동하고, 메뉴는 방향키·Home/End·첫 글자 찾기를 지원한다. 오버레이는 Esc로 닫는다. 대화상자와 시트는 포커스를 가두고, 닫히면 포커스를 원래 자리로 돌려준다.
-- **Safari 대응:** Safari는 Tab으로 버튼을 건너뛰는 게 기본 설정이라, 포커스 가두기가 Tab 이동을 직접 처리한다. 버튼 클릭으로 포커스가 가지 않는 Safari 동작 때문에, 메뉴는 닫힐 때 포커스를 앵커로 돌려준다. 포커스를 가두는 레이어(대화상자, 시트, 드로어 등)는 열릴 때 포커스가 문서 전체에 있으면 방금 누른 컨트롤을 돌아갈 곳으로 삼는다.
-- **시스템 설정:** 시스템의 동작 줄이기, 투명도 줄이기, 고대비, 강제 색상 모드를 따른다. `createTheme`으로 직접 지정할 수도 있다.
-- **앱 안에서 줄이기:** VDI·원격 데스크톱처럼 화면을 스트리밍하는 환경에서는 애니메이션과 블러가 끊기거나 비싸다. 그래서 운영체제 설정과 별개로 앱 안에서도 켤 수 있다.
+- **키보드:** 모든 컴포넌트를 키보드로 조작할 수 있다. 탭·세그먼트는 방향키로 이동하고, 메뉴는 방향키·Home/End·첫 글자 찾기를 지원한다. 오버레이는 Esc로 닫는다. 대화상자·시트·드로어는 포커스를 가두고, 닫히면 포커스를 원래 자리로 돌려준다.
+- **Safari 대응:** Safari는 Tab으로 버튼을 건너뛰는 게 기본 설정이라, 포커스 트랩이 Tab 이동을 직접 처리한다. 또 Safari는 클릭한 버튼에 포커스를 주지 않아서 포커스가 문서 전체나 버튼을 감싼 포커스 가능한 컨테이너(탭 패널, 스크롤 영역)에 남는다. 그래서 메뉴·팝오버 같은 앵커 패널은 이때 닫히면서 포커스를 앵커로 돌려주고, 포커스를 가두는 레이어(대화상자, 시트, 드로어 등)는 열릴 때 방금 누른 컨트롤을 돌아갈 곳으로 삼는다.
+- **시스템 설정:** 시스템의 동작 줄이기, 투명도 줄이기, 고대비, 강제 색상 모드를 따른다. 강제 색상 모드를 뺀 셋은 `createTheme`으로 직접 지정할 수도 있다.
+- **언어:** 테마에서 앱 전체의 언어를 한 번 정한다(`createTheme({ locale: 'ko-KR' })`, 정하지 않으면 `en-US`). 날짜·시간·숫자 형식과 표 정렬은 모든 로케일을 지원하고, 컴포넌트에 내장된 문구(접근성 이름, 안내, 플레이스홀더)는 한국어와 영어가 있다. 다른 언어에는 영어 문구가 나온다. 렌더링 중에 브라우저 언어를 읽지 않는다(서버와 클라이언트가 같은 문구를 렌더링해야 하기 때문이다). 테마 요소와 포털에는 `lang`이 붙어 보조 기술이 그 언어로 읽는다.
+- **앱 안에서 줄이기:** VDI·원격 데스크톱처럼 화면을 스트리밍하는 환경에서는 애니메이션과 블러가 끊기거나 부하가 크다. 그래서 운영체제 설정과 별개로 앱 안에서도 켤 수 있다.
   - **설정:** `createTheme({ reduceMotion: true, reduceTransparency: true })`
   - `reduceMotion`:
     - `true`: 항상 줄인다.
     - `false`: 줄이지 않는다.
     - `'system'`(기본): 운영체제 설정을 따른다.
-  - **동작 줄이기가 켜지면:** "모두 즉시"로 바꾸지 않는다. 스위치처럼 탭 한 번에 상태가 여러 번 바뀌는 컨트롤은, 즉시 바꾸면 2~3프레임에 툭툭 끊겨 바뀌면서 오히려 버벅여 보인다. 그래서 움직임을 크기별로 나눠 처리한다.
+  - **동작 줄이기가 켜지면:** 모든 움직임을 즉시 전환하지는 않는다. 스위치처럼 탭 한 번에 상태가 여러 번 바뀌는 컨트롤은 즉시 전환하면 2~3프레임 사이에 툭툭 끊겨 오히려 버벅여 보인다. 그래서 움직임을 크기별로 나눠 처리한다.
     - **작은 상태 변화** (스위치, 선택 표시, 슬라이더, 진행 막대, 페이지 점): 넘치지 않는 짧은 스프링(`reducedMotion`, 응답 0.18초, 감쇠 1)으로 한 방향으로 미끄러진다. 90% 지점까지 약 110ms 걸린다.
-    - **꺼지는 효과:** 늘어남·납작해짐·젤리·뒤따라옴, 누를 때 넓어짐·들어감, 포인터 빛.
-    - **큰 움직임** (시트·액션 시트가 올라옴, 메뉴·대화상자가 피어남, 토스트 미끄러짐, 컨텍스트 메뉴 떠오름, 뱃지 튀어나옴): 제자리에서 짧게 페이드된다(약 140ms 나타남, 110ms 사라짐).
-    - **내용 변화** (스테퍼 숫자, 뱃지 숫자): 숫자가 바뀌는 건 움직임이 아니라 내용 변화라서 그냥 바뀐다. 굴림도 교차 페이드도 쓰지 않는다. 같은 자리에서 두 숫자가 겹쳐 페이드되면 흐릿하게 보이기 때문이다.
+    - **꺼지는 효과:** 늘어남·납작해짐·젤리·뒤따라옴, 누를 때 넓어짐·들어감, 포인터 광택.
+    - **큰 움직임** (시트·액션 시트가 올라옴, 메뉴·대화상자가 피어남, 토스트 미끄러짐, 컨텍스트 메뉴 떠오름, 배지 튀어나옴): 제자리에서 짧게 페이드된다(약 140ms 나타남, 110ms 사라짐).
+    - **내용 변화** (스테퍼 숫자, 배지 숫자): 숫자가 바뀌는 건 움직임이 아니라 내용 변화라서 애니메이션 없이 바로 바뀐다. 굴림도 교차 페이드도 쓰지 않는다. 같은 자리에서 두 숫자가 겹쳐 페이드되면 흐릿하게 보이기 때문이다.
     - **누름 효과:** 버튼·칩·카드·탭 아이콘·유리 표면이 들어가는 효과와 슬라이더 손잡이가 커지는 효과는 모두 없다.
-    - **계속 움직이는 표시:** 스피너는 1.4초에 한 바퀴 돈다. 미확정 진행 표시는 이동하지 않고 옅게 깜빡인다. 스켈레톤도 빛이 지나가지 않고 2초 주기로 숨 쉬듯 밝아졌다 어두워진다.
-    - **큰 동작 (0.2):** 미디어 뷰어는 썸네일에서 커지지 않고 제자리에서 페이드로 열리고 닫힌다. 버튼·키로 넘길 때도 미끄러지지 않고 바뀐다. 손가락으로 끌 때는 손가락을 따라가고, 놓으면 넘침 없이 자리 잡는다. 큰 제목의 작은 제목은 떠오르지 않고 페이드만 한다.
-  - **투명도 줄이기가 켜지면:** 블러를 쓰지 않는 불투명 표면이 되어 스트리밍 대역과 GPU 부담이 줄어든다.
-  - **검사:** `tests/e2e/reduce-motion.mjs`가 앱 안 설정과 시스템 설정 두 경로를 모두 검사한다. 확인 항목은 한 방향 이동, 넘침 없음, 늘어남 없음, 페이드로 대체, 빛 꺼짐이다. 여기에 컴포넌트 29곳에서 확대·이동이 없는지도 확인한다(0.2: 셀렉트, 체크, 라디오, 달 전환, 미디어 뷰어 열기·넘기기, 스켈레톤). `SANITY=1`로 실행하면 동작을 줄이지 않은 상태에서 같은 검사가 모두 실패하는지 확인할 수 있다. 검사가 움직임을 실제로 감지한다는 증거다.
+    - **계속 움직이는 표시:** 스피너는 1.4초에 한 바퀴 돈다. 진행률을 모르는 진행 표시(indeterminate)는 이동하지 않고 옅게 깜빡인다. 스켈레톤도 빛이 지나가지 않고 2초 주기로 숨 쉬듯 밝아졌다 어두워진다.
+    - **큰 동작 (0.2):** 미디어 뷰어는 썸네일에서 커지지 않고 제자리에서 페이드로 열리고 닫힌다. 버튼·키로 넘길 때도 미끄러지지 않고 바뀐다. 손가락으로 끌 때는 손가락을 따라가고, 놓으면 넘침 없이 자리 잡는다. 큰 제목 앱 바를 스크롤하면 나타나는 작은 제목은 떠오르지 않고 페이드만 한다.
+  - **투명도 줄이기가 켜지면:** 블러를 쓰지 않는 불투명 표면이 되어 스트리밍 대역폭과 GPU 부담이 줄어든다.
+  - **검사:** `tests/e2e/reduce-motion.mjs`가 앱 안 설정과 시스템 설정 두 경로를 모두 검사한다. 확인 항목은 한 방향 이동, 넘침 없음, 늘어남 없음, 페이드로 대체, 빛 꺼짐이다. 여기에 컴포넌트마다 확대·이동이 없는지도 확인한다(셀렉트, 체크박스, 라디오, 달력의 달 전환, 미디어 뷰어 열기·넘기기, 스켈레톤, 탭 패널, 차트, 아코디언 등). `SANITY=1`로 실행하면 동작을 줄이지 않은 상태에서 같은 검사를 돌려 대부분이 실패하는지 확인할 수 있다. 검사가 움직임을 실제로 감지한다는 증거다.
 
 ## 5. 모션 목록 — 상태가 바뀌는 모든 순간
 
@@ -269,7 +286,7 @@
 | 4 | 덮개 | 화면 전체(떠 있는 유리까지)를 어둡게 덮은 위에 올라오는 유리, `--sg-shadow-lg` | `.sg-glass--overlay` (`level="overlay"`) | 시트, 대화상자, 액션 시트. 미디어 뷰어는 화면 역할이라 자체 배경 |
 
 - **부위를 정하는 규칙:** 입력하거나 고른 값이 들어가는 자리와 값이 움직이는 길은 홈(−1), 누르면 일을 하는 버튼(메뉴를 여는 버튼, 강조색 버튼 포함 — 강조는 색이 말한다)은 평평한 채움, 볼록(2)은 손잡이와 지금 고른 것을 표시하는 것에만 쓴다. 표의 행에 붙는 인라인 셀렉트(바탕 없음)와 필터 셀렉트(윤곽선 필)는 폼의 칸이 아니라 행·막대 안의 작은 선택기라 예외다.
-- **표에 없는 부위:** 드로어는 덮개(4층, 진한 유리). 아래에서 올라와 내용을 읽거나 채우는 것(내용 높이, 손잡이)은 시트, 행동 목록은 액션 시트다. 드로어의 위·아래는 화면 폭 전체에 높이를 정한 도구 패널(콘솔, 로그)이다. 내비게이션 스택의 페이지는 화면 역할이라 불투명한 묶음 바탕이고, 위에 쌓인 페이지는 들어오는 쪽 가장자리에 선과 그림자(`--sg-shadow-edge`, 오른쪽에서 왼쪽으로 쓰는 화면은 `--sg-shadow-edge-end`), 아래 페이지에는 그늘. 툴팁은 떠 있지만 작고 잠깐이라 블러 없는 불투명 카드(`--sg-bg-elevated` + `--sg-shadow-md`). 컨텍스트 메뉴의 미리보기는 들어 올린 표면(`--sg-shadow-lg`). 유리 버튼 묶음과 페이지 점은 떠 있는 유리(3층). 아코디언은 표면 없이 바탕(0층) 위의 구분선. 시트 손잡이, 목록·대화상자의 아이콘 타일, 칩, 아바타는 평평하다.
+- **표에 없는 부위:** 드로어는 덮개(4층, 진한 유리). 아래에서 올라와 내용을 읽거나 채우는 것(내용 높이, 손잡이)은 시트, 행동 목록은 액션 시트다. 드로어의 위·아래는 화면 폭 전체에 높이를 정한 도구 패널(콘솔, 로그)이다. 내비게이션 스택의 페이지는 화면 역할이라 불투명한 묶음 바탕이고, 위에 쌓인 페이지는 들어오는 쪽 가장자리에 선과 그림자(`--sg-shadow-edge`, 오른쪽에서 왼쪽으로 쓰는 화면은 `--sg-shadow-edge-end`), 아래 페이지에는 그늘. 툴팁은 떠 있지만 작고 잠깐이라 블러 없는 불투명 카드(`--sg-bg-elevated` + `--sg-shadow-md`). 컨텍스트 메뉴의 미리보기는 들어 올린 표면(`--sg-shadow-lg`). 유리 버튼 묶음과 페이지 점은 떠 있는 유리(3층). 아코디언은 표면 없이 바탕(0층) 위의 구분선 — 제목 줄은 두 구분선 사이를 끝까지 네모로 칠한다(목록·표의 줄처럼, 글자는 12 안쪽; 곧은 선 사이에 둥근 칠을 끼우면 모서리마다 틈이 생긴다). 시트 손잡이, 목록·대화상자의 아이콘 타일, 칩, 아바타는 평평하다.
 - **홈 모양은 고를 수 있다:** `createTheme({ grooves: 'flat' })`이면 홈(−1)이 같은 자리에서 안쪽 그늘 없는 평평한 틴트(각 테마의 채움)가 된다. 바뀌는 것은 홈뿐이고 손잡이·유리·그림자는 그대로다. 안쪽 테마는 따로 정하지 않으면 바깥 설정을 물려받고, 고대비에서는 어느 쪽이든 홈의 1px 윤곽선을 유지한다(가는 레일의 3 : 1 경계).
 - **표면은 마우스를 올려도 표면이다:** 누를 수 있는 카드는 마우스를 올리면 살짝 밝아질 뿐 떠오르지 않는다(층이 바뀌는 것은 덮개가 열릴 때뿐). 배너·테두리 카드도 표면이라 다크의 윗변 빛과 고대비의 윤곽선을 받는다.
 - **다크에서는 빛으로 높이를 말한다:** 어두운 바탕에서는 그림자가 거의 보이지 않으므로, 높이 있는 것일수록 밝고(바탕 → 표면 → 볼록 → 유리), 올라온 것(1·3·4층, 그림자 토큰)은 윗변에 고정된 빛을 받은 가는 선(`--sg-lit-edge`)이 있다. 홈은 반대로 주변보다 어둡다. 라이트에서는 `--sg-lit-edge`가 없고 그림자가 높이를 말한다.
