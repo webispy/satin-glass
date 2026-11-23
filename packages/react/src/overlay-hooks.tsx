@@ -130,9 +130,10 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       document.removeEventListener('pointerdown', outside, true);
       window.removeEventListener('scroll', onScroll, true);
       removeEventListener('resize', replace);
-      /* Safari does not focus a button on click: fall back to the anchor so focus still goes home */
+      /* Safari does not focus a button on click (the page, or a focusable container around it, has focus instead):
+         fall back to the anchor so focus still goes home */
       const prev = before.current as HTMLElement | null;
-      const b = (!prev || prev === document.body) && anchor instanceof HTMLElement ? anchor : prev;
+      const b = (!prev || prev === document.body || (anchor instanceof HTMLElement && prev !== anchor && prev.contains(anchor))) && anchor instanceof HTMLElement ? anchor : prev;
       if (focusFirst && b && document.contains(b) && (p.contains(document.activeElement) || document.activeElement === document.body)) b.focus({ preventScroll: true });
     });
     focusFirst?.(p);

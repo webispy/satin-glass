@@ -94,8 +94,9 @@ export const focusables = (root: HTMLElement) =>
   Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null || el === document.activeElement);
 
 /** Moves focus into `root` and keeps Tab inside it. Returns a release function that restores focus. */
-/* Safari does not focus a button that is clicked, so a layer opened by a click found the page itself focused and gave
-   focus back to nothing on close. The control last pressed stands in for it (a moment ago, and still in the page). */
+/* Safari does not focus a button that is clicked, so a layer opened by a click found the page itself focused (or the
+   nearest focusable container around the button, such as a tab panel) and gave focus back there on close. The control
+   last pressed stands in for it (a moment ago, and still in the page). */
 let pressed: { el: HTMLElement; at: number } | null = null;
 if (typeof document !== 'undefined') {
   document.addEventListener('pointerdown', (e) => {
@@ -105,8 +106,9 @@ if (typeof document !== 'undefined') {
 }
 const opener = (): HTMLElement | null => {
   const a = document.activeElement as HTMLElement | null;
-  if (a && a !== document.body) return a;
-  return pressed && document.contains(pressed.el) && performance.now() - pressed.at < 3000 ? pressed.el : a;
+  const recent = pressed && document.contains(pressed.el) && performance.now() - pressed.at < 3000 ? pressed.el : null;
+  if (a && a !== document.body && !(recent && recent !== a && a.contains(recent))) return a;
+  return recent ?? a;
 };
 
 export function trapFocus(root: HTMLElement, initial?: HTMLElement | null): () => void {
