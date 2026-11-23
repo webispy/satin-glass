@@ -1,5 +1,15 @@
 # Contributing
 
+How work is planned, checked and shown before it lands is in [AGENTS.md](AGENTS.md); this file covers setup,
+commits, adding a component, tests and releases.
+
+## Setup
+
+Node 24 (`.nvmrc`) and pnpm (the version in `package.json`). Run `pnpm install`, which also points git at
+`.githooks` (its `commit-msg` hook checks messages against the rules below), then `pnpm build` once: the docs app
+and the tests use the packages' build output. The e2e suites need Playwright's browsers once:
+`pnpm exec playwright install chromium webkit firefox`.
+
 ## Commits
 
 Commit messages follow the Linux kernel style
@@ -30,32 +40,57 @@ Signed-off-by: Your Name <you@example.com>
 - **Trailers**: `Signed-off-by:` (`git commit -s`) on every commit, certifying the
   [Developer Certificate of Origin](https://developercertificate.org/); `Co-Authored-By:` for co-authors;
   `Reviewed-by:` for each reviewer whose findings the change acts on, people or AI agents (name the model:
-  `Reviewed-by: Codex gpt-6.2-sol <noreply@openai.com>`);
+  `Reviewed-by: Codex gpt-6.2-sol <noreply@openai.com>`, `Reviewed-by: Gemini gemini-4-neon-high <noreply@google.com>`);
   `Fixes: <12-char SHA> ("subject")` when fixing an earlier commit; `Link:` for an issue or discussion.
 - **One logical change per commit**, and every commit builds and passes its tests, so `git bisect` works. No
   "WIP" or "fix typo in previous commit" commits on the main branch: fold them in before merging.
 - Call out breaking API or CSS changes in the body and in `CHANGELOG.md`.
+- `scripts/check-commits.mjs` checks the mechanical part: the subject's shape and length, the blank line, body
+  lines within 72 columns (indented lines and URLs excepted), a `Signed-off-by` from the author, and `Name
+  <address>` on every person trailer. The `commit-msg` hook runs it on each commit; CI runs it on every commit a
+  push or pull request brings and also refuses `fixup!`, `squash!`, `amend!` and `wip` subjects. Choosing the area
+  and saying why is up to you.
 
 | Area | Scope |
 |---|---|
 | `tokens` | `packages/tokens`: palette, themes, tokens, contrast checks |
 | `core` | `packages/core`: springs, the pointer sheen (`light`), the stretch-and-stick selection (`bridge`), gestures, overlays, and the CSS sources |
 | `react` | `packages/react`; `react/<component>` for one component (`react/wheel`, `react/tabbar`) |
-| `docs` | `apps/docs` and `docs/` |
+| `docs` | `apps/docs`, `docs/` and the root documents (README, CONTRIBUTING, AGENTS) |
 | `e2e` | `tests/e2e` |
 | `github` | `.github`: issue and pull request templates, workflows |
-| `build` | package layout, bundling, workspace and tooling |
+| `build` | package layout, bundling, workspace and tooling (`scripts/`, `.githooks/`) |
 | `release` | version bumps and the changelog entry that goes with them (`release: 0.4.0`) |
 | `treewide` | mechanical changes across everything (renames) |
 
+## Adding a component
+
+1. Write its public contract first ([AGENTS.md, Before building](AGENTS.md#before-building)) and get it reviewed.
+2. Build it in `packages/react/src` and put its styles in the category stylesheet under `packages/core/styles`.
+   Export it from `packages/react/src/index.ts` and from its category entry in `packages/react/src/entries/` (the
+   entry is how `e2e:changed` and `scripts/docs-props.mjs` find it).
+3. Put the words it writes itself (labels, accessible names, announcements) in `packages/react/src/messages.ts`, in
+   English and Korean, and give every option JSDoc.
+4. Show it in the docs app: a section on its category page in both languages, a usage example in
+   `apps/docs/src/examples/`, and its name in that page's `<Page api={…}>`. Run `node scripts/docs-props.mjs`.
+   Add it to the category table in `README.md` and `README.ko.md`.
+5. Add unit tests for its behaviour. Once the design is chosen, add e2e for interaction and motion (see below).
+   The suites that walk every page (`corners`, `blur-budget`, `focus`, `edge` with axe and 320 px reflow,
+   `matrix`, `sweep`, `css-split`, `i18n`) pick it up by themselves.
+6. Add a `CHANGELOG.md` entry under the unreleased version.
+
 ## Tests while working
 
-`pnpm test:changed` and `pnpm e2e:changed` run only what covers the change (see the
-[README](README.md#development)). Give a new e2e suite a `// covers: <categories>` line near its top, and export
-a new component from its category entry in `packages/react/src/entries/`, so that `e2e:changed` can find them.
+`pnpm test:changed` and `pnpm e2e:changed` run only what covers the change: uncommitted work on `main`, or a branch
+against its merge base (`--base <ref>` to compare with something else; see the [README](README.md#development)).
+A new e2e suite needs two things to run at all: an entry in the phase lists of `tests/e2e/run.mjs` (and its time in
+`EST`), and a `// covers: <categories>` line near its top (category names, `*` for any, `css` for any stylesheet)
+so that `e2e:changed` picks it.
 
 ## Releases
 
-Versions are tagged `vX.Y.Z` on the commit `release: X.Y.Z`. The three packages are versioned together. Before
-tagging, `pnpm e2e` must pass in all three engines (all themes, motion personalities, reduced motion, edge cases,
-axe, performance with the CPU slowed 4×).
+The three packages are versioned together. A release is one commit, `release: X.Y.Z`: the version in every
+`packages/*/package.json`, the date on the unreleased section of `CHANGELOG.md`, the status line in both READMEs.
+It is tagged `vX.Y.Z`. Before tagging, `pnpm typecheck`, `pnpm test`, `node scripts/docs-props.mjs --check` and the
+full `pnpm e2e` pass: every suite in all three engines, plus the Chromium runs with each theme, motion personality
+and reduced setting, and performance with the CPU slowed 4×.
