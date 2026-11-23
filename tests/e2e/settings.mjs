@@ -183,6 +183,13 @@ for (const [w, locale] of [[390, 'en-US'], [1000, 'ko-KR'], [1359, 'en-US'], [13
   const before = await panels();
   await q.setViewportSize({ width: 1500, height: 800 }); await q.waitForTimeout(700);
   ok('anchored panel: closes when its anchor is hidden (settings popover, window widened)', before === 1 && (await panels()) === 0, `${before} → ${await panels()}`);
+  /* the bar's switches mounted hidden (display: none at this width) and are shown now: each thumb rests 20 px wide
+     against the end its state says (they kept a sliver measured at 0 × 0) */
+  const thumbs = await q.evaluate(() => [...document.querySelectorAll('.docs__settings--bar .sg-switch')].map((s) => {
+    const r = s.getBoundingClientRect(), t = s.querySelector('.sg-switch__thumb').getBoundingClientRect(), on = s.getAttribute('aria-checked') === 'true';
+    return { w: Math.round(t.width), gap: Math.round(on ? r.right - t.right : t.left - r.left) };
+  }));
+  ok('switches mounted hidden rest in place once shown (settings bar after widening)', thumbs.length === 3 && thumbs.every((t) => t.w >= 16 && t.gap >= 1 && t.gap <= 4), JSON.stringify(thumbs));
   await q.setViewportSize({ width: 1300, height: 800 }); await q.waitForTimeout(400);
   const sel = q.locator('[data-demo="filterbar"] .sg-select'); await sel.scrollIntoViewIfNeeded(); await sel.click(); await q.waitForTimeout(500);
   await q.setViewportSize({ width: 1200, height: 800 }); await q.waitForTimeout(600);

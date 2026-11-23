@@ -229,7 +229,21 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
     const isOn = onRef.current;
     eng.current = { L: new Spring(isOn ? g.W - g.pad - g.T : g.pad, 'snappy', b), R: new Spring(isOn ? g.W - g.pad : g.pad + g.T, 'snappy', b), ...g, stop: null, squashed: true, wall: null };
     render();
-    return () => { eng.current?.stop?.(); eng.current?.knock?.(); eng.current = null; };
+    /* the thumb's edges are pixels measured from the switch: a switch mounted hidden (display: none — a settings bar a
+       narrow layout swaps for a menu) measured 0 and kept a sliver of a thumb once shown. When its size changes and
+       the thumb is at rest, measure again and put the edges where the state says */
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => {
+      const e = eng.current;
+      if (!e || e.stop) return;
+      const n = geom();
+      if (n.W === e.W && n.T === e.T && n.pad === e.pad) return;
+      Object.assign(e, n);
+      const on = onRef.current;
+      e.L.jump(on ? n.W - n.pad - n.T : n.pad); e.R.jump(on ? n.W - n.pad : n.pad + n.T);
+      render();
+    });
+    ro?.observe(b);
+    return () => { ro?.disconnect(); eng.current?.stop?.(); eng.current?.knock?.(); eng.current = null; };
   }, []);
   const firstOn = useRef(true);
   useIsoLayoutEffect(() => { if (firstOn.current) { firstOn.current = false; return; } go(true); }, [on]);
