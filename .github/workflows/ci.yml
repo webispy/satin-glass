@@ -22,7 +22,7 @@ jobs:
     name: Commit messages (CONTRIBUTING.md)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       # the commits this push or pull request brings. After a force-push the old head is gone from the repository,
@@ -43,9 +43,9 @@ jobs:
     name: Build, typecheck, unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -75,9 +75,9 @@ jobs:
       E2E_SHARD: ${{ matrix.shard }}/4
       HOME: /root
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -86,7 +86,7 @@ jobs:
       - run: node tests/e2e/run.mjs
       - name: Keep the failures (with engine, settings and load) for FLAKES.md
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-failures-${{ matrix.shard }}
           path: tests/e2e/failures/
