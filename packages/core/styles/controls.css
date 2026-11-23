@@ -148,7 +148,7 @@
    ============================================================================================ */
 .sg-segmented {
   position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(max-content, 1fr);
-  height: 36px; --_radius: var(--sg-radius-md); --_nest: 3px; padding: var(--_nest); gap: 0; border-radius: var(--_radius);
+  height: var(--sg-size-control-md); --_radius: var(--sg-radius-md); --_nest: 3px; padding: var(--_nest); gap: 0; border-radius: var(--_radius);
   background: var(--sg-groove-soft); box-shadow: var(--sg-depth-inset); contain: layout; touch-action: pan-y; user-select: none; -webkit-user-select: none;
   overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none;
 }
@@ -176,7 +176,7 @@
 .sg-segmented__item:focus-visible { outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); }
 .sg-segmented__item svg { width: 16px; height: 16px; flex: none; }
 .sg-segmented[data-sg-pressing] .sg-segmented__indicator { transform-origin: center; }
-.sg-segmented--sm { height: 30px; }
+.sg-segmented--sm { height: var(--sg-size-control-sm); }   /* the button scale: beside a small button it lines up */
 /* more segments than fit: the ends fade where more wait. A swipe scrolls the strip; a drag that starts on the
    selected segment still moves the drop (touch-action is decided where the finger lands). */
 .sg-segmented[data-sg-more-start], .sg-segmented[data-sg-more-end], .sg-tabbar__track[data-sg-more-start], .sg-tabbar__track[data-sg-more-end] {
@@ -194,15 +194,15 @@
 /* ============================================================================================
    Stepper: [ − | value | + ]
    ============================================================================================ */
-.sg-stepper { display: inline-flex; align-items: center; height: 36px; --_radius: var(--sg-radius-md); --_nest: 2px; padding: var(--_nest); border-radius: var(--_radius); background: var(--sg-groove-soft); box-shadow: var(--sg-depth-inset); user-select: none; -webkit-user-select: none; }
-.sg-stepper__btn { appearance: none; border: 0; margin: 0; width: 32px; height: 32px; display: grid; place-items: center; border-radius: calc(var(--_radius) - var(--_nest)); background: none; color: var(--sg-label); cursor: pointer; transition: background-color var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+.sg-stepper { display: inline-flex; align-items: center; height: var(--sg-size-control-md); --_radius: var(--sg-radius-md); --_nest: 2px; padding: var(--_nest); border-radius: var(--_radius); background: var(--sg-groove-soft); box-shadow: var(--sg-depth-inset); user-select: none; -webkit-user-select: none; }
+.sg-stepper__btn { appearance: none; border: 0; margin: 0; width: 36px; height: calc(var(--sg-size-control-md) - 2 * var(--_nest)); display: grid; place-items: center; border-radius: calc(var(--_radius) - var(--_nest)); background: none; color: var(--sg-label); cursor: pointer; transition: background-color var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
 @media (hover: hover) { .sg-stepper__btn:hover:not(:disabled) { background: var(--sg-fill-hover); } }
 .sg-stepper__btn:active:not(:disabled) { transform: scale(0.9); background: var(--sg-fill-strong); }
 .sg-stepper__btn:disabled { color: var(--sg-label-disabled); cursor: default; }
 .sg-stepper__btn:focus-visible { outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); }
 .sg-stepper__btn svg { width: 16px; height: 16px; }
 /* odometer: the new number rolls in on the snappy spring while the old one rolls out the other way */
-.sg-stepper__value { position: relative; display: grid; min-width: 40px; height: 32px; padding: 0 4px; overflow: hidden; text-align: center; font-size: 15px; line-height: 32px; font-weight: 650; font-variant-numeric: tabular-nums;
+.sg-stepper__value { position: relative; display: grid; min-width: 40px; height: calc(var(--sg-size-control-md) - 2 * var(--_nest)); padding: 0 4px; overflow: hidden; text-align: center; font-size: 15px; line-height: calc(var(--sg-size-control-md) - 2 * var(--_nest)); font-weight: 650; font-variant-numeric: tabular-nums;
   -webkit-mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent); }
 .sg-stepper__value > span { grid-area: 1 / 1; }
 .sg-stepper__value > [data-roll="up"] { animation: sg-roll-in-up var(--sg-spring-snappy-duration) var(--sg-spring-snappy) backwards; }
@@ -248,7 +248,7 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 
 .sg-search { display: flex; align-items: center; }
 .sg-search .sg-field { flex: 1; }
-.sg-search .sg-field__control { height: 40px; border-radius: var(--sg-radius-md); }
+.sg-search .sg-field__control { height: var(--sg-size-control-md); border-radius: var(--sg-radius-md); }
 .sg-search--glass .sg-field__control:focus-within { box-shadow: 0 0 0 4px var(--sg-accent-soft), var(--_shadow); }
 /* Cancel slides in from the right while the field narrows; hidden it takes no room (and no focus) */
 .sg-search { gap: 0; }

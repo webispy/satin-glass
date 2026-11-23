@@ -3,7 +3,7 @@
    an accordion). Nothing here is dashboard-specific code: it shows how the parts fit. All data is made up. */
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Accordion, Banner, BarChart, BarMeter, Button, Card, CardBody, CardHeader, Chip, DataTable, DonutChart, EmptyState, IconButton,
+  Accordion, Banner, BarChart, BarMeter, Button, Card, CardBody, CardHeader, Chip, DataTable, DonutChart, EmptyState, FilterBar, IconButton,
   LineChart, Pagination, SearchField, SegmentedControl, Select, Sheet, Sparkline, Stat, Tabs, Tag, Text, Tooltip, useToast,
   type Column, type SortState,
 } from '@satin-glass/react';
@@ -16,6 +16,7 @@ import {
 
 const STAT_LABELS = { up: '증가', down: '감소', flat: '변화 없음' };
 const TABLE_LABELS = { selectAll: '모두 선택', sortedAsc: '오름차순 정렬', sortedDesc: '내림차순 정렬' };
+const FILTER_LABELS = { clear: '필터 초기화', applied: (n: number) => `필터 ${n}개` };
 const PAGER_LABELS = { previous: '이전 페이지', next: '다음 페이지', page: (n: number) => `${n} 페이지` };
 const LOW = PRODUCTS.filter((p) => p.daysLeft !== null && p.daysLeft <= 7);
 
@@ -36,7 +37,7 @@ export function Dashboard() {
             <Text variant="footnote" tone="secondary" as="span">11월 18일 18:00 기준</Text>
           </div>
           <div className="dash__tools">
-            <SegmentedControl size="sm" aria-label="기간" value={period} onChange={setPeriod} options={[{ value: '7', label: '7일' }, { value: '30', label: '30일' }]} />
+            <SegmentedControl aria-label="기간" value={period} onChange={setPeriod} options={[{ value: '7', label: '7일' }, { value: '30', label: '30일' }]} />
             <Tooltip content="보이는 데이터를 CSV로 내려받아요"><IconButton icon={<Download />} label="내려받기" variant="glass" onClick={() => toast({ title: 'CSV를 준비하고 있어요' })} /></Tooltip>
           </div>
         </header>
@@ -157,17 +158,17 @@ function Orders() {
     return [...found].sort((a, b) => { const x = get(a) as string | number, y = get(b) as string | number; const c = typeof x === 'number' ? x - (y as number) : String(x).localeCompare(String(y), 'ko'); return sort.dir === 'asc' ? c : -c; });
   }, [found, sort]);
   const rows = sorted.slice((page - 1) * PAGE, page * PAGE);
-  const filtered = q || status !== 'all' || channel !== 'all';
+  const applied = (q ? 1 : 0) + (status !== 'all' ? 1 : 0) + (channel !== 'all' ? 1 : 0);
   const reset = () => { setQ(''); setStatus('all'); setChannel('all'); };
   return (
     <Card>
       <CardBody className="dash__table-card">
         <div className="dash__filters">
-          <SearchField aria-label="주문 찾기" placeholder="주문자, 상품, 주문 번호" value={q} onChange={(e) => setQ(e.currentTarget.value)} style={{ width: 240 }} />
-          <Select variant="filter" label="상태" value={status} onChange={setStatus} options={[{ value: 'all', label: '전체' }, ...(Object.keys(STATUS) as OrderStatus[]).map((k) => ({ value: k, label: STATUS[k].label }))]} />
-          <Select variant="filter" label="경로" value={channel} onChange={setChannel} options={[{ value: 'all', label: '전체' }, ...CHANNELS.map((c) => ({ value: c, label: c }))]} />
-          {filtered && <Button size="sm" variant="plain" onClick={reset}>필터 초기화</Button>}
-          <span className="dash__spacer" />
+          <FilterBar aria-label="주문 필터" className="dash__filterbar" count={applied} onClear={reset} labels={FILTER_LABELS}>
+            <SearchField aria-label="주문 찾기" placeholder="주문자, 상품, 주문 번호" value={q} onChange={(e) => setQ(e.currentTarget.value)} style={{ width: 240 }} />
+            <Select variant="filter" label="상태" value={status} onChange={setStatus} options={[{ value: 'all', label: '전체' }, ...(Object.keys(STATUS) as OrderStatus[]).map((k) => ({ value: k, label: STATUS[k].label }))]} />
+            <Select variant="filter" label="경로" value={channel} onChange={setChannel} options={[{ value: 'all', label: '전체' }, ...CHANNELS.map((c) => ({ value: c, label: c }))]} />
+          </FilterBar>
           {sel.length > 0 ? (
             <span className="dash__bulk">
               <Text variant="subhead" as="span">{sel.length}건 선택</Text>
@@ -213,10 +214,11 @@ function Products({ lowOnly, setLowOnly }: { lowOnly: boolean; setLowOnly: (v: b
   return (
     <Card>
       <CardBody className="dash__table-card">
-        <div className="dash__filters" role="group" aria-label="상품 필터">
-          {CATEGORIES.map((c) => <Chip key={c.key} selected={cats.includes(c.key)} onSelectedChange={(on) => setCats((x) => (on ? [...x, c.key] : x.filter((y) => y !== c.key)))}>{c.label}</Chip>)}
-          <Chip selected={lowOnly} onSelectedChange={setLowOnly}>재고 부족만</Chip>
-          <span className="dash__spacer" />
+        <div className="dash__filters">
+          <FilterBar aria-label="상품 필터" className="dash__filterbar" count={cats.length + (lowOnly ? 1 : 0)} onClear={() => { setCats([]); setLowOnly(false); }} labels={FILTER_LABELS}>
+            {CATEGORIES.map((c) => <Chip key={c.key} selected={cats.includes(c.key)} onSelectedChange={(on) => setCats((x) => (on ? [...x, c.key] : x.filter((y) => y !== c.key)))}>{c.label}</Chip>)}
+            <Chip selected={lowOnly} onSelectedChange={setLowOnly}>재고 부족만</Chip>
+          </FilterBar>
           <Text variant="footnote" tone="secondary" as="span">상품 {rows.length}개</Text>
         </div>
         <DataTable<Product> aria-label="상품" rows={rows} rowKey={(p) => p.id} columns={cols} pinnedRows={live.length ? [totals] : []} defaultSort={{ key: 'sold', dir: 'desc' }} maxHeight={520}

@@ -12,6 +12,10 @@ Parts for comparing many things on many measures — choosing a table's columns,
 - **`ScatterChart`** (data): one point per item on two numeric axes, linear or log (`xScale`, `yScale`), with groups (a colour and a legend each), `highlight` to pick points out by name (larger and labelled, the rest recede; labels that would overlap move apart), the nearest point under the pointer, arrow keys from left to right, and the data table for screen readers. Points pop in from the left; new data and a new scale move together, as the other charts.
 - Docs: a **model evaluation** example (made-up models): a filterable score matrix with optional summary rows, a shortlist compared side by side with intervals, a quality-against-price scatter, model cards and details.
 
+### Changed
+- Controls that stand side by side take one height scale, the size tokens (32 / 40 / 48): `SegmentedControl` is 40 (36 before) and 32 at `size="sm"` (30 before), `Stepper` 40 (36 before), `SearchField` 40 through `--sg-size-control-md`. A small segmented control beside a small button, or a default one beside a default button, no longer misses by 2–4 px. Form text fields stay 44.
+- Docs: the dashboard's order and product filters use `FilterBar`; its period switch and download button are the same height.
+
 ### Fixed
 - `DataTable`: a Shift-click range was anchored to a row position, so sorting or filtering in between extended it from a different row; it is anchored to the row's key. The keyboard tab stop stays on the grid when rows are filtered away or columns hidden under it. The roving tab stop no longer walks every cell on each render (two native queries instead), which mattered for wide comparison tables.
 - Charts: the data table kept for screen readers could be wider than its 1 px box (a table grows to its content), so a chart with a wide table — a scatter's four columns — made a narrow page scroll sideways. The box is now a wrapper around the table.

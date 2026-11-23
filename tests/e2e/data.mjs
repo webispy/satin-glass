@@ -362,6 +362,10 @@ await go('charts');
 await go('dashboard');
 {
   const d = demo('dashboard');
+  /* controls side by side are one height: the period switch and the download button (default size), the order filters */
+  const hOf = (loc) => loc.evaluate((e) => e.getBoundingClientRect().height);
+  const head = [await hOf(d.getByRole('radiogroup', { name: '기간' })), await hOf(d.getByRole('button', { name: '내려받기' }))];
+  ok('dashboard: the period switch and the download button are the same height (40)', head.every((h) => Math.abs(h - 40) < 0.5), JSON.stringify(head));
   const before = await d.locator('.sg-stat__value').first().textContent();
   await d.getByRole('radio', { name: '30일' }).click(); await p.waitForTimeout(100);
   const busy = await d.locator('.sg-stat[aria-busy=true]').count();
@@ -394,6 +398,8 @@ await go('dashboard');
 
   await d.getByRole('tab', { name: /주문/ }).click(); await p.waitForTimeout(500);
   const og = d.getByRole('grid', { name: '주문', exact: true });
+  const fh = await d.getByRole('group', { name: '주문 필터' }).evaluate((g) => [...g.querySelectorAll('.sg-search, .sg-select')].map((e) => e.getBoundingClientRect().height));
+  ok('dashboard: the order filters are one height (the filter bar\'s 32)', fh.length === 3 && fh.every((h) => Math.abs(h - 32) < 0.5), JSON.stringify(fh));
   ok('dashboard: the orders tab shows the first 15 of 5,000', (await og.locator('tbody tr').count()) === 15 && (await og.getAttribute('aria-rowcount')) === '5001');
   const boxes = og.locator('tbody input[type=checkbox]');
   await boxes.nth(0).click(); await boxes.nth(1).click(); await p.waitForTimeout(150);

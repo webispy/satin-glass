@@ -134,7 +134,7 @@ body { background: var(--sg-bg); }
 .dash__charts { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
 .dash__table-card { padding: 16px; gap: 12px; }
 .dash__filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.dash__spacer { flex: 1; }
+.dash__filterbar { flex: 1; }   /* its applied count and "clear" sit at its end, before the row's own count / bulk actions */
 .dash__bulk { display: inline-flex; align-items: center; gap: 8px; }
 .dash__link { appearance: none; border: 0; padding: 0; margin: 0; background: none; font: inherit; font-weight: 560; color: var(--sg-label); cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; text-align: start; border-radius: 4px; }
 @media (hover: hover) { .dash__link:hover { color: var(--sg-accent-text); text-decoration: underline; } }
