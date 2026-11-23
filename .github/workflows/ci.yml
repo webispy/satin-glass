@@ -25,7 +25,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # the commits this push or pull request brings (a new branch: none to compare against, so nothing is checked)
+      # the commits this push or pull request brings. After a force-push the old head is gone from the repository,
+      # and a new branch has none: then everything since the last release tag is checked
       - name: Check subjects, wrapping and trailers
         env:
           BEFORE: ${{ github.event.before }}
@@ -33,7 +34,10 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           FROM="${BASE:-$BEFORE}"
-          if [ -z "$FROM" ] || [ "$FROM" = "0000000000000000000000000000000000000000" ]; then echo "no range to check"; exit 0; fi
+          if [ -z "$FROM" ] || ! git cat-file -e "$FROM^{commit}" 2>/dev/null; then
+            FROM="$(git describe --tags --abbrev=0 --match 'v*' "$HEAD")"
+            echo "no earlier head to compare with: checking since $FROM"
+          fi
           node scripts/check-commits.mjs "$FROM..$HEAD"
   check:
     name: Build, typecheck, unit tests
