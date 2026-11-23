@@ -43,7 +43,9 @@
 import { spawn } from 'node:child_process';
 import { availableParallelism } from 'node:os';
 import { setTimeout as wait } from 'node:timers/promises';
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { loadavg } from 'node:os';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ENGINES = (process.env.E2E_ENGINES || 'chromium,webkit,firefox').split(',').map((s) => s.trim()).filter(Boolean);
@@ -136,6 +138,19 @@ const share = (l) => (mine ? l.filter((s) => mine.has(s[0])) : l);
 
 const results = [], logs = [];
 const LOG = new URL('./last-run.log', import.meta.url);   /* every suite's whole output (git ignores *.log) */
+/* every failure is kept with what it ran under (engine and settings, how many suites ran at once, machine load, the
+   commit), so a failure that passes on a rerun can still be traced: tests/e2e/FLAKES.md lists the ones under watch */
+const FAILS = new URL('./failures/', import.meta.url);
+const sha = (() => { try { return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim(); } catch { return '?'; } })();
+const keepFailure = (label, env, text, phaseJobs) => {
+  try {
+    mkdirSync(FAILS, { recursive: true });
+    const at = new Date().toISOString().replace(/[:.]/g, '-');
+    const head = `suite: ${label}\nenv: ${JSON.stringify(env)}\njobs at once: ${phaseJobs}\nload: ${loadavg().map((x) => x.toFixed(1)).join(' ')}\ncommit: ${sha}\nat: ${new Date().toISOString()}\n\n`;
+    writeFileSync(new URL(`${at}-${label.replace(/[^\w]+/g, '-').slice(0, 80)}.log`, FAILS), head + text + '\n');
+  } catch { /* keeping the record must never fail the run */ }
+};
+let phaseJobs = 1, kept = 0;
 const secs = (t) => `${((performance.now() - t) / 1000).toFixed(0)}s`;
 const run = ([label, file, env], record = true) => new Promise((res) => {
   const t = performance.now(), out = [];
@@ -145,6 +160,7 @@ const run = ([label, file, env], record = true) => new Promise((res) => {
     const pass = n === 0, text = Buffer.concat(out).toString().trimEnd();
     console.log(`\n=== ${pass ? 'PASS' : 'FAIL'}  ${label}  (${secs(t)})`);
     logs.push(`=== ${pass ? 'PASS' : 'FAIL'}  ${label}  (${secs(t)})\n${text}\n`);
+    if (!pass) { kept++; keepFailure(label, env, text, phaseJobs); }
     if (VERBOSE || !pass) console.log(text);
     else console.log(text.split('\n').pop());
     if (record) results.push([label, pass]);
@@ -159,6 +175,7 @@ const phase = async (name, list, n) => {
   if (!list.length) return;
   const t = performance.now();
   console.log(`\n##### ${name}: ${list.length} suites, ${n} at a time`);
+  phaseJobs = n;
   await pool(list, n);
   console.log(`\n##### ${name} done in ${secs(t)}`);
 };
@@ -182,6 +199,7 @@ try {
     console.log('\n##### 3/3 timing: one at a time');
     await wait(5000);
     for (const s of timing) {
+      phaseJobs = 1;
       if (await run(s, false)) { results.push([s[0], true]); continue; }
       console.log(`    … running "${s[0]}" once more (a timing suite can be thrown by a one-off stall)`);
       const again = await run(s, false);
@@ -195,5 +213,6 @@ for (const [l, okk] of [...results.filter(([, o]) => o), ...results.filter(([, o
 const bad = results.filter(([, okk]) => !okk).length;
 writeFileSync(LOG, logs.join('\n'));
 console.log(`full output: ${fileURLToPath(LOG)}`);
+if (kept) console.log(`${kept} failed run(s) kept in ${fileURLToPath(FAILS)}${bad ? '' : ' (they passed on a second try: record them in tests/e2e/FLAKES.md)'}`);
 console.log(bad ? `${bad} suite(s) failed` : `all ${results.length} suites passed${QUICK ? ' (quick: not every engine)' : ''}`);
 process.exit(bad ? 1 : 0);
