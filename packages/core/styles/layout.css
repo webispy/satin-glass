@@ -125,8 +125,10 @@
 .sg-accordion__item { border-bottom: 1px solid var(--sg-separator); }
 .sg-accordion__heading { margin: 0; font: inherit; }
 .sg-accordion__trigger {
-  appearance: none; border: 0; margin: 0; width: 100%; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 4px;
-  background: none; font: inherit; font-size: 15px; font-weight: 600; color: var(--sg-label); text-align: start; cursor: pointer; border-radius: var(--sg-radius-sm);
+  appearance: none; border: 0; margin: 0; width: 100%; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 12px;   /* 12 in from the tint's edges, as list rows keep their text in */
+  background: none; font: inherit; font-size: 15px; font-weight: 600; color: var(--sg-label); text-align: start; cursor: pointer;
+  border-radius: 0;   /* the row between two straight separators tints edge to edge, as list and table rows do (a rounded box
+                         wedged between straight lines left a gap at each corner) */
 }
 .sg-accordion__trigger { transition: background-color var(--sg-duration-instant) ease; }
 @media (hover: hover) { .sg-accordion__trigger:hover:not(:disabled) { background: var(--sg-fill); } }
@@ -143,7 +145,7 @@
    covered by it, with no motion of its own. Reduced motion: the height changes at once, the content fades in */
 .sg-accordion__region { height: 0; overflow: hidden; }
 .sg-accordion__item[data-open] .sg-accordion__region { height: auto; }
-.sg-accordion__content { padding: 0 4px 16px; }
+.sg-accordion__content { padding: 0 12px 16px; }   /* on the heading's text line */
 [data-sg-reduce-motion="true"] .sg-accordion__item[data-open] .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease backwards; }
 @media (prefers-reduced-motion: reduce) {
   .sg-root:not([data-sg-reduce-motion="false"]) .sg-accordion__item[data-open] .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease backwards; }

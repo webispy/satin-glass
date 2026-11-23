@@ -3,7 +3,9 @@ import { useEffect, useRef } from 'react';
 import { bloomIn, bloomOut, holdScrollLock, place, pushLayer, type Placement } from '@satin-glass/core';
 import { useIsoLayoutEffect, usePresence } from './utils';
 
-export type CloseReason = 'escape' | 'backdrop' | 'action' | 'swipe' | 'select';
+/** why an overlay asks to close; 'anchor': the element an anchored panel points at is no longer on screen (it was
+    hidden — a responsive layout swapping one control for another — or removed) */
+export type CloseReason = 'escape' | 'backdrop' | 'action' | 'swipe' | 'select' | 'anchor';
 
 /** Holds an overlay's cleanup (scroll lock, focus trap, listeners). Runs it at most once per opening — on close,
     or on unmount if the overlay disappears while open (route change, a parent removing it mid-animation). */
@@ -99,16 +101,21 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
     };
     let side = at.side, base = doc(r), pos = { x: at.x + scrollX, y: at.y + scrollY };
     const align = placement.includes('-') ? placement.slice(placement.indexOf('-')) : '';
+    /* an anchor that is no longer laid out (display: none, or gone from the document) has no place to point at: the
+       panel would be placed against a 0 × 0 box at the top left. It closes instead. */
+    const lost = () => !!el && (!el.isConnected || el.getClientRects().length === 0);
     const onScroll = (e: Event) => {
       const t = e.target;
       if (t === document || t === document.documentElement || p.contains(t as Node)) return;   /* the page, or the panel's own list */
-      if (!el || !el.isConnected) return;
+      if (lost()) { close.current('anchor'); return; }
+      if (!el) return;
       const a = doc(el.getBoundingClientRect());
       p.style.left = `${pos.x + a.left - base.left}px`; p.style.top = `${pos.y + a.top - base.top}px`;
       clip();
     };
     const replace = () => {
-      if (!el || !el.isConnected) return;
+      if (lost()) { close.current('anchor'); return; }
+      if (!el) return;
       const a = el.getBoundingClientRect();
       if (opts.matchWidth) p.style.minWidth = `${a.width}px`;
       const next = place({ width: p.offsetWidth, height: p.offsetHeight }, a, `${side}${align}` as Placement);

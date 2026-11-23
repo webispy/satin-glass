@@ -190,6 +190,10 @@
 /* a mouse browsing an overflowing strip (bridge.ts) */
 [data-sg-panning], [data-sg-panning] > [data-sg-item] { cursor: grabbing; user-select: none; }
 .sg-segmented--sm .sg-segmented__item { font-size: 13px; }
+/* icons only: square-ish segments with the icon in the middle (the label is visually hidden, so no gap beside it) */
+.sg-segmented--icons .sg-segmented__item { padding: 0 10px; gap: 0; }
+.sg-segmented--icons .sg-segmented__item svg { width: 18px; height: 18px; }
+.sg-segmented--sm.sg-segmented--icons .sg-segmented__item svg { width: 16px; height: 16px; }
 
 /* ============================================================================================
    Stepper: [ − | value | + ]

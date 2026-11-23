@@ -466,6 +466,9 @@ export type SegmentedControlProps<T extends string> = Omit<HTMLAttributes<HTMLDi
   options: SegmentOption<T>[];
   value?: T; defaultValue?: T; onChange?: (v: T) => void;
   size?: 'sm' | 'md';
+  /** only the icons show (each option needs one); the labels still name the options, to assistive technology and as
+      a tooltip, as an IconButton's label does */
+  iconOnly?: boolean;
   'aria-label'?: string;
 };
 
@@ -531,18 +534,19 @@ function rovingKeys(e: KeyboardEvent<HTMLElement>, count: number, current: numbe
   items[next]?.focus();
 }
 
-export function SegmentedControl<T extends string>({ options, value, defaultValue, onChange, size = 'md', className, ...rest }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({ options, value, defaultValue, onChange, size = 'md', iconOnly, className, ...rest }: SegmentedControlProps<T>) {
   const [v, setV] = useControllable(value, defaultValue ?? (options.find((o) => !o.disabled) ?? options[0])?.value, onChange);
   const box = useRef<HTMLDivElement>(null), ind = useRef<HTMLSpanElement>(null);
   const index = Math.max(0, options.findIndex((o) => o.value === v));
   useBridge(box, ind, index, (i) => !options[i].disabled && setV(options[i].value));
   const stop = tabStop(index, options.length, (i) => !!options[i].disabled);
   return (
-    <div ref={box} role="radiogroup" className={cx('sg-segmented', size === 'sm' && 'sg-segmented--sm', className)} onKeyDown={(e) => rovingKeys(e, options.length, index, (i) => setV(options[i].value), (i) => !!options[i].disabled)} {...rest}>
+    <div ref={box} role="radiogroup" className={cx('sg-segmented', size === 'sm' && 'sg-segmented--sm', iconOnly && 'sg-segmented--icons', className)} onKeyDown={(e) => rovingKeys(e, options.length, index, (i) => setV(options[i].value), (i) => !!options[i].disabled)} {...rest}>
       <span ref={ind} className="sg-segmented__indicator" aria-hidden="true" />
       {options.map((o, i) => (
-        <button key={o.value} type="button" role="radio" data-sg-item aria-checked={i === index} tabIndex={i === stop ? 0 : -1} disabled={o.disabled} className="sg-segmented__item" onClick={() => setV(o.value)}>
-          {o.icon}<span className="sg-segmented__label" data-label={typeof o.label === 'string' ? o.label : undefined}>{o.label}</span>
+        <button key={o.value} type="button" role="radio" data-sg-item aria-checked={i === index} tabIndex={i === stop ? 0 : -1} disabled={o.disabled} className="sg-segmented__item" onClick={() => setV(o.value)}
+          title={iconOnly && typeof o.label === 'string' ? o.label : undefined}>
+          {o.icon}{iconOnly ? <span className="sg-visually-hidden">{o.label}</span> : <span className="sg-segmented__label" data-label={typeof o.label === 'string' ? o.label : undefined}>{o.label}</span>}
         </button>
       ))}
     </div>
