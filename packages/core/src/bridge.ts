@@ -216,6 +216,12 @@ export function createBridge(container: HTMLElement, indicator: HTMLElement, opt
     refresh: () => { if (current >= 0) moveTo(current, false); },
     destroy() {
       stop?.(); ro?.disconnect();
+      /* a track that is set up again (or kept by the page) must not keep a press, drag, pan or hover from this one */
+      try { if (pid !== null && container.hasPointerCapture(pid)) container.releasePointerCapture(pid); } catch { /* released */ }
+      pressed = false; dragging = false; pid = null; pan = null;
+      container.removeAttribute('data-sg-pressing'); container.removeAttribute('data-sg-dragging'); container.removeAttribute('data-sg-panning');
+      container.style.removeProperty('--sg-stretch');
+      if (hover !== -1) { hover = -1; opts.onHover?.(-1); }
       removeEventListener('pointermove', panMove, true); removeEventListener('pointerup', panEnd, true); removeEventListener('pointercancel', panEnd, true);
       container.removeEventListener('pointerdown', onDown);
       container.removeEventListener('touchstart', onTouchStart);

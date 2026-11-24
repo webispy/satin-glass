@@ -3,7 +3,7 @@
    order (each control keeps its own keys), wraps when narrow, and shows how many criteria apply with one "clear"
    that resets the same criteria the count counts. Clearing moves focus to the first control, since the clear button
    goes away under it. Nothing in the bar moves. */
-import { useRef, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { cx } from './utils';
 import { Button } from './controls';
 import { useMessages } from './messages';
@@ -22,7 +22,22 @@ export type FilterBarProps = {
 export function FilterBar({ children, count, onClear, 'aria-label': label, labels = {}, className, style }: FilterBarProps) {
   const box = useRef<HTMLDivElement>(null);
   const m = useMessages().filters;
-  const clear = () => { onClear(); box.current?.querySelector<HTMLElement>('input, button, [tabindex="0"]')?.focus(); };
+  /* focus moves once the clear has rendered: before it, the first control may be a chip that is about to go. The
+     first control that can take focus: not disabled, not taken out of the tab order, still in the bar */
+  const [refocus, setRefocus] = useState(0);
+  const pending = useRef(false);
+  const clear = () => { onClear(); pending.current = true; setRefocus((n) => n + 1); };
+  useEffect(() => {
+    if (!pending.current) return;
+    pending.current = false;
+    const all = box.current?.querySelectorAll<HTMLElement>('input:not([type="hidden"]), button, select, textarea, a[href], [tabindex]') ?? [];
+    /* one hidden by the layout (display: none at a breakpoint) does not take focus: try the next until one does */
+    for (const el of Array.from(all)) {
+      if (el.matches(':disabled') || el.tabIndex < 0 || el.closest('[hidden], [inert]')) continue;
+      el.focus();
+      if (document.activeElement === el) break;
+    }
+  }, [refocus]);
   return (
     <div ref={box} role="group" aria-label={label} className={cx('sg-filterbar', className)} style={style}>
       {children}

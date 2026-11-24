@@ -92,7 +92,9 @@ export function createOverflowStrip(scroller: HTMLElement, items: () => HTMLElem
     io?.disconnect(); first = f; last = l;
     scroller.removeAttribute('data-sg-more-start'); scroller.removeAttribute('data-sg-more-end');
     if (!f || !l || typeof IntersectionObserver === 'undefined') return;
-    io = new IntersectionObserver((entries) => {
+    const obs: IntersectionObserver = io = new IntersectionObserver((entries) => {
+      /* entries queued before this observer was replaced or the strip destroyed are not this strip's any more */
+      if (io !== obs) return;
       for (const e of entries) {
         const hidden = e.intersectionRatio < 0.98;
         if (e.target === first) scroller.toggleAttribute('data-sg-more-start', hidden);
@@ -100,7 +102,7 @@ export function createOverflowStrip(scroller: HTMLElement, items: () => HTMLElem
       }
       if (pending) strip.reveal(pending, false);
     }, { root: scroller, threshold: [0, 0.98, 1] });
-    io.observe(f); if (l !== f) io.observe(l);
+    obs.observe(f); if (l !== f) obs.observe(l);
   };
 
   const strip: OverflowStrip = {
@@ -121,7 +123,11 @@ export function createOverflowStrip(scroller: HTMLElement, items: () => HTMLElem
       scroller.scrollTo({ left: to, behavior: animate && !prefersReducedMotion(scroller) ? 'smooth' : 'auto' });
     },
     refresh: watch,
-    destroy() { io?.disconnect(); io = null; pending = null; scroller.removeEventListener('wheel', wheel); glide(scroller).stop(); },
+    destroy() {
+      io?.disconnect(); io = null; pending = null; scroller.removeEventListener('wheel', wheel); glide(scroller).stop();
+      /* the edge fades go with the strip (Tabs switched to wrapping pills keeps the same list) */
+      scroller.removeAttribute('data-sg-more-start'); scroller.removeAttribute('data-sg-more-end');
+    },
   };
   /* a mouse wheel (vertical only, no modifier) scrolls an overflowing strip sideways: down toward the end. It takes
      the event only while the strip can move that way, so at either end the next turn scrolls the page. Trackpads'

@@ -127,7 +127,11 @@ export function Banner({ tone = 'info', title, children, icon, actions, onDismis
   const words = useMessages(), dismissLabel = dismissProp ?? words.dismiss;
   const el = useRef<HTMLDivElement>(null);
   const [gone, setGone] = useState(false);
+  /* once only: a second click during the fade must not call onDismiss again */
+  const leaving = useRef(false);
   const dismiss = () => {
+    if (leaving.current) return;
+    leaving.current = true;
     const d = el.current;
     if (!d) { setGone(true); onDismiss?.(); return; }
     const done = () => { setGone(true); onDismiss?.(); };

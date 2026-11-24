@@ -340,12 +340,16 @@ export type SliderProps = Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'def
 };
 
 export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
-  { value, defaultValue = 0, onChange, onChangeEnd, min = 0, max = 100, step = 1, disabled, format = (v) => String(v), showValue = true, className, style, ...rest }, ref,
+  { value, min = 0, max = 100, defaultValue = min, onChange, onChangeEnd, step = 1, disabled, format = (v) => String(v), showValue = true, className, style, ...rest }, ref,
 ) {
-  const [v, setV] = useControllable(value, defaultValue, onChange);
+  const [given, setV] = useControllable(value, defaultValue, onChange);
+  /* shown and announced within min..max, whatever was given (a value of 0 on a 10–20 track sits at 10) */
+  const v = Math.min(max, Math.max(min, given));
   const el = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
   const vRef = useRef(v); vRef.current = v;
+  /* the latest callback and range for the long-lived observer and drag handlers */
+  const endRef = useRef(onChangeEnd); endRef.current = onChangeEnd;
   /* the thumb is driven by a JS spring so it can carry character: on a press it travels with the personality's
      snappy spring; while dragged it trails the finger by `lag` and stretches with speed by `gel` (squash & stretch) */
   const motor = useRef<{ pos: Spring; W: number; tracking: boolean; finger: number; stop: (() => void) | null } | null>(null);
@@ -354,6 +358,7 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
     return Math.min(max, Math.max(min, Number(s.toFixed(6))));
   };
   const ratio = (x: number) => (x - min) / (max - min || 1);
+  const ratioRef = useRef(ratio); ratioRef.current = ratio;
 
   const render = () => {
     const m = motor.current, s = el.current;
@@ -387,7 +392,7 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
     if (!s) return;
     motor.current = { pos: new Spring(0, 'snappy', s), W: s.clientWidth, tracking: false, finger: 0, stop: null };
     travelTo(ratio(vRef.current) * s.clientWidth, 'jump');
-    const ro = new ResizeObserver(() => { const m = motor.current!; m.W = s.clientWidth; travelTo(ratio(vRef.current) * m.W, 'jump'); });
+    const ro = new ResizeObserver(() => { const m = motor.current!; m.W = s.clientWidth; travelTo(ratioRef.current(vRef.current) * m.W, 'jump'); });
     ro.observe(s);
     return () => { ro.disconnect(); motor.current?.stop?.(); motor.current = null; };
   }, []);
@@ -435,7 +440,7 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
         setActive(false);
         /* settle on the stepped value with the snappy spring (and let the gel relax) */
         if (was) travelTo(ratio(vRef.current) * m.W, 'spring');
-        onChangeEnd?.(vRef.current);
+        endRef.current?.(vRef.current);
       },
     });
   }, [disabled, min, max, step]);
@@ -513,22 +518,25 @@ export const Stepper = forwardRef<HTMLDivElement, StepperProps>(function Stepper
     if (nv !== vr.current) { vr.current = nv; setV(nv); }
   };
   /* hold to repeat: after 400 ms, every 80 ms */
+  const repeated = useRef(false);
   const hold = (d: number) => () => {
-    stop();
-    timer.current.t = window.setTimeout(() => { timer.current.i = window.setInterval(() => bump(d), 80); }, 400);
+    stop(); repeated.current = false;
+    timer.current.t = window.setTimeout(() => { timer.current.i = window.setInterval(() => { repeated.current = true; bump(d); }, 80); }, 400);
   };
+  /* the click that ends a repeat is not one more step; a keyboard click (detail 0) always is */
+  const press = (d: number) => (e: MouseEvent<HTMLButtonElement>) => { if (repeated.current && e.detail > 0) { repeated.current = false; return; } bump(d); };
   const stop = () => { clearTimeout(timer.current.t); clearInterval(timer.current.i); };
   useEffect(() => stop, []);
   return (
     <div ref={mergeRefs(ref, root)} role="group" aria-label={label} className={cx('sg-stepper', className)} {...rest}>
-      <button type="button" className="sg-stepper__btn" aria-label={m.decrease(label)} disabled={v <= min} onClick={() => bump(-step)} onPointerDown={hold(-step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><MinusIcon /></button>
+      <button type="button" className="sg-stepper__btn" aria-label={m.decrease(label)} disabled={v <= min} onClick={press(-step)} onPointerDown={hold(-step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><MinusIcon /></button>
       <span className="sg-stepper__value" aria-live="polite">
         {leaving.map((l) => (
           <span key={`out-${l.id}`} data-leave={l.dir} aria-hidden="true" onAnimationEnd={() => setLeaving((xs) => xs.filter((x) => x.id !== l.id))}>{format(l.v)}</span>
         ))}
         <span key={v} data-roll={dir}>{format(v)}</span>
       </span>
-      <button type="button" className="sg-stepper__btn" aria-label={m.increase(label)} disabled={v >= max} onClick={() => bump(step)} onPointerDown={hold(step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><PlusIcon /></button>
+      <button type="button" className="sg-stepper__btn" aria-label={m.increase(label)} disabled={v >= max} onClick={press(step)} onPointerDown={hold(step)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}><PlusIcon /></button>
     </div>
   );
 });
@@ -563,17 +571,30 @@ export function useBridge(container: React.RefObject<HTMLElement | null>, indica
   const bridge = useRef<Bridge | null>(null), strip = useRef<OverflowStrip | null>(null), sizes = useRef<ResizeObserver | null>(null);
   const commit = useRef(onDragCommit); commit.current = onDragCommit;
   const at = useRef(index); at.current = index;
+  /* set up again whenever the track, the indicator or `draggable` changes (Tabs switched from pills to the
+     underline gains an indicator; a TabBar made draggable later). `draggable` alone sets up only the drop, so the
+     strip keeps where the user scrolled it */
+  const made = useRef<{ c: HTMLElement; ind: HTMLElement; draggable: boolean } | null>(null);
+  const teardown = () => { bridge.current?.destroy(); bridge.current = null; strip.current?.destroy(); strip.current = null; sizes.current?.disconnect(); sizes.current = null; made.current = null; };
+  useIsoLayoutEffect(() => () => teardown(), []);
   useIsoLayoutEffect(() => {
-    const c = container.current, ind = indicator.current;
-    if (!c || !ind) return;
+    const c = container.current, ind = indicator.current, was = made.current;
+    if (was && was.c === c && was.ind === ind && was.draggable === draggable) return;
+    if (!c || !ind) { teardown(); return; }
     const items = () => itemsOf(c);
-    bridge.current = createBridge(c, ind, {
-      items, draggable,
-      /* a drop released over a disabled item, or a value the (controlled) parent refuses, springs back home */
-      onDragCommit: (i) => { commit.current(i); requestAnimationFrame(() => { if (at.current !== i) bridge.current?.moveTo(at.current); }); },
-      onHover: (i) => items().forEach((el, j) => el.toggleAttribute('data-hover', i === j)),
-    });
-    bridge.current.moveTo(index, false);
+    const makeBridge = () => {
+      bridge.current = createBridge(c, ind, {
+        items, draggable,
+        /* a drop released over a disabled item, or a value the (controlled) parent refuses, springs back home */
+        onDragCommit: (i) => { commit.current(i); requestAnimationFrame(() => { if (at.current !== i) bridge.current?.moveTo(at.current); }); },
+        onHover: (i) => items().forEach((el, j) => el.toggleAttribute('data-hover', i === j)),
+      });
+      bridge.current.moveTo(at.current, false);
+    };
+    if (was && was.c === c && was.ind === ind) { bridge.current?.destroy(); made.current = { c, ind, draggable }; makeBridge(); return; }
+    teardown();
+    made.current = { c, ind, draggable };
+    makeBridge();
     strip.current = createOverflowStrip(c, items);
     strip.current.reveal(items()[index], false);
     /* items sized to their labels can change width without the track changing (e.g. a late font): the drop follows
@@ -584,8 +605,7 @@ export function useBridge(container: React.RefObject<HTMLElement | null>, indica
       for (const e of entries) { const w = e.contentRect.width, was = seen.get(e.target); seen.set(e.target, w); if (was !== undefined && Math.abs(w - was) >= 0.5) moved = true; }
       if (moved && !c.hasAttribute('data-sg-dragging')) bridge.current?.moveTo(at.current);
     }) : null;
-    return () => { bridge.current?.destroy(); bridge.current = null; strip.current?.destroy(); strip.current = null; sizes.current?.disconnect(); sizes.current = null; };
-  }, []);
+  });
   useIsoLayoutEffect(() => {
     bridge.current?.moveTo(index);
     const c = container.current;

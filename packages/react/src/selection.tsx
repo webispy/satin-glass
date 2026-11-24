@@ -25,11 +25,13 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
   const input = useRef<HTMLInputElement>(null);
   const auto = useStableId('sg-check');
   const iid = id ?? auto;
-  useEffect(() => { if (input.current) input.current.indeterminate = indeterminate; }, [indeterminate]);
+  /* a click clears the DOM's indeterminate; put it back after every render and on change, so an app that keeps it
+     (a partly selected group) keeps the dash */
+  useEffect(() => { if (input.current) input.current.indeterminate = indeterminate; });
   return (
     <label className={cx('sg-check', className)} style={style} data-disabled={disabled || undefined}>
       <input ref={mergeRefs(ref, input)} id={iid} type="checkbox" className="sg-check__input" checked={on} disabled={disabled}
-        aria-describedby={description ? `${iid}-d` : undefined} onChange={(e) => setOn(e.currentTarget.checked)} {...rest} />
+        aria-describedby={description ? `${iid}-d` : undefined} onChange={(e) => { e.currentTarget.indeterminate = indeterminate; setOn(e.currentTarget.checked); }} {...rest} />
       <span className="sg-check__box" aria-hidden="true">
         <svg className="sg-check__mark" viewBox="0 0 16 16"><path className="sg-check__tick" d="M3.5 8.4l3 3 6-6.6" /><path className="sg-check__dash" d="M4 8h8" /></svg>
       </span>
