@@ -8,7 +8,7 @@
    RangeCalendar and DateRangePicker (0.4) choose a start and an end on the same grid: the days between are joined
    by one band whose head rides a spring: it follows the pointer while the end is chosen and runs a touch past the
    end when it is picked, which the end day then takes (stretch, then stick). */
-import { createContext, forwardRef, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { createContext, forwardRef, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { Spring, animate, fade, loop, motionFor, prefersReducedMotion, type Placement, timing } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { Portal, glassClass, useGlassLight } from './foundation';
@@ -18,7 +18,9 @@ import { messagesFor, useLocaleOf } from './messages';
 import { useAnchored } from './overlay-hooks';
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
 
-/* ---------------------------------------------------------------- date helpers (local days) */
+/* ---------------------------------------------------------------- date helpers (local days)
+   A date is a local day: the helpers build it at local noon. Given an instant instead (new Date('…T00:00:00Z')), it
+   falls on different days in different time zones, so a server and the browser hydrating its HTML disagree. */
 const ymd = (d: Date) => d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 const day = (y: number, m: number, d: number) => new Date(y, m, d, 12);   /* noon: immune to DST edges */
 const startOfMonth = (d: Date) => day(d.getFullYear(), d.getMonth(), 1);
@@ -30,6 +32,43 @@ const addMonths = (d: Date, n: number) => {
 };
 const sameMonth = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 export const toISODate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/* ---------------------------------------------------------------- today
+   The browser's own day, in its own time zone, moving on at midnight while a calendar is shown. Unknown (null) on the
+   server and while the browser hydrates what the server wrote: a server in another time zone, or one that rendered
+   just before midnight, would mark another day than the reader's, so the marker (and a month taken from today) waits
+   for the render right after hydration. A browser rendering on its own knows it from the first render. */
+function watchDay(on: () => void) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  /* look at the day, and wait for the next local midnight from now: the time zone may have changed since (a laptop
+     that travelled), so the wait is measured again each time, never kept from before */
+  const arm = () => {
+    clearTimeout(timer);
+    const n = new Date(), next = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1);
+    timer = setTimeout(check, next.getTime() - n.getTime() + 1000);
+  };
+  const check = () => { zone = readZone(); arm(); on(); };
+  zone = readZone();
+  arm();
+  /* a sleeping computer holds its timers, and its zone may have changed: look again when the page is shown */
+  document.addEventListener('visibilitychange', check);
+  return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', check); };
+}
+/* The day is kept as its civil key (yyyymmdd), never as a Date: a Date is an instant, and noon of today in one zone
+   is another day in a zone 13 hours away (from Honolulu to Auckland, noon on the 30th is the 1st). The zone is part
+   of the snapshot, so a change of zone renders again and the formatters are built for the new one. It is read when
+   a calendar starts watching and whenever the day is looked at again (a timer, the page shown), not in each render. */
+let zone = '';
+const readZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone ?? String(new Date().getTimezoneOffset());
+const todayNow = () => `${ymd(new Date())} ${zone ||= readZone()}`;
+type Today = { key: number; zone: string };
+function useToday(): Today | null {
+  const s = useSyncExternalStore(watchDay, todayNow, () => null);
+  return useMemo(() => (s === null ? null : { key: +s.slice(0, 8), zone: s.slice(9) }), [s]);
+}
+const fromKey = (k: number) => day(Math.floor(k / 10000), Math.floor(k / 100) % 100 - 1, k % 100);
+/* stands in for the month while it is not known yet; never shown (the grid is drawn empty) */
+const NO_MONTH = day(2000, 0, 1);
 
 /* ================================================================================================ Calendar */
 /* a RangeCalendar around a Calendar: the days show the range and a pick goes to it */
@@ -69,10 +108,16 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   const range = useContext(RangeContext);
   /* while the end is being chosen, the day under the pointer (or keyboard focus) previews it */
   const [hover, setHover] = useState<Date | null>(null);
-  const today = useMemo(() => { const n = new Date(); return day(n.getFullYear(), n.getMonth(), n.getDate()); }, []);
-  const initial = defaultMonth ? day(defaultMonth.getFullYear(), defaultMonth.getMonth(), 1) : today;
-  const [focused, setFocused] = useState<Date>(() => v ?? initial);
-  const [month, setMonth] = useState<Date>(() => startOfMonth(v ?? initial));
+  /* today's civil day (yyyymmdd) and its year and month: compared as numbers, never through a Date kept from an
+     earlier render (see useToday) */
+  const now = useToday(), todayK = now ? now.key : null;
+  const todayY = todayK === null ? null : Math.floor(todayK / 10000), todayM = todayK === null ? -1 : Math.floor(todayK / 100) % 100 - 1;
+  const initial = v ?? (defaultMonth ? day(defaultMonth.getFullYear(), defaultMonth.getMonth(), 1) : todayK === null ? null : fromKey(todayK));
+  const [focused, setFocused] = useState<Date>(() => initial ?? NO_MONTH);
+  /* null: no value, no defaultMonth and today not known yet (hydrating); the month comes with today, below */
+  const [shownMonth, setMonth] = useState<Date | null>(() => initial && startOfMonth(initial));
+  const pending = shownMonth === null, month = shownMonth ?? NO_MONTH;
+  useIsoLayoutEffect(() => { if (pending && todayK !== null) { const d = fromKey(todayK); setMonth(startOfMonth(d)); setFocused(d); } }, [todayK]);
   const wheels = monthPicker === 'wheel';
   const [view, setView] = useState<'day' | 'month' | 'year'>(wheels && openTo === 'year' ? 'month' : openTo);
   const root = useRef<HTMLDivElement>(null), body = useRef<HTMLTableSectionElement>(null);
@@ -85,9 +130,11 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     wdLong: new Intl.DateTimeFormat(locale, { weekday: 'long' }),
     month: new Intl.DateTimeFormat(locale, { month: 'long' }),
     year: new Intl.DateTimeFormat(locale, { year: 'numeric' }),
-  }), [locale]);
+    /* a formatter keeps the time zone it was built in: built again when the zone changes */
+  }), [locale, now?.zone]);
   /* the years min..max (or a century back and twenty years on from today); months outside min / max are passed over */
-  const y0 = min ? min.getFullYear() : today.getFullYear() - 100, y1 = max ? max.getFullYear() : today.getFullYear() + 20;
+  const thisYear = todayY ?? month.getFullYear();
+  const y0 = min ? min.getFullYear() : thisYear - 100, y1 = max ? max.getFullYear() : thisYear + 20;
   const years = useMemo(() => Array.from({ length: y1 - y0 + 1 }, (_, i) => ({ value: y0 + i, label: fmt.year.format(day(y0 + i, 0, 1)) })), [y0, y1, fmt]);
   const months = useMemo(() => Array.from({ length: 12 }, (_, m) => ({
     value: m, label: fmt.month.format(day(2000, m, 1)),
@@ -123,14 +170,14 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
 
   const disabled = (d: Date) => (min && ymd(d) < ymd(min)) || (max && ymd(d) > ymd(max)) || Boolean(isDateDisabled?.(d));
   /* follow an outside change of value to its month */
-  useEffect(() => { if (v && !sameMonth(v, month)) { setMonth(startOfMonth(v)); setFocused(v); } }, [v ? ymd(v) : 0]);
+  useEffect(() => { if (v && (pending || !sameMonth(v, month))) { setMonth(startOfMonth(v)); setFocused(v); } }, [v ? ymd(v) : 0]);
 
   /* the month changed: slide the grid in from the side it came from */
-  const last = useRef(month);
+  const last = useRef(shownMonth);
   useIsoLayoutEffect(() => {
-    const prev = last.current; last.current = month;
+    const prev = last.current; last.current = shownMonth;
     const b = body.current;
-    if (!b || sameMonth(prev, month)) return;
+    if (!b || !prev || !shownMonth || sameMonth(prev, shownMonth)) return;   /* the first month known does not slide in */
     const dir = ymd(month) > ymd(prev) ? 1 : -1;
     if (prefersReducedMotion(b)) { fade(b, 0, 1, timing.appear); return; }
     animate(b, [{ transform: `translateX(${dir * 28}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }], 'smooth');
@@ -144,8 +191,8 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     root.current?.querySelector<HTMLButtonElement>(`[data-date="${toISODate(focused)}"]`)?.focus();
   }, [focused]);
   useEffect(() => {
-    if (autoFocus) root.current?.querySelector<HTMLButtonElement>(`[data-date="${toISODate(focused)}"]`)?.focus({ preventScroll: true });
-  }, []);
+    if (autoFocus && !pending) root.current?.querySelector<HTMLButtonElement>(`[data-date="${toISODate(focused)}"]`)?.focus({ preventScroll: true });
+  }, [pending]);
 
   const goMonth = (n: number) => {
     const m = addMonths(month, n);
@@ -198,7 +245,7 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   const hoverKey = candidate ? ymd(candidate) : 0;
   useIsoLayoutEffect(() => {
     const layer = bands.current, tb = body.current, table = tb?.parentElement as HTMLElement | undefined;
-    if (!range || !layer || !tb || !table || view !== 'day') return;
+    if (!range || !layer || !tb || !table || view !== 'day' || pending) return;
     const cell = tb.rows[0]?.cells[0]?.offsetWidth || 40, W = cell * 7, pool = layer.children as HTMLCollectionOf<HTMLElement>;
     /* a row's top within the table, from where the engine draws it: offsetTop of a row means different things here
        (the body is positioned, as it slides between months: Blink measures rows from the body, WebKit from the table,
@@ -261,21 +308,22 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     }
     e.H.target = tintTo; animateHead();
     if (committed) seat(range.end!);
-  }, [range?.start ? ymd(range.start) : 0, range?.end ? ymd(range.end) : 0, hoverKey, ymd(month), view]);
+  }, [range?.start ? ymd(range.start) : 0, range?.end ? ymd(range.end) : 0, hoverKey, ymd(month), view, pending]);
   useEffect(() => () => bandEng.current?.stop?.(), []);
 
   return (
     <div ref={mergeRefs(ref, root)} className={cx('sg-calendar', className)} style={style} lang={localeProp}>
       <div className="sg-calendar__head">
         {/* the title for assistive technology (and the grid's label); the chips are what you see */}
-        <h2 id={titleId} className="sg-visually-hidden" aria-live="polite">{fmt.title.format(month)}</h2>
+        <h2 id={titleId} className="sg-visually-hidden" aria-live="polite">{pending ? '' : fmt.title.format(month)}</h2>
         <div className="sg-calendar__chips">
           {(() => {
             const chip = (which: 'year' | 'month') => {
-              const open = wheels ? view === 'month' : view === which;
+              const open = !pending && (wheels ? view === 'month' : view === which);
+              const shown = pending ? '' : which === 'year' ? fmt.year.format(month) : fmt.month.format(month);
               return (
-                <button key={which} type="button" className="sg-calendar__chip" aria-expanded={open}
-                  aria-label={`${which === 'year' ? fmt.year.format(month) : fmt.month.format(month)}, ${which === 'year' ? t.pickYear : t.pickMonth}`}
+                <button key={which} type="button" className="sg-calendar__chip" aria-expanded={open} disabled={pending || undefined}
+                  aria-label={`${shown ? `${shown}, ` : ''}${which === 'year' ? t.pickYear : t.pickMonth}`}
                   onClick={(e) => {
                     opener.current = e.currentTarget;
                     if (open) { backToDays(); return; }
@@ -283,15 +331,18 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
                     /* into the grid (or the wheels), so arrows and typing work at once */
                     focusSoon(wheels ? '.sg-calendar__wheels [role="spinbutton"]' : '.sg-calendar__cell[aria-selected="true"], .sg-calendar__cell[tabindex="0"]');
                   }}>
-                  <span>{which === 'year' ? fmt.year.format(month) : fmt.month.format(month)}</span><ChevronDownIcon className="sg-calendar__chip-chevron" />
+                  <span>{shown}</span><ChevronDownIcon className="sg-calendar__chip-chevron" />
                 </button>
               );
             };
             return yearFirst ? [chip('year'), chip('month')] : [chip('month'), chip('year')];
           })()}
         </div>
-        <div className="sg-calendar__nav" hidden={wheels && view === 'month'}>
-          {view === 'year' ? (<>
+        <div className="sg-calendar__nav" hidden={wheels && view === 'month' && !pending}>
+          {pending ? (<>
+            <IconButton size="sm" icon={<ChevronLeftIcon />} label={t.prev} disabled />
+            <IconButton size="sm" icon={<ChevronRightIcon />} label={t.next} disabled />
+          </>) : view === 'year' ? (<>
             <IconButton size="sm" icon={<ChevronLeftIcon />} label={t.prevYears} onClick={() => yearPage.current(-1)} disabled={yearEdge.top} />
             <IconButton size="sm" icon={<ChevronRightIcon />} label={t.nextYears} onClick={() => yearPage.current(1)} disabled={yearEdge.bottom} />
           </>) : view === 'month' ? (<>
@@ -304,14 +355,15 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
         </div>
       </div>
       <div ref={viewBox} className="sg-calendar__view">
-      {range && view === 'day' && <div ref={bands} className="sg-calendar__bands" aria-hidden="true">{Array.from({ length: 18 }, (_, i) => <span key={i} className="sg-calendar__seg" />)}</div>}
-      {view === 'year' && !wheels ? (
-        <YearGrid years={years} value={month.getFullYear()} current={today.getFullYear()} label={t.pickYear} pageRef={yearPage} onEdge={setYearEdge}
+      {range && (view === 'day' || pending) && <div ref={bands} className="sg-calendar__bands" aria-hidden="true">{Array.from({ length: 18 }, (_, i) => <span key={i} className="sg-calendar__seg" />)}</div>}
+      {/* while the month is not known yet, the days' grid is drawn empty (it keeps its size) */}
+      {!pending && view === 'year' && !wheels ? (
+        <YearGrid key={todayK === null ? 'guess' : 'today'} years={years} value={month.getFullYear()} current={todayY ?? -1} label={t.pickYear} pageRef={yearPage} onEdge={setYearEdge}
           onPick={(y) => { toMonth(y, month.getMonth()); opener.current = null; setView('month'); focusSoon('.sg-calendar__cell[aria-selected="true"]'); }} onCancel={backToDays} />
-      ) : view === 'month' && !wheels ? (
-        <MonthGrid months={months} value={month.getMonth()} current={month.getFullYear() === today.getFullYear() ? today.getMonth() : -1} label={t.pickMonth} caption={fmt.year.format(month)}
+      ) : !pending && view === 'month' && !wheels ? (
+        <MonthGrid months={months} value={month.getMonth()} current={month.getFullYear() === todayY ? todayM : -1} label={t.pickMonth} caption={fmt.year.format(month)}
           onPick={(m) => { toMonth(month.getFullYear(), m); backToDays(); }} onCancel={backToDays} />
-      ) : view === 'month' ? (
+      ) : !pending && view === 'month' ? (
         <div className="sg-calendar__wheels">
           <WheelGroup rows={7} aria-label={t.pick}>
             {[
@@ -327,7 +379,7 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
           <tr>{weeks[0].map((d) => <th key={d.getDay()} scope="col" abbr={fmt.wdLong.format(d)}>{fmt.wdShort.format(d)}</th>)}</tr>
         </thead>
         <tbody ref={body} className="sg-calendar__body">
-          {(() => {
+          {pending ? weeks.map((wk, wi) => <tr key={wi}>{wk.map((_, col) => <td key={col} role="gridcell" />)}</tr>) : (() => {
             /* the range drawn: chosen, or from the start to the day under the pointer while the end is chosen */
             const lo = range?.start ?? null;
             const hi = range ? (range.end ?? (lo && hover && range.reach(hover) ? hover : null)) : null;
@@ -336,7 +388,7 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
             return weeks.map((wk, wi) => (
               <tr key={wi}>
                 {wk.map((d, col) => {
-                  const k = ymd(d), isToday = k === ymd(today), off = disabled(d), out = !sameMonth(d, month);
+                  const k = ymd(d), isToday = k === todayK, off = disabled(d), out = !sameMonth(d, month);
                   const sel = range ? Boolean((range.start && k === ymd(range.start)) || (range.end && k === ymd(range.end))) : v ? k === ymd(v) : false;
                   const band = a && z && a !== z && k >= a && k <= z ? (k === a ? 'start' : k === z ? 'end' : 'mid') : undefined;
                   const role = range && sel ? (range.start && k === ymd(range.start) ? range.starts : range.ends) : '';
@@ -371,13 +423,42 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
    click chooses, Escape goes back to the days. The chosen cell fills from its middle on the pop spring (like a
    weekday); the current month or year has an accent ring. */
 type Cell = { value: number; label: string; disabled?: boolean };
+/* whether focus is inside `el`, asked of its own root: inside a shadow root, document.activeElement is the host */
+const holdsFocus = (el: HTMLElement | null) => !!el && el.contains((el.getRootNode() as Document | ShadowRoot).activeElement);
 function useGridKeys(cells: Cell[], at: number, onPick: (v: number) => void, onCancel: () => void, extra?: (e: KeyboardEvent<HTMLDivElement>, i: number) => number | null) {
-  const [focus, setFocus] = useState(at);
-  useEffect(() => setFocus(at), [at]);
+  /* the focused cell is kept by its value, not its place: the year list moves by one when today passes New Year,
+     and the keyboard must stay on the year that has focus, or on the nearest one still shown when that year has
+     left the list (the oldest one) */
+  const chosen = cells[at]?.value;
+  const [focusValue, setFocusValue] = useState(chosen);
+  /* the chosen cell moves the keyboard to it, unless the list holds focus: a chosen year that left the list (New Year)
+     falls back to the nearest one, and the focus must not follow that fallback away from the year it is on */
+  useEffect(() => { if (!holdsFocus(box.current)) setFocusValue(chosen); }, [chosen]);
+  let focus = focusValue === undefined ? -1 : cells.findIndex((c) => c.value === focusValue);
+  if (focus < 0 && focusValue !== undefined && cells.length) {
+    focus = 0;
+    cells.forEach((c, i) => { if (Math.abs(c.value - focusValue) < Math.abs(cells[focus].value - focusValue)) focus = i; });
+  }
+  if (focus < 0) focus = at;
   const box = useRef<HTMLDivElement>(null);
+  /* the cells changed under the keyboard: whether the list held focus is read before React removes a cell (a removed
+     cell takes focus with it, to the page), and afterwards focus is put on the focused cell and kept in sight */
+  const shown = useRef(cells), held = useRef(false);
+  if (shown.current !== cells) {
+    held.current = typeof document !== 'undefined' && holdsFocus(box.current);
+    shown.current = cells;
+  }
+  useIsoLayoutEffect(() => {
+    if (!held.current) return;
+    held.current = false;
+    const el = box.current?.querySelector<HTMLElement>(`[data-i="${focus}"]`);
+    if (!el) return;
+    if (document.activeElement !== el) el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  }, [cells]);
   const move = (i: number) => {
     const n = Math.max(0, Math.min(cells.length - 1, i));
-    setFocus(n);
+    setFocusValue(cells[n]?.value);
     const el = box.current?.querySelector<HTMLElement>(`[data-i="${n}"]`);
     el?.focus({ preventScroll: true }); el?.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion(el) ? 'instant' : 'smooth' });
   };
@@ -432,11 +513,16 @@ function YearGrid({ years, value, current, label, pageRef, onEdge, onPick, onCan
     return null;
   });
   const [range, setRange] = useState('');
+  /* open with the chosen year in the middle; only on opening: when New Year moves the list, the scroll stays where
+     the reader left it (and the focused year in sight, above). While hydrating, the list waits for today: the
+     Calendar shows it anew once today is known (a key), which is its opening */
+  useIsoLayoutEffect(() => {
+    const g = k.box.current, sel = g?.querySelector<HTMLElement>(`[data-i="${at}"]`);
+    if (g && sel) g.scrollTop = sel.offsetTop - (g.clientHeight - sel.offsetHeight) / 2;
+  }, []);
+  /* the caption names the years in sight, again when the list changes */
   useIsoLayoutEffect(() => {
     const g = k.box.current; if (!g) return;
-    /* open with the chosen year in the middle */
-    const sel = g.querySelector<HTMLElement>(`[data-i="${at}"]`);
-    if (sel) g.scrollTop = sel.offsetTop - (g.clientHeight - sel.offsetHeight) / 2;
     const label = () => {
       const top = g.scrollTop, bot = top + g.clientHeight, cs = Array.from(g.children) as HTMLElement[];
       const vis = cs.filter((c) => c.offsetTop >= top - 2 && c.offsetTop + c.offsetHeight <= bot + 2);
@@ -453,7 +539,7 @@ function YearGrid({ years, value, current, label, pageRef, onEdge, onPick, onCan
       g.scrollBy({ top: dir * 4 * row, behavior: prefersReducedMotion(g) ? 'instant' : 'smooth' });
     };
     return () => g.removeEventListener('scroll', label);
-  }, []);
+  }, [years]);
   return (
     <div className="sg-calendar__picker">
       <div className="sg-calendar__caption" aria-hidden="true">{range}</div>
