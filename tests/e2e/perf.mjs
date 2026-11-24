@@ -22,7 +22,9 @@ async function measure(name, act, ms = 700) {
   await act();
   const r = await run;
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
-  const d = r.d.slice(1).sort((a, b) => a - b), max = d[d.length - 1], p90 = d[Math.floor(d.length * 0.9)], drops = r.d.filter((x) => x > 25).length;
+  /* the first delta runs from the evaluate to the first frame (throttling has just been switched on): not a frame of
+     the interaction, so it is left out of the drops as it is of max and p90 */
+  const d = r.d.slice(1).sort((a, b) => a - b), max = d[d.length - 1], p90 = d[Math.floor(d.length * 0.9)], drops = d.filter((x) => x > 25).length;
   const info = name.includes('informational');
   const pass = info || (drops <= 1 && r.long === 0);
   if (!pass) failed++;
