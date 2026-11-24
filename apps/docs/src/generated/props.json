@@ -4892,7 +4892,7 @@
     "type": "Anchor",
     "required": true,
     "default": null,
-    "description": "The element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does not close the panel, and the panel closes when it leaves the layout."
+    "description": "The element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does not close the panel, and the panel closes when it leaves the layout. `ref.current` is read when the owner renders, and setting a ref does not render: for a panel open from the first render, keep the element in state (`ref={setAnchor}`)."
    },
    {
     "name": "placement",
@@ -4962,7 +4962,7 @@
     "type": "Anchor",
     "required": true,
     "default": null,
-    "description": "The element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does not close the panel, and the panel closes when it leaves the layout."
+    "description": "The element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does not close the panel, and the panel closes when it leaves the layout. `ref.current` is read when the owner renders, and setting a ref does not render: for a panel open from the first render, keep the element in state (`ref={setAnchor}`)."
    },
    {
     "name": "placement",

@@ -2,7 +2,7 @@ import {
   Children, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
   type HTMLAttributes, type KeyboardEvent, type ReactElement, type ReactNode,
 } from 'react';
-import { animate, bloomIn, bloomOut, drag, fade, focusables, longPress, place, prefersReducedMotion, pushLayer, trapFocus, type Placement, timing, easing } from '@satin-glass/core';
+import { animate, bloomIn, bloomOut, drag, fade, focusables, longPress, place, prefersReducedMotion, pushLayer, tabFrom, trapFocus, type Placement, timing, easing } from '@satin-glass/core';
 import { cx, mergeRefs, useIsoLayoutEffect, usePresence, useStableId } from './utils';
 import { Portal, glassClass, useGlassLight } from './foundation';
 import { Button } from './controls';
@@ -37,10 +37,12 @@ export function Dialog({ open, onClose, title, children, icon, tone = 'accent', 
   const id = useStableId('sg-dialog');
   const lightRef = useGlassLight();
   const release = useRelease();
+  /* Escape calls the latest onClose, not the one from the render the dialog opened in */
+  const close = useRef(onClose); close.current = onClose;
   const { mounted } = useOverlayLifecycle(open, () => {
     const p = panel.current!;
     scrim.current?.classList.add('is-open');
-    const pop = pushLayer(() => onClose('escape'), true, p);
+    const pop = pushLayer(() => close.current('escape'), true, p);
     const trap = trapFocus(p);
     release.set(() => { pop(); trap(); });
     return bloomIn(p, { x: p.offsetWidth / 2, y: p.offsetHeight / 2 }, 0.9);
@@ -118,8 +120,9 @@ export function Sheet({ open, onClose, title, leading, trailing, children, heigh
         p.style.transform = `translateY(${y}px)`;
         if (scrim.current) scrim.current.style.opacity = String(Math.max(0, 1 - y / (p.offsetHeight * 1.2)));
       },
-      end: ({ vy }) => {
-        if (canSwipe.current && (y > p.offsetHeight * 0.3 || vy > 900)) { swiped.current = true; close.current('swipe'); return; }
+      /* a cancelled gesture (the system took the pointer) springs back: only a release dismisses */
+      end: ({ vy }, cancelled) => {
+        if (!cancelled && canSwipe.current && (y > p.offsetHeight * 0.3 || vy > 900)) { swiped.current = true; close.current('swipe'); return; }
         p.style.transform = '';
         if (scrim.current) scrim.current.style.opacity = '';
         animate(p, [{ transform: `translateY(${y}px)` }, { transform: 'none' }], 'smooth');
@@ -181,12 +184,13 @@ export type MenuItemProps = Omit<HTMLAttributes<HTMLButtonElement>, 'onSelect'> 
   /** called when the item is chosen, after the menu has asked to close */
   onSelect?: () => void;
 };
-export function MenuItem({ icon, hint, tone = 'default', disabled, checked, onSelect, children, className, ...rest }: MenuItemProps) {
+export function MenuItem({ icon, hint, tone = 'default', disabled, checked, onSelect, onClick, children, className, ...rest }: MenuItemProps) {
   const { select } = useContext(MenuContext);
   return (
     <button type="button" role={checked === undefined ? 'menuitem' : 'menuitemcheckbox'} aria-checked={checked} aria-disabled={disabled || undefined} tabIndex={-1}
-      data-tone={tone !== 'default' ? tone : undefined} className={cx('sg-menu__item', className)}
-      onClick={() => !disabled && select(onSelect)} {...rest}>
+      data-tone={tone !== 'default' ? tone : undefined} className={cx('sg-menu__item', className)} {...rest}
+      /* the app's onClick runs first and can keep the menu open with preventDefault; it no longer replaces choosing */
+      onClick={(e) => { onClick?.(e); if (!disabled && !e.defaultPrevented) select(onSelect); }}>
       {icon}
       <span className="sg-menu__item-label">{children}</span>
       {hint && <span className="sg-menu__item-hint">{hint}</span>}
@@ -209,7 +213,7 @@ function menuKeys(e: KeyboardEvent<HTMLElement>) {
     const k = e.key.toLowerCase();
     n = items.findIndex((it, j) => j > i && it.textContent?.trim().toLowerCase().startsWith(k));
     if (n < 0) n = items.findIndex((it) => it.textContent?.trim().toLowerCase().startsWith(k));
-  } else if (e.key === 'Tab') { e.preventDefault(); return; }
+  }
   if (n >= 0) { e.preventDefault(); items[n]?.focus(); }
 }
 
@@ -217,7 +221,9 @@ export type MenuProps = {
   open: boolean;
   onClose: (reason: CloseReason) => void;
   /** the element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does
-      not close the panel, and the panel closes when it leaves the layout */
+      not close the panel, and the panel closes when it leaves the layout. `ref.current` is read when the owner
+      renders, and setting a ref does not render: for a panel open from the first render, keep the element in state
+      (`ref={setAnchor}`) */
   anchor: Anchor;
   placement?: Placement;
   children: ReactNode;
@@ -228,17 +234,25 @@ export type MenuProps = {
   lockScroll?: boolean;
 };
 
+/* Tab from inside an anchored panel goes to its layer's own Tab (useAnchored's `tab`); not a Tab the content already
+   took (a text area that indents), nor one from a list opened inside it */
+function onTab(e: KeyboardEvent<HTMLElement>) {
+  if (e.key !== 'Tab' || e.defaultPrevented || !e.currentTarget.contains(e.target as Node)) return;
+  if (tabFrom(document.activeElement as HTMLElement, e.shiftKey)) e.preventDefault();
+}
+
 export function Menu({ open, onClose, anchor, placement = 'bottom-start', children, className, lockScroll, 'aria-label': label }: MenuProps) {
   const lightRef = useGlassLight();
   const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => {
     (p.querySelector<HTMLElement>('.sg-menu__item:not([aria-disabled="true"])') ?? p).focus({ preventScroll: true });
-  }, { lockScroll });
+  }, { lockScroll, tab: 'close' });
   const ctx = useMemo<MenuCtx>(() => ({ select: (fn) => { onClose('select'); fn?.(); } }), [onClose]);
   if (!mounted) return null;
   return (
     <Portal className="sg-portal--passthrough sg-portal--anchored">
       <MenuContext.Provider value={ctx}>
-        <div ref={mergeRefs(panel, lightRef)} role="menu" aria-label={label} tabIndex={-1} className={cx('sg-menu', glassClass('strong'), className)} onKeyDown={menuKeys}>
+        <div ref={mergeRefs(panel, lightRef)} role="menu" aria-label={label} tabIndex={-1} className={cx('sg-menu', glassClass('strong'), className)}
+          onKeyDown={(e) => (e.key === 'Tab' ? onTab(e) : menuKeys(e))}>
           <div data-sg-content>{children}</div>
         </div>
       </MenuContext.Provider>
@@ -254,11 +268,13 @@ export type PopoverProps = Omit<MenuProps, 'aria-label' | 'lockScroll'> & {
 };
 export function Popover({ open, onClose, anchor, placement = 'bottom', children, className, ...aria }: PopoverProps) {
   const lightRef = useGlassLight();
-  const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => { (focusables(p)[0] ?? p).focus({ preventScroll: true }); });
+  /* Tab past the last stop (or Shift+Tab before the first) leaves the popover: its portal sits outside the page's
+     order and outside a dialog's focus trap, so the browser's Tab would carry focus off the page */
+  const { panel, mounted } = useAnchored(open, anchor, placement, onClose, (p) => { (focusables(p)[0] ?? p).focus({ preventScroll: true }); }, { tab: 'edge' });
   if (!mounted) return null;
   return (
     <Portal className="sg-portal--passthrough sg-portal--anchored">
-      <div ref={mergeRefs(panel, lightRef)} role="dialog" tabIndex={-1} className={cx('sg-popover', glassClass('strong'), className)} {...aria}>
+      <div ref={mergeRefs(panel, lightRef)} role="dialog" tabIndex={-1} className={cx('sg-popover', glassClass('strong'), className)} {...aria} onKeyDown={onTab}>
         <div data-sg-content>{children}</div>
       </div>
     </Portal>
@@ -288,10 +304,11 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
   const release = useRelease();
   const id = useStableId('sg-as');
   const l1 = useGlassLight();
+  const close = useRef(onClose); close.current = onClose;   /* Escape calls the latest onClose */
   const { mounted } = useOverlayLifecycle(open, () => {
     const b = box.current!;
     scrim.current?.classList.add('is-open');
-    const pop = pushLayer(() => onClose('escape'), true, b);
+    const pop = pushLayer(() => close.current('escape'), true, b);
     const trap = trapFocus(b, b.querySelector<HTMLElement>('[data-cancel]'));
     release.set(() => { pop(); trap(); });
     if (prefersReducedMotion(b)) return fade(b, 0, 1, timing.appear);
@@ -359,15 +376,29 @@ export function ContextMenu({ menu, children, previewSelector, 'aria-label': lab
     const src = (previewSelector ? t.querySelector<HTMLElement>(previewSelector) : null) ?? t;
     setState({ open: true, rect: src.getBoundingClientRect(), clone: src.outerHTML });
   }, [previewSelector]);
+  const opener = useRef(openMenu); opener.current = openMenu;
+  /* the listeners sit on the child's element, which the child can replace (a re-render with another root element):
+     a watch on the host's own children moves them to the new one */
   useEffect(() => {
-    const t = target();
-    if (!t) return;
-    const offLong = longPress(t, () => openMenu());
-    const ctx = (e: MouseEvent) => { e.preventDefault(); openMenu(); };
-    const key = (e: globalThis.KeyboardEvent) => { if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') { e.preventDefault(); openMenu(); } };
-    t.addEventListener('contextmenu', ctx); t.addEventListener('keydown', key);
-    return () => { offLong(); t.removeEventListener('contextmenu', ctx); t.removeEventListener('keydown', key); };
-  }, [openMenu]);
+    const h = host.current;
+    if (!h) return;
+    let bound: HTMLElement | null = null, off = () => {};
+    const bind = () => {
+      const t = target();
+      if (t === bound) return;
+      off(); off = () => {}; bound = t;
+      if (!t) return;
+      const offLong = longPress(t, () => opener.current());
+      const ctx = (e: MouseEvent) => { e.preventDefault(); opener.current(); };
+      const key = (e: globalThis.KeyboardEvent) => { if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') { e.preventDefault(); opener.current(); } };
+      t.addEventListener('contextmenu', ctx); t.addEventListener('keydown', key);
+      off = () => { offLong(); t.removeEventListener('contextmenu', ctx); t.removeEventListener('keydown', key); };
+    };
+    bind();
+    const mo = new MutationObserver(bind);
+    mo.observe(h, { childList: true });
+    return () => { mo.disconnect(); off(); };
+  }, []);
   useIsoLayoutEffect(() => {
     if (!state.open || !lift.current) return;
     scrim.current?.classList.add('is-open');
@@ -441,7 +472,7 @@ function ToastView({ t, edge, onDone }: { t: ToastItem; edge: 'top' | 'bottom'; 
     leaving.current = true;
     const from = el.current.style.transform || 'none';
     const reduced = prefersReducedMotion(el.current);
-    el.current.animate(reduced ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: from, opacity: 1 }, { transform: `translateY(${sign * 24}px) scale(0.96)`, opacity: 0 }], { duration: reduced ? timing.appear : timing.toastOut, easing: easing.exit, fill: 'both' })
+    el.current.animate(reduced ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: from, opacity: 1 }, { transform: `translateY(${sign * 24}px) scale(0.96)`, opacity: 0 }], { duration: reduced ? timing.leave : timing.toastOut, easing: easing.exit, fill: 'both' })
       .finished.then(onDone, onDone);
   }, [onDone, sign]);
   useIsoLayoutEffect(() => {
@@ -453,8 +484,8 @@ function ToastView({ t, edge, onDone }: { t: ToastItem; edge: 'top' | 'bottom'; 
     const off = drag(e, {
       axis: 'y', threshold: 4,
       move: ({ dy }) => { const y = dy * sign > 0 ? dy : dy * 0.25; e.getAnimations().forEach((a) => a.cancel()); e.style.transform = `translateY(${y}px)`; },
-      end: ({ dy, vy }) => {
-        if (dy * sign > 30 || vy * sign > 600) leave();
+      end: ({ dy, vy }, cancelled) => {
+        if (!cancelled && (dy * sign > 30 || vy * sign > 600)) leave();
         else { const from = e.style.transform; e.style.transform = ''; animate(e, [{ transform: from || 'none' }, { transform: 'none' }], 'snappy'); }
       },
     });

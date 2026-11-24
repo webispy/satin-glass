@@ -90,8 +90,41 @@ export function fade(el: HTMLElement, a: number, b: number, ms: number) {
 
 /* ---------------------------------------------------------------- focus */
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-export const focusables = (root: HTMLElement) =>
-  Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null || el === document.activeElement);
+/* what Tab can reach: laid out, not visibility: hidden (a clipped-away panel), not inside [inert] (a closed accordion
+   region), not taken out of the order with a negative tabindex (a native button too: the inactive tabs of a Tabs),
+   not disabled (a control in a disabled <fieldset> too, which the [disabled] test in FOCUSABLE misses), and, as
+   browsers do, one stop per radio group (the focused or checked radio, else the first). The focused element
+   stays in the list wherever it is, so the step from it is found. */
+const shown = (el: HTMLElement) => (el.checkVisibility ? el.checkVisibility({ visibilityProperty: true }) : getComputedStyle(el).visibility !== 'hidden');
+const isRadio = (el: Element): el is HTMLInputElement => el instanceof HTMLInputElement && el.type === 'radio' && !!el.name;
+export const focusables = (root: HTMLElement) => {
+  const a = document.activeElement;
+  const all = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.closest('[inert]') && !el.matches(':disabled') && (el === a || (el.tabIndex >= 0 && el.offsetParent !== null && shown(el))));
+  /* each group's stop (a group is a name within a form), found in one pass */
+  const stops = new Map<HTMLFormElement | null, Map<string, HTMLInputElement>>();
+  for (const el of all) {
+    if (!isRadio(el)) continue;
+    const g = stops.get(el.form) ?? new Map<string, HTMLInputElement>(), cur = g.get(el.name);
+    stops.set(el.form, g);
+    if (!cur || (cur !== a && (el === a || (el.checked && !cur.checked)))) g.set(el.name, el);
+  }
+  return all.filter((el) => !isRadio(el) || stops.get(el.form)?.get(el.name) === el);
+};
+/* Tab and Shift+Tab inside `root`, wrapping: from `from` to the next stop that takes focus (one that refuses it, a
+   control disabled a moment ago, is passed over instead of holding focus where it was) */
+/** Whether Tab can stop on `el` now: connected, reachable by Tab, laid out and shown, not inert or disabled. */
+export const canFocus = (el: HTMLElement) => el.isConnected && el.matches(FOCUSABLE) && !el.closest('[inert]') && !el.matches(':disabled') && el.tabIndex >= 0 && (el.offsetParent !== null || getComputedStyle(el).position === 'fixed') && shown(el);
+
+function step(root: HTMLElement, from: Element | null, back: boolean) {
+  const list = focusables(root), n = list.length;
+  if (!n) return;
+  const i = list.indexOf(from as HTMLElement), start = i < 0 ? (back ? n : -1) : i;
+  for (let k = 1; k <= n; k++) {
+    const c = list[(((start + (back ? -k : k)) % n) + n) % n];
+    c.focus();
+    if (document.activeElement === c) return;
+  }
+}
 
 /** Moves focus into `root` and keeps Tab inside it. Returns a release function that restores focus. */
 /* Safari does not focus a button that is clicked, so a layer opened by a click found the page itself focused (or the
@@ -111,8 +144,33 @@ const opener = (): HTMLElement | null => {
   return recent ?? a;
 };
 
+/* Where focus goes back to: `el`, or, once it has left the document or cannot take focus (a menu item that opened a
+   dialog as the menu closed: gone, or still folding away and inert), where the layer that held it would have given
+   focus back (the menu's button), and so on down. `give` moves focus there, and on down the chain when `el` refuses
+   it. */
+function homeOf(el: HTMLElement | null): { home: () => HTMLElement | null; give: () => void } {
+  const up = el ? layerOf(el)?.back : undefined;
+  const home = () => (el && el.isConnected && !el.closest('[inert]') && !el.matches(':disabled') ? el : up?.() ?? null);
+  /* down the chain of openers until one takes focus: the opener may be gone, and the one below it connected but
+     hidden (a menu item inside a closed panel) */
+  const give = () => {
+    const seen = new Set<HTMLElement>();
+    for (let h = home(); h && !seen.has(h); h = h === el ? up?.() ?? null : layerOf(h)?.back?.() ?? null) {
+      seen.add(h);
+      h.focus({ preventScroll: true });
+      if (document.activeElement === h) return;
+    }
+  };
+  return { home, give };
+}
+
+const traps: HTMLElement[] = [];
 export function trapFocus(root: HTMLElement, initial?: HTMLElement | null): () => void {
-  const before = opener();
+  const { home, give } = homeOf(opener());
+  /* a layer opened above this one from inside it falls back here when its opener is gone */
+  const own = layerOf(root);
+  if (own && !own.back && own.el && (own.el === root || root.contains(own.el))) own.back = home;
+  traps.push(root);
   const first = initial ?? root.querySelector<HTMLElement>('[data-autofocus]') ?? focusables(root)[0] ?? root;
   if (first === root && !root.hasAttribute('tabindex')) root.tabIndex = -1;
   first.focus({ preventScroll: true });
@@ -120,22 +178,41 @@ export function trapFocus(root: HTMLElement, initial?: HTMLElement | null): () =
     if (e.key !== 'Tab') return;
     /* move focus ourselves: WebKit's default Tab skips buttons, which would let focus escape the trap */
     e.preventDefault();
-    const list = focusables(root);
-    if (!list.length) return;
-    const i = list.indexOf(document.activeElement as HTMLElement);
-    const next = e.shiftKey ? (i <= 0 ? list.length - 1 : i - 1) : (i < 0 || i === list.length - 1 ? 0 : i + 1);
-    list[next].focus();
+    step(root, document.activeElement, e.shiftKey);
   };
   root.addEventListener('keydown', onKey);
   return () => {
     root.removeEventListener('keydown', onKey);
-    if (before && document.contains(before) && (!document.activeElement || root.contains(document.activeElement) || document.activeElement === document.body)) before.focus({ preventScroll: true });
+    const t = traps.lastIndexOf(root);
+    if (t >= 0) traps.splice(t, 1);
+    if (!document.activeElement || root.contains(document.activeElement) || document.activeElement === document.body) give();
   };
 }
 
+/** Moves focus on from `from` as Tab (or Shift+Tab, `back`) would, inside the focus trap that holds `from` — for a
+    panel portalled outside that trap (a menu or popover opened in a dialog) whose Tab leaves it for its anchor's
+    next stop. Outside any trap, the layer that holds `from` decides, when it was given `tab` (a popover passes Tab
+    past its edge on to its anchor, and so on down to a trap). Returns false when nothing took it: the browser's
+    own Tab moves on from `from`. */
+export function tabFrom(from: HTMLElement, back = false): boolean {
+  for (let i = traps.length - 1; i >= 0; i--) if (traps[i].contains(from)) { step(traps[i], from, back); return true; }
+  return layerOf(from)?.tab?.(from, back) ?? false;
+}
+
 /* ---------------------------------------------------------------- layer stack (Esc order, scroll lock, inert page) */
-type Layer = { onEscape: () => void; modal: boolean; el: HTMLElement | null; inert: boolean };
+/* back: where the layer gives focus back to on closing, while that is still in the document; tab: its own Tab from
+   an element inside it (see tabFrom) */
+type Layer = { onEscape: () => void; modal: boolean; el: HTMLElement | null; inert: boolean; back?: () => HTMLElement | null; tab?: (from: HTMLElement, back: boolean) => boolean };
 const stack: Layer[] = [];
+/* the index of the layer that holds `node`: the top one whose element holds it, else (a scrim beside the panel in its
+   portal) the top one whose portal holds it. By the element first, so two panels mounted in one container (a core
+   user's own #overlays) are told apart. */
+function layerIndexOf(node: Node): number {
+  for (let i = stack.length - 1; i >= 0; i--) if (stack[i].el?.contains(node)) return i;
+  for (let i = stack.length - 1; i >= 0; i--) { const e = stack[i].el, h = e && hostOf(e); if (h && h.contains(node)) return i; }
+  return -1;
+}
+const layerOf = (node: Node): Layer | undefined => stack[layerIndexOf(node)];
 let locked = false, savedPad = '', savedOverflow = '', holds = 0;
 
 function syncLock() {
@@ -155,9 +232,10 @@ function syncLock() {
 
 /* A modal layer hides everything under it from assistive technology (aria-modal alone is not honoured everywhere):
    aria-hidden on every child of <body> except the portal of the top modal layer, the portals of layers opened above it
-   (a menu or a dialog opened from a drawer) and live regions (toasts must still be announced). The scrim already
-   takes the pointer and the focus trap the keyboard; aria-hidden, unlike inert, costs no style recalculation of the
-   page, so the overlay's first frame stays light. Only what this hid is given back. */
+   (a menu or a dialog opened from a drawer), and live regions and the toaster at the top of <body> (toasts must still
+   be announced; a live region inside the app, a table's sort announcement, does not keep the whole app exposed).
+   The scrim already takes the pointer and the focus trap the keyboard; aria-hidden, unlike inert, costs no style
+   recalculation of the page, so the overlay's first frame stays light. Only what this hid is given back. */
 const madeHidden = new Set<HTMLElement>();
 const hostOf = (el: HTMLElement | null) => { let e = el; while (e && e.parentElement && e.parentElement !== document.body) e = e.parentElement; return e && e.parentElement === document.body ? e : null; };
 function syncHidden() {
@@ -167,14 +245,15 @@ function syncHidden() {
   if (m >= 0) for (let i = m; i < stack.length; i++) { const h = hostOf(stack[i].el); if (h) keep.add(h); }
   const want = new Set<HTMLElement>();
   if (m >= 0) for (const c of Array.from(document.body.children) as HTMLElement[]) {
-    if (keep.has(c) || c.matches('script, style, link, template') || c.querySelector('[aria-live], .sg-toaster')) continue;
+    if (keep.has(c) || c.matches('script, style, link, template, [aria-live], [role="status"], [role="alert"], [role="log"], .sg-portal--toasts') || c.querySelector(':scope > .sg-toaster')) continue;
     if (c.getAttribute('aria-hidden') !== 'true' || madeHidden.has(c)) want.add(c);
   }
   for (const c of madeHidden) if (!want.has(c)) { c.removeAttribute('aria-hidden'); madeHidden.delete(c); }
   for (const c of want) if (!madeHidden.has(c)) { c.setAttribute('aria-hidden', 'true'); madeHidden.add(c); }
 }
 const onKeydown = (e: KeyboardEvent) => {
-  if (e.key !== 'Escape' || !stack.length) return;
+  /* an Escape that ends an IME composition (Korean, Japanese) belongs to the text field, not the layer */
+  if (e.key !== 'Escape' || e.isComposing || e.keyCode === 229 || !stack.length) return;
   e.preventDefault();
   stack[stack.length - 1].onEscape();
 };
@@ -182,9 +261,12 @@ const onKeydown = (e: KeyboardEvent) => {
 /** Puts an overlay on the layer stack: Escape goes to the top one, a modal one locks the page's scroll and (unless
     `opts.inert` is false: an anchored menu that only holds the scroll) hides the rest of the page from assistive
     technology. `el` is the
-    overlay's element (any element inside its portal). Returns the removal. */
-export function pushLayer(onEscape: () => void, modal: boolean, el: HTMLElement | null = null, opts: { inert?: boolean } = {}): () => void {
-  const layer = { onEscape, modal, el, inert: opts.inert ?? modal };
+    overlay's element (any element inside its portal). `opts.back` says where the overlay gives focus back to on
+    closing (a focus trap records its own); a layer opened from inside this one goes there when its opener is gone.
+    `opts.tab` handles Tab from an element inside a layer that is not a focus trap (see `tabFrom`): true when it
+    moved focus, false to leave it to the browser. Returns the removal. */
+export function pushLayer(onEscape: () => void, modal: boolean, el: HTMLElement | null = null, opts: { inert?: boolean; back?: () => HTMLElement | null; tab?: (from: HTMLElement, back: boolean) => boolean } = {}): () => void {
+  const layer: Layer = { onEscape, modal, el, inert: opts.inert ?? modal, back: opts.back, tab: opts.tab };
   if (!stack.length) document.addEventListener('keydown', onKeydown);
   stack.push(layer); syncLock(); syncHidden();
   return () => {
@@ -193,6 +275,12 @@ export function pushLayer(onEscape: () => void, modal: boolean, el: HTMLElement 
     if (!stack.length) document.removeEventListener('keydown', onKeydown);
     syncLock(); syncHidden();
   };
+}
+/** Whether `target` is inside a layer opened above the layer whose element is `el` — a list opened from a popover
+    is its own portal, yet a press in it is not a press outside the popover. */
+export function inLayerAbove(el: HTMLElement, target: Node | null): boolean {
+  const i = stack.findIndex((l) => l.el === el);
+  return i >= 0 && !!target && layerIndexOf(target) > i;
 }
 export const topLayerCount = () => stack.length;
 
