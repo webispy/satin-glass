@@ -2,7 +2,10 @@
 // usage: node tests/e2e/display.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173; Q for settings)
 // covers: layout, navigation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
+import { motions, springDuration } from '../../packages/core/dist/index.js';
 const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '';
+/* how long the personality's smooth spring (the viewer's paging) takes to settle, from the tokens */
+const smoothMs = springDuration(motions[/motion=(\w+)/.exec(Q)?.[1] ?? 'lively'].smooth);
 const reduced = /rm=1/.test(Q);
 const b = await pw[engine].launch();
 const ctx = await b.newContext({ viewport: { width: 1280, height: 900 } });
@@ -33,7 +36,12 @@ await go('display');
     return { small: +getComputedStyle(small).opacity, rise: new DOMMatrix(getComputedStyle(small).transform).f, large: +getComputedStyle(large).opacity, top: h.hasAttribute('data-at-top'), collapsed: h.hasAttribute('data-collapsed') };
   });
   const steps = [];
-  for (const y of [0, 10, 20, 28, 36, 44, 52, 70, 140]) { await sc.evaluate((e, y) => { e.scrollTop = y; }, y); await p.waitForTimeout(60); steps.push(await read()); }
+  for (const y of [0, 10, 20, 28, 36, 44, 52, 70, 140]) {
+    /* the scroll is handled with the next frame (Firefox dispatches scroll events then): read two frames later, not after a
+       fixed pause that a loaded machine overruns */
+    await sc.evaluate((e, y) => new Promise((res) => { e.scrollTop = y; requestAnimationFrame(() => requestAnimationFrame(res)); }), y);
+    steps.push(await read());
+  }
   const s0 = steps[0], sN = steps[steps.length - 1];
   const smallUp = steps.every((s, i) => i === 0 || s.small >= steps[i - 1].small - 0.001), largeDown = steps.every((s, i) => i === 0 || s.large <= steps[i - 1].large + 0.001);
   const between = steps.filter((s) => s.small > 0.02 && s.small < 0.98).length;
@@ -42,7 +50,7 @@ await go('display');
   ok('large title: scrolled past, the bar holds the title and the glass', sN.small === 1 && sN.large < 0.05 && !sN.top && sN.collapsed, JSON.stringify(sN));
   const mid = steps.find((s) => s.small > 0.1 && s.small < 0.9);
   ok(reduced ? 'large title (reduced motion): the small title only fades (no rising)' : 'large title: the small title rises into place while it fades in', mid && (reduced ? Math.abs(mid.rise) < 0.01 : mid.rise > 0.3), JSON.stringify(mid));
-  await sc.evaluate((e) => { e.scrollTop = 0; }); await p.waitForTimeout(80);
+  await sc.evaluate((e) => new Promise((res) => { e.scrollTop = 0; requestAnimationFrame(() => requestAnimationFrame(res)); }));
   ok('large title: back at the top, it is the large title again', (await read()).small === 0);
   const h1 = await sc.evaluate((e) => [...e.querySelectorAll('h1, h2')].filter((x) => x.getAttribute('aria-hidden') !== 'true').map((x) => x.tagName + ':' + x.textContent));
   ok('large title: screen readers hear the title once (the large copy is hidden)', h1.length === 1, h1.join(', '));
@@ -107,10 +115,31 @@ await go('display');
   /* paging */
   const trackX = () => p.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.sg-media__track')).transform).e);
   const x0 = await trackX();
-  const slide = await frames(`() => document.querySelector('.sg-media').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))`, `() => new DOMMatrix(getComputedStyle(document.querySelector('.sg-media__track')).transform).e`, 700);
+  /* one trace from the key until the track has rested on the next photo (three frames within 0.5 px of it; the
+     paging spring snaps exactly onto it when it settles), at most 3 s. Its length is taken on the spring's own clock:
+     the frame gaps, each at most 50 ms as loop() advances a spring (motion.ts), so a runner that draws slowly does not
+     lengthen it, and a spring made slower still does. It may take a quarter longer than the smooth spring's settling
+     time in the tokens (644 ms when lively; the JS spring rests within 0.5 px a little after the CSS curve's end).
+     With reduced motion the photo is there within two frames */
   const target = x0 - (1280 + 24);
+  const paging = await p.evaluate((target) => new Promise((res) => {
+    const x = () => new DOMMatrix(getComputedStyle(document.querySelector('.sg-media__track')).transform).e;
+    const out = []; let last = performance.now(), clock = 0, near = 0; const t0 = last;
+    document.querySelector('.sg-media').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    const f = (now) => {
+      clock += Math.min(50, now - last); last = now;
+      const v = x(); out.push([clock, v]);
+      near = Math.abs(v - target) < 0.5 ? near + 1 : 0;
+      if (near >= 3 || now - t0 > 3000) res({ out, arrived: near >= 3 ? out[out.length - 3] : null }); else requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  }), target);
+  const slide = paging.out.map(([, v]) => v);
   const mids = slide.filter((x) => Math.abs(x - x0) > 2 && Math.abs(x - target) > 2).length;
-  ok(reduced ? 'viewer (reduced motion): → shows the next photo without sliding' : 'viewer: → slides to the next photo', (await dlg.locator('.sg-media__count').textContent()) === '3 / 6' && Math.abs(slide[slide.length - 1] - target) < 1 && (reduced ? mids === 0 : mids >= 3), `in-between frames ${mids}`);
+  const at = paging.arrived ? slide.indexOf(paging.arrived[1]) : -1, took = paging.arrived ? paging.arrived[0] : Infinity;
+  ok(reduced ? 'viewer (reduced motion): → shows the next photo without sliding' : 'viewer: → slides to the next photo',
+    (await dlg.locator('.sg-media__count').textContent()) === '3 / 6' && !!paging.arrived && (reduced ? mids === 0 && at <= 1 : mids >= 3 && took <= smoothMs * 1.25),
+    `in-between frames ${mids}, ${paging.arrived ? `at the next photo after ${took.toFixed(0)} ms of spring time (limit ${(smoothMs * 1.25).toFixed(0)}; frame ${at + 1})` : `not at rest on it after 3 s (${(slide[slide.length - 1] - target).toFixed(1)} px off)`}, counter ${await dlg.locator('.sg-media__count').textContent()}`);
   await p.keyboard.press('ArrowLeft'); await p.waitForTimeout(600);
   /* swipe with the mouse */
   await p.mouse.move(900, 450); await p.mouse.down();

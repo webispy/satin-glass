@@ -6,6 +6,7 @@
 // covers: data, navigation, feedback, overlays, layout   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 import { readFileSync } from 'node:fs';
+import { motions, springAt } from '../../packages/core/dist/index.js';
 const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '', PORT = process.env.PORT || '4173';
 const b = await pw[engine].launch();
 const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
@@ -366,15 +367,34 @@ await go('charts');
   /* switching layouts moves the bars (position, width and height) on one progress: no frame jumps sideways */
   const frames = await bar.evaluate(async (el) => {
     const read = () => [...el.querySelectorAll('.sg-chart__bar')].map((e) => { const r = e.getBBox(); return [r.x, r.width]; });
-    const out = [read()];
+    const out = [[performance.now(), read()]];
     el.querySelectorAll('[role=radio]')[1].click();
-    for (let i = 0; i < 70; i++) { await new Promise(requestAnimationFrame); out.push(read()); }
+    for (let i = 0; i < 70; i++) { await new Promise(requestAnimationFrame); out.push([performance.now(), read()]); }
     return out;
   });
-  let jump = 0, moved = 0;
-  for (let i = 1; i < frames.length; i++) { let m = false; frames[i].forEach((bx, k) => bx.forEach((v, j) => { const d = Math.abs(v - (frames[i - 1][k]?.[j] ?? v)); if (d > 0.05) m = true; jump = Math.max(jump, d); })); if (m) moved++; }
+  /* a jump, two ways. Scaled: a step larger than the motion makes in one 60 Hz frame, each step scaled to the time
+     its frame covers as loop() advances the morph (at most 50 ms: motion.ts), so a frame the machine dropped is not a
+     jump and a faster display counts in full. Unscaled: no single step covers more of a bar's whole travel than the
+     morph's spring (the personality's smooth response, critically damped: charts.tsx useMorph) moves in three of
+     loop()'s 50 ms steps — a read that lands before React has drawn can see two or three steps at once (Firefox on a
+     runner saw 54 %), while a snap covers all of it */
+  const morph = { response: motions[/motion=(\w+)/.exec(Q)?.[1] ?? 'lively'].smooth.response, damping: 1 };
+  let most = 0; for (let t = 0; t < 1500; t++) most = Math.max(most, springAt(morph, (t + 150) / 1000) - springAt(morph, t / 1000));
+  let jump = 0, moved = 0, raw = 0, share = 0;
+  const first = frames[0][1], final = frames[frames.length - 1][1];
+  for (let i = 1; i < frames.length; i++) {
+    const [t, bars] = frames[i], [t0, prev] = frames[i - 1], per = 16.7 / Math.min(50, Math.max(4, t - t0));
+    let m = false;
+    bars.forEach((bx, k) => bx.forEach((v, j) => {
+      const d = Math.abs(v - (prev[k]?.[j] ?? v)), whole = Math.abs((final[k]?.[j] ?? v) - (first[k]?.[j] ?? v));
+      if (d > 0.05) m = true;
+      jump = Math.max(jump, d * per); raw = Math.max(raw, d);
+      if (whole > 1) share = Math.max(share, d / whole);
+    }));
+    if (m) moved++;
+  }
   if (/rm=1/.test(Q)) ok('bar chart (reduced motion): grouped → stacked changes at once', moved <= 1, `${moved} moving frames`);
-  else ok('bar chart: grouped → stacked slides the bars together and widens them over many frames (no jump)', moved >= 8 && jump < 12, `${moved} moving frames, largest step ${jump.toFixed(1)} px`);
+  else ok('bar chart: grouped → stacked slides the bars together and widens them over many frames (no jump)', moved >= 8 && jump < 12 && share < most, `${moved} moving frames, largest step ${jump.toFixed(1)} px per 60 Hz frame (${raw.toFixed(1)} px as drawn, ${(share * 100).toFixed(0)} % of its travel; limit ${(most * 100).toFixed(0)} %)`);
   await p.waitForTimeout(600);
   const stacked = await bar.locator('.sg-chart__bar').count();
   ok('bar chart: one bar per series and month, grouped and stacked', grouped === 18 && stacked === 18, `${grouped} / ${stacked}`);
