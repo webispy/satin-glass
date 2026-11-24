@@ -31,7 +31,7 @@ export function pageWindow(page: number, count: number, siblings = 1): (number |
 }
 
 export function Pagination({ page, pageCount, onChange, siblings = 1, 'aria-label': labelProp, labels = {}, className, style }: PaginationProps) {
-  const m = useMessages().pagination, label = labelProp ?? m.nav;
+  const words = useMessages(), m = words.pagination, label = labelProp ?? m.nav;
   const count = Math.max(1, pageCount), cur = Math.min(Math.max(1, page), count);
   const pageLabel = labels.page ?? m.page;
   const go = (n: number) => { if (n >= 1 && n <= count && n !== cur) onChange(n); };
@@ -48,7 +48,9 @@ export function Pagination({ page, pageCount, onChange, siblings = 1, 'aria-labe
           </li>
         ))}
       </ol>
-      <span className="sg-pagination__compact" aria-hidden="true">{cur} / {count}</span>
+      {/* narrow: the page list is hidden, so the current page is said here ("Page 3 of 20"), with the same numbers
+          as the visible "3 / 20"; an app's own `labels.page` names the page, before the visible count */}
+      <span className="sg-pagination__compact"><span aria-hidden="true">{cur} / {count}</span><span className="sg-visually-hidden">{labels.page ? `${labels.page(cur)} / ${count}` : words.pageOf(words.page, cur, count)}</span></span>
       <button type="button" className="sg-pagination__step" aria-label={labels.next ?? m.next} disabled={cur >= count} onClick={() => go(cur + 1)}><ChevronRightIcon /></button>
     </nav>
   );

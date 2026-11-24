@@ -387,7 +387,8 @@ function useGridKeys(cells: Cell[], at: number, onPick: (v: number) => void, onC
     if (k === 'ArrowLeft') t = i - 1; else if (k === 'ArrowRight') t = i + 1;
     else if (k === 'ArrowUp') t = i - 3; else if (k === 'ArrowDown') t = i + 3;
     else if (k === 'Home') t = i - (i % 3); else if (k === 'End') t = i - (i % 3) + 2;
-    else if (k === 'Enter' || k === ' ') { e.preventDefault(); if (!cells[i]?.disabled) onPick(cells[i].value); return; }
+    /* no cell to pick when the list is empty (a `min` later than `max` leaves no years) */
+    else if (k === 'Enter' || k === ' ') { e.preventDefault(); const c = cells[i]; if (c && !c.disabled) onPick(c.value); return; }
     else if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); onCancel(); return; }
     else t = extra?.(e, i) ?? null;
     if (t === null) return;
@@ -513,7 +514,8 @@ export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(functio
         </button>
         {help && <span id={`${fid}-help`} className="sg-field__help">{help}</span>}
       </div>
-      {name && <input type="hidden" name={name} value={v ? toISODate(v) : ''} />}
+      {/* a disabled field submits nothing, as a disabled native control */}
+      {name && <input type="hidden" name={name} value={v ? toISODate(v) : ''} disabled={disabled} />}
       {mounted && (
         <Portal className="sg-portal--passthrough sg-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : t.choose} lang={localeProp} tabIndex={-1} className={cx('sg-datepicker-panel', glassClass('strong'))}>
@@ -619,7 +621,12 @@ export const DateRangePicker = forwardRef<HTMLButtonElement, DateRangePickerProp
   { value, defaultValue = null, onChange, placeholder, label, helperText, error, disabled, name, format, placement = 'bottom-start', locale: localeProp, unit = 'days', id, className, style, 'aria-label': ariaLabel, ...range }, ref,
 ) {
   const [v, setV] = useControllable<DateRange | null>(value, defaultValue, onChange as (r: DateRange | null) => void);
-  const [open, setOpen] = useState(false);
+  const [open, setOpenNow] = useState(false);
+  /* the close that follows a finished range: cancelled by any other open or close (and on unmount), so a quick
+     reopen is not shut by the earlier choice's timer */
+  const closing = useRef(0);
+  const setOpen = (o: boolean | ((was: boolean) => boolean)) => { clearTimeout(closing.current); setOpenNow(o); };
+  useEffect(() => () => clearTimeout(closing.current), []);
   const trigger = useRef<HTMLButtonElement>(null);
   const auto = useStableId('sg-range');
   const fid = id ?? auto;
@@ -649,13 +656,13 @@ export const DateRangePicker = forwardRef<HTMLButtonElement, DateRangePickerProp
         </button>
         {help && <span id={`${fid}-help`} className="sg-field__help">{help}</span>}
       </div>
-      {name && <input type="hidden" name={name} value={v ? `${toISODate(v.start)}/${toISODate(v.end)}` : ''} />}
+      {name && <input type="hidden" name={name} value={v ? `${toISODate(v.start)}/${toISODate(v.end)}` : ''} disabled={disabled} />}
       {mounted && (
         <Portal className="sg-portal--passthrough sg-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : t.chooseRange} lang={localeProp} tabIndex={-1} className={cx('sg-datepicker-panel', glassClass('strong'))}>
             <div data-sg-content>
               <RangeCalendar {...range} unit={unit} locale={locale} value={v}
-                onChange={(r) => { setV(r); window.setTimeout(() => setOpen(false), timing.closeAfterChoice); /* let the band fill before it closes */ }} />
+                onChange={(r) => { setV(r); clearTimeout(closing.current); closing.current = window.setTimeout(() => setOpenNow(false), timing.closeAfterChoice); /* let the band fill before it closes */ }} />
             </div>
           </div>
         </Portal>

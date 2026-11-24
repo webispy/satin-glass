@@ -326,7 +326,11 @@ export function Wheel<T>({ options, value, defaultValue, onChange, 'aria-label':
       /* type-ahead: "1", "9", "8" → the first row starting with "198" */
       const now = performance.now();
       s.typed = (now - s.typedAt > 900 ? '' : s.typed) + k.toLowerCase(); s.typedAt = now;
-      const hit = opts.current.findIndex((o) => !o.disabled && o.label.toLowerCase().startsWith(s.typed));
+      /* the row as written first; failing that, a row written with a leading zero ("07") by the number as said:
+         "7" finds 07 on an hour or minute wheel, but 70 where there is one */
+      const find = (f: (l: string) => string) => opts.current.findIndex((o) => !o.disabled && f(o.label.toLowerCase()).startsWith(s.typed));
+      let hit = find((l) => l);
+      if (hit < 0) hit = find((l) => l.replace(/^0+(?=\d)/, ''));
       if (hit >= 0) step(hit, 0);
     } else return;
     e.preventDefault();
@@ -511,7 +515,8 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(functio
         </button>
         {help && <span id={`${fid}-help`} className="sg-field__help">{help}</span>}
       </div>
-      {name && <input type="hidden" name={name} value={v ?? ''} />}
+      {/* a disabled field submits nothing, as a disabled native control */}
+      {name && <input type="hidden" name={name} value={v ?? ''} disabled={disabled} />}
       {mounted && (
         <Portal className="sg-portal--passthrough sg-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : L.labels.choose} lang={localeProp} tabIndex={-1} className={cx('sg-timepicker-panel', glassClass('strong'))}>

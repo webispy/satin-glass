@@ -100,9 +100,17 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
-  /* a value set from outside shows its text (unless someone is typing) */
-  const lastV = useRef(v);
-  useEffect(() => { if (!multi && lastV.current !== v) { lastV.current = v; if (!editing) setText(textFor(v), 'restore'); } });
+  /* a value set from outside shows its text (unless someone is typing); so does its name arriving later (options
+     loaded after the value), and a choice the (controlled) parent did not take goes back to the value's text.
+     lastV / lastT: the value and text last shown, which a choice or a clear sets itself (no second 'restore') */
+  const lastV = useRef(v), lastT = useRef(textFor(v));
+  useEffect(() => {
+    if (multi) return;
+    const t = textFor(v);
+    if (lastV.current === v && lastT.current === t) return;
+    lastV.current = v; lastT.current = t;
+    if (!editing && text !== t) setText(t, 'restore');
+  });
 
   /* multiple: the text is only a search, so it always narrows */
   const q = editing || multi ? text.trim() : '';
@@ -115,15 +123,28 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
   const isOn = (val: T) => (multi ? list.includes(val) : val === v);
   /* multiple: after a choice clears the text the list grows back; keep the chosen option active */
   const keep = useRef<T | null>(null);
-  useEffect(() => { if (keep.current !== null) { const i = flat.findIndex((o) => o.value === keep.current); keep.current = null; if (i >= 0) setActive(i); } }, [flat]);
+  /* the one place that decides the active option when the list or the text changes: after a multiple choice, the
+     chosen option; typed text, the first match; new options under the same text (async results with filter
+     'none', of any length), the active option found again by its value, else (while open) the first enabled one —
+     so Enter never takes whatever now sits at the old index */
+  const prev = useRef({ flat, q, open, editing });
+  useEffect(() => {
+    const p = prev.current; prev.current = { flat, q, open, editing };
+    /* the chosen option gone from the new list (results that depend on the text): the first enabled one, not
+       the chosen option's old index */
+    if (keep.current !== null) { const val = keep.current; keep.current = null; const i = flat.findIndex((o) => o.value === val); setActive(i >= 0 && !flat[i].disabled ? i : enabled[0] ?? -1); return; }
+    if (p.q !== q || p.open !== open || p.editing !== editing) { if (open && editing) setActive(enabled[0] ?? -1); return; }
+    if (p.flat === flat) return;
+    setActive((a) => {
+      const val = a >= 0 ? p.flat[a]?.value : undefined, i = val === undefined ? -1 : flat.findIndex((o) => o.value === val);
+      return i >= 0 && !flat[i].disabled ? i : open ? enabled[0] ?? -1 : -1;
+    });
+  }, [flat, q, open, editing]);
 
   const input = useRef<HTMLInputElement>(null), control = useRef<HTMLDivElement>(null);
   const auto = useStableId('sg-combo');
   const fid = id ?? auto, listId = `${fid}-list`, optId = (i: number) => `${fid}-o${i}`;
   const lightRef = useGlassLight();
-
-  /* the text typed: the first match becomes active */
-  useEffect(() => { if (open && editing) setActive(enabled[0] ?? -1); }, [q, open, editing, flat.length]);
 
   const restore = () => { setText(multi ? '' : textFor(v), 'restore'); setEditing(false); setOpen(false); };
   const { panel, mounted } = useAnchored(open, control.current, placement, (r) => { if (r === 'escape') restore(); else if (open) leave(); }, null, { matchWidth: true });
@@ -138,15 +159,16 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
       input.current?.focus({ preventScroll: true });
       return;
     }
+    lastV.current = o.value; lastT.current = textOf(o);
     setV(o.value); setText(textOf(o), 'select'); setEditing(false); setOpen(false);
     input.current?.focus({ preventScroll: true });
   };
   const remove = (val: T) => { setRaw(list.filter((x) => x !== val)); input.current?.focus({ preventScroll: true }); };
-  const clear = () => { setRaw(multi ? [] : null); setText('', 'clear'); setEditing(false); setOpen(false); input.current?.focus({ preventScroll: true }); };
+  const clear = () => { lastV.current = null; lastT.current = ''; setRaw(multi ? [] : null); setText('', 'clear'); setEditing(false); setOpen(false); input.current?.focus({ preventScroll: true }); };
   /* leaving the field: an emptied field clears the value, any other unfinished text goes back to the value's */
   const leave = () => {
     if (multi) { if (text) setText('', 'restore'); setEditing(false); setOpen(false); return; }
-    if (editing && !text.trim() && v != null) { setV(null); setText('', 'clear'); setEditing(false); setOpen(false); return; }
+    if (editing && !text.trim() && v != null) { lastV.current = null; lastT.current = ''; setV(null); setText('', 'clear'); setEditing(false); setOpen(false); return; }
     if (editing || text !== textFor(v)) restore(); else setOpen(false);
   };
   const openAt = (i: number) => { setActive(i); setOpen(true); };
@@ -228,7 +250,7 @@ export const Combobox = forwardRef(function Combobox<T extends string = string>(
           {multi && list.length > maxChips && <span className="sg-combobox__count" aria-hidden="true">{labels?.count?.(list.length) ?? m.combobox.count(list.length)}</span>}
           <input ref={mergeRefs(ref, input)} id={fid} className="sg-field__input" type="text" role="combobox" autoComplete="off" spellCheck={false}
             aria-autocomplete="list" aria-expanded={open} aria-controls={open ? listId : undefined}
-            aria-activedescendant={open && active >= 0 ? optId(active) : undefined}
+            aria-activedescendant={open && active >= 0 && active < flat.length ? optId(active) : undefined}
             aria-label={labelId ? undefined : ariaLabel} aria-invalid={invalid || undefined} aria-describedby={cx(!!help && `${fid}-help`, multi && list.length > 0 && `${fid}-chosen`) || undefined}
             disabled={disabled} placeholder={multi && list.length ? undefined : placeholder} value={text}
             onChange={(e) => { setText(e.currentTarget.value, 'input'); setEditing(true); setOpen(true); }}

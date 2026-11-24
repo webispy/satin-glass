@@ -726,7 +726,7 @@
     "name": "defaultValue",
     "type": "number",
     "required": false,
-    "default": "0",
+    "default": "min",
     "description": "The starting value when uncontrolled.",
     "common": true
    },

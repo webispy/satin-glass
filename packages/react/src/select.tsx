@@ -69,11 +69,15 @@ export const Select = forwardRef(function Select<T extends string = string>(
   const auto = useStableId('sg-select');
   const fid = id ?? auto, listId = `${fid}-list`, optId = (i: number) => `${fid}-o${i}`;
   const lightRef = useGlassLight();
-  const typed = useRef({ buf: '', t: 0 });
+  /* hit: whether the search so far found an option */
+  const typed = useRef({ buf: '', t: 0, hit: false });
 
   const { panel, mounted } = useAnchored(open, trigger.current, placement, () => setOpen(false), null, { matchWidth: variant === 'field' });
 
   const openAt = (i: number) => { setActive(i); setOpen(true); };
+  /* a search lasts one opening: closing ends it, and opening by key or click starts none (only typing does) */
+  const fresh = () => { typed.current.buf = ''; };
+  useEffect(() => { if (!open) fresh(); }, [open]);
   const choose = (i: number) => {
     const o = flat[i];
     if (!o || o.disabled) return;
@@ -96,8 +100,12 @@ export const Select = forwardRef(function Select<T extends string = string>(
     const q = typed.current.buf.toLocaleLowerCase();
     /* a repeated single letter cycles through the matches */
     const single = q.length > 1 && q.split('').every((c) => c === q[0]) ? q[0] : q;
-    const order = [...enabled.filter((i) => i > from), ...enabled.filter((i) => i <= from)];
-    return order.find((i) => textOf(flat[i]).startsWith(single)) ?? -1;
+    /* a longer search may still match the active option ("new" → "new y" stays on New York); one letter moves on */
+    const at = single.length > 1 ? from - 1 : from;
+    const order = [...enabled.filter((i) => i > at), ...enabled.filter((i) => i <= at)];
+    const i = order.find((i) => textOf(flat[i]).startsWith(single)) ?? -1;
+    typed.current.hit = i >= 0;
+    return i;
   };
 
   const onKey = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -105,9 +113,11 @@ export const Select = forwardRef(function Select<T extends string = string>(
     const k = e.key;
     if (!open) {
       if (k === 'ArrowDown' || k === 'ArrowUp' || k === 'Enter' || k === ' ') {
-        e.preventDefault();
+        e.preventDefault(); fresh();
         openAt(selectedIndex >= 0 ? selectedIndex : k === 'ArrowUp' ? enabled[enabled.length - 1] : enabled[0]);
       } else if (k.length === 1 && /\S/.test(k) && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        /* closed, a search that found nothing is not kept: "z" then "n" looks for "n" */
+        if (!typed.current.hit) fresh();
         const i = typeahead(k, selectedIndex);
         if (i >= 0) openAt(i);
       }
@@ -120,8 +130,11 @@ export const Select = forwardRef(function Select<T extends string = string>(
     else if (k === 'End') { e.preventDefault(); setActive(enabled[enabled.length - 1]); }
     else if (k === 'PageDown') { e.preventDefault(); setActive((a) => move(a, 1, 10)); }
     else if (k === 'PageUp') { e.preventDefault(); setActive((a) => move(a, -1, 10)); }
+    /* while a type-ahead search is going on, Space is part of it (WAI-ARIA APG: "new y") */
+    else if (k === ' ' && typed.current.buf && performance.now() - typed.current.t <= 600) { e.preventDefault(); const i = typeahead(k, active); if (i >= 0) setActive(i); }
     else if (k === 'Enter' || k === ' ') { e.preventDefault(); choose(active); }
-    else if (k === 'Tab') { choose(active); }
+    /* focus leaves either way: the list closes even when there is nothing to take (no options, a disabled one) */
+    else if (k === 'Tab') { choose(active); setOpen(false); }
     else if (k.length === 1 && /\S/.test(k) && !e.metaKey && !e.ctrlKey) { const i = typeahead(k, active); if (i >= 0) setActive(i); }
   };
 
@@ -178,7 +191,7 @@ export const Select = forwardRef(function Select<T extends string = string>(
       disabled={disabled}
       className={cx('sg-select', variant === 'inline' && 'sg-select--inline', variant === 'filter' && 'sg-select--filter', variant !== 'inline' ? className : undefined)}
       style={variant !== 'inline' ? style : undefined}
-      onClick={() => (open ? setOpen(false) : openAt(selectedIndex >= 0 ? selectedIndex : enabled[0]))}
+      onClick={() => (open ? setOpen(false) : (fresh(), openAt(selectedIndex >= 0 ? selectedIndex : enabled[0])))}
       onKeyDown={onKey}
     >
       {variant === 'filter' && label && <span id={labelId} className="sg-select__prefix">{label}</span>}
@@ -199,7 +212,8 @@ export const Select = forwardRef(function Select<T extends string = string>(
           {helpId && <span id={helpId} className="sg-field__help">{help}</span>}
         </div>
       )}
-      {name && <input type="hidden" name={name} value={v ?? ''} />}
+      {/* a disabled select submits nothing, as a disabled native control */}
+      {name && <input type="hidden" name={name} value={v ?? ''} disabled={disabled} />}
       {mounted && (
         <Portal className="sg-portal--passthrough sg-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} id={listId} role="listbox" aria-labelledby={labelId} aria-label={labelId ? undefined : ariaLabel} tabIndex={-1}
