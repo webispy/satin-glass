@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Ref, type RefCallback } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type Ref, type RefCallback } from 'react';
 
 export const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
@@ -32,14 +32,30 @@ export function mergeRefs<T>(...refs: (Ref<T> | undefined)[]): RefCallback<T> {
   };
 }
 
-let counter = 0;
+/** An id for wiring labels and descriptions (aria-labelledby, aria-controls, a gradient's url(#…)), the same on the
+    server and in the browser that hydrates it: React's useId, from the component's place in the tree, not a count of
+    renders. React writes it as ":R1:" (18), "«R1»" (19.0–19.1) or "_R_1_", after an app's identifierPrefix. Letters,
+    digits and '-' are kept; '_' and every other character are written as "_<hex code>_", so it can stand in a CSS
+    selector or a url(#…) without escaping, and two different ids (two roots with prefixes "a:b-" and "ab-") never
+    become the same one. */
+const idSafe = (s: string) => s.replace(/[^A-Za-z0-9-]/gu, (c) => `_${c.codePointAt(0)!.toString(16)}_`);
 export function useStableId(prefix = 'sg'): string {
-  const [id] = useState(() => `${prefix}-${++counter}`);
-  return id;
+  return `${prefix}-${idSafe(useId())}`;
 }
 
-/** Keeps a component mounted until its exit animation has finished. */
+const noSubscribe = () => () => {};
+/** false on the server and while the browser hydrates what the server wrote; true in every other render in the
+    browser, the first one included. What the server cannot write (a portal into document.body) waits for it: React
+    renders again right after the hydration commit, so a part that was open from the start appears then, while a
+    browser rendering on its own (the usual case: an overlay opened later) has it at once, in the same commit. */
+export function useClient(): boolean {
+  return useSyncExternalStore(noSubscribe, () => true, () => false);
+}
+
+/** Keeps a component mounted until its exit animation has finished. Open from the start in server-rendered HTML,
+    it mounts once hydrated (see useClient), so its portal exists in the commit its enter animation runs in. */
 export function usePresence(open: boolean): { mounted: boolean; closing: boolean; done: () => void } {
+  const client = useClient();
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
   useIsoLayoutEffect(() => {
@@ -47,7 +63,7 @@ export function usePresence(open: boolean): { mounted: boolean; closing: boolean
     else if (mounted) setClosing(true);
   }, [open]);
   const done = useCallback(() => { setMounted(false); setClosing(false); }, []);
-  return { mounted, closing, done };
+  return { mounted: mounted && client, closing, done };
 }
 
 /** Average colour of an image (for tinted glass over media). Computed once on a 16 × 16 canvas. */

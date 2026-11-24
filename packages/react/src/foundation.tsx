@@ -1,11 +1,11 @@
 import {
-  createContext, forwardRef, useContext, useEffect, useMemo, useState,
+  createContext, forwardRef, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore,
   type CSSProperties, type ElementType, type HTMLAttributes, type ReactNode, type ComponentPropsWithoutRef,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { attachLight, type MotionName } from '@satin-glass/core';
 import type { TextStyle } from '@satin-glass/tokens';
-import { cx, mergeRefs } from './utils';
+import { cx, mergeRefs, useClient } from './utils';
 
 /* ================================================================================================ Theme */
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -74,15 +74,18 @@ export function MotionScope({ motion, children }: MotionScopeProps) {
   );
 }
 
+/* A system preference, for the 'system' settings. A browser rendering on its own reads it in the first render (no
+   frame of the light theme in a dark-mode app). The server cannot know it and answers false: light, standard
+   contrast, motion and transparency on. While the browser hydrates the server's HTML it uses that same answer, so the
+   two match (useSyncExternalStore's server snapshot), and React renders again with the system's own right after the
+   hydration commit, correcting the attributes. The trade-off: until the script has run, a server-rendered page
+   shows the server's guess, as it did before; an app that knows the reader's choice (a cookie) passes it as `mode`
+   instead of 'system', and nothing changes on hydration. */
+const noMedia = { matches: false, addEventListener() {}, removeEventListener() {} };
 function useMedia(q: string): boolean {
-  const [m, setM] = useState(() => typeof matchMedia === 'function' && matchMedia(q).matches);
-  useEffect(() => {
-    if (typeof matchMedia !== 'function') return;
-    const mq = matchMedia(q), on = () => setM(mq.matches);
-    on(); mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, [q]);
-  return m;
+  const mq = useMemo(() => (typeof matchMedia === 'function' ? matchMedia(q) : noMedia), [q]);
+  const subscribe = useCallback((on: () => void) => { mq.addEventListener('change', on); return () => mq.removeEventListener('change', on); }, [mq]);
+  return useSyncExternalStore(subscribe, () => mq.matches, () => false);
 }
 
 const tokenStyle = (tokens?: Record<string, string>): CSSProperties | undefined =>
@@ -116,7 +119,12 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
       locale: lang ?? 'en-US',
     };
   }, [theme, sysDark, sysMore, sysRT, sysRM, outerGrooves, lang]);
-  /* every setting is written resolved on the element, so the nearest provider decides for CSS, JS and portals alike */
+  /* every setting is written resolved on the element, so the nearest provider decides for CSS, JS and portals alike.
+     Reduced motion that follows the system is not known on the server, nor while hydrating: it is written "system"
+     then, which neither forces motion on nor off, so the CSS follows the media query and prefersReducedMotion() asks
+     matchMedia (a chart's entrance in the hydration commit stays still in a reduced-motion browser) */
+  const known = useClient();
+  const reduceMotion = theme.reduceMotion === 'system' && !known ? 'system' : String(resolved.reducedMotion);
   const motion = theme.motion ?? outerMotion;
   const rt = resolved.reducedTransparency;
   return (
@@ -124,7 +132,7 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
      <ProvidedCtx.Provider value={true}>
      <MotionCtx.Provider value={motion}>
      <LangCtx.Provider value={lang}>
-      <div ref={ref} lang={theme.locale} data-sg-theme={resolved.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(resolved.reducedMotion)} data-sg-grooves={resolved.grooves} className={cx('sg-root', rt && 'sg-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
+      <div ref={ref} lang={theme.locale} data-sg-theme={resolved.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={reduceMotion} data-sg-grooves={resolved.grooves} className={cx('sg-root', rt && 'sg-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
         {children}
       </div>
      </LangCtx.Provider>
@@ -140,9 +148,11 @@ export function Portal({ children, className }: { children: ReactNode; className
   const motion = useMotion();
   const provided = useContext(ProvidedCtx);
   const lang = useContext(LangCtx);
-  /* synchronous host so the panel exists in the same commit (enter animations measure it in a layout effect) */
-  const host = typeof document !== 'undefined' ? document.body : null;
-  if (!host) return null;
+  /* synchronous host so the panel exists in the same commit (enter animations measure it in a layout effect). The
+     server writes no portal, so while hydrating there is none either; it follows right after (useClient) */
+  const client = useClient();
+  if (!client) return null;
+  const host = document.body;
   return createPortal(
     provided
       ? <div className={cx('sg-root sg-portal', t.reducedTransparency && 'sg-reduce-transparency', className)} data-sg-theme={t.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(t.reducedMotion)} data-sg-grooves={t.grooves} lang={lang} style={tokenStyle(t.tokens)}>{children}</div>

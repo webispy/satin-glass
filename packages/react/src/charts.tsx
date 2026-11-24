@@ -84,13 +84,15 @@ function extent(vals: number[]): [number, number] {
 /** The width a chart lays out to. Read from a ResizeObserver — after the browser's own layout, never by forcing
     one (reading clientWidth while a whole dashboard mounts made every chart pay for a synchronous page layout).
     Until it is known (one frame) the chart holds its height with an empty box; the drawing then renders as a
-    transition, in slices. */
+    transition, in slices. The server writes that same empty box, so the browser's first render matches it and
+    hydrates; without a ResizeObserver the fallback width is used, from the effect. */
 function useWidth<T extends HTMLElement>(fallback = 480) {
   const ref = useRef<T>(null);
-  const [w, setW] = useState<number | null>(() => (typeof ResizeObserver === 'undefined' ? fallback : null));
+  const [w, setW] = useState<number | null>(null);
   useEffect(() => {
     const el = ref.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
+    if (!el) return;
+    if (typeof ResizeObserver === 'undefined') { setW(fallback); return; }
     const ro = new ResizeObserver(([e]) => { const v = Math.round(e.contentRect.width) || fallback; startTransition(() => setW(v)); });
     ro.observe(el);
     return () => ro.disconnect();
