@@ -38,6 +38,9 @@ body { background: var(--sg-bg); }
 .demo--col { flex-direction: column; align-items: stretch; flex-wrap: nowrap; }   /* wrap would size the column to its widest child */
 .demo--center { justify-content: center; }
 .demo--media { overflow: hidden; min-height: 260px; color: #fff; }
+/* a panel holding surfaces (a list group, stat cards) is their grouped ground, a step below them
+   (design-language.md 8.1): on the panel's own surface colour they kept only their dark-mode top light and outline */
+.demo:has(> .sg-list-section, > .sg-list, > .grid > .sg-stat) { background: var(--sg-bg-grouped); }
 .demo__caption { width: 100%; margin: 0; font-size: 13px; color: var(--sg-label-tertiary); }
 .grid { display: grid; gap: 16px; }
 .grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
