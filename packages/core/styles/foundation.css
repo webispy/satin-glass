@@ -142,8 +142,17 @@
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
 }
 /* the satin sheen: a wide, faint glow that spreads across the glass where the pointer is — satin glows rather than
-   glints, so no point and no edge (many soft stops: a narrow band read as a drawn line) */
+   glints, so no point and no edge (many soft stops: a narrow band read as a drawn line).
+   core/light.ts writes --sg-hx/-hy/-hk on the glass as the pointer moves. They are registered as not inherited, so a
+   write restyles the glass and its sheen only (an inherited custom property restyled everything inside the glass on
+   every frame); the sheen takes them with `inherit`. The initial values are the unregistered fallbacks. */
+@property --sg-hx { syntax: "<length-percentage>"; inherits: false; initial-value: 25%; }
+@property --sg-hy { syntax: "<length-percentage>"; inherits: false; initial-value: 0px; }
+@property --sg-hk { syntax: "<number>"; inherits: false; initial-value: 0; }
 .sg-glass::after {
+  --sg-hx: inherit;
+  --sg-hy: inherit;
+  --sg-hk: inherit;
   content: "";
   position: absolute;
   left: 0;
@@ -156,9 +165,11 @@
   translate: -50% -50%;
   transform: translate3d(var(--sg-hx, 25%), var(--sg-hy, 0px), 0);
   opacity: var(--sg-hk, 0);
-  will-change: transform, opacity;
   transition: opacity var(--sg-duration-slow) var(--sg-ease-out);
 }
+/* a compositing layer only while the sheen shows or fades out (light.ts sets [data-sg-lit]); an idle sheen lets its
+   ~760 px layer go (design-language.md 3. 성능 규칙 8) */
+.sg-glass[data-sg-lit]::after { will-change: transform, opacity; }
 .sg-glass > * { position: relative; z-index: 1; }
 /* one layer at a time: glass inside glass shares its parent's glass and draws flat — no blur, fill, rim, sheen or
    shadow of its own (a glass button in a glass bar, a glass control in a glass panel). Not while the parent is not

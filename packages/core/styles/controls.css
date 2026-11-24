@@ -139,6 +139,11 @@
   pointer-events: none;
 }
 .sg-slider.is-active .sg-slider__bubble { opacity: 1; transform: none; }
+/* the bubble is glass that floats out of the glass it sits in, and shows that glass's sheen: the light's values
+   (registered as not inherited, foundation.css) are passed down to it along the elements that hold it. A registered
+   glass on the way writes its own values from its first frame (core/light.ts), so it passes on its own light, not
+   its outer glass's */
+.sg-glass :has(.sg-slider__bubble), .sg-glass .sg-slider__bubble { --sg-hx: inherit; --sg-hy: inherit; --sg-hk: inherit; }
 
 /* ============================================================================================
    Segmented control (selection indicator = droplet bridge, core/bridge.ts)
