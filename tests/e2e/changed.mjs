@@ -5,8 +5,8 @@
 //      packages/react/src/<file>   the categories whose entry (src/entries/<category>.ts) re-exports it or a file
 //                                  that imports it (directly or not)
 //      packages/core/styles/<c>.css   that category
-//      docs pages                  the categories they show (PAGES below); a page not listed there, the
-//                                  categories of the library components it imports (foundation aside)
+//      docs pages                  the categories of the library components they import (foundation aside);
+//                                  a hand-kept list of what each page shows went stale as pages grew
 //      apps/docs/src/docs.css      the pages that use the classes on the changed lines (each line's rule
 //                                  selector), then as those pages; a class used by the docs frame or by no
 //                                  page, or a changed line outside any class rule, means everything
@@ -27,11 +27,6 @@ const ROOT = new URL('../../', import.meta.url);
 const read = (p) => readFileSync(new URL(p, ROOT), 'utf8');
 const CATS = ['foundation', 'controls', 'layout', 'navigation', 'selection', 'overlays', 'feedback', 'data'];
 const DEPENDENTS = { controls: ['selection', 'data'], overlays: ['selection', 'data'], layout: ['data'], selection: ['data'] };
-const PAGES = {
-  'components.tsx': ['controls', 'navigation', 'layout', 'overlays'],   // buttons, inputs, navigation, lists, overlays
-  'selection.tsx': ['selection'], 'display.tsx': ['layout', 'navigation'], 'feedback.tsx': ['feedback', 'overlays'],
-  'table.tsx': ['data'], 'charts.tsx': ['data'], 'dashboard.tsx': ['data', 'navigation', 'feedback'],
-};
 const IGNORE = [/\.md$/, /^docs\//, /^LICENSE$/, /^packages\/[^/]+\/LICENSE$/, /^packages\/[^/]+\/test\//, /^\.gitignore$/];
 
 /* react source file -> categories, from the entries; and who imports whom, so a change reaches the components
@@ -56,10 +51,24 @@ for (const c of CATS) {
     for (const e of read(`packages/react/src/${file}`).matchAll(/^export (?:function|const|class|type|interface|enum) (\w+)/gm)) catOfName[e[1]] ??= c;
   }
 }
-/* a docs page's categories: listed in PAGES, or those of the components it imports (null: only foundation -> everything) */
+/* a docs page's categories: those of the components it imports, now and at the base (a change that takes a
+   component off the page is checked against what the page showed; a deleted page by what it was) — null: only
+   foundation -> everything */
+const versions = (path) => {
+  const out = [];
+  try { out.push(read(path)); } catch { /* deleted */ }
+  if (base && base !== '(given)') { const r = spawnSync('git', ['show', `${base}:${path}`], { encoding: 'utf8' }); if (r.status === 0) out.push(r.stdout); }
+  return out;
+};
+/* a page and the usage examples it imports (apps/docs/src/examples/, one level): a component shown only inside an
+   example is on the page too */
+const pageSources = (file) => {
+  const own = versions(`apps/docs/src/pages/${file}`);
+  const examples = new Set(own.flatMap((src) => [...src.matchAll(/from '\.\.\/examples\/([\w-]+)'/g)].map((m) => m[1])));
+  return [...own, ...[...examples].flatMap((x) => versions(`apps/docs/src/examples/${x}.tsx`))];
+};
 const pageCats = (file) => {
-  if (PAGES[file]) return PAGES[file];
-  const imp = [...read(`apps/docs/src/pages/${file}`).matchAll(/import\s*\{([^}]*)\}\s*from '@satin-glass\/react[^']*'/g)].flatMap((m) => m[1].split(',').map((n) => n.trim().replace(/^type\s+/, '')));
+  const imp = pageSources(file).flatMap((src) => [...src.matchAll(/import\s*\{([^}]*)\}\s*from '@satin-glass\/react[^']*'/g)]).flatMap((m) => m[1].split(',').map((n) => n.trim().replace(/^type\s+/, '')));
   const c = [...new Set(imp.map((n) => catOfName[n]).filter((x) => x && x !== 'foundation'))];
   return c.length ? c : null;
 };

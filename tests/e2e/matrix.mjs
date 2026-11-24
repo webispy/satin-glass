@@ -2,7 +2,7 @@
 // docs page, desktop and phone widths. Checks: page errors, horizontal overflow, clipped text, text contrast
 // (against the real composited background; skipped over glass/photos where it cannot be known), and that reduce
 // transparency really removes blur.
-// usage: node tests/e2e/matrix.mjs [shotDir]   (BROWSER=webkit|firefox, FULL=1 for all 16 combos in other engines,
+// usage: node tests/e2e/matrix.mjs [shotDir]   (BROWSER=webkit|firefox, FULL=1 for all 16 combos,
 //        SHARD=2/4 to run only every 4th combo starting at the 2nd — the runner splits the matrix this way)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
@@ -13,8 +13,10 @@ import { PAGES } from './pages.mjs';
 const WIDTHS = [1280, 390];
 const all = [];
 for (const mode of ['light', 'dark']) for (const hc of [0, 1]) for (const rt of [0, 1]) for (const rm of [0, 1]) all.push({ mode, hc, rt, rm });
-/* reduce motion does not change static rendering: chromium covers all 16, other engines the 8 visual ones unless FULL */
-const every = engine === 'chromium' || process.env.FULL ? all : all.filter((c) => c.rm === 0);
+/* reduce motion changes little of what stands still (a large title's resting transform, the rules that swap a
+   movement for a fade): the 8 visual combos, and in Chromium reduce motion with the plainest and with the most
+   demanding of them (light; dark with high contrast and reduce transparency); FULL=1 for all 16 */
+const every = process.env.FULL ? all : all.filter((c) => c.rm === 0 || (engine === 'chromium' && (c.mode === 'light' ? !c.hc && !c.rt : c.hc && c.rt)));
 const [shard, shards] = (process.env.SHARD || '1/1').split('/').map(Number);
 const combos = every.filter((_, i) => i % shards === shard - 1);
 

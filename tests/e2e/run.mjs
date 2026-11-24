@@ -61,14 +61,14 @@ const VERBOSE = !!process.env.E2E_VERBOSE;
 const checks = [], motion = [];
 const perEngine = (to, label, file) => { for (const b of ENGINES) to.push([`${label} · ${b}`, file, { BROWSER: b }]); };
 const variants = (to, label, file, qs) => { if (!QUICK) for (const q of qs) to.push([`${label} · chromium ${q}`, file, { Q: q }]); };
-/* the render matrix: chromium checks all 16 setting combos, the others the 8 visual ones — ~4 combos per shard */
+/* the render matrix: the 8 visual setting combos (and two with reduce motion in Chromium) — ~3 combos per shard */
 const sharded = (to, label, file, shardsFor) => { for (const b of ENGINES) { const n = shardsFor(b); for (let i = 1; i <= n; i++) to.push([`${label} · ${b}${n > 1 ? ` ${i}/${n}` : ''}`, file, { BROWSER: b, SHARD: `${i}/${n}` }]); } };
 
 /* the strips' browsing (wheel latching, pan, fling) depends on real time between events: its own run, in the motion phase */
 for (const b of ENGINES) checks.push([`many items (overflowing segmented / tab bar) · ${b}`, 'overflow.mjs', { BROWSER: b, OVF_PART: 'checks' }]);
 for (const b of ENGINES) motion.push([`strip browsing (wheel, pan, fling) · ${b}`, 'overflow.mjs', { BROWSER: b, OVF_PART: 'browse' }]);
 perEngine(checks, 'edge cases', 'edge.mjs');
-sharded(checks, 'render matrix', 'matrix.mjs', (b) => (b === 'chromium' ? 4 : 2));
+sharded(checks, 'render matrix', 'matrix.mjs', (b) => (b === 'chromium' ? 3 : 2));
 perEngine(checks, 'data components & dashboard', 'data.mjs');
 perEngine(checks, 'settings decide at the nearest boundary', 'settings.mjs');
 /* every control on every page, there and back: no page error, no hang — by page in shares; phone width once, in Chromium */
@@ -120,9 +120,9 @@ const only = (l) => l.filter(([label, file, env]) => {
 /* E2E_SHARD=k/n: this machine runs the k-th of n shares (CI runs the shares on separate runners). Suites go,
    longest first, to the share with the least so far, by the time each took on a CI runner (Chromium; other
    engines a third longer); every runner computes the same split */
-const EST = { 'css-split.mjs': 126, 'focus.mjs': 40, 'edge.mjs': 102, 'overflow.mjs': 95, 'overflow.mjs#browse': 15, 'matrix.mjs': 67, 'interact.mjs': 59, 'data.mjs': 57,
+const EST = { 'css-split.mjs': 126, 'focus.mjs': 40, 'edge.mjs': 102, 'overflow.mjs': 95, 'overflow.mjs#browse': 15, 'matrix.mjs': 52, 'interact.mjs': 59, 'data.mjs': 57,
   'corners.mjs': 51, 'reduce-motion.mjs': 49, 'pickers.mjs': 37, 'wheel-motion.mjs': 33, 'display.mjs': 32, 'selection.mjs': 28,
-  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'sweep.mjs': 95, 'settings.mjs': 4 };
+  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'sweep.mjs': 48, 'settings.mjs': 4 };
 const SHARD = /^(\d+)\/(\d+)$/.exec(process.env.E2E_SHARD || '');
 const est = ([, file, env]) => (EST[env.OVF_PART === 'browse' ? 'overflow.mjs#browse' : file] ?? 60) * ((env.BROWSER ?? 'chromium') === 'chromium' ? 1 : 1.3);
 let mine = null;
