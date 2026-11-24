@@ -170,8 +170,9 @@ export function Drawer(props: DrawerProps) {
         p.style.transform = shift(x);
         if (scrim.current) scrim.current.style.opacity = String(Math.max(0, 1 - (s * x) / (extent() * 1.2)));
       },
-      end: ({ vx, vy }) => {
-        if (s * x > extent() * 0.3 || s * (top ? vy : vx) > 900) { swiped.current = true; close.current('swipe'); return; }
+      /* a cancelled gesture (the system took the pointer) springs back: only a release dismisses */
+      end: ({ vx, vy }, cancelled) => {
+        if (!cancelled && (s * x > extent() * 0.3 || s * (top ? vy : vx) > 900)) { swiped.current = true; close.current('swipe'); return; }
         p.style.transform = '';
         if (scrim.current) scrim.current.style.opacity = '';
         animate(p, [{ transform: shift(x) }, { transform: 'none' }], 'smooth');
