@@ -54,7 +54,11 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
   const at = Math.min(Math.max(0, cur), Math.max(0, n - 1));
   const root = useRef<HTMLDivElement>(null), stage = useRef<HTMLDivElement>(null), track = useRef<HTMLDivElement>(null), backdrop = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: typeof window !== 'undefined' ? innerWidth : 1024, h: typeof window !== 'undefined' ? innerHeight : 768 });
-  const [sizes, setSizes] = useState<Record<number, [number, number]>>({});
+  /* natural sizes read from loaded images, by source: by index they stayed with the position when `items` changed.
+     A Map (an object answered "constructor"), kept in a ref and pruned to the sources in `items`: a load adds one
+     entry and bumps `sized`, instead of copying every size the viewer had ever loaded */
+  const sizes = useRef(new Map<string, [number, number]>());
+  const [sized, setSized] = useState(0);
   const [chrome, setChrome] = useState(true);
   const [zoomed, setZoomed] = useState(false);
   const release = useRelease();
@@ -65,7 +69,18 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
   /* photos are looked at in the dark: the viewer is always the dark theme (keeping high contrast) */
   const dark = useTheme().name.endsWith('-hc') ? 'dark-hc' : 'dark';
 
-  const natural = (i: number): [number, number] => sizes[i] ?? (items[i]?.width && items[i]?.height ? [items[i].width!, items[i].height!] : [4, 3]);
+  /* the item's own size first: another slide of the same source may have a different one */
+  const natural = (i: number): [number, number] => {
+    const it = items[i];
+    if (it?.width && it.height) return [it.width, it.height];
+    return (it?.src !== undefined ? sizes.current.get(it.src) : undefined) ?? [4, 3];
+  };
+  useIsoLayoutEffect(() => {
+    const m = sizes.current;
+    if (!m.size) return;
+    const keep = new Set(items.map((it) => it.src));
+    m.forEach((_, k) => { if (!keep.has(k)) m.delete(k); });
+  }, [items]);
   const fit = (i: number) => { const [w, h] = natural(i); const k = Math.min(box.w / w, box.h / h); return { fw: w * k, fh: h * k }; };
   const pitch = box.w + GAP;
 
@@ -113,21 +128,34 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
   };
 
   /* ---------------------------------------------------------------- paging */
+  /* the track follows the committed index, never the one asked for: a controlled parent may keep its `index`
+     (the photo then stayed on the next slide while the caption, counter and names said the old one). `go` asks;
+     the effect below moves the track once the index is known, with the motion of what asked (a swipe's velocity),
+     and an index changed from outside pages the same way. */
+  const asked = useRef<{ how: 'key' | 'swipe'; velocity: number } | null>(null);
+  const [, ask] = useState(0);
   const go = (i: number, how: 'key' | 'swipe' = 'key', velocity = 0) => {
     if (i < 0 || i >= n || i === atRef.current) { trackTo(atRef.current, velocity); return; }
+    asked.current = { how, velocity };
+    setCur(i);
+    ask((k) => k + 1);   /* a render even when the parent declines, so the track settles back */
+  };
+  const page = (i: number, how: 'key' | 'swipe', velocity: number, far = false) => {
     resetZ();
-    const reduced = prefersReducedMotion(root.current);
-    if (how === 'key' && reduced) {
+    /* only the item and its two neighbours are mounted, so a move of more than one item (Home, End, an index set
+       from outside) would slide through empty stage: it fades in place instead, as reduced motion does */
+    if (far || (how === 'key' && prefersReducedMotion(root.current))) {
       /* a large movement: fade the new item in place */
       stopT.current(); tx.current?.jump(-i * pitch); paintT(-i * pitch);
-      requestAnimationFrame(() => { const l = layer(i); if (l) fade(l, 0, 1, timing.appear); });
+      /* unless the index moved on again before the frame: that item is a neighbour now, sliding away */
+      requestAnimationFrame(() => { const l = atRef.current === i ? layer(i) : null; if (l) fade(l, 0, 1, timing.appear); });
     } else trackTo(i, velocity);
-    setCur(i);
   };
   /* the thumbnail of the open item stays hidden: the photo has "left" it */
   const hideThumb = (i: number) => {
     if (hiddenThumb.current) hiddenThumb.current.style.visibility = '';
-    const t = getOrigin?.(i) ?? null;
+    /* no item, no thumbnail: an app's `i => thumbs.get(items[i].src)` would throw */
+    const t = i < items.length ? getOrigin?.(i) ?? null : null;
     if (t) t.style.visibility = 'hidden';
     hiddenThumb.current = t;
   };
@@ -160,16 +188,20 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     swiped.current = false; setChrome(true);
     /* lock first, then measure: the lock takes the page's scrollbar away and the stage widens */
     const pop = pushLayer(() => close.current('escape'), true, el);
+    /* the release is registered at once: anything below that throws (an app's getOrigin) still gives back the
+       page's scroll and focus */
+    let trap = () => {};
+    release.set(() => { pop(); trap(); stopZ.current(); stopT.current(); });
     const st = stage.current!; const b = { w: st.clientWidth, h: st.clientHeight };
     if (b.w !== box.w || b.h !== box.h) setBox(b);
     z.current = { s: 1, x: 0, y: 0 }; zs.current = null;
     tx.current = new Spring(-atRef.current * (b.w + GAP), 'smooth', el); paintT(-atRef.current * (b.w + GAP));
-    const trap = trapFocus(el, el.querySelector<HTMLElement>('[data-sg-close]'));
+    trap = trapFocus(el, el.querySelector<HTMLElement>('[data-sg-close]'));
     hideThumb(atRef.current);
-    release.set(() => { pop(); trap(); stopZ.current(); stopT.current(); });
-    const l = layer()!;
+    const l = layer();
     backdrop.current!.style.opacity = '';
-    if (prefersReducedMotion(el)) return fade(el, 0, 1, timing.appear);
+    /* no item to open out of (`items` empty): the viewer fades in with its bar */
+    if (prefersReducedMotion(el) || !l) return fade(el, 0, 1, timing.appear);
     const from = origin(atRef.current, b);
     fade(backdrop.current!, 0, 1, 220);
     el.querySelectorAll<HTMLElement>('.sg-media__bar, .sg-media__caption, .sg-media__nav').forEach((x) => fade(x, 0, 1, 200));
@@ -203,6 +235,28 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     return l.animate([{ transform: start, opacity: 1 }, { transform: `${start === 'none' ? '' : start} scale(0.94)`, opacity: 0 }], { duration: 180, easing: 'ease-in', fill: 'both' }).finished.then(restore, restore);
   });
   useEffect(() => () => { if (hiddenThumb.current) hiddenThumb.current.style.visibility = ''; }, []);
+  /* the track goes to the committed index: on the paging spring (or the reduced-motion fade) when it changed — by
+     the viewer's own paging or from outside (the parent's `index`, `items` shrinking under it) — and back to it
+     when a page change was declined (from where a swipe let go) */
+  const placedAt = useRef(at);
+  useIsoLayoutEffect(() => {
+    const a = asked.current, moved = placedAt.current !== at;
+    asked.current = null; placedAt.current = at;
+    if (!mounted || !tx.current) return;
+    /* far from where the track is now, not from the last index: two quick steps leave it short of the first */
+    if (moved) page(at, a?.how ?? 'key', a?.velocity ?? 0, Math.abs(tx.current.value / pitch + at) > 1);
+    else if (a) trackTo(at, a.velocity);
+  });
+  /* a page button disabled under the focus (its end reached, or the items changed) or taken away (one item left)
+     drops the focus to the page, and the arrow keys with it; Chromium does so before this runs, so it is decided
+     from the button that had focus, not from where focus is now. It moves to the other page button, else the viewer. */
+  const focused = useRef<HTMLElement | null>(null);
+  useIsoLayoutEffect(() => {
+    const f = focused.current, el = root.current, a = document.activeElement;
+    if (!f || !el || !(f.isConnected ? (f as HTMLButtonElement).disabled : true) || !(a === f || !a || a === document.body)) return;
+    const to = el.querySelector<HTMLElement>('.sg-media__nav:not(:disabled)') ?? el;
+    focused.current = to; to.focus({ preventScroll: true });
+  });
   /* the stage's own size, not the window's: the scroll lock takes the page's scrollbar away (and closing gives it
      back) without a resize event, and a box 15 px off put the photo that far from its thumbnail */
   useEffect(() => {
@@ -222,20 +276,21 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     const pts = new Map<number, { x: number; y: number }>();
     type Mode = 'none' | 'pending' | 'pan' | 'page' | 'dismiss' | 'pinch';
     let mode: Mode = 'none', sx = 0, sy = 0, lx = 0, ly = 0, lt = 0, vx = 0, vy = 0, t0 = 0;
-    let base: Z = z.current, baseT = 0, d0 = 1, c0 = { x: 0, y: 0 }, dy = 0, lastTap = { t: 0, x: 0, y: 0 }, tapTimer = 0;
+    let base: Z = z.current, baseT = 0, d0 = 1, c0 = { x: 0, y: 0 }, dy = 0, lastTap = { t: 0, x: 0, y: 0 }, tapTimer = 0, freed = false;
     const rel = (x: number, y: number) => { const r = st.getBoundingClientRect(); return { x: x - r.left - r.width / 2, y: y - r.top - r.height / 2 }; };
     const pinchInfo = () => { const [a, b] = [...pts.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y), c: rel((a.x + b.x) / 2, (a.y + b.y) / 2) }; };
     const rubber = (v: number, lim: number) => (Math.abs(v) <= lim ? v : Math.sign(v) * (lim + Math.sqrt(Math.abs(v) - lim) * 4));
     const setDismiss = (y: number, x = 0) => {
       const l = layer(); if (!l) return;
-      /* finished entrance / settle animations hold their end state (fill): let go of them, the finger rules now */
-      l.getAnimations().forEach((a) => a.cancel()); backdrop.current?.getAnimations().forEach((a) => a.cancel());
+      /* finished entrance / settle animations hold their end state (fill): let go of them, the finger rules now.
+         Once per gesture: getAnimations() flushes styles, and per move it cost a style recalculation a frame */
+      if (!freed) { freed = true; l.getAnimations().forEach((a) => a.cancel()); backdrop.current?.getAnimations().forEach((a) => a.cancel()); }
       const k = 1 - Math.min(0.3, Math.abs(y) / (box.h * 1.6));
       l.style.transform = y || x ? `translate(${x}px, ${y}px) scale(${k})` : '';
       if (backdrop.current) backdrop.current.style.opacity = String(Math.max(0, 1 - Math.abs(y) / (box.h * 0.55)));
     };
     const startOne = (p: { x: number; y: number }, e: PointerEvent) => {
-      sx = lx = p.x; sy = ly = p.y; lt = e.timeStamp; vx = vy = 0; t0 = e.timeStamp;
+      sx = lx = p.x; sy = ly = p.y; lt = e.timeStamp; vx = vy = 0; t0 = e.timeStamp; freed = false;
       stopZ.current(); base = { ...z.current };
       mode = z.current.s > 1.01 ? 'pan' : 'pending';
     };
@@ -345,7 +400,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
       removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
       st.removeEventListener('wheel', wheel);
     };
-  }, [mounted, box.w, box.h, n, sizes]);
+  }, [mounted, box.w, box.h, n, sized]);
 
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('input, textarea')) return;
@@ -374,7 +429,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
       {/* tabIndex -1: a click on the photo keeps focus in the viewer, so the keys keep working */}
       <div ref={root} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} className={cx('sg-media', className)} data-sg-theme={dark}
         data-chrome={chrome ? 'shown' : 'hidden'} data-zoomed={zoomed || undefined} onKeyDown={onKey}
-        onFocus={() => setChrome(true)}>
+        onFocus={(e) => { focused.current = e.target as HTMLElement; setChrome(true); }}>
         <div ref={backdrop} className="sg-media__backdrop" />
         <div ref={stage} className="sg-media__stage" onDoubleClick={(e) => {
           if (e.nativeEvent instanceof PointerEvent && e.nativeEvent.pointerType !== 'mouse') return;
@@ -391,7 +446,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
                     <div className="sg-media__frame" style={{ width: fw, height: fh }}>
                       {it.render ? it.render() : (
                         <img src={it.src} alt={it.alt} draggable={false}
-                          onLoad={(e) => { const im = e.currentTarget; if (!it.width && im.naturalWidth) setSizes((m) => (m[i] ? m : { ...m, [i]: [im.naturalWidth, im.naturalHeight] })); }} />
+                          onLoad={(e) => { const im = e.currentTarget, k = it.src; if (!(it.width && it.height) && im.naturalWidth && k !== undefined && !sizes.current.has(k)) { sizes.current.set(k, [im.naturalWidth, im.naturalHeight]); setSized((v) => v + 1); } }} />
                       )}
                     </div>
                   </div>

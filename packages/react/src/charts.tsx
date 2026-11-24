@@ -7,7 +7,7 @@
    'gentle'), so they follow the motion personality; new data moves there on a spring per value that keeps its
    velocity when the data changes again mid-way. With reduced motion a chart fades in (140 ms) and data changes
    land at once. */
-import { startTransition, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { startTransition, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { Spring, animate, fade, loop, motionFor, prefersReducedMotion, timing } from '@satin-glass/core';
 import { cx, useIsoLayoutEffect, useStableId, type Tone } from './utils';
 import { messagesFor, useLocaleOf } from './messages';
@@ -17,6 +17,9 @@ export type ChartSeries = { key: string; label: string; color?: string };
 export type ChartDatum = Record<string, string | number | null | undefined>;
 type Fmt = (v: number) => string;
 
+/* defaults shared by every chart, so a memo keyed on them holds while the option is unset */
+const asIs = (v: string) => v;
+const NO_GROUPS: ChartSeries[] = [];
 const COLOR = (i: number) => `var(--sg-chart-${(i % 6) + 1})`;
 /* Intl formatters are costly to build: one per locale and options, shared by every chart */
 const formatters = new Map<string, Intl.NumberFormat>();
@@ -40,14 +43,42 @@ const defaultFmt = (locale: string): Fmt => {
 /** "Nice" axis: rounds the domain out to 1 / 2 / 2.5 / 5 × 10ⁿ steps. */
 export function niceTicks(min: number, max: number, count = 5): number[] {
   if (!isFinite(min) || !isFinite(max)) return [0, 1];
-  if (min === max) { const d = Math.abs(min) || 1; min -= d / 2; max += d / 2; }
-  const raw = (max - min) / Math.max(1, count);
-  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
-  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw) ?? 10 * mag;
-  const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step;
-  const out: number[] = [];
-  for (let v = lo; v <= hi + step / 2; v += step) out.push(+v.toFixed(10));
-  return out;
+  if (min > max) [min, max] = [max, min];
+  const MAX = Number.MAX_VALUE, fit = (v: number) => Math.max(-MAX, Math.min(MAX, v));
+  if (min === max) { const d = Math.abs(min) || 1; min = fit(min - d / 2); max = fit(max + d / 2); }
+  /* in halves: the span of ±1e308 is itself past the largest number. No step finer than the values' float
+     resolution: 1e16 + 0.5 is 1e16 (nanosecond timestamps), and stepping by it never reached the end. */
+  const c = Math.max(1, count), res = Math.max(Math.abs(min), Math.abs(max)) * Number.EPSILON * 8;
+  const half = Math.max((max / 2 - min / 2) / c, res, 1e-300);
+  const steps = [1, 2, 2.5, 5];
+  let e = Math.floor(Math.log10(half) + Math.log10(2)), j = steps.findIndex((f) => (f / 2) * 10 ** e >= half);
+  if (j < 0) { j = 0; e++; }
+  for (;;) {
+    /* in units of 10^e, so no step overflows; at most 1000 ticks: past that the step widens, and the ticks still
+       reach both ends */
+    const u = 10 ** e, m = steps[j];
+    /* each tick from its index, written as a decimal at the step's own precision (k·m × 10^e), so ticks neither
+       gather error along the axis nor round away in a tiny domain; held within the finite numbers */
+    const at = (k: number) => fit(+`${k * m}e${e}`);
+    let k0 = Math.floor(min / u / m), k1 = Math.ceil(max / u / m);
+    /* the division can round both ends onto one index (0.31 to 0.31000000000000005): the ticks must still enclose
+       the domain, two at least, or the axis spans nothing */
+    while (at(k0) > min) k0--;
+    while (at(k1) < max) k1++;
+    if (k1 === k0) k1++;
+    if (k1 - k0 > 1000) { if (++j === steps.length) { j = 0; e++; } continue; }
+    const out: number[] = [];
+    for (let k = k0; k <= k1; k++) { const v = at(k); if (out[out.length - 1] !== v) out.push(v); }
+    return out;
+  }
+}
+
+/** the least and greatest of many numbers (NaN ignored): spreading a long series into Math.min / Math.max
+    overflows the call stack */
+function extent(vals: number[]): [number, number] {
+  let lo = Infinity, hi = -Infinity;
+  for (const v of vals) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  return [lo, hi];
 }
 
 /** The width a chart lays out to. Read from a ResizeObserver — after the browser's own layout, never by forcing
@@ -144,15 +175,19 @@ const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFin
 /** A series' values with each gap set on the straight line between the values around it (the nearest one at an
     end; `none` when the series has no value at all). */
 function bridged(vals: unknown[], none: number): number[] {
-  const at = vals.map((v, i) => (isNum(v) ? i : -1)).filter((i) => i >= 0);
-  if (!at.length) return vals.map(() => none);
-  return vals.map((v, i) => {
-    if (isNum(v)) return v;
-    const b = at.findIndex((j) => j > i), hi = at[b], lo = at[b < 0 ? at.length - 1 : b - 1];
-    if (b === 0) return vals[hi] as number;
-    if (b < 0) return vals[lo] as number;
-    return (vals[lo] as number) + (((vals[hi] as number) - (vals[lo] as number)) * (i - lo)) / (hi - lo);
-  });
+  /* one pass: each gap is filled when the value after it is reached (a search per gap was quadratic on sparse series) */
+  const out: number[] = new Array(vals.length);
+  let prev = -1;
+  for (let i = 0; i < vals.length; i++) {
+    const v = vals[i];
+    if (!isNum(v)) continue;
+    const a = prev < 0 ? v : (vals[prev] as number);
+    for (let j = prev + 1; j < i; j++) out[j] = prev < 0 ? v : a + ((v - a) * (j - prev)) / (i - prev);
+    out[i] = v; prev = i;
+  }
+  if (prev < 0) return vals.map(() => none);
+  for (let j = prev + 1; j < vals.length; j++) out[j] = vals[prev] as number;
+  return out;
 }
 
 /** Monotone cubic path through points (no overshoot between data points: a smooth line never invents a peak). */
@@ -187,13 +222,24 @@ function useDrawIn(ref: React.RefObject<SVGGElement | null>, deps: unknown[] = [
 type Active = number | null;
 type ChartChromeProps = {
   label: string; series: ChartSeries[]; hidden: Set<string>; toggle: (k: string) => void; legend: boolean;
-  rows: { head: string; cells: string[] }[]; announce: string; children: ReactNode; className?: string; style?: CSSProperties; caption?: ReactNode;
+  /** the data table for screen readers (srTable), memoised by the chart on its data */
+  table: ReactNode; announce: string; children: ReactNode; className?: string; style?: CSSProperties; caption?: ReactNode;
   /** the chart's resolved locale, for the words it writes */
   locale: string;
-  /** the data table's column titles when they are not the series (a scatter's axes) */
-  head?: string[];
 };
-function ChartChrome({ label, series, hidden, toggle, legend, rows, announce, children, className, style, caption, head, locale }: ChartChromeProps) {
+/** The full data as a table for screen readers. Each chart memoises it on its data, not on the animated values:
+    a morph renders every frame, and rebuilding a row per datum each time made long series stutter. */
+function srTable(label: string, head: string[], rows: { head: string; cells: string[] }[]): ReactNode {
+  /* the wrapper holds the 1px box: a table grows to its content whatever width it is given, and a wide one (a scatter's four columns) made narrow pages scroll sideways */
+  return (
+    <div className="sg-visually-hidden"><table>
+      <caption>{label}</caption>
+      <thead><tr><th scope="col">{''}</th>{head.map((h, i) => <th key={i} scope="col">{h}</th>)}</tr></thead>
+      <tbody>{rows.map((r, i) => <tr key={i}><th scope="row">{r.head}</th>{r.cells.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody>
+    </table></div>
+  );
+}
+function ChartChrome({ label, series, hidden, toggle, legend, table, announce, children, className, style, caption, locale }: ChartChromeProps) {
   return (
     <figure className={cx('sg-chart', className)} style={style} aria-label={label}>
       {legend && series.length > 1 && (
@@ -208,12 +254,7 @@ function ChartChrome({ label, series, hidden, toggle, legend, rows, announce, ch
       {children}
       {caption && <figcaption className="sg-chart__caption">{caption}</figcaption>}
       <div className="sg-visually-hidden" aria-live="polite">{announce}</div>
-      {/* the wrapper holds the 1px box: a table grows to its content whatever width it is given, and a wide one (a scatter's four columns) made narrow pages scroll sideways */}
-      <div className="sg-visually-hidden"><table>
-        <caption>{label}</caption>
-        <thead><tr><th scope="col">{rows.length ? '' : ''}</th>{(head ?? series.map((s) => s.label)).map((h, i) => <th key={i} scope="col">{h}</th>)}</tr></thead>
-        <tbody>{rows.map((r, i) => <tr key={i}><th scope="row">{r.head}</th>{r.cells.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody>
-      </table></div>
+      {table}
     </figure>
   );
 }
@@ -231,6 +272,7 @@ function useHidden(series: ChartSeries[]) {
 /** keyboard on a plot: ←/→ Home/End move the active index; Escape clears */
 function plotKeys(e: KeyboardEvent, count: number, active: Active, set: (a: Active) => void) {
   const k = e.key;
+  if (count <= 0) active = null;
   let n: number | null | undefined;
   if (k === 'ArrowRight' || k === 'ArrowDown') n = active === null ? 0 : Math.min(count - 1, active + 1);
   else if (k === 'ArrowLeft' || k === 'ArrowUp') n = active === null ? count - 1 : Math.max(0, active - 1);
@@ -239,7 +281,7 @@ function plotKeys(e: KeyboardEvent, count: number, active: Active, set: (a: Acti
   else if (k === 'Escape') n = null;
   if (n === undefined) return;
   e.preventDefault();
-  set(n);
+  set(n !== null && n >= 0 && n < count ? n : null);   /* nothing to step to without data */
 }
 
 type TipRow = { color: string; label: string; value: string };
@@ -254,6 +296,8 @@ function Tip({ x, y, w, title, rows }: { x: number; y: number; w: number; title:
 }
 
 const M = { top: 10, right: 12, bottom: 26 };
+/** the active index while it still points into the data (data can shrink under a point being shown) */
+const within = (active: Active, count: number): Active => (active !== null && active >= 0 && active < count ? active : null);
 const yAxisWidth = (labels: string[]) => Math.max(28, Math.max(...labels.map((l) => l.length)) * 7 + 10);
 
 /* ------------------------------------------------------------------------------------------------ LineChart */
@@ -276,7 +320,7 @@ export type LineChartProps = {
   height?: number;
   /** writes the values on the axis, in the tooltip and in the table (default: the locale's numbers, compact from 10,000) */
   yFormat?: Fmt;
-  /** writes the x labels (axis, tooltip, table) */
+  /** writes the x labels (axis, tooltip, table; default: the label as it is in the data) */
   xFormat?: (v: string) => string;
   /** keys above the plot that hide and show series (with two or more) */
   legend?: boolean;
@@ -289,19 +333,22 @@ export type LineChartProps = {
   className?: string; style?: CSSProperties;
 };
 
-export function LineChart({ data, x, series, area, curve = 'smooth', zero, height = 240, yFormat, xFormat = (v) => v, legend = true, locale: localeProp, 'aria-label': label, caption, className, style }: LineChartProps) {
+export function LineChart({ data, x, series, area, curve = 'smooth', zero, height = 240, yFormat, xFormat: xFormatProp, legend = true, locale: localeProp, 'aria-label': label, caption, className, style }: LineChartProps) {
   const locale = useLocaleOf(localeProp);
-  const fmt = yFormat ?? defaultFmt(locale);
+  const fmt = yFormat ?? defaultFmt(locale), xFormat = xFormatProp ?? asIs;
   const [box, measured] = useWidth<HTMLDivElement>();
   const width = measured ?? 0;
   const g = useRef<SVGGElement>(null);
   const [hidden, toggle] = useHidden(series);
-  const [active, setActive] = useState<Active>(null);
+  const [activeState, setActive] = useState<Active>(null);
+  const active = within(activeState, data.length);
+  /* a point the data no longer has is let go, so it does not come back when the data grows again */
+  if (activeState !== null && active === null) setActive(null);
   const [kbd, setKbd] = useState(false);
   const gid = useStableId('sg-lc');
   const shown = series.filter((s) => !hidden.has(s.key));
   const vals = shown.flatMap((s) => data.map((d) => d[s.key]).filter(isNum));
-  const lo = Math.min(...vals, zero ?? area ? 0 : Infinity), hi = Math.max(...vals);
+  const [vlo, hi] = extent(vals), lo = Math.min(vlo, zero ?? area ? 0 : Infinity);
   const ticks = niceTicks(lo, hi, Math.max(2, Math.round(height / 56)));
   const y0 = ticks[0], y1 = ticks[ticks.length - 1];
   const left = yAxisWidth(ticks.map(fmt));
@@ -320,14 +367,16 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const px = e.clientX - r.left;
     setKbd(false);
-    setActive(Math.max(0, Math.min(data.length - 1, Math.round(((px - left) / iw) * (data.length - 1)))));
+    setActive(data.length ? Math.max(0, Math.min(data.length - 1, Math.round(((px - left) / iw) * (data.length - 1)))) : null);
   };
   const cell = (v: ChartDatum[string]) => (isNum(v) ? fmt(v) : '—');
   const rowsFor = (i: number) => shown.map((s) => ({ color: s.color ?? COLOR(series.indexOf(s)), label: s.label, value: cell(data[i][s.key]) }));
   const announce = kbd && active !== null ? `${xFormat(String(data[active][x]))}: ${rowsFor(active).map((r) => `${r.label} ${r.value}`).join(', ')}` : '';
+  /* keyed on the formatters too: the defaults are kept at module level, but an app's inline one is new on every render */
+  const table = useMemo(() => srTable(label, series.map((s) => s.label), data.map((d) => ({ head: xFormat(String(d[x])), cells: series.map((s) => cell(d[s.key])) }))), [label, series, data, x, xFormat, fmt]);
   return (
     <ChartChrome label={label} locale={locale} series={series} hidden={hidden} toggle={toggle} legend={legend} announce={announce} caption={caption} className={className} style={style}
-      rows={data.map((d) => ({ head: xFormat(String(d[x])), cells: series.map((s) => cell(d[s.key])) }))}>
+      table={table}>
       <div ref={box} className="sg-chart__plot" tabIndex={0} role="img" aria-label={label}
         onPointerMove={onMove} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}
         onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }}>
@@ -395,7 +444,8 @@ export type ScatterChartProps = {
   pointLabel: string;
   /** key whose value puts a point in a group; `groups` names them (key = that value), colours and orders them */
   group?: string;
-  /** the groups, in legend order: `key` is a value of the `group` field, with its `label` and `color` */
+  /** the groups, in legend order: `key` is a value of the `group` field, with its `label` and `color` (default:
+      none: every point takes the first chart colour, and the tooltip names its group by the value) */
   groups?: ChartSeries[];
   /** names of points to pick out */
   highlight?: string[];
@@ -439,23 +489,24 @@ function axisOf(vals: number[], log: boolean, count: number): Axis {
   if (log) {
     const pos = vals.filter((v) => v > 0);
     if (!pos.length) return { lo: 0, hi: 1, ticks: [1, 10] };
-    let a = Math.min(...pos), b = Math.max(...pos);
+    let [a, b] = extent(pos);
     if (a === b) { a /= 2; b *= 2; }
     const pad = (lg(b) - lg(a)) * 0.06;
     return { lo: lg(a) - pad, hi: lg(b) + pad, ticks: logTicks(10 ** (lg(a) - pad), 10 ** (lg(b) + pad)) };
   }
-  const t = niceTicks(vals.length ? Math.min(...vals) : 0, vals.length ? Math.max(...vals) : 1, count);
+  const [a, b] = extent(vals);
+  const t = niceTicks(vals.length ? a : 0, vals.length ? b : 1, count);
   return { lo: t[0], hi: t[t.length - 1], ticks: t };
 }
 
-export function ScatterChart({ data, x, y, pointLabel, group, groups = [], highlight, xScale = 'linear', yScale = 'linear', xLabel = x, yLabel = y, xFormat, yFormat, height = 280, legend = true, locale: localeProp, 'aria-label': label, caption, className, style }: ScatterChartProps) {
+export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp, highlight, xScale = 'linear', yScale = 'linear', xLabel = x, yLabel = y, xFormat, yFormat, height = 280, legend = true, locale: localeProp, 'aria-label': label, caption, className, style }: ScatterChartProps) {
   const locale = useLocaleOf(localeProp);
-  const fx = xFormat ?? defaultFmt(locale), fy = yFormat ?? defaultFmt(locale);
+  const fx = xFormat ?? defaultFmt(locale), fy = yFormat ?? defaultFmt(locale), groups = groupsProp ?? NO_GROUPS;
   const [box, measured] = useWidth<HTMLDivElement>();
   const width = measured ?? 0;
   const g = useRef<SVGGElement>(null);
   const [hidden, toggle] = useHidden(groups);
-  const [active, setActive] = useState<Active>(null);
+  const [activeState, setActive] = useState<Active>(null);
   const [kbd, setKbd] = useState(false);
   const xl = xScale === 'log', yl = yScale === 'log';
   const num = (d: ChartDatum, k: string, log: boolean) => { const v = d[k]; return typeof v === 'number' && isFinite(v) && (!log || v > 0) ? v : null; };
@@ -464,6 +515,10 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups = [], highl
   const onShow = (d: ChartDatum) => !group || !hidden.has(String(d[group]));
   const plotted = data.map((d, i) => i).filter((i) => num(data[i], x, xl) !== null && num(data[i], y, yl) !== null);
   const visible = plotted.filter((i) => onShow(data[i]));
+  /* a point that is no longer drawn (new data, a hidden group) is not shown or stepped from */
+  const active = activeState !== null && visible.includes(activeState) ? activeState : null;
+  /* a point the data no longer has is let go, so it does not come back when the data grows again */
+  if (activeState !== null && active === null) setActive(null);
   const count = Math.max(2, Math.round(height / 56));
   const ax = axisOf(visible.map((i) => num(data[i], x, xl)!), xl, Math.max(2, Math.round(width / 110)));
   const ay = axisOf(visible.map((i) => num(data[i], y, yl)!), yl, count);
@@ -544,10 +599,12 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups = [], highl
   ];
   const announce = kbd && active !== null ? `${name(active)}: ${xLabel} ${fx(num(data[active], x, xl)!)}, ${yLabel} ${fy(num(data[active], y, yl)!)}` : '';
   const cell = (d: ChartDatum, k: string, f: Fmt) => (typeof d[k] === 'number' ? f(d[k] as number) : '—');
+  const table = useMemo(() => srTable(label, [xLabel, yLabel, ...(group ? [''] : [])],
+    data.map((d) => ({ head: String(d[pointLabel] ?? ''), cells: [cell(d, x, fx), cell(d, y, fy), ...(group ? [groups[gi(d)]?.label ?? String(d[group] ?? '')] : [])] }))),
+  [label, data, x, y, pointLabel, group, groups, xLabel, yLabel, fx, fy]);
   return (
     <ChartChrome label={label} locale={locale} series={groups} hidden={hidden} toggle={toggle} legend={legend && !!group} announce={announce} caption={caption} className={className} style={style}
-      head={[xLabel, yLabel, ...(group ? [''] : [])]}
-      rows={data.map((d) => ({ head: String(d[pointLabel] ?? ''), cells: [cell(d, x, fx), cell(d, y, fy), ...(group ? [groups[gi(d)]?.label ?? String(d[group] ?? '')] : [])] }))}>
+      table={table}>
       <div ref={box} className="sg-chart__plot sg-scatter" tabIndex={0} role="img" aria-label={label}
         onPointerMove={onMove} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}
         onKeyDown={(e) => { setKbd(true); const at = active === null ? null : byX.indexOf(active); plotKeys(e, byX.length, at !== null && at >= 0 ? at : null, (n) => setActive(n === null ? null : byX[n] ?? null)); }}>
@@ -584,18 +641,22 @@ function barPath(x: number, y: number, w: number, h: number, r: number): string 
   return `M${x},${y + h}V${y + r}a${r},${r} 0 0 1 ${r},${-r}h${w - 2 * r}a${r},${r} 0 0 1 ${r},${r}V${y + h}Z`;
 }
 
-export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFormat = (v) => v, legend = true, locale: localeProp, 'aria-label': label, caption, className, style }: BarChartProps) {
+export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFormat: xFormatProp, legend = true, locale: localeProp, 'aria-label': label, caption, className, style }: BarChartProps) {
   const locale = useLocaleOf(localeProp);
-  const fmt = yFormat ?? defaultFmt(locale);
+  const fmt = yFormat ?? defaultFmt(locale), xFormat = xFormatProp ?? asIs;
   const [box, measured] = useWidth<HTMLDivElement>();
   const width = measured ?? 0;
   const g = useRef<SVGGElement>(null);
   const [hidden, toggle] = useHidden(series);
-  const [active, setActive] = useState<Active>(null);
+  const [activeState, setActive] = useState<Active>(null);
+  const active = within(activeState, data.length);
+  /* a point the data no longer has is let go, so it does not come back when the data grows again */
+  if (activeState !== null && active === null) setActive(null);
   const [kbd, setKbd] = useState(false);
   const shown = series.filter((s) => !hidden.has(s.key));
-  const num = (d: ChartDatum, k: string) => (typeof d[k] === 'number' ? (d[k] as number) : 0);
-  const peak = Math.max(0, ...data.map((d) => (stacked ? shown.reduce((a, s) => a + Math.max(0, num(d, s.key)), 0) : Math.max(0, ...shown.map((s) => num(d, s.key))))));
+  /* NaN and ±Infinity are gaps, as in LineChart (one NaN made the peak NaN and the axis 0–1) */
+  const num = (d: ChartDatum, k: string) => { const v = d[k]; return isNum(v) ? v : 0; };
+  const peak = Math.max(0, extent(data.map((d) => (stacked ? shown.reduce((a, s) => a + Math.max(0, num(d, s.key)), 0) : Math.max(0, ...shown.map((s) => num(d, s.key))))))[1]);
   const ticks = niceTicks(0, peak || 1, Math.max(2, Math.round(height / 56)));
   const top = ticks[ticks.length - 1];
   const left = yAxisWidth(ticks.map(fmt));
@@ -639,14 +700,16 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
   const onMove = (e: React.PointerEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setKbd(false);
-    setActive(Math.max(0, Math.min(data.length - 1, Math.floor((e.clientX - r.left - left) / band))));
+    setActive(data.length ? Math.max(0, Math.min(data.length - 1, Math.floor((e.clientX - r.left - left) / band))) : null);
   };
   const cell = (v: ChartDatum[string]) => (isNum(v) ? fmt(v) : '—');
   const rowsFor = (i: number) => shown.map((s) => ({ color: s.color ?? COLOR(series.indexOf(s)), label: s.label, value: cell(data[i][s.key]) }));
   const announce = kbd && active !== null ? `${xFormat(String(data[active][x]))}: ${rowsFor(active).map((r) => `${r.label} ${r.value}`).join(', ')}` : '';
+  /* keyed on the formatters too: the defaults are kept at module level, but an app's inline one is new on every render */
+  const table = useMemo(() => srTable(label, series.map((s) => s.label), data.map((d) => ({ head: xFormat(String(d[x])), cells: series.map((s) => cell(d[s.key])) }))), [label, series, data, x, xFormat, fmt]);
   return (
     <ChartChrome label={label} locale={locale} series={series} hidden={hidden} toggle={toggle} legend={legend} announce={announce} caption={caption} className={className} style={style}
-      rows={data.map((d) => ({ head: xFormat(String(d[x])), cells: series.map((s) => cell(d[s.key])) }))}>
+      table={table}>
       <div ref={box} className="sg-chart__plot" tabIndex={0} role="img" aria-label={label}
         onPointerMove={onMove} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}
         onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }}>
@@ -722,10 +785,16 @@ export type DonutChartProps = {
 export function DonutChart({ data, size = 180, thickness = 22, centerLabel, centerValue, format, locale: localeProp, 'aria-label': label, className, style }: DonutChartProps) {
   const locale = useLocaleOf(localeProp);
   const fmt = format ?? defaultFmt(locale);
-  const total = data.reduce((a, d) => a + Math.max(0, d.value), 0) || 1;
+  /* a share counts only a finite value above 0 (a NaN poisoned every share); the total shown is the real one (an
+     empty or all-zero donut said "1"), and only the division is guarded */
+  const part = (d: DonutSlice) => (isNum(d.value) ? Math.max(0, d.value) : 0);
+  const sum = data.reduce((a, d) => a + part(d), 0), total = sum || 1;
   const pct = nf(locale, { style: 'percent', maximumFractionDigits: 1 });
   const svg = useRef<SVGSVGElement>(null);
-  const [active, setActive] = useState<Active>(null);
+  const [activeState, setActive] = useState<Active>(null);
+  const active = within(activeState, data.length);
+  /* a point the data no longer has is let go, so it does not come back when the data grows again */
+  if (activeState !== null && active === null) setActive(null);
   const [kbd, setKbd] = useState(false);
   /* a mouse shows a slice while it is over it; a touch has no hover — a tap selects a slice and it stays until the
      same slice, or anything outside the chart, is tapped (otherwise the lift-off "leave" undid every tap at once) */
@@ -741,7 +810,7 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
   }, [active]);
   /* tween the cumulative angles */
   const ends: number[] = [];
-  data.reduce((a, d) => { const e = a + (Math.max(0, d.value) / total) * Math.PI * 2; ends.push(e); return e; }, 0);
+  data.reduce((a, d) => { const e = a + (part(d) / total) * Math.PI * 2; ends.push(e); return e; }, 0);
   const ang = useTween(ends, svg, ends.map((v) => v.toFixed(4)).join(','));
   useIsoLayoutEffect(() => {
     const el = svg.current?.querySelector<SVGGElement>('g[data-rings]');
@@ -768,7 +837,8 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
     const i = ang.findIndex((end) => a < end);
     return i < 0 ? null : i;
   };
-  const say = (i: number) => `${data[i].label}: ${fmt(data[i].value)} (${pct.format(data[i].value / total)})`;
+  const value = (d: DonutSlice) => (isNum(d.value) ? fmt(d.value) : '—');
+  const say = (i: number) => `${data[i].label}: ${value(data[i])} (${pct.format(part(data[i]) / total)})`;
   return (
     <figure ref={fig} className={cx('sg-chart', 'sg-donut', className)} style={style} aria-label={label}>
       <div className="sg-donut__ring" tabIndex={0} role="img" aria-label={label} style={{ width: size, height: size }}
@@ -786,7 +856,7 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
           </g>
         </svg>
         <div className="sg-donut__center" aria-hidden="true">
-          <div className="sg-donut__value">{active !== null ? pct.format(data[active].value / total) : centerValue ?? fmt(total)}</div>
+          <div className="sg-donut__value">{active !== null ? pct.format(part(data[active]) / total) : centerValue ?? fmt(sum)}</div>
           <div className="sg-donut__label">{active !== null ? data[active].label : centerLabel}</div>
         </div>
       </div>
@@ -794,7 +864,7 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
         {data.map((d, i) => (
           <li key={d.label} data-active={active === i || undefined} onPointerEnter={hover(i)} onPointerLeave={hover(null)} onPointerDown={(e) => { touch.current = e.pointerType === 'touch'; }} onClick={tap(i)}>
             <span className="sg-chart__swatch" style={{ background: d.color ?? COLOR(i) }} aria-hidden="true" />
-            <span className="sg-donut__name">{d.label}</span><span className="sg-donut__num">{fmt(d.value)}</span><span className="sg-donut__pct">{pct.format(d.value / total)}</span>
+            <span className="sg-donut__name">{d.label}</span><span className="sg-donut__num">{value(d)}</span><span className="sg-donut__pct">{pct.format(part(d) / total)}</span>
           </li>
         ))}
       </ul>
@@ -823,7 +893,7 @@ export function Sparkline({ values, tone = 'accent', area = true, height = 32, '
   const width = measured ?? 0;
   const g = useRef<SVGGElement>(null);
   const gid = useStableId('sg-sp');
-  const lo = Math.min(...values), hi = Math.max(...values), pad = 3;
+  const [lo, hi] = extent(values), pad = 3;
   const Y = (v: number) => pad + (height - pad * 2) * (1 - (v - lo) / (hi - lo || 1));
   const ys = useTween(values.map(Y), box, values.join(','));
   const X = (i: number) => pad + (i / Math.max(1, values.length - 1)) * (width - pad * 2);

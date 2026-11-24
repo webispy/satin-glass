@@ -5899,8 +5899,8 @@
     "name": "xFormat",
     "type": "((v: string) => string)",
     "required": false,
-    "default": "(v) => v",
-    "description": "Writes the x labels (axis, tooltip, table)."
+    "default": null,
+    "description": "Writes the x labels (axis, tooltip, table; default: the label as it is in the data)."
    },
    {
     "name": "legend",
@@ -5994,8 +5994,8 @@
     "name": "groups",
     "type": "ChartSeries[]",
     "required": false,
-    "default": "[]",
-    "description": "The groups, in legend order: `key` is a value of the `group` field, with its `label` and `color`."
+    "default": null,
+    "description": "The groups, in legend order: `key` is a value of the `group` field, with its `label` and `color` (default: none: every point takes the first chart colour, and the tooltip names its group by the value)."
    },
    {
     "name": "highlight",
@@ -6190,8 +6190,8 @@
     "name": "xFormat",
     "type": "((v: string) => string)",
     "required": false,
-    "default": "(v) => v",
-    "description": "Writes the x labels (axis, tooltip, table)."
+    "default": null,
+    "description": "Writes the x labels (axis, tooltip, table; default: the label as it is in the data)."
    },
    {
     "name": "stacked",

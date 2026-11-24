@@ -117,14 +117,18 @@ const collatorFor = (locale: string) => {
   if (!c) { c = new Intl.Collator(locale, { numeric: true, sensitivity: 'base' }); collators.set(locale, c); }
   return c;
 };
+const isEmpty = (v: unknown) => v === null || v === undefined || v === '' || (typeof v === 'number' && isNaN(v)) || (v instanceof Date && isNaN(v.getTime()));
 function compareValues(a: unknown, b: unknown, collator: Intl.Collator): number {
-  const ea = a === null || a === undefined || a === '' || (typeof a === 'number' && isNaN(a));
-  const eb = b === null || b === undefined || b === '' || (typeof b === 'number' && isNaN(b));
+  const ea = isEmpty(a), eb = isEmpty(b);
   if (ea || eb) return ea === eb ? 0 : ea ? 1 : -1;   /* handled again below so empties stay last in both directions */
-  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  /* one order across types (numbers, then dates by time — as text they sorted by weekday name — then the rest as
+     text), so a mixed column sorts the same whatever order its rows come in */
+  const rank = (v: unknown) => (typeof v === 'number' ? 0 : v instanceof Date ? 1 : 2), ra = rank(a), rb = rank(b);
+  if (ra !== rb) return ra - rb;
+  if (ra === 0) return (a as number) - (b as number);
+  if (ra === 1) return (a as Date).getTime() - (b as Date).getTime();
   return collator.compare(String(a), String(b));
 }
-const isEmpty = (v: unknown) => v === null || v === undefined || v === '' || (typeof v === 'number' && isNaN(v));
 
 export function DataTable<T>({
   rows, columns: allColumns, hiddenColumns, rowKey, 'aria-label': label, sort, defaultSort = null, onSortChange, manualSort, selectable,
@@ -138,7 +142,7 @@ export function DataTable<T>({
   const box = useRef<HTMLDivElement>(null), head = useRef<HTMLTableSectionElement>(null), pin = useRef<HTMLTableSectionElement>(null);
   const id = useStableId('sg-table');
   const rowH = ROW_H[density];
-  const columns = useMemo(() => (hiddenColumns?.length ? allColumns.filter((c) => !hiddenColumns.includes(c.key)) : allColumns), [allColumns, hiddenColumns]);
+  const columns = useMemo(() => { if (!hiddenColumns?.length) return allColumns; const off = new Set(hiddenColumns); return allColumns.filter((c) => !off.has(c.key)); }, [allColumns, hiddenColumns]);
   /* hiding the sorted column ends that sort (rows would stay ordered by something no longer on screen) */
   const sortHidden = !!sortState && !!hiddenColumns?.includes(sortState.key);
   useEffect(() => { if (sortHidden) setSort(null); }, [sortHidden]);
@@ -179,7 +183,8 @@ export function DataTable<T>({
     } else setSel(selSet.has(k) ? sel.filter((x) => x !== k) : [...sel, k]);
     anchor.current = k;
   };
-  const toggleAll = () => setSel(allOn ? sel.filter((k) => !keys.includes(k)) : [...new Set([...sel, ...keys])]);
+  /* a Set: a search of every key per selected key took seconds on large selections */
+  const toggleAll = () => { if (!allOn) return setSel([...new Set([...sel, ...keys])]); const off = new Set(keys); setSel(sel.filter((k) => !off.has(k))); };
 
   /* ---- columns: selection column first; sticky offsets */
   const cols = columns;
@@ -208,9 +213,11 @@ export function DataTable<T>({
     setWin((w) => (w.start === start && w.end === end ? w : { start, end }));
   };
   useIsoLayoutEffect(measure, [virtual, sorted.length, rowH]);
+  /* the observer calls the latest measure: the first render's kept its row height and row count */
+  const measureRef = useRef(measure); measureRef.current = measure;
   useEffect(() => {
     if (!virtual || typeof ResizeObserver === 'undefined' || !box.current) return;
-    const ro = new ResizeObserver(measure); ro.observe(box.current);
+    const ro = new ResizeObserver(() => measureRef.current()); ro.observe(box.current);
     return () => ro.disconnect();
   }, [virtual]);
   const range = virtual ? win : { start: 0, end: sorted.length };
@@ -268,6 +275,7 @@ export function DataTable<T>({
     ro.observe(h);
     return () => ro.disconnect();
   }, [groups]);
+  const focused = useRef<HTMLElement | null>(null);
   /* roving tab stop: only the current cell (or its single control) is tabbable. Two native queries per render —
      controls not yet taken out of the tab order, and the previous stop — instead of walking every cell (a 60 × 20
      comparison renders 1,200) */
@@ -276,8 +284,26 @@ export function DataTable<T>({
     if (!b) return;
     b.querySelectorAll<HTMLElement>(INNER_TABBABLE).forEach((x) => { x.tabIndex = -1; });
     b.querySelectorAll<HTMLElement>('[data-r][tabindex="0"]').forEach((x) => { x.tabIndex = -1; });
-    const el = cellEl(cell.r, cell.c);
-    if (el) target(el).tabIndex = 0;
+    /* a virtualised stop scrolled out of the window would leave the grid with none: the nearest row in its column
+       that is in sight holds it until then — not the nearest rendered one, which is an overscan row out of sight
+       (behind the sticky header and pinned rows, or below the box), where focus would sit unseen and the next
+       arrow key scroll the table back */
+    let el = cellEl(cell.r, cell.c);
+    if (!el && cell.r >= P && range.end > range.start) {
+      const top = (head.current?.offsetHeight ?? 0) + (pin.current?.offsetHeight ?? 0);
+      /* rows wholly in sight; when the pinned rows leave room for less than one, the row that shows more */
+      const end = b.scrollTop + b.clientHeight - top;
+      let first = Math.ceil(b.scrollTop / rowH), last = Math.floor(end / rowH) - 1;
+      if (last < first) { const k = Math.floor(b.scrollTop / rowH); first = last = (k + 1) * rowH - b.scrollTop >= end - (k + 1) * rowH ? k : k + 1; }
+      const clamp = (i: number) => P + Math.max(range.start, Math.min(range.end - 1, i));
+      el = cellEl(cell.r < P + first ? clamp(first) : clamp(last), cell.c);
+    }
+    if (!el) return;
+    target(el).tabIndex = 0;
+    /* the focused cell was taken away (its row scrolled out of the window, or was filtered out): focus went to the
+       page and the arrow keys with it, so it moves to the stop */
+    const a = document.activeElement;
+    if (focused.current && !focused.current.isConnected && (!a || a === document.body)) target(el).focus({ preventScroll: true });
   });
   const pageRows = Math.max(1, Math.floor(((box.current?.clientHeight ?? 400) - (head.current?.offsetHeight ?? 0)) / rowH) - 1);
   const onKey = (e: KeyboardEvent<HTMLTableElement>) => {
@@ -401,7 +427,15 @@ export function DataTable<T>({
     <div ref={box} tabIndex={-1} className={cx('sg-table', `sg-table--${density}`, loading && 'sg-table--loading', virtual && 'sg-table--virtual', maxHeight !== undefined && 'sg-table--scroll-y', className)} style={{ maxHeight, ...style, ['--_rh' as string]: `${rowH}px`, ['--_pin-h' as string]: `${P * rowH}px`, ['--_stick-w' as string]: `${stickyW}px` } as CSSProperties}
       onScroll={virtual ? measure : undefined} aria-busy={loading || undefined}>
       <table role="grid" aria-label={label} aria-rowcount={total} aria-colcount={C} aria-multiselectable={selectable || undefined} style={{ minWidth }} onKeyDown={onKey}
-        onFocus={(e) => { const el = (e.target as HTMLElement).closest<HTMLElement>('[data-r]'); if (el) { const r = +el.dataset.r!, c = +el.dataset.c!; if (r !== cell.r || c !== cell.c) setCell({ r, c }); } }}>
+        onBlur={(e) => {
+          /* focus left the grid (a click elsewhere, Tab away): the grid no longer holds it, and must not take it
+             back when that cell scrolls out of the window later. A cell taken out of the document loses focus
+             without this mattering, so it is decided once the removal is done */
+          const t = e.target as HTMLElement, to = e.relatedTarget as Node | null;
+          if (to && e.currentTarget.contains(to)) return;
+          queueMicrotask(() => { if (focused.current === t && t.isConnected && document.activeElement !== t) focused.current = null; });
+        }}
+        onFocus={(e) => { focused.current = e.target as HTMLElement; const el = (e.target as HTMLElement).closest<HTMLElement>('[data-r]'); if (el) { const r = +el.dataset.r!, c = +el.dataset.c!; if (r !== cell.r || c !== cell.c) setCell({ r, c }); } }}>
         <colgroup>{widths.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
         <thead ref={head}>
           {groups ? (
