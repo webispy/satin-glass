@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, cleanup } from '@testing-library/react';
 import { useRef, useState } from 'react';
 import { Button, Dialog, Menu, MenuItem, Popover, ActionSheet, Sheet, Drawer, ContextMenu, Toaster, useToast, ThemeProvider, createTheme } from '../src';
 
@@ -140,6 +140,110 @@ describe('Escape calls the latest onClose', () => {
 });
 
 describe('anchored panel and its anchor', () => {
+  /* a page scrolled 500 px; the anchor's box in the view is given by `at` */
+  async function opened(wrap: 'fixed' | 'sticky' | 'sticky-in-area' | 'none', at: { y: number }) {
+    const sy = Object.getOwnPropertyDescriptor(window, 'scrollY');
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 500 });
+    const done = () => { if (sy) Object.defineProperty(window, 'scrollY', sy); };
+    function R() {
+      const a = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false);
+      const btn = <button ref={a} onClick={() => setOpen(true)}>contents</button>;
+      return (<>
+        {wrap === 'none' ? btn
+          : wrap === 'sticky-in-area' ? <div style={{ overflow: 'auto' }}><div style={{ position: 'sticky' }}>{btn}</div></div>
+            : <div style={{ position: wrap }}>{btn}</div>}
+        <Popover open={open} onClose={() => {}} anchor={a.current} aria-label="p" placement="bottom-start"><button>in</button></Popover>
+      </>);
+    }
+    render(<R />);
+    const anchor = screen.getByText('contents');
+    anchor.getBoundingClientRect = () => new DOMRect(16, at.y, 200, 40);
+    fireEvent.click(anchor);
+    const panel = await screen.findByRole('dialog', { name: 'p' });
+    return { panel, done };
+  }
+  it('stays with an anchor in a fixed bar when the page scrolls under it', async () => {
+    const at = { y: 12 };
+    const { panel, done } = await opened('fixed', at);
+    try {
+      expect(panel.style.position).toBe('fixed');
+      expect(panel.style.top).toBe('60px');   /* the view's coordinates: 12 + 40 + 8, not 500 more */
+      fireEvent.scroll(document);
+      expect(panel.style.top).toBe('60px');
+    } finally { done(); }
+  });
+  it('follows a sticky anchor that the page still carries, until it sticks', async () => {
+    const at = { y: 112 };
+    const { panel, done } = await opened('sticky', at);
+    try {
+      expect(panel.style.position).toBe('fixed');
+      expect(panel.style.top).toBe('160px');
+      at.y = 12; fireEvent.scroll(document);   /* scrolled 100 px: the bar moved up with the page and stuck */
+      expect(panel.style.top).toBe('60px');
+      fireEvent.scroll(document);   /* stuck: the page goes on scrolling, the bar and the panel stay */
+      expect(panel.style.top).toBe('60px');
+    } finally { done(); }
+  });
+  it('takes the anchor\'s own box, not the one its press shrinks (an iOS tap opens it while still pressed)', async () => {
+    const at = { y: 12 };
+    const { panel, done } = await opened('fixed', at);
+    try {
+      const anchor = screen.getByText('contents');
+      /* opened again while pressed: scaled 0.965 about its centre, 3.5 px narrower on each side */
+      anchor.style.transform = 'matrix(0.965, 0, 0, 0.965, 0, 0)';   /* as a browser computes scale(0.965) */
+      anchor.getBoundingClientRect = () => new DOMRect(19.5, 12.7, 193, 38.6);
+      fireEvent(window, new Event('resize'));
+      expect(panel.style.left).toBe('16px'); expect(panel.style.top).toBe('60px');
+      anchor.style.transform = ''; anchor.getBoundingClientRect = () => new DOMRect(16, 12, 200, 40);   /* let go */
+      fireEvent.scroll(document);
+      expect(panel.style.left).toBe('16px'); expect(panel.style.top).toBe('60px');
+    } finally { done(); }
+  });
+  it('measures where the view\'s frame starts (a transformed ancestor, a zoomed-in view)', async () => {
+    const real = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.style.position === 'fixed' && this.tagName === 'SPAN' ? new DOMRect(0, -440, 0, 0) : real.call(this);
+    });
+    const { panel, done } = await opened('fixed', { y: 12 });
+    try { expect(panel.style.top).toBe('500px'); }   /* 60 in the view, from a frame starting 440 above it */
+    finally { done(); }
+  });
+  it('decides the frame again on resize (a breakpoint makes the bar sticky)', async () => {
+    const at = { y: 112 };
+    const { panel, done } = await opened('none', at);
+    try {
+      expect(panel.style.position).toBe('');
+      (screen.getByText('contents').parentElement as HTMLElement).style.position = 'sticky';
+      fireEvent(window, new Event('resize'));
+      expect(panel.style.position).toBe('fixed');
+      expect(panel.style.top).toBe('160px');
+    } finally { done(); }
+  });
+  it('does not clip the panel of a fixed bar by a scroll area the bar escapes', async () => {
+    function R() {
+      const a = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false);
+      return (<><div data-testid="area" style={{ overflow: 'auto' }}><div style={{ position: 'fixed' }}><button ref={a} onClick={() => setOpen(true)}>bar</button></div></div>
+        <Popover open={open} onClose={() => {}} anchor={a.current} aria-label="p" placement="bottom-start"><button>in</button></Popover></>);
+    }
+    render(<R />);
+    const area = screen.getByTestId('area'), btn = screen.getByText('bar');
+    btn.getBoundingClientRect = () => new DOMRect(16, 12, 200, 40);
+    area.getBoundingClientRect = () => new DOMRect(0, 0, 400, 300);
+    fireEvent.click(btn);
+    const panel = await screen.findByRole('dialog', { name: 'p' });
+    area.getBoundingClientRect = () => new DOMRect(0, -900, 400, 300);   /* the page scrolled the area away */
+    fireEvent.scroll(document);
+    expect(panel.style.visibility).toBe(''); expect(panel.style.clipPath).toBe('');
+  });
+  it('keeps document coordinates for an anchor the page carries (and a bar sticky inside a scroll area)', async () => {
+    for (const wrap of ['none', 'sticky-in-area'] as const) {
+      const { panel, done } = await opened(wrap, { y: 112 });
+      try {
+        expect(panel.style.position).toBe('');
+        expect(panel.style.top).toBe('660px');   /* 112 + 40 + 8 + the page's 500 */
+      } finally { done(); cleanup(); }
+    }
+  });
   function T({ onClose, show = true, other = false }: { onClose: (r: string) => void; show?: boolean; other?: boolean }) {
     const a = useRef<HTMLButtonElement>(null), b = useRef<HTMLButtonElement>(null);
     const [open, setOpen] = useState(false);

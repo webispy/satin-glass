@@ -47,7 +47,20 @@ export function useOverlayLifecycle(open: boolean, enter: () => Promise<void> | 
 }
 
 export type Anchor = HTMLElement | DOMRect | null | undefined;
-const rectOf = (a: Anchor) => (a instanceof HTMLElement ? a.getBoundingClientRect() : a ?? new DOMRect(innerWidth / 2, innerHeight / 2, 0, 0));
+/* an element anchor's box without its own scale, about the centre of the one on screen: a pressable anchor shrinks
+   about its centre while pressed, and an iOS tap opens the panel while it still is, so its drawn box would place the
+   panel a few pixels in and, once let go, every later measure would see the anchor move by as much */
+const boxOf = (el: HTMLElement) => {
+  const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+  /* its own scale only (from `transform` and `scale`); what its ancestors do to it is part of where it is */
+  const m = /^matrix\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+)/.exec(cs.transform ?? '');
+  const sc = (cs.scale ?? 'none') === 'none' ? [1, 1] : cs.scale.split(' ').map(Number);
+  const sx = (m ? Math.hypot(+m[1], +m[2]) : 1) * sc[0], sy = (m ? Math.hypot(+m[3], +m[4]) : 1) * (sc[1] ?? sc[0]);
+  if (!sx || !sy || (Math.abs(sx - 1) < 1e-3 && Math.abs(sy - 1) < 1e-3)) return r;
+  const w = r.width / sx, h = r.height / sy;
+  return new DOMRect(r.left + (r.width - w) / 2, r.top + (r.height - h) / 2, w, h);
+};
+const rectOf = (a: Anchor) => (a instanceof HTMLElement ? boxOf(a) : a ?? new DOMRect(innerWidth / 2, innerHeight / 2, 0, 0));
 const sameRect = (a: DOMRect, b: DOMRect) => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
 
 /** Anchored floating panel shared by Menu, Popover, Select and DatePicker.
@@ -110,7 +123,9 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
     };
     /* Places the panel against `a` and, for an element, keeps it there.
        Glued to the anchor. Page scrolling needs nothing: the panel sits in document coordinates and the browser
-       moves it with the page. An inner scroll area (a sidebar, a dialog body) moves the anchor within the page:
+       moves it with the page. An anchor the page's scrolling does not carry (in a fixed bar, or a bar stuck to the
+       top of the view) puts the panel in the view's coordinates instead, for the same reason; were it carried, a page
+       scrolled while it is open (a finger dragging inside the panel scrolls the page on iOS) took it off the anchor. An inner scroll area (a sidebar, a dialog body) moves the anchor within the page:
        the panel follows by exactly as much, in the same scroll event (no frame of lag, no flipping or clamping
        mid-scroll, so it never jumps). On resize it is placed again, on the side it opened on.
        A DOMRect anchor is a fixed point and has nothing to follow. */
@@ -118,21 +133,49 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       unfollow();
       el = to instanceof HTMLElement ? to : null;
       const r = rectOf(to);
+      /* The panel's frame: the document, which the page's scrolling carries, or the view, for an anchor held still in
+         it (in a fixed element, or a sticky one that sticks to the view rather than to an area around it). Decided
+         again on resize (a breakpoint may make a bar sticky). Either way a page scroll that moves the anchor in the
+         panel's frame is followed below, so a frame judged wrongly costs a frame of lag, not a panel left behind. */
+      let pinned = false, probe: HTMLElement | null = null, clippers: HTMLElement[] = [];
+      const frame = () => {
+        let sticky = false, fixedAt: HTMLElement | null = null;
+        for (let n: HTMLElement | null = el; n && n !== document.body && !fixedAt; n = n.parentElement) {
+          const cs = getComputedStyle(n);
+          if (cs.position === 'fixed') fixedAt = n;
+          else if (sticky && /auto|scroll|hidden/.test(cs.overflowX + cs.overflowY)) sticky = false;   /* it sticks in this area */
+          else if (cs.position === 'sticky') sticky = true;
+        }
+        pinned = !!fixedAt || sticky;
+        p.style.position = pinned ? 'fixed' : '';
+        /* where the view's frame starts, measured: an ancestor with a transform holds fixed boxes instead of the
+           view, and on iOS a zoomed-in visual viewport is offset from the layout one */
+        if (pinned && !probe) { probe = document.createElement('span'); probe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none'; p.parentElement?.appendChild(probe); }
+        if (!pinned) { probe?.remove(); probe = null; }
+        /* the scroll areas the anchor moves with: none above a fixed element, which they do not carry */
+        clippers = [];
+        for (let n = el?.parentElement; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+          const cs = getComputedStyle(n);
+          if (/auto|scroll/.test(cs.overflowX + cs.overflowY)) clippers.push(n);   /* areas that scroll (a card that clips its own corners is not one) */
+          if (cs.position === 'fixed') break;
+        }
+      };
+      frame();
+      const ox = () => (probe ? -probe.getBoundingClientRect().left : scrollX), oy = () => (probe ? -probe.getBoundingClientRect().top : scrollY);
       if (opts.matchWidth) p.style.minWidth = `${r.width}px`;
       const at = place({ width: p.offsetWidth, height: p.offsetHeight }, r, placement);
-      /* document coordinates (the panel is position: absolute in an anchored portal) */
-      p.style.left = `${at.x + scrollX}px`; p.style.top = `${at.y + scrollY}px`; p.dataset.side = at.side;
+      /* in the frame's coordinates (document ones: the panel is position: absolute in an anchored portal) */
+      p.style.left = `${at.x + ox()}px`; p.style.top = `${at.y + oy()}px`; p.dataset.side = at.side;
       /* placed again (on another side, perhaps): it folds back towards the new anchor on closing */
       p.style.transformOrigin = `${at.originX}px ${at.originY}px`;
-      const doc = (a: DOMRect) => ({ left: a.left + scrollX, top: a.top + scrollY });
+      const doc = (a: DOMRect) => ({ left: a.left + ox(), top: a.top + oy() });
       /* ...and clipped like the anchor. The scroll areas around the anchor (a phone screen, a dialog body) hide what
          scrolls out of them; the panel, part of the anchor, goes under their edges too instead of floating out of the
          frame. Only the sides where the panel opened inside the area are clipped (a list that opens past a sidebar's
          edge keeps showing there), and a panel clipped away entirely is hidden (no invisible clicks). */
-      const clippers = (() => { const out: HTMLElement[] = []; for (let n = el?.parentElement; n && n !== document.body && n !== document.documentElement; n = n.parentElement) { const cs = getComputedStyle(n); if (/auto|scroll/.test(cs.overflowX + cs.overflowY)) out.push(n);   /* areas that scroll (a card that clips its own corners is not one) */ } return out; })();
       const visibleBox = () => clippers.reduce((b, n) => { const r = n.getBoundingClientRect(); return { top: Math.max(b.top, r.top), left: Math.max(b.left, r.left), bottom: Math.min(b.bottom, r.bottom), right: Math.min(b.right, r.right) }; }, { top: -Infinity, left: -Infinity, bottom: Infinity, right: Infinity });
       /* the panel's own box (not its transformed one: it may be blooming), in viewport coordinates */
-      const box = () => { const left = parseFloat(p.style.left) - scrollX, top = parseFloat(p.style.top) - scrollY; return { left, top, right: left + p.offsetWidth, bottom: top + p.offsetHeight, width: p.offsetWidth, height: p.offsetHeight }; };
+      const box = () => { const left = parseFloat(p.style.left) - ox(), top = parseFloat(p.style.top) - oy(); return { left, top, right: left + p.offsetWidth, bottom: top + p.offsetHeight, width: p.offsetWidth, height: p.offsetHeight }; };
       const inside = (() => { if (!clippers.length) return null; const b = visibleBox(), q = box(); return { top: q.top >= b.top - 1, bottom: q.bottom <= b.bottom + 1, left: q.left >= b.left - 1, right: q.right <= b.right + 1 }; })();
       const clip = () => {
         if (!inside) return;
@@ -145,27 +188,30 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       };
       if (anchored.current) { p.style.clipPath = ''; p.style.visibility = ''; }   /* placed again: clipped afresh */
       const target = el;
-      let side = at.side, base = doc(r), pos = { x: at.x + scrollX, y: at.y + scrollY };
+      let side = at.side, base = doc(r), pos = { x: at.x + ox(), y: at.y + oy() };
       const align = placement.includes('-') ? placement.slice(placement.indexOf('-')) : '';
       /* an anchor that is no longer laid out (display: none, or gone from the document) has no place to point at: the
          panel would be placed against a 0 × 0 box at the top left. It closes instead. */
       const lost = () => !!target && (!target.isConnected || target.getClientRects().length === 0);
       const onScroll = (e: Event) => {
         const t = e.target;
-        if (t === document || t === document.documentElement || p.contains(t as Node)) return;   /* the page, or the panel's own list */
+        if (p.contains(t as Node)) return;   /* the panel's own list */
         if (lost()) { close.current('anchor'); return; }
         if (!target) return;
-        const a = doc(target.getBoundingClientRect());
-        p.style.left = `${pos.x + a.left - base.left}px`; p.style.top = `${pos.y + a.top - base.top}px`;
+        /* the page's scrolling usually moves neither (it carries both, or neither); a sticky bar not stuck yet moves */
+        const a = doc(boxOf(target));
+        const left = `${pos.x + a.left - base.left}px`, top = `${pos.y + a.top - base.top}px`;
+        if (left !== p.style.left || top !== p.style.top) { p.style.left = left; p.style.top = top; }
         clip();
       };
       const replace = () => {
         if (lost()) { close.current('anchor'); return; }
         if (!target) return;
-        const a = target.getBoundingClientRect();
+        frame();
+        const a = boxOf(target);
         if (opts.matchWidth) p.style.minWidth = `${a.width}px`;
         const next = place({ width: p.offsetWidth, height: p.offsetHeight }, a, `${side}${align}` as Placement);
-        side = next.side; base = doc(a); pos = { x: next.x + scrollX, y: next.y + scrollY };
+        side = next.side; base = doc(a); pos = { x: next.x + ox(), y: next.y + oy() };
         p.style.left = `${pos.x}px`; p.style.top = `${pos.y}px`; p.dataset.side = next.side;
         p.style.transformOrigin = `${next.originX}px ${next.originY}px`;
         clip();
@@ -178,7 +224,7 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
         ro?.observe(target); if (target.parentElement) ro?.observe(target.parentElement);
         window.addEventListener('scroll', onScroll, { capture: true, passive: true }); addEventListener('resize', replace);
       }
-      unfollow = () => { ro?.disconnect(); window.removeEventListener('scroll', onScroll, true); removeEventListener('resize', replace); };
+      unfollow = () => { probe?.remove(); probe = null; ro?.disconnect(); window.removeEventListener('scroll', onScroll, true); removeEventListener('resize', replace); };
       anchored.current = { at: to, rect: new DOMRect(r.x, r.y, r.width, r.height), to: follow };   /* a copy: the app may change its DOMRect */
       return at;
     };
