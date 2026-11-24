@@ -118,15 +118,36 @@ const early = await p.locator('.sg-menu').evaluate((e) => new DOMMatrix(getCompu
 await p.waitForTimeout(600); await shot('menu');
 const menuBox = await p.locator('.sg-menu').boundingBox(), btnBox = await dirBtn.boundingBox();
 ok('menu: blooms from the anchor (scaled < 1 early, placed below it)', early < 0.98 && menuBox.y >= btnBox.y + btnBox.height, `early scale ${early.toFixed(2)}`);
-/* snappy enough: sampled every frame, how long until the menu is ≥ 90 % of its size */
+/* snappy enough, in two parts that do not depend on how fast the runner draws:
+   - it starts at once: the panel is there with its bloom running within two frames of the click (what happens before
+     the bloom, placing and focusing, would show here);
+   - the curve: how long the bloom takes to reach 90 % of the size and full opacity, read on its animations' own clock
+     (paused and stepped 2 ms at a time, playback rate included). By wall clock a loaded Firefox runner read 113–176 ms
+     for the same curve; frame pacing as such is perf.mjs's */
 await p.keyboard.press('Escape'); await p.waitForTimeout(400);
-const t90 = await p.evaluate(() => new Promise((res) => {
+const bloom = await p.evaluate(() => new Promise((res) => {
   const btn = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === '길찾기');
-  const t0 = performance.now(); btn.click();
-  const f = () => { const m = document.querySelector('.sg-menu'); const k = m ? new DOMMatrix(getComputedStyle(m).transform).d : 0;
-    if (m && k >= 0.9 && +getComputedStyle(m).opacity > 0.95) res(performance.now() - t0); else if (performance.now() - t0 > 1000) res(9999); else requestAnimationFrame(f); };
+  btn.click();
+  let n = 0;
+  const f = () => {
+    n++;
+    try {
+      const m = document.querySelector('.sg-menu'), anims = m ? m.getAnimations().filter((a) => a.playState === 'running') : [];
+      if (!anims.length) { if (n < 10) requestAnimationFrame(f); else res({ onset: n, t90: 9999 }); return; }
+      anims.forEach((a) => a.pause());
+      let t = 0;
+      for (; t <= 1000; t += 2) {
+        anims.forEach((a) => { a.currentTime = t * a.playbackRate; });   /* t is time seen; a slowed bloom takes longer */
+        if (new DOMMatrix(getComputedStyle(m).transform).d >= 0.9 && +getComputedStyle(m).opacity > 0.95) break;
+      }
+      anims.forEach((a) => { try { a.finish(); } catch { a.cancel(); } });
+      res({ onset: n, t90: t });
+    } catch (e) { res({ onset: n, t90: 9999, error: String(e) }); }
+  };
   requestAnimationFrame(f);
 }));
+const t90 = bloom.t90;
+ok('menu: blooms from the click on: running within two frames', bloom.onset <= 2, `frame ${bloom.onset}${bloom.error ? ` (${bloom.error})` : ''}`);
 ok('menu: reaches 90 % size (and full opacity) within ~150 ms', t90 <= 170, `${t90.toFixed(0)} ms`);
 ok('menu: focus moves into the menu', await p.evaluate(() => document.activeElement?.classList.contains('sg-menu__item')));
 await p.keyboard.press('ArrowDown'); await p.keyboard.press('Enter'); await p.waitForTimeout(400);

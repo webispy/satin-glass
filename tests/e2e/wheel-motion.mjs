@@ -50,7 +50,13 @@ ok('a group has one lens for its columns', (await tw.locator('.sg-wheels__lens')
 await place(MIN, 20); await settle(); await hover(MIN);
 let r = record(MIN, 900); await p.mouse.wheel(0, 36); let fr = await r;
 let top = span(fr, 2), bot = span(fr, 3);
-ok('one notch down: the bottom edge comes in (the lens squeezes up), the top edge stays', bot[0] < -5 && Math.abs(top[0]) < 0.6 && Math.abs(top[1]) < 0.6, `bottom ${bot.map((x) => x.toFixed(1))}, top ${top.map((x) => x.toFixed(1))}`);
+/* the squeeze of one notch, in this engine: the knocks of a long turn are compared with it (Firefox smooths wheel
+   scrolling, so in a long turn its rows cross slower and its knocks are shallower than Chromium's: 8.0 against 9.8,
+   with the same 7.5 squeeze) */
+const squeeze = bot[0];
+/* deeper than 7 px (7.5 in Chromium and Firefox alike): with the knocks compared with it below, a squeeze and knocks
+   that weaken together fail here */
+ok('one notch down: the bottom edge comes in (the lens squeezes up), the top edge stays', bot[0] < -7 && Math.abs(top[0]) < 0.6 && Math.abs(top[1]) < 0.6, `bottom ${bot.map((x) => x.toFixed(1))}, top ${top.map((x) => x.toFixed(1))}`);
 ok('one notch down: it pops out past its size, then is home', bot[1] > 0.8 && rest(fr), `bottom max ${bot[1].toFixed(1)}`);
 ok('one notch: the value moved one row', Math.round(fr.at(-1)[1] / 36) === 21, `row ${fr.at(-1)[1] / 36}`);
 await settle();
@@ -62,7 +68,7 @@ await settle();
 /* ---------------------------------------------------------------- a long turn: knocks, then one pop */
 r = record(MIN, 1600); for (let i = 0; i < 10; i++) { await p.mouse.wheel(0, 60); await p.waitForTimeout(30); } fr = await r;
 bot = span(fr, 3);
-ok('a long turn: each row crossing knocks the edge further in than the squeeze', bot[0] < -8.5, `deepest ${bot[0].toFixed(1)} (squeeze 7.5)`);
+ok('a long turn: each row crossing knocks the edge further in than the squeeze', bot[0] < squeeze - 0.25, `deepest ${bot[0].toFixed(1)} (squeeze ${(-squeeze).toFixed(1)})`);
 /* until the row reaches the lens (within a fifth of a row for good): from there the pop may start with the spring's last swing */
 const fin = fr.at(-1)[1]; let arriveT = 0; fr.forEach((x) => { if (Math.abs(x[1] - fin) >= 7.2) arriveT = x[0]; });
 const during = fr.filter((x) => x[0] > 120 && x[0] < arriveT - 20);

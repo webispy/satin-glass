@@ -10,21 +10,29 @@ let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
 
 /* trace a reading every frame for `ms` after `act` runs in the page → [[t, value], …] */
-const trace = (p, act, read, ms = 450) => p.evaluate(({ act, read, ms }) => new Promise((res) => {
+/* 700 ms: long enough to see a calm move come to rest on a slow runner */
+const trace = (p, act, read, ms = 700) => p.evaluate(({ act, read, ms }) => new Promise((res) => {
   const a = new Function(`return (${act})`)(), r = new Function(`return (${read})`)();
   const out = []; const t0 = performance.now(); a();
   const f = () => { out.push([performance.now() - t0, r()]); if (performance.now() - t0 < ms) requestAnimationFrame(f); else res(out); };
   requestAnimationFrame(f);
 }), { act, read, ms });
-/* a calm move: one direction only, never past the end, done within `limit` ms */
+/* a calm move: one direction only, never past the end, done within `limit` ms of starting to move (timed from the
+   last still frame, not from the click: how soon the first frame comes is the machine's, not the motion's), and at
+   rest when the recording ends (its last three frames still), so the last frame is where it went, not where it was */
 function calm(tr, limit = 300) {
   const v = tr.map(([, x]) => x), end = v[v.length - 1], start = v[0], dir = Math.sign(end - start);
+  /* onset: the first frame that moved, which must come within three frames of the action (a late start is not calm,
+     it is slow); the travel is then timed from the frame before it */
+  const first = v.findIndex((x) => Math.abs(x - start) > 0.5), from = first > 0 ? tr[first - 1][0] : 0;
   let back = 0, past = 0;
   for (let i = 1; i < v.length; i++) { if ((v[i] - v[i - 1]) * dir < -0.3) back++; if ((v[i] - end) * dir > 0.5) past++; }
   const tol = Math.max(0.5, Math.abs(end - start) * 0.01);   /* "arrived" = within 1 % of the distance */
-  const done = tr.find(([, x]) => Math.abs(x - end) < tol)?.[0] ?? Infinity;
+  const done = (tr.find(([, x]) => Math.abs(x - end) < tol)?.[0] ?? Infinity) - from;
   const moved = v.filter((x) => Math.abs(x - start) > 0.5 && Math.abs(x - end) > 0.5).length;
-  return { ok: back === 0 && past === 0 && done <= limit, back, past, done: Math.round(done), moved };
+  const rest = v.length >= 3 && Math.abs(v[v.length - 1] - v[v.length - 3]) < 0.3;
+  const onset = first < 0 ? Infinity : first;
+  return { ok: rest && onset <= 3 && back === 0 && past === 0 && done <= limit, back, past, done: Math.round(done), moved, rest, onset };
 }
 
 async function check(label, setup) {
