@@ -42,18 +42,32 @@ async function snapshot(css, page, qs, only, foreign) {
      longer than a fixed second under load, and a snapshot taken before a chart drew compared a missing element
      with a drawn one (issue #2). A chart draws in a React transition once its width is known, which a busy machine
      can hold back while nothing else changes, so: every chart box on screen has its drawing, and then the same
-     elements for 3 checks 150 ms apart (10 s at most) */
-  await p.evaluate(async () => {
+     elements for 3 checks 150 ms apart (10 s at most). A part still loading (aria-busy: the dashboard's stat cards
+     show a skeleton for 700 ms) stays the same for those checks and then swaps in charts that have not drawn yet,
+     so nothing may be busy either. The page itself loads lazily into an empty placeholder, which would look settled
+     too. Not settled in 10 s, or no longer settled when the styles are read, is a failure with the reason */
+  const timedOut = await p.evaluate(async () => {
+    /* why the page is not settled yet ('' once it is); kept on the page for the check made with the style read */
+    window.__sgUnsettled = () => {
+      if (!document.querySelector('main .docs__page')?.childElementCount) return 'page not mounted';
+      const bare = [...document.querySelectorAll('.sg-chart__plot, .sg-sparkline')].filter((e) => e.getClientRects().length && !e.querySelector('svg')).length;
+      const busy = document.querySelectorAll('[aria-busy="true"]').length;
+      return bare || busy ? `${bare} charts not drawn, ${busy} parts busy` : '';
+    };
     const sig = () => { const all = document.body.querySelectorAll('*'); let h = all.length; for (const e of all) h = (h * 31 + e.tagName.length + e.childElementCount) | 0; return h; };
-    const drawn = () => [...document.querySelectorAll('.sg-chart__plot, .sg-sparkline')].every((e) => !e.getClientRects().length || e.querySelector('svg'));
     let last = sig(), same = 0;
-    for (const t0 = performance.now(); (same < 3 || !drawn()) && performance.now() - t0 < 10000;) {
+    for (const t0 = performance.now(); same < 3 || window.__sgUnsettled();) {
+      if (performance.now() - t0 > 10000) return window.__sgUnsettled() || 'elements still changing';
       await new Promise((r) => setTimeout(r, 150));
       const now = sig(); same = now === last ? same + 1 : 0; last = now;
     }
+    return '';
   });
+  if (timedOut) ok(`settled within 10 s · ${page} ${qs}`, false, timedOut);
   await p.waitForTimeout(300);
-  const snap = await p.evaluate(({ only, foreign }) => {
+  const { why, snap } = await p.evaluate(({ only, foreign }) => {
+    /* in the same task as the style read, so nothing can commit between the two */
+    const why = window.__sgUnsettled();
     /* in the per-category check an element's size follows its contents, which may belong to a category that is
        not loaded; what a missing dependency would show is a declared value (colour, padding, radius, display…) */
     const GEOMETRY = ['width', 'height', 'inline-size', 'block-size', 'perspective-origin', 'transform-origin', 'transform', 'top', 'left', 'right', 'bottom',
@@ -85,8 +99,9 @@ async function snapshot(css, page, qs, only, foreign) {
       for (const pe of ['::before', '::after']) { const ps = getComputedStyle(e, pe); if (ps.content && ps.content !== 'none' && ps.content !== 'normal') v.push(pe + ps.background + ps.borderRadius + ps.boxShadow + (only ? '' : ps.transform + ps.inset + ps.width + ps.height)); }
       out[path(e)] = v.join(';');
     }
-    return out;
+    return { why, snap: out };
   }, { only: only ?? null, foreign: foreign ?? null });
+  if (why) ok(`still settled when the styles are read · ${page} ${qs}`, false, why);
   await ctx.close();
   return snap;
 }
