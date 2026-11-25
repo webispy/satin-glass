@@ -272,6 +272,48 @@ describe('anchored panel and its anchor', () => {
     expect(panel.style.visibility).toBe('');
     expect(panel.style.clipPath).toMatch(/^inset\(52px 0px 0px/);
   });
+  it('keeps the edge that meets the anchor when the panel changes size (right to left, below)', async () => {
+    function R() {
+      const a = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false);
+      return (<><button ref={a} style={{ direction: 'rtl' }} onClick={() => setOpen(true)}>field</button>
+        <Popover open={open} onClose={() => {}} anchor={a.current} aria-label="p" placement="bottom-start"><button>in</button></Popover></>);
+    }
+    render(<R />);
+    const btn = screen.getByText('field');
+    btn.getBoundingClientRect = () => new DOMRect(500, 100, 200, 40);
+    fireEvent.click(btn);
+    const panel = await screen.findByRole('dialog', { name: 'p' });
+    let w = 120; Object.defineProperty(panel, 'offsetWidth', { configurable: true, get: () => w });
+    Object.defineProperty(panel, 'offsetHeight', { configurable: true, get: () => 80 });
+    resized(panel);   /* measured at 120 px */
+    const right = () => parseFloat(panel.style.left) + w;
+    const r0 = right();
+    w = 240; resized(panel);   /* wider results: it grows towards the end, leftwards */
+    expect(right()).toBe(r0);
+  });
+  it('a panel growing past the view\'s edge stops at its padding while the anchor is in view', async () => {
+    function R() {
+      const a = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false);
+      return (<><button ref={a} style={{ direction: 'rtl' }} onClick={() => setOpen(true)}>field</button>
+        <Popover open={open} onClose={() => {}} anchor={a.current} aria-label="p" placement="bottom-start"><button>in</button></Popover></>);
+    }
+    render(<R />);
+    const btn = screen.getByText('field');
+    let at = new DOMRect(50, 100, 200, 40);   /* its right edge, the start, at x = 250 */
+    btn.getBoundingClientRect = () => at;
+    fireEvent.click(btn);
+    const panel = await screen.findByRole('dialog', { name: 'p' });
+    let w = 220; Object.defineProperty(panel, 'offsetWidth', { configurable: true, get: () => w });
+    Object.defineProperty(panel, 'offsetHeight', { configurable: true, get: () => 80 });
+    resized(panel);
+    expect(parseFloat(panel.style.left)).toBe(30);
+    w = 320; resized(panel);   /* would start at x = -70 */
+    expect(parseFloat(panel.style.left)).toBe(12);
+    /* an anchor scrolled out of the view: the panel moves with it, unclamped */
+    at = new DOMRect(50, -300, 200, 40);
+    w = 400; resized(panel);
+    expect(parseFloat(panel.style.left)).toBe(12 - 80);
+  });
   it('does not clip the panel of a fixed bar by a scroll area the bar escapes', async () => {
     function R() {
       const a = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false);
@@ -446,6 +488,22 @@ describe('ContextMenu', () => {
     expect(row.tagName).toBe('DIV');
     fireEvent.contextMenu(row);
     expect(await screen.findByRole('menu')).toBeTruthy();
+  });
+});
+
+describe('direction of anchored panels', () => {
+  /* jsdom computes direction from the element's own style only, so the anchors carry it */
+  it('a menu takes its anchor\'s direction, and so does a context menu its opener\'s', async () => {
+    function Anchored() {
+      const [el, setEl] = useState<HTMLButtonElement | null>(null);
+      return <><button ref={setEl} style={{ direction: 'rtl' }}>open</button><Menu open={!!el} onClose={() => {}} anchor={el} aria-label="m"><MenuItem>a</MenuItem></Menu></>;
+    }
+    const { unmount } = render(<Anchored />);
+    expect((await screen.findByRole('menu', { name: 'm' })).getAttribute('dir')).toBe('rtl');
+    unmount();
+    render(<ContextMenu menu={<MenuItem>copy</MenuItem>} aria-label="row"><div tabIndex={0} style={{ direction: 'rtl' }}>row</div></ContextMenu>);
+    fireEvent.contextMenu(screen.getByText('row'));
+    expect((await screen.findByRole('menu')).getAttribute('dir')).toBe('rtl');
   });
 });
 

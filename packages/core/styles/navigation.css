@@ -208,9 +208,12 @@ a.sg-crumb__item:active, button.sg-crumb__item:active { background: var(--sg-fil
 /* too many tabs: the list scrolls sideways (core overflow strip); the ends fade where more tabs wait */
 .sg-tabs__list[data-sg-more-start], .sg-tabs__list[data-sg-more-end] {
   --_fade-s: 0px; --_fade-e: 0px;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent);
-          mask-image: linear-gradient(to right, transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent);
+  -webkit-mask-image: linear-gradient(var(--_fade-to, to right), transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent);
+          mask-image: linear-gradient(var(--_fade-to, to right), transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent);
 }
+/* the start is on the right, right to left: the gradient runs from there. The strip marks its own computed direction
+   (core overflow strip), which follows CSS `direction` and the nearest dir attribute in every supported browser */
+.sg-tabs__list[data-sg-rtl] { --_fade-to: to left; }
 .sg-tabs__list[data-sg-more-start] { --_fade-s: 24px; }
 .sg-tabs__list[data-sg-more-end] { --_fade-e: 24px; }
 [data-sg-theme$="-hc"] .sg-tabs__tab { color: var(--sg-label); }

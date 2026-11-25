@@ -186,10 +186,12 @@
    selected segment still moves the drop (touch-action is decided where the finger lands). */
 .sg-segmented[data-sg-more-start], .sg-segmented[data-sg-more-end], .sg-tabbar__track[data-sg-more-start], .sg-tabbar__track[data-sg-more-end] {
   --_fade-s: 0px; --_fade-e: 0px; touch-action: pan-x pan-y;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent);
+  -webkit-mask-image: linear-gradient(var(--_fade-to, to right), transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent);
+  mask-image: linear-gradient(var(--_fade-to, to right), transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent);
 }
 .sg-segmented[data-sg-more-start], .sg-tabbar__track[data-sg-more-start] { --_fade-s: 24px; }
+/* the start is on the right, right to left: the gradient runs from there (as for Tabs, navigation.css) */
+:is(.sg-segmented, .sg-tabbar__track)[data-sg-rtl] { --_fade-to: to left; }
 .sg-segmented[data-sg-more-end], .sg-tabbar__track[data-sg-more-end] { --_fade-e: 24px; }
 :is(.sg-segmented, .sg-tabbar__track):is([data-sg-more-start], [data-sg-more-end]) > [data-sg-item]:is([aria-checked="true"], [aria-selected="true"]) { touch-action: pan-y; }
 /* a mouse browsing an overflowing strip (bridge.ts) */
