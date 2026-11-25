@@ -60,37 +60,27 @@
 /* the shared focus ring (keyboard only) */
 .sg-focusable:focus-visible, .sg-root :where(button, [href], [tabindex]):focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 
-/* Reduced motion (theme.reduceMotion, e.g. a VDI / remote-desktop session, or the system setting unless a theme
-   says "false"). Not "everything instant" — a control snapping through several states in a few frames reads as
-   stutter. Instead: --sg-spring-* become a short, critically damped curve (tokens.css), so small state changes
-   still slide briefly without overshoot; anything that travels, grows or bounces becomes a fade; squash, gel,
-   press-in and the pointer light are off; progress indicators keep moving gently. */
-[data-sg-reduce-motion="true"] .sg-stepper__value > [data-roll] { animation: none; }
-[data-sg-reduce-motion="true"] .sg-stepper__value > [data-leave] { display: none; }
-[data-sg-reduce-motion="true"] .sg-field__clear, [data-sg-reduce-motion="true"] .sg-button__spinner { animation-name: sg-fade-in-plain; }
-[data-sg-reduce-motion="true"] .sg-search__cancel { transform: none; }
-[data-sg-reduce-motion="true"] .sg-pressable:active, [data-sg-reduce-motion="true"] .sg-pressable.is-pressed, [data-sg-reduce-motion="true"] .sg-button:active:not(:disabled), [data-sg-reduce-motion="true"] .sg-chip:active, [data-sg-reduce-motion="true"] .sg-card--interactive:active,
-[data-sg-reduce-motion="true"] .sg-stepper__btn:active:not(:disabled), [data-sg-reduce-motion="true"] .sg-tabbar__item:active .sg-tabbar__icon, [data-sg-reduce-motion="true"] .sg-tabbar__action:active .sg-tabbar__icon, [data-sg-reduce-motion="true"] button.sg-avatar-group__more:active, [data-sg-reduce-motion="true"] .sg-donut__slice,
-[data-sg-reduce-motion="true"] .sg-pagination__page:active, [data-sg-reduce-motion="true"] .sg-pagination__step:active, [data-sg-reduce-motion="true"] .sg-weekday:active { transform: none !important; }
-[data-sg-reduce-motion="true"] .sg-glass::after { display: none; }
-[data-sg-reduce-motion="true"] .sg-slider.is-active .sg-slider__thumb { --_s: 1; }
-[data-sg-reduce-motion="true"] .sg-slider__bubble, [data-sg-reduce-motion="true"] .sg-slider.is-active .sg-slider__bubble { transform: none; }
-[data-sg-reduce-motion="true"] .sg-spinner { animation: sg-spin 1.4s linear infinite; }
-[data-sg-reduce-motion="true"] .sg-progress--indeterminate .sg-progress__bar { width: 100%; transform: none; animation: sg-pulse 1.6s ease-in-out infinite; }
-[data-sg-reduce-motion="true"] .sg-table__busy span::after { width: 100%; transform: none; animation: sg-pulse 1.6s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) {
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-stepper__value > [data-roll] { animation: none; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-stepper__value > [data-leave] { display: none; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-field__clear, .sg-root:not([data-sg-reduce-motion="false"]) .sg-button__spinner { animation-name: sg-fade-in-plain; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-search__cancel { transform: none; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-pressable:active, .sg-root:not([data-sg-reduce-motion="false"]) .sg-pressable.is-pressed, .sg-root:not([data-sg-reduce-motion="false"]) .sg-button:active:not(:disabled), .sg-root:not([data-sg-reduce-motion="false"]) .sg-chip:active, .sg-root:not([data-sg-reduce-motion="false"]) .sg-card--interactive:active,
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-stepper__btn:active:not(:disabled), .sg-root:not([data-sg-reduce-motion="false"]) .sg-tabbar__item:active .sg-tabbar__icon, .sg-root:not([data-sg-reduce-motion="false"]) .sg-tabbar__action:active .sg-tabbar__icon, .sg-root:not([data-sg-reduce-motion="false"]) button.sg-avatar-group__more:active, .sg-root:not([data-sg-reduce-motion="false"]) .sg-donut__slice, .sg-root:not([data-sg-reduce-motion="false"]) .sg-pagination__page:active, .sg-root:not([data-sg-reduce-motion="false"]) .sg-pagination__step:active { transform: none !important; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-glass::after { display: none; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-slider.is-active .sg-slider__thumb { --_s: 1; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-slider__bubble, .sg-root:not([data-sg-reduce-motion="false"]) .sg-slider.is-active .sg-slider__bubble { transform: none; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-spinner { animation: sg-spin 1.4s linear infinite; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-progress--indeterminate .sg-progress__bar { width: 100%; transform: none; animation: sg-pulse 1.6s ease-in-out infinite; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-table__busy span::after { width: 100%; transform: none; animation: sg-pulse 1.6s ease-in-out infinite; }
+/* Reduced motion (theme.reduceMotion, e.g. a VDI / remote-desktop session, or the system setting). Not "everything
+   instant" — a control snapping through several states in a few frames reads as stutter. Instead: --sg-spring-*
+   become a short, critically damped curve (tokens.css), so small state changes still slide briefly without
+   overshoot; anything that travels, grows or bounces becomes a fade; squash, gel, press-in and the pointer light are
+   off; progress indicators keep moving gently.
+   The nearest boundary decides (design-language.md 4.): an element with data-sg-reduce-motion ("true", "false" or
+   "system", written by ThemeProvider and Portal), else the page (:root), which follows the system setting. Each
+   boundary sets a flag, --_rm: empty when motion is reduced, the guaranteed-invalid `initial` when not; values built
+   on it (--_rm-none is "none" or invalid) inherit, and each rule that moves something takes its normal value as the
+   fallback: transform: var(--_rm-none, scale(0.965)). An inner "false" inside a "true" (or the system's reduce)
+   resets the flag, an inner "true" sets it again, at any depth. */
+/* the flag --_rm is set at each boundary in tokens.css, next to the springs it also reduces */
+:root, [data-sg-reduce-motion] {
+  --_rm-none: var(--_rm) none;
+  --_rm-zero: var(--_rm) 0;
+  --_rm-one: var(--_rm) 1;
+  --_rm-full: var(--_rm) 100%;
+  --_rm-fade: var(--_rm) sg-fade-in-plain;
+  --_rm-spin: var(--_rm) sg-spin 1.4s linear infinite;
+  --_rm-pulse: var(--_rm) sg-pulse 1.6s ease-in-out infinite;
+  --_rm-breathe: var(--_rm) sg-skeleton-breathe 2000ms ease-in-out infinite;
 }
 @keyframes sg-fade-in-plain { from { opacity: 0; } }
 @keyframes sg-fade-out-plain { to { opacity: 0; } }
@@ -107,7 +97,12 @@
    Everything that animates is transform/opacity on a composited pseudo-element.
    ============================================================================================ */
 .sg-glass {
-  --_fill: var(--sg-glass-fill);
+  /* reduced transparency: a solid elevated fill (a dark plate for clear glass), no blur */
+  --_rt-fill: var(--_rt) var(--sg-bg-elevated);
+  --_rt-clear: var(--_rt) rgb(20, 20, 24);
+  --_rt-none: var(--_rt) none;
+  --_rt-bg: var(--_rt) var(--_fill);   /* where backdrop filters are missing too: the reduced fill (clear glass's plate) */
+  --_fill: var(--_rt-fill, var(--sg-glass-fill));
   --_blur: var(--sg-blur);
   --_shadow: var(--sg-shadow-md);
   --_radius: var(--sg-radius-xl);
@@ -116,15 +111,15 @@
   overflow: hidden;
   color: var(--sg-glass-ink);
   border-radius: var(--_radius);
-  background-color: var(--sg-bg-elevated);
+  background-color: var(--_rt-bg, var(--sg-bg-elevated));
   background-image: var(--sg-glass-grain), linear-gradient(180deg, var(--sg-glass-depth), rgba(255, 255, 255, 0) 52%);
   box-shadow: var(--_shadow);
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .sg-glass {
     background-color: var(--_fill);
-    -webkit-backdrop-filter: blur(var(--_blur)) saturate(var(--sg-saturate));
-    backdrop-filter: blur(var(--_blur)) saturate(var(--sg-saturate));
+    -webkit-backdrop-filter: var(--_rt-none, blur(var(--_blur)) saturate(var(--sg-saturate)));
+    backdrop-filter: var(--_rt-none, blur(var(--_blur)) saturate(var(--sg-saturate)));
   }
 }
 /* the lit rim: a 1px gradient border drawn with a mask (no box-shadow stack, no extra element) */
@@ -166,6 +161,7 @@
   transform: translate3d(var(--sg-hx, 25%), var(--sg-hy, 0px), 0);
   opacity: var(--sg-hk, 0);
   transition: opacity var(--sg-duration-slow) var(--sg-ease-out);
+  display: var(--_rm-none, block);   /* reduced motion: no pointer light */
 }
 /* a compositing layer only while the sheen shows or fades out (light.ts sets [data-sg-lit]); an idle sheen lets its
    ~760 px layer go (design-language.md 3. 성능 규칙 8) */
@@ -185,34 +181,36 @@
 /* the variant sets how dense the glass is (readability); its height is set apart: floating glass (level 3) casts
    --sg-shadow-md, an overlay (level 4: sheet, dialog, action sheet) .sg-glass--overlay casts --sg-shadow-lg. A menu
    is dense glass that floats; a sheet is dense glass over a scrim */
-.sg-glass--strong { --_fill: var(--sg-glass-fill-strong); --_blur: var(--sg-blur-strong); }
-.sg-glass--subtle { --_fill: var(--sg-glass-fill-subtle); --_blur: var(--sg-blur-subtle); }
+.sg-glass--strong { --_fill: var(--_rt-fill, var(--sg-glass-fill-strong)); --_blur: var(--sg-blur-strong); }
+.sg-glass--subtle { --_fill: var(--_rt-fill, var(--sg-glass-fill-subtle)); --_blur: var(--sg-blur-subtle); }
 .sg-glass--overlay { --_shadow: var(--sg-shadow-lg); }
 /* over photos and video: clear fill, white ink, a darker shaded rim; pair with .sg-dimming when the media is bright.
    Density only: the level (float / overlay) still sets the shadow, and high contrast keeps its solid rims */
-.sg-glass--clear { --_fill: var(--sg-glass-fill-clear); --_blur: var(--sg-blur-subtle); color: #fff; }
+.sg-glass--clear { --_fill: var(--_rt-clear, var(--sg-glass-fill-clear)); --_blur: var(--sg-blur-subtle); color: #fff; }
 .sg-root:not([data-sg-theme$="-hc"]) .sg-glass--clear, .sg-root.sg-glass--clear:not([data-sg-theme$="-hc"]) {
   --sg-glass-rim-lit: rgba(255, 255, 255, 0.55); --sg-glass-rim-shade: rgba(0, 0, 0, 0.25); --sg-glass-depth: rgba(255, 255, 255, 0.12); --sg-glass-highlight: rgba(255, 255, 255, 0.35);
 }
 /* tinted glass: the content's colour seeps into the fill (set --sg-tint, e.g. from useImageTint) */
-.sg-glass[data-tint] { --_fill: color-mix(in oklab, var(--sg-glass-fill) 84%, var(--sg-tint, transparent)); }
+.sg-glass[data-tint] { --_fill: var(--_rt-fill, color-mix(in oklab, var(--sg-glass-fill) 84%, var(--sg-tint, transparent))); }
+.sg-glass--clear[data-tint] { --_fill: var(--_rt-clear, color-mix(in oklab, var(--sg-glass-fill) 84%, var(--sg-tint, transparent))); }   /* white ink: the dark plate when solid */
 
 .sg-dimming { position: absolute; inset: 0; pointer-events: none; background: rgba(0, 0, 0, 0.32); }
 
 /* pressable glass: presses IN (a short, firm give) and the light gathers under the finger */
 .sg-pressable { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
-.sg-pressable:active, .sg-pressable.is-pressed { transform: scale(0.965); transition-duration: var(--sg-duration-instant); transition-timing-function: var(--sg-ease-out); }
+.sg-pressable:active, .sg-pressable.is-pressed { transform: var(--_rm-none, scale(0.965)); transition-duration: var(--sg-duration-instant); transition-timing-function: var(--sg-ease-out); }
 .sg-pressable.sg-glass:active::after, .sg-pressable.sg-glass.is-pressed::after { opacity: 1; transition-duration: var(--sg-duration-instant); }
 
 /* accessibility: reduce transparency → solid surfaces; increased contrast → solid 1.5px rim */
 /* the fill is decided once, through --_fill, so everything drawn from it (glass buttons, the glass search field, hover
    mixes) turns solid too; glass over media becomes a solid dark plate */
-.sg-reduce-transparency .sg-glass, .sg-glass.sg-reduce-transparency { --_fill: var(--sg-bg-elevated); background-color: var(--_fill); -webkit-backdrop-filter: none; backdrop-filter: none; }
-.sg-reduce-transparency .sg-glass--clear, .sg-glass--clear.sg-reduce-transparency { --_fill: rgb(20, 20, 24); }
-@media (prefers-reduced-transparency: reduce) {
-  .sg-glass { --_fill: var(--sg-bg-elevated); background-color: var(--_fill); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .sg-glass--clear { --_fill: rgb(20, 20, 24); }
-}
+/* The nearest boundary decides, as for reduced motion: data-sg-reduce-transparency ("true", "false", "system") or the
+   .sg-reduce-transparency class (a "true"), else the page, which follows the system setting. The flag --_rt is
+   empty when transparency is reduced, `initial` when not; the solid values are built on the glass itself, so they
+   take that glass's theme (a dark island inside a light page) */
+:root, [data-sg-reduce-transparency="false"], [data-sg-reduce-transparency="system"] { --_rt: initial; }
+@media (prefers-reduced-transparency: reduce) { :root:not([data-sg-reduce-transparency]):not(.sg-reduce-transparency), [data-sg-reduce-transparency="system"] { --_rt: ; } }
+[data-sg-reduce-transparency="true"], .sg-reduce-transparency { --_rt: ; }
 @media (forced-colors: active) {
   .sg-glass { background: Canvas; color: CanvasText; border: 1px solid CanvasText; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .sg-glass::before, .sg-glass::after { display: none; }

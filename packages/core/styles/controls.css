@@ -18,7 +18,7 @@
   color: var(--sg-accent-text); background: transparent;
   transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), background-color var(--sg-duration-fast) ease, color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease;
 }
-.sg-button:active:not(:disabled):not([aria-disabled="true"]) { transform: scale(0.965); transition-duration: var(--sg-duration-instant), var(--sg-duration-fast), var(--sg-duration-fast), var(--sg-duration-fast); transition-timing-function: var(--sg-ease-out); }
+.sg-button:active:not(:disabled):not([aria-disabled="true"]) { transform: var(--_rm-none, scale(0.965)); transition-duration: var(--sg-duration-instant), var(--sg-duration-fast), var(--sg-duration-fast), var(--sg-duration-fast); transition-timing-function: var(--sg-ease-out); }
 .sg-button:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-button:disabled, .sg-button[aria-disabled="true"] { opacity: 0.42; cursor: default; }
 .sg-button svg { width: 18px; height: 18px; flex: none; }
@@ -53,7 +53,7 @@
 .sg-button[data-tone="danger"] { --sg-accent: var(--sg-danger-fill); --sg-accent-hover: color-mix(in oklab, var(--sg-danger-fill), #000 12%); --sg-accent-pressed: color-mix(in oklab, var(--sg-danger-fill), #000 22%); --sg-accent-soft: var(--sg-danger-soft); --sg-accent-text: var(--sg-danger-text); --sg-accent-on-soft: var(--sg-danger-on-soft); }
 .sg-button[data-tone="neutral"] { --sg-accent-text: var(--sg-label); }
 /* loading: the label fades out as the spinner fades in (no hard swap) */
-.sg-button__spinner { position: absolute; inset: 0; display: grid; place-items: center; animation: sg-fade-in var(--sg-duration-base) var(--sg-ease-out) backwards; }
+.sg-button__spinner { position: absolute; inset: 0; display: grid; place-items: center; animation: sg-fade-in var(--sg-duration-base) var(--sg-ease-out) backwards; animation-name: var(--_rm-fade, sg-fade-in); }
 .sg-button > :not(.sg-button__spinner) { transition: opacity var(--sg-duration-fast) ease; }
 .sg-button[data-loading="true"] > :not(.sg-button__spinner) { opacity: 0; }
 @keyframes sg-fade-in { from { opacity: 0; transform: scale(0.6); } }
@@ -128,13 +128,13 @@
   transition: scale var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
   will-change: translate, transform;
 }
-.sg-slider.is-active .sg-slider__thumb { --_s: 1.18; }
+.sg-slider.is-active .sg-slider__thumb { --_s: var(--_rm-one, 1.18); }
 .sg-slider__bubble {
   position: absolute; bottom: 30px; left: 0; min-width: 36px; height: 28px; padding: 0 9px;
   display: grid; place-items: center; --_radius: var(--sg-radius-sm); --_shadow: var(--sg-shadow-md);
   font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap;
   translate: calc(var(--_pos, 0px) - 50%) 0;
-  transform: translateY(6px) scale(0.85); opacity: 0; transform-origin: center bottom;
+  transform: var(--_rm-none, translateY(6px) scale(0.85)); opacity: 0; transform-origin: center bottom;
   transition: opacity var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
   pointer-events: none;
 }
@@ -206,7 +206,7 @@
 .sg-stepper { display: inline-flex; align-items: center; height: var(--sg-size-control-md); --_radius: var(--sg-radius-md); --_nest: 2px; padding: var(--_nest); border-radius: var(--_radius); background: var(--sg-groove-soft); box-shadow: var(--sg-depth-inset); user-select: none; -webkit-user-select: none; }
 .sg-stepper__btn { appearance: none; border: 0; margin: 0; width: 36px; height: calc(var(--sg-size-control-md) - 2 * var(--_nest)); display: grid; place-items: center; border-radius: calc(var(--_radius) - var(--_nest)); background: none; color: var(--sg-label); cursor: pointer; transition: background-color var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
 @media (hover: hover) { .sg-stepper__btn:hover:not(:disabled) { background: var(--sg-fill-hover); } }
-.sg-stepper__btn:active:not(:disabled) { transform: scale(0.9); background: var(--sg-fill-strong); }
+.sg-stepper__btn:active:not(:disabled) { transform: var(--_rm-none, scale(0.9)); background: var(--sg-fill-strong); }
 .sg-stepper__btn:disabled { color: var(--sg-label-disabled); cursor: default; }
 .sg-stepper__btn:focus-visible { outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); }
 .sg-stepper__btn svg { width: 16px; height: 16px; }
@@ -214,10 +214,10 @@
 .sg-stepper__value { position: relative; display: grid; min-width: 40px; height: calc(var(--sg-size-control-md) - 2 * var(--_nest)); padding: 0 4px; overflow: hidden; text-align: center; font-size: 15px; line-height: calc(var(--sg-size-control-md) - 2 * var(--_nest)); font-weight: 650; font-variant-numeric: tabular-nums;
   -webkit-mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent); }
 .sg-stepper__value > span { grid-area: 1 / 1; }
-.sg-stepper__value > [data-roll="up"] { animation: sg-roll-in-up var(--sg-spring-snappy-duration) var(--sg-spring-snappy) backwards; }
-.sg-stepper__value > [data-roll="down"] { animation: sg-roll-in-down var(--sg-spring-snappy-duration) var(--sg-spring-snappy) backwards; }
-.sg-stepper__value > [data-leave="up"] { animation: sg-roll-out-up var(--sg-duration-base) var(--sg-ease-in) both; }
-.sg-stepper__value > [data-leave="down"] { animation: sg-roll-out-down var(--sg-duration-base) var(--sg-ease-in) both; }
+.sg-stepper__value > [data-roll="up"] { animation: var(--_rm-none, sg-roll-in-up var(--sg-spring-snappy-duration) var(--sg-spring-snappy) backwards); }
+.sg-stepper__value > [data-roll="down"] { animation: var(--_rm-none, sg-roll-in-down var(--sg-spring-snappy-duration) var(--sg-spring-snappy) backwards); }
+.sg-stepper__value > [data-leave="up"] { animation: sg-roll-out-up var(--sg-duration-base) var(--sg-ease-in) both; display: var(--_rm-none, block); }
+.sg-stepper__value > [data-leave="down"] { animation: sg-roll-out-down var(--sg-duration-base) var(--sg-ease-in) both; display: var(--_rm-none, block); }
 @keyframes sg-roll-in-up { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes sg-roll-in-down { from { transform: translateY(-100%); } to { transform: none; } }
 @keyframes sg-roll-out-up { to { transform: translateY(-100%); opacity: 0; } }
@@ -246,7 +246,7 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 .sg-field__adorn { display: inline-flex; color: var(--sg-label-tertiary); }
 .sg-field__adorn svg { width: 18px; height: 18px; }
 @keyframes sg-pop-in { from { opacity: 0; transform: scale(0.4); } }
-.sg-field__clear { animation: sg-pop-in var(--sg-spring-snappy-duration) var(--sg-spring-snappy) backwards; }   /* entrances let go once done (a held fill keeps its own layer): leaving ones hold, they are about to go */
+.sg-field__clear { animation: sg-pop-in var(--sg-spring-snappy-duration) var(--sg-spring-snappy) backwards; animation-name: var(--_rm-fade, sg-pop-in); }   /* entrances let go once done (a held fill keeps its own layer): leaving ones hold, they are about to go */
 /* a search input's own clear (WebKit / Blink) would sit beside the field's: the field draws the one */
 .sg-field__input::-webkit-search-cancel-button, .sg-field__input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
 .sg-field__clear { appearance: none; border: 0; margin: 0 -4px 0 0; padding: 0; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: none; color: var(--sg-label-tertiary); cursor: pointer; }
@@ -261,7 +261,7 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 .sg-search--glass .sg-field__control:focus-within { box-shadow: 0 0 0 4px var(--sg-accent-soft), var(--_shadow); }
 /* Cancel slides in from the right while the field narrows; hidden it takes no room (and no focus) */
 .sg-search { gap: 0; }
-.sg-search__cancel { flex: none; max-width: 0; padding-inline: 0; margin-left: 0; opacity: 0; overflow: hidden; transform: translateX(12px);
+.sg-search__cancel { flex: none; max-width: 0; padding-inline: 0; margin-left: 0; opacity: 0; overflow: hidden; transform: var(--_rm-none, translateX(12px));
   transition: max-width var(--sg-spring-smooth-duration) var(--sg-spring-smooth), padding var(--sg-spring-smooth-duration) var(--sg-spring-smooth), margin var(--sg-spring-smooth-duration) var(--sg-spring-smooth), opacity var(--sg-duration-fast) ease, transform var(--sg-spring-smooth-duration) var(--sg-spring-smooth); }
 .sg-search__cancel.is-shown { max-width: 120px; padding-inline: 12px; margin-left: 4px; opacity: 1; transform: none; }
 
@@ -276,7 +276,7 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
   transition: background-color var(--sg-duration-fast) ease, color var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
 @media (hover: hover) { .sg-chip:hover { background: var(--sg-fill-hover); } }
-.sg-chip:active { transform: scale(0.965); }
+.sg-chip:active { transform: var(--_rm-none, scale(0.965)); }
 .sg-chip:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-chip[aria-pressed="true"], .sg-chip[aria-checked="true"] { background: var(--sg-accent-soft); color: var(--sg-accent-on-soft); }
 [data-sg-theme$="-hc"] .sg-chip[aria-pressed="true"], [data-sg-theme$="-hc"] .sg-chip[aria-checked="true"] { box-shadow: var(--sg-selection-outline); }   /* chosen: an outline, not the tint alone */
@@ -310,7 +310,7 @@ textarea.sg-field__input { padding: 10px 0; resize: vertical; min-height: 88px; 
 .sg-avatar-group__more { appearance: none; border: 0; margin: 0; padding: 0; font: inherit; flex: none; display: inline-grid; place-items: center; width: var(--_s); height: var(--_s); border-radius: 50%; background: linear-gradient(var(--sg-fill-strong), var(--sg-fill-strong)), var(--sg-avatar-ring, var(--sg-surface)); color: var(--sg-label); font-size: calc(var(--_s) * 0.36); font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 button.sg-avatar-group__more { cursor: pointer; transition: background-color var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
 @media (hover: hover) { button.sg-avatar-group__more:hover { background: linear-gradient(var(--sg-fill-hover), var(--sg-fill-hover)), var(--sg-avatar-ring, var(--sg-surface)); } }
-button.sg-avatar-group__more:active { transform: scale(0.9); }   /* a small round target, as a day or a weekday */
+button.sg-avatar-group__more:active { transform: var(--_rm-none, scale(0.9)); }   /* a small round target, as a day or a weekday */
 button.sg-avatar-group__more:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); position: relative; z-index: 1; }
 
 /* ============================================================================================
@@ -318,11 +318,11 @@ button.sg-avatar-group__more:focus-visible { outline: var(--sg-focus-outline); o
    ============================================================================================ */
 .sg-progress { position: relative; width: 100%; min-width: 48px; height: 6px; border-radius: var(--sg-radius-full); background: var(--sg-groove); box-shadow: var(--sg-depth-inset); overflow: hidden; }
 .sg-progress__bar { position: absolute; inset: 0; border-radius: inherit; background: var(--sg-accent); transform-origin: left center; transform: scaleX(var(--_p, 0)); }   /* --_p is driven by a JS spring */
-.sg-progress--indeterminate .sg-progress__bar { width: 40%; transform: translateX(-100%); animation: sg-indeterminate 1.3s cubic-bezier(0.45, 0, 0.2, 1) infinite; }
+.sg-progress--indeterminate .sg-progress__bar { width: var(--_rm-full, 40%); transform: var(--_rm-none, translateX(-100%)); animation: var(--_rm-pulse, sg-indeterminate 1.3s cubic-bezier(0.45, 0, 0.2, 1) infinite); }
 @keyframes sg-indeterminate { to { transform: translateX(250%); } }
 .sg-progress--sm { height: 4px; }
 
-.sg-spinner { --_s: 20px; width: var(--_s); height: var(--_s); flex: none; color: currentColor; animation: sg-spin 0.8s linear infinite; }
+.sg-spinner { --_s: 20px; width: var(--_s); height: var(--_s); flex: none; color: currentColor; animation: var(--_rm-spin, sg-spin 0.8s linear infinite); }
 .sg-spinner circle { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
 .sg-spinner .sg-spinner__track { opacity: 0.2; }
 @keyframes sg-spin { to { transform: rotate(360deg); } }

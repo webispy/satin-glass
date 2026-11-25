@@ -8,7 +8,7 @@
 .sg-card--outlined { box-shadow: inset 0 0 0 1px var(--sg-separator), var(--sg-lit-edge); }
 .sg-card--interactive { appearance: none; border: 0; margin: 0; padding: 0; width: 100%; font: inherit; color: inherit; text-align: inherit; display: block; cursor: pointer; transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), background-color var(--sg-duration-fast) ease; }
 @media (hover: hover) { .sg-card--interactive:hover { background: color-mix(in oklab, var(--sg-surface), var(--sg-label) 3%); } }   /* stays a surface: hover tints, it does not lift (a level changes only when an overlay opens) */
-.sg-card--interactive:active { transform: scale(0.98); }
+.sg-card--interactive:active { transform: var(--_rm-none, scale(0.98)); }
 .sg-card--interactive:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-card__media { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--sg-fill); }
 .sg-card__body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
@@ -56,6 +56,7 @@
    ============================================================================================ */
 .sg-skeleton {
   position: relative; display: block; overflow: hidden; background: var(--sg-fill); border-radius: var(--sg-radius-xs); isolation: isolate;
+  animation: var(--_rm-breathe, none); animation-delay: var(--_sync, 0ms);
 }
 .sg-skeleton--text { height: 0.8em; margin: 0.3em 0; border-radius: var(--sg-radius-mark); width: 100%; }
 .sg-skeleton--circle { border-radius: 50%; flex: none; }
@@ -64,19 +65,13 @@
 .sg-skeleton::after {
   content: ""; position: absolute; inset: 0; transform: translateX(-100%);
   background: linear-gradient(100deg, transparent 20%, var(--sg-skeleton-light, rgba(255, 255, 255, 0.55)) 50%, transparent 80%);
-  animation: sg-skeleton-sweep 1600ms cubic-bezier(0.4, 0, 0.3, 1) infinite; animation-delay: var(--_sync, 0ms);
+  animation: var(--_rm-none, sg-skeleton-sweep 1600ms cubic-bezier(0.4, 0, 0.3, 1) infinite); opacity: var(--_rm-zero, 1); animation-delay: var(--_sync, 0ms);
 }
 [data-sg-theme^="dark"] .sg-skeleton { --sg-skeleton-light: rgba(255, 255, 255, 0.09); }
 /* high contrast: a visible outline so the placeholder reads as a shape */
 [data-sg-theme$="-hc"] .sg-skeleton { box-shadow: inset 0 0 0 1px var(--sg-separator-strong); }
 @keyframes sg-skeleton-sweep { 0% { transform: translateX(-100%); } 70%, 100% { transform: translateX(100%); } }
 @keyframes sg-skeleton-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
-[data-sg-reduce-motion="true"] .sg-skeleton::after { animation: none; opacity: 0; }
-[data-sg-reduce-motion="true"] .sg-skeleton { animation: sg-skeleton-breathe 2000ms ease-in-out infinite; animation-delay: var(--_sync, 0ms); }
-@media (prefers-reduced-motion: reduce) {
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-skeleton::after { animation: none; opacity: 0; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-skeleton { animation: sg-skeleton-breathe 2000ms ease-in-out infinite; animation-delay: var(--_sync, 0ms); }
-}
 
 /* ============================================================================================
    Media viewer: photos on a deep backdrop; glass bars float above and step aside while you swipe.
@@ -113,12 +108,10 @@
 .sg-media__nav:disabled { opacity: 0 !important; pointer-events: none; }
 /* touch screens page by swiping: the side buttons are for pointers and keyboards */
 @media (hover: none), (max-width: 599px) { .sg-media__nav { display: none; } }
-.sg-media[data-chrome="hidden"] .sg-media__bar { opacity: 0; transform: translateY(-8px); pointer-events: none; }
+.sg-media[data-chrome="hidden"] .sg-media__bar { opacity: 0; transform: var(--_rm-none, translateY(-8px)); pointer-events: none; }
 .sg-media[data-chrome="hidden"] .sg-media__bar > * { pointer-events: none; }
-.sg-media[data-chrome="hidden"] .sg-media__caption { opacity: 0; transform: translateY(8px); }
+.sg-media[data-chrome="hidden"] .sg-media__caption { opacity: 0; transform: var(--_rm-none, translateY(8px)); }
 .sg-media[data-chrome="hidden"] .sg-media__nav { opacity: 0; pointer-events: none; }
-[data-sg-reduce-motion="true"] .sg-media__bar, [data-sg-reduce-motion="true"] .sg-media__caption { transform: none !important; }
-@media (prefers-reduced-motion: reduce) { .sg-root:not([data-sg-reduce-motion="false"]) .sg-media__bar, .sg-root:not([data-sg-reduce-motion="false"]) .sg-media__caption { transform: none !important; } }
 
 /* ---------------------------------------------------------------- Accordion */
 .sg-accordion { border-top: 1px solid var(--sg-separator); }
@@ -148,10 +141,8 @@
 .sg-accordion__region { height: 0; overflow: hidden; }
 .sg-accordion__item[data-open] > .sg-accordion__region { height: auto; }
 .sg-accordion__content { padding: 0 12px 16px; }   /* on the heading's text line */
-[data-sg-reduce-motion="true"] .sg-accordion__item[data-open] > .sg-accordion__region > .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease backwards; }
-@media (prefers-reduced-motion: reduce) {
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-accordion__item[data-open] > .sg-accordion__region > .sg-accordion__content { animation: sg-fade-in-plain var(--sg-duration-fast) ease backwards; }
-}
+/* reduced motion: the opening content fades in (the region's height does not slide) */
+.sg-accordion__item[data-open] > .sg-accordion__region > .sg-accordion__content { --_rm-fade-in: var(--_rm) sg-fade-in-plain var(--sg-duration-fast) ease backwards; animation: var(--_rm-fade-in, none); }
 
 /* ============================================================================================
    Timeline (0.5): things in order on a line that only connects (a line, not a groove). Steps: done is a filled mark

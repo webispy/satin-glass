@@ -17,6 +17,18 @@ const PAINT = new Set(['color', 'background-color', 'background', 'border-color'
 const TIME = /(?<![\w.-])(?!0+(\.0+)?m?s\b)\d+(\.\d+)?m?s\b/g;   /* a zero time is an instant switch, not a duration */
 
 type Hit = { file: string; selector: string; what: string };
+/* a value written for reduced motion, var(--_rm-…, normal), is checked by its normal value: the reduced one (an
+   opacity fade, none) is built in foundation.css from the boundary flag */
+function normal(val: string) {
+  let out = val, i: number;
+  while ((i = out.indexOf('var(--_rm-')) >= 0) {
+    const comma = out.indexOf(',', i);
+    let depth = 1, j = i + 4;
+    for (; j < out.length && depth; j++) { if (out[j] === '(') depth++; else if (out[j] === ')') depth--; }
+    out = comma > 0 && comma < j ? out.slice(0, i) + out.slice(comma + 1, j - 1).trim() + out.slice(j) : out.slice(0, i) + out.slice(j);
+  }
+  return out;
+}
 function scan() {
   const out: Record<'animate' | 'radius' | 'shadow' | 'time', Hit[]> = { animate: [], radius: [], shadow: [], time: [] };
   for (const file of readdirSync(DIR).filter((f) => f.endsWith('.css'))) {
@@ -27,7 +39,7 @@ function scan() {
       const selector = sel0.trim().replace(/\s+/g, ' ');
       for (const d of body.split(';')) {
         const m = /^\s*([a-z-]+)\s*:\s*([\s\S]+)$/.exec(d); if (!m) continue;
-        const prop = m[1], val = m[2].trim();
+        const prop = m[1], val = normal(m[2].trim());
         if (prop === 'transition-duration' || prop === 'transition-delay' || prop === 'animation-delay')
           for (const t of val.replace(/var\([^)]*\)/g, '').match(TIME) ?? []) out.time.push({ file, selector, what: t });
         if (prop === 'transition' || prop === 'transition-property') {
