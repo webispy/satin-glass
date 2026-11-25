@@ -4,7 +4,7 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import {
   Layers, Palette, Type, Waves, Sparkles, MousePointerClick, TextCursorInput, Navigation as NavIcon, List as ListIcon, PanelTop, Smartphone,
-  FlaskConical, ListChecks, GalleryVerticalEnd, LayoutDashboard, Gauge, Table2, ChartLine, MessageSquareWarning, Rocket, SwatchBook, Accessibility,
+  FlaskConical, ListChecks, Bot, GalleryVerticalEnd, LayoutDashboard, Gauge, Table2, ChartLine, MessageSquareWarning, Rocket, SwatchBook, Accessibility,
   type LucideIcon,
 } from 'lucide-react';
 import type { Pair } from './i18n';
@@ -49,6 +49,8 @@ export const ROUTES: Route[] = [
   { id: 'dashboard', label: { en: 'Dashboard', ko: '대시보드' }, group: 'examples', icon: LayoutDashboard, el: page(() => import('./pages/dashboard'), 'Dashboard') },
   { id: 'evaluation', label: { en: 'Model evaluation', ko: '모델 평가' }, group: 'examples', icon: Gauge, el: page(() => import('./pages/evaluation'), 'Evaluation') },
   { id: 'lab', label: { en: 'Edge-case lab', ko: '예외 상황 랩' }, group: 'examples', icon: FlaskConical, el: page(() => import('./pages/lab'), 'Lab') },
+  /* @satin-glass/a2ui, experimental and unpublished (#62) */
+  { id: 'a2ui', label: { en: 'A2UI', ko: 'A2UI' }, group: 'examples', icon: Bot, el: page(() => import('./pages/a2ui'), 'A2ui') },
 ];
 
 /* a hash is the page, then an optional sub-page: #/table, #/table/api */

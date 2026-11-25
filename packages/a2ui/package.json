@@ -1,0 +1,64 @@
+{
+  "name": "@satin-glass/a2ui",
+  "version": "0.5.0",
+  "private": true,
+  "description": "Renders A2UI agent surfaces (protocol v1.0 and v0.9.1, the basic catalog) with Satin Glass controls.",
+  "keywords": [
+    "react",
+    "a2ui",
+    "agent",
+    "generative-ui",
+    "satin-glass"
+  ],
+  "homepage": "https://webispy.github.io/satin-glass/",
+  "bugs": {
+    "url": "https://github.com/webispy/satin-glass/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webispy/satin-glass.git",
+    "directory": "packages/a2ui"
+  },
+  "author": "Inho Oh",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@a2ui/react": "0.16.1",
+    "@a2ui/web_core": "0.16.1",
+    "@satin-glass/react": "workspace:^",
+    "react": ">=18.2",
+    "react-dom": ">=18.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@a2ui/react": "0.16.1",
+    "@a2ui/web_core": "0.16.1",
+    "@satin-glass/react": "workspace:*",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "3.25.76",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "vitest": "5.1.0",
+    "jsdom": "31.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.12",
+    "vite": "8.3.8"
+  }
+}

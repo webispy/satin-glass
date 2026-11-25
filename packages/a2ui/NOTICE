@@ -1,0 +1,7 @@
+Satin Glass
+Copyright 2026 Inho Oh
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It renders the A2UI protocol through @a2ui/web_core and @a2ui/react (Copyright Google LLC, Apache License 2.0),
+which are peer dependencies and not included here.

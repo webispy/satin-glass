@@ -1,0 +1,245 @@
+/* Button, TextField, CheckBox, Slider, ChoicePicker and DateTimeInput of the A2UI basic catalog, drawn with Satin
+   controls. Values are two-way bound through the binder's setters. A field's check messages show once the user has
+   left it; a button its checks disable says why at once. */
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Button, Checkbox, Chip, ChoiceList, DatePicker, Radio, RadioGroup, SearchField, Slider, Stack, Text, TextField, TimePicker } from '@satin-glass/react';
+import { grow, ids, useAgentName, useEnv, useFieldErrors, type Rendered } from './shared';
+import { checkText } from '../words';
+import { markTrustedGesture } from '../urls';
+import { MAX_TEXT, safePattern } from '../patterns';
+
+/* ---- Button: primary → filled, default → tinted, borderless → plain */
+const BUTTON = { primary: 'filled', default: 'tinted', borderless: 'plain' } as const;
+export function A2uiButton(r: Rendered<{ child?: string; variant?: keyof typeof BUTTON; action?: () => Promise<void> }>) {
+  const { props, buildChild } = r;
+  const env = useEnv(), why = useId();
+  const { ref, aria, described, describe } = useAgentName<HTMLButtonElement>(r);
+  const blocked = props.isValid === false;
+  const reason = blocked ? ([...new Set((props.validationErrors ?? []).filter(Boolean).map((m) => checkText(String(m), env.words)))].join(' ') || env.words.fix) : undefined;
+  return (
+    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'stretch', gap: 4, maxWidth: '100%', ...grow(props.weight) }}>
+      <Button ref={ref} variant={BUTTON[props.variant ?? 'default'] ?? 'tinted'} disabled={blocked} aria-describedby={ids(described, reason ? why : undefined)} {...aria}
+        onClick={(e) => { if (e.nativeEvent.isTrusted) markTrustedGesture(); void props.action?.(); }}>
+        {props.child ? buildChild(props.child) : null}
+      </Button>
+      {reason && <Text id={why} variant="footnote" tone="secondary">{reason}</Text>}
+      {describe}
+    </span>
+  );
+}
+
+/* ---- TextField: shortText, longText (multi-line), number and obscured. v0.9.1's `validationRegexp` is checked here,
+   as the catalog asks of the renderer: only a pattern whose work is bounded (patterns.ts), on text of a bounded
+   length (longer text fails the check), so an agent's pattern cannot stall the page. */
+export function A2uiTextField(r: Rendered<{ label?: unknown; value?: unknown; setValue?: (v: string) => void; placeholder?: unknown; variant?: string; validationRegexp?: string }>) {
+  const { props } = r;
+  const env = useEnv();
+  const label = props.label == null ? undefined : String(props.label);
+  const { ref, aria, described, describe } = useAgentName<HTMLInputElement & HTMLTextAreaElement>(r, label ?? '');
+  const value = props.value == null ? '' : String(props.value);
+  const source = props.validationRegexp;
+  const safe = useMemo(() => (source ? safePattern(source) : undefined), [source]);
+  const told = useRef('');
+  useEffect(() => {
+    if (safe !== null || !source || told.current === source) return;
+    told.current = source;
+    env.warn({ code: 'refused-pattern', componentId: r.context.componentModel.id, message: `A validationRegexp was not used: its work is not bounded (${source.slice(0, 80)}).` });
+  });
+  const mismatch = safe && value && (value.length > MAX_TEXT || !safe.test(value)) ? [env.words.format] : [];
+  const fe = useFieldErrors(r, mismatch);
+  const common = {
+    label, value, error: fe.error, placeholder: props.placeholder == null ? undefined : String(props.placeholder), ...aria,
+    onFocus: fe.onFocus, onBlur: fe.onBlur, style: grow(props.weight), 'aria-describedby': described,
+  };
+  if (props.variant === 'longText') return <>{<TextField {...common} multiline ref={ref} onChange={(e) => props.setValue?.(e.target.value)} />}{describe}</>;
+  return (
+    <>
+      <TextField {...common} ref={ref} type={props.variant === 'obscured' ? 'password' : 'text'}
+        inputMode={props.variant === 'number' ? 'decimal' : undefined} onChange={(e) => props.setValue?.(e.target.value)} />
+      {describe}
+    </>
+  );
+}
+
+export function A2uiCheckBox(r: Rendered<{ label?: unknown; value?: unknown; setValue?: (v: boolean) => void }>) {
+  const { props } = r;
+  const label = props.label == null ? '' : String(props.label);
+  const { ref, aria, described, describe } = useAgentName<HTMLInputElement>(r, label);
+  const fe = useFieldErrors(r);
+  return (
+    <Stack gap={1} style={grow(props.weight)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
+      <Checkbox ref={ref} label={label} checked={!!props.value} onChange={(v) => props.setValue?.(v)} {...aria}
+        aria-invalid={fe.invalid} aria-describedby={ids(described, fe.describedBy)} />
+      {fe.message}{describe}
+    </Stack>
+  );
+}
+
+/* ---- Slider: the track moves in whole positions (v1.0 `steps` divisions of the range, otherwise 100), each mapped to
+   a model value; so a range of any size, however small, moves, and the value written is exact at each position.
+   v1.0's 4 steps over 0–100 move in 25s. A range of no width is shown disabled. */
+const shown = (v: number) => String(Number(v.toPrecision(10)));
+export function A2uiSlider(r: Rendered<{ label?: unknown; min?: number; max?: number; value?: unknown; setValue?: (v: number) => void; steps?: number }>) {
+  const { props } = r;
+  const id = useId(), min = props.min ?? 0, max = props.max ?? 100;
+  const label = props.label == null ? '' : String(props.label);
+  const { ref, aria, described, describe } = useAgentName<HTMLDivElement>(r, label);
+  const fe = useFieldErrors(r);
+  const n = props.steps && props.steps > 0 ? Math.round(props.steps) : 100;
+  const width = max - min;
+  const toValue = (p: number) => (p >= n ? max : min + (width * p) / n);
+  const value = Number(props.value ?? min);
+  const pos = width > 0 ? Math.round(((Math.min(max, Math.max(min, value)) - min) / width) * n) : 0;
+  return (
+    <Stack gap={1} style={grow(props.weight)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
+      {label && <Text id={id} variant="subhead">{label}</Text>}
+      <Slider ref={ref} aria-labelledby={label && !aria['aria-label'] ? id : undefined} {...aria} min={0} max={n} step={1} disabled={!(width > 0)}
+        aria-invalid={fe.invalid} aria-describedby={ids(described, fe.describedBy)}
+        value={pos} format={(p) => shown(toValue(p))} onChange={(p) => props.setValue?.(toValue(p))} />
+      {fe.message}{describe}
+    </Stack>
+  );
+}
+
+/* ---- ChoicePicker: the value is a list of strings in both modes ([value] when only one may be chosen).
+   checkbox style → radio buttons (one) or a choice list (many); chips → chips, with the radio pattern when only one
+   may be chosen (one tab stop, arrow keys choose). `filterable` adds a field that filters by label, case-insensitive;
+   a chosen option the filter hides stays chosen. */
+type Option = { label?: unknown; value: string };
+export function A2uiChoicePicker(r: Rendered<{ label?: unknown; variant?: string; options?: Option[]; value?: unknown; setValue?: (v: string[]) => void; displayStyle?: string; filterable?: boolean }>) {
+  const { props } = r;
+  const env = useEnv(), labelId = useId();
+  const label = props.label == null ? '' : String(props.label);
+  const { aria, described, describe } = useAgentName<HTMLElement>(r, label);
+  const fe = useFieldErrors(r);
+  const one = props.variant !== 'multipleSelection';
+  const chosen = Array.isArray(props.value) ? props.value.map(String) : props.value == null || props.value === '' ? [] : [String(props.value)];
+  const [query, setQuery] = useState('');
+  const all = (props.options ?? []).map((o) => ({ value: String(o.value), label: o.label == null ? String(o.value) : String(o.label) }));
+  const q = props.filterable ? query.trim().toLocaleLowerCase() : '';
+  const shown = q ? all.filter((o) => o.label.toLocaleLowerCase().includes(q)) : all;
+  const visible = new Set(shown.map((o) => o.value));
+  const hidden = chosen.filter((c) => !visible.has(c));
+  const set = (v: string[]) => props.setValue?.(v);
+  const filter = props.filterable && (
+    <SearchField label={env.words.filter} value={query} onChange={(e) => setQuery(e.target.value)} clearable onClear={() => setQuery('')} />
+  );
+  const empty = shown.length === 0 && <Text variant="footnote" tone="secondary">{env.words.noMatches}</Text>;
+  const named = { 'aria-labelledby': label && !aria['aria-label'] ? labelId : undefined, ...aria, 'aria-invalid': fe.invalid, 'aria-describedby': ids(described, fe.describedBy) };
+  let body;
+  if (props.displayStyle === 'chips') {
+    body = one ? <RadioChips options={shown} value={chosen[0]} onChange={(v) => set([v])} {...named} /> : (
+      <div role="group" {...named} style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {shown.map((o) => <Chip key={o.value} selected={chosen.includes(o.value)} onSelectedChange={(on) => set(on ? [...chosen, o.value] : chosen.filter((v) => v !== o.value))}>{o.label}</Chip>)}
+      </div>
+    );
+  } else if (one) {
+    body = (
+      <RadioGroup value={chosen[0] ?? ''} onChange={(v) => set([v])} aria-label={aria['aria-label'] ?? (label || undefined)}>
+        {shown.map((o) => <Radio key={o.value} value={o.value} label={o.label} />)}
+      </RadioGroup>
+    );
+  } else {
+    /* the list sees only what it shows; the choices the filter hides are added back once */
+    body = <ChoiceList multiple aria-label={aria['aria-label'] ?? label} options={shown.map((o) => ({ value: o.value, label: o.label }))}
+      value={chosen.filter((c) => visible.has(c))} onChange={(v: string[]) => set([...hidden, ...v])} />;
+  }
+  /* radio buttons and the choice list name themselves; the error and the description reach them through a group
+     around them, which takes no name of its own (one name, announced once) */
+  if (props.displayStyle !== 'chips') body = <div role="group" aria-invalid={fe.invalid} aria-describedby={ids(described, fe.describedBy)}>{body}</div>;
+  return (
+    <Stack gap={2} style={grow(props.weight)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
+      {label && <Text id={labelId} variant="subhead">{label}</Text>}
+      {filter}{shown.length ? body : empty}
+      {fe.message}{describe}
+    </Stack>
+  );
+}
+
+/* chips that choose one: a radio group (one tab stop on the chosen chip, arrow keys move and choose) */
+function RadioChips({ options, value, onChange, ...rest }: { options: { value: string; label: string }[]; value?: string; onChange: (v: string) => void } & Record<`aria-${string}`, unknown>) {
+  const stop = options.some((o) => o.value === value) ? value : options[0]?.value;
+  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const keys: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+    if (!(e.key in keys) && e.key !== 'Home' && e.key !== 'End') return;
+    e.preventDefault();
+    const rtl = getComputedStyle(e.currentTarget).direction === 'rtl' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight');
+    const i = options.findIndex((o) => o.value === stop);
+    const n = e.key === 'Home' ? 0 : e.key === 'End' ? options.length - 1 : (i + keys[e.key] * (rtl ? -1 : 1) + options.length) % options.length;
+    onChange(options[n].value);
+    (e.currentTarget.querySelectorAll<HTMLElement>('[role=radio]')[n])?.focus();
+  };
+  return (
+    <div role="radiogroup" {...(rest as object)} onKeyDown={onKey} style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      {options.map((o) => (
+        <Chip key={o.value} role="radio" aria-checked={o.value === value} tabIndex={o.value === stop ? 0 : -1} onClick={() => onChange(o.value)}>{o.label}</Chip>
+      ))}
+    </div>
+  );
+}
+
+/* ---- DateTimeInput: date → DatePicker, time → TimePicker, both → the two side by side writing one ISO 8601 value.
+   With neither flag the field is date-only, as the reference renderer has it. What the user did not touch (seconds,
+   an offset) is kept as it came. A value is compared with `min` and `max` as an instant when both carry an offset,
+   and otherwise as text with the time filled to seconds (so 09:30 meets a 09:30:00 minimum). The calendar's limits
+   are the bounds' days (a bound with an offset, the day it falls on here). A half of a combined value is kept until
+   the other half is chosen, for the value it was chosen against: a new value from the agent drops it. A whole value
+   outside the bounds is not written, and says so. */
+const pad = (n: number) => String(n).padStart(2, '0');
+const isoDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+function split(v: string) {
+  const m = /^(\d{4}-\d{2}-\d{2})?(?:T?(\d{2}:\d{2}))?(.*)$/.exec(v.trim()) ?? [];
+  return { date: m[1] ?? '', time: m[2] ?? '', rest: m[3] ?? '' };
+}
+const asDate = (s: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : undefined; };
+const zoned = (s: string) => /T\d{2}:\d{2}.*(Z|[+-]\d{2}:?\d{2})$/.test(s);
+/* a time written to the minute gets its seconds, so times of either precision compare as text */
+const seconds = (s: string) => s.replace(/(^|T)(\d{2}:\d{2})(?!:\d)/, '$1$2:00');
+/** the calendar day a bound falls on, here: its own date, or for one with an offset the local day of that instant */
+const boundDay = (b: string) => (zoned(b) && Number.isFinite(Date.parse(b)) ? new Date(Date.parse(b)) : asDate(b));
+/** whether `value` is below (`below`) or above the bound */
+export function against(value: string, bound: string, below: boolean): boolean {
+  if (!bound) return false;
+  if (zoned(value) && zoned(bound)) { const a = Date.parse(value), b = Date.parse(bound); return Number.isFinite(a) && Number.isFinite(b) && (below ? a < b : a > b); }
+  const b = seconds(bound), v = seconds(value).slice(0, b.length);
+  return below ? v < b : v > b;
+}
+export function A2uiDateTimeInput(r: Rendered<{ value?: unknown; setValue?: (v: string) => void; enableDate?: boolean; enableTime?: boolean; min?: unknown; max?: unknown; label?: unknown }>) {
+  const { props } = r;
+  const env = useEnv();
+  const label = props.label == null ? undefined : String(props.label);
+  const { aria, described, describe } = useAgentName<HTMLElement>(r, label ?? '');
+  const time = !!props.enableTime, date = !!props.enableDate || !time;
+  const both = date && time;
+  const value = props.value == null ? '' : String(props.value);
+  const parts = split(value);
+  const min = props.min == null ? '' : String(props.min), max = props.max == null ? '' : String(props.max);
+  /* the half chosen so far, and a refused whole, for the value they were chosen against */
+  const [draft, setDraft] = useState<{ against: string; date?: string; time?: string; refused?: boolean }>({ against: value });
+  const own = draft.against === value ? draft : { against: value };
+  const fe = useFieldErrors(r, own.refused ? [env.words.range] : []);
+  const d = own.date ?? parts.date, t = own.time ?? parts.time;
+  const write = (next: { date?: string; time?: string }) => {
+    const nd = next.date ?? d, nt = next.time ?? t;
+    if (both && (!nd || !nt)) { setDraft({ against: value, date: nd || undefined, time: nt || undefined }); return; }
+    const out = both ? `${nd}T${nt}${parts.rest}` : date ? nd : `${nt}${parts.rest}`;
+    if (against(out, min, true) || against(out, max, false)) { setDraft({ against: value, date: nd, time: nt, refused: true }); return; }
+    setDraft({ against: out });
+    props.setValue?.(out);
+  };
+  const dateLabel = both ? (label ?? env.words.date) : label;
+  const timeLabel = both ? env.words.time : label;
+  /* a single picker carries the name, description and error itself (Satin's `error` links the message) */
+  const single = { ...aria, error: fe.error, 'aria-describedby': described };
+  return (
+    <Stack gap={1} style={grow(props.weight)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
+      <Stack direction="row" gap={2} wrap role={both ? 'group' : undefined} aria-label={both ? aria['aria-label'] ?? label : undefined}
+        aria-describedby={both ? ids(described, fe.describedBy) : undefined} aria-invalid={both ? fe.invalid : undefined}>
+        {date && <DatePicker label={dateLabel} value={asDate(d) ?? null} min={boundDay(min)} max={boundDay(max)}
+          onChange={(x) => write({ date: isoDate(x) })} {...(both ? {} : single)} />}
+        {time && <TimePicker label={timeLabel} value={t || null} onChange={(x) => write({ time: x })} {...(date ? {} : single)} />}
+      </Stack>
+      {both && fe.message}{describe}
+    </Stack>
+  );
+}
