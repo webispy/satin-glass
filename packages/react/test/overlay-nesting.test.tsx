@@ -140,6 +140,8 @@ describe('Escape calls the latest onClose', () => {
 });
 
 describe('anchored panel and its anchor', () => {
+  /* a scroll is read in its event and the panel placed in the frame after it, before that frame is drawn */
+  const scrolled = async () => { fireEvent.scroll(document); await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(undefined))); }); };
   /* a page scrolled 500 px; the anchor's box in the view is given by `at` */
   async function opened(wrap: 'fixed' | 'sticky' | 'sticky-in-area' | 'none', at: { y: number }) {
     const sy = Object.getOwnPropertyDescriptor(window, 'scrollY');
@@ -168,9 +170,37 @@ describe('anchored panel and its anchor', () => {
     try {
       expect(panel.style.position).toBe('fixed');
       expect(panel.style.top).toBe('60px');   /* the view's coordinates: 12 + 40 + 8, not 500 more */
-      fireEvent.scroll(document);
+      await scrolled();
       expect(panel.style.top).toBe('60px');
     } finally { done(); }
+  });
+  it('a menu opened from a popover stays with its button when one scroll moves the popover', async () => {
+    function T() {
+      const a = useRef<HTMLButtonElement>(null), b = useRef<HTMLButtonElement>(null);
+      const [, force] = useState(0); const [menu, setMenu] = useState(false);
+      return (<>
+        <button ref={a} onClick={() => force(1)}>anchor</button>
+        <Popover open onClose={() => {}} anchor={a.current} aria-label="filters" placement="bottom-start">
+          <button ref={b} onClick={() => setMenu(true)}>sort</button>
+          <Menu open={menu} onClose={() => setMenu(false)} anchor={b.current} aria-label="sort by"><MenuItem onSelect={() => {}}>name</MenuItem></Menu>
+        </Popover>
+      </>);
+    }
+    render(<T />);
+    const anchor = screen.getByText('anchor'); let ay = 100;
+    anchor.getBoundingClientRect = () => new DOMRect(16, ay, 200, 40);
+    fireEvent.click(anchor);
+    const pop = await screen.findByRole('dialog', { name: 'filters' });
+    const sort = await screen.findByText('sort');
+    /* the button is where the popover is drawn */
+    sort.getBoundingClientRect = () => new DOMRect(parseFloat(pop.style.left) + 8, parseFloat(pop.style.top) - window.scrollY + 8, 80, 30);
+    fireEvent.click(sort);
+    const menu = await screen.findByRole('menu', { name: 'sort by' });
+    const gap = () => parseFloat(menu.style.top) - parseFloat(pop.style.top);
+    const top0 = parseFloat(pop.style.top), g0 = gap();
+    ay = 40; await scrolled();   /* the area scrolled 60 px: the popover moves, and the menu with its button */
+    expect(parseFloat(pop.style.top)).toBe(top0 - 60);
+    expect(gap()).toBe(g0);
   });
   it('follows a sticky anchor that the page still carries, until it sticks', async () => {
     const at = { y: 112 };
@@ -179,8 +209,10 @@ describe('anchored panel and its anchor', () => {
       expect(panel.style.position).toBe('fixed');
       expect(panel.style.top).toBe('160px');
       at.y = 12; fireEvent.scroll(document);   /* scrolled 100 px: the bar moved up with the page and stuck */
-      expect(panel.style.top).toBe('60px');
-      fireEvent.scroll(document);   /* stuck: the page goes on scrolling, the bar and the panel stay */
+      expect(panel.style.top).toBe('160px');   /* not written in the scroll event (#57)... */
+      await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(undefined))); });
+      expect(panel.style.top).toBe('60px');   /* ...but in the frame after it */
+      await scrolled();   /* stuck: the page goes on scrolling, the bar and the panel stay */
       expect(panel.style.top).toBe('60px');
     } finally { done(); }
   });
@@ -195,7 +227,7 @@ describe('anchored panel and its anchor', () => {
       fireEvent(window, new Event('resize'));
       expect(panel.style.left).toBe('16px'); expect(panel.style.top).toBe('60px');
       anchor.style.transform = ''; anchor.getBoundingClientRect = () => new DOMRect(16, 12, 200, 40);   /* let go */
-      fireEvent.scroll(document);
+      await scrolled();
       expect(panel.style.left).toBe('16px'); expect(panel.style.top).toBe('60px');
     } finally { done(); }
   });
@@ -219,6 +251,27 @@ describe('anchored panel and its anchor', () => {
       expect(panel.style.top).toBe('160px');
     } finally { done(); }
   });
+  it('clips a panel again when it changes size after a scroll clipped it', async () => {
+    function R() {
+      const a = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false);
+      return (<><div data-testid="area" style={{ overflow: 'auto' }}><button ref={a} onClick={() => setOpen(true)}>field</button></div>
+        <Popover open={open} onClose={() => {}} anchor={a.current} aria-label="p" placement="bottom-start"><button>in</button></Popover></>);
+    }
+    render(<R />);
+    const area = screen.getByTestId('area'), btn = screen.getByText('field');
+    let y = 12; btn.getBoundingClientRect = () => new DOMRect(16, y, 200, 40);
+    area.getBoundingClientRect = () => new DOMRect(0, 0, 400, 300);
+    fireEvent.click(btn);
+    const panel = await screen.findByRole('dialog', { name: 'p' });
+    let h = 40; Object.defineProperty(panel, 'offsetHeight', { configurable: true, get: () => h });
+    Object.defineProperty(panel, 'offsetWidth', { configurable: true, get: () => 200 });
+    resized(panel);   /* measured at 40 px */
+    y = -100; await scrolled();   /* the field went 112 px up: the 40 px panel (at 60 → -52) is wholly above the area */
+    expect(panel.style.visibility).toBe('hidden');
+    h = 100; resized(panel);   /* it grew (a list filtered as one types): 48 px of it shows again */
+    expect(panel.style.visibility).toBe('');
+    expect(panel.style.clipPath).toMatch(/^inset\(52px 0px 0px/);
+  });
   it('does not clip the panel of a fixed bar by a scroll area the bar escapes', async () => {
     function R() {
       const a = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false);
@@ -232,7 +285,7 @@ describe('anchored panel and its anchor', () => {
     fireEvent.click(btn);
     const panel = await screen.findByRole('dialog', { name: 'p' });
     area.getBoundingClientRect = () => new DOMRect(0, -900, 400, 300);   /* the page scrolled the area away */
-    fireEvent.scroll(document);
+    await scrolled();
     expect(panel.style.visibility).toBe(''); expect(panel.style.clipPath).toBe('');
   });
   it('keeps document coordinates for an anchor the page carries (and a bar sticky inside a scroll area)', async () => {

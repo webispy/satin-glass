@@ -126,8 +126,8 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
        moves it with the page. An anchor the page's scrolling does not carry (in a fixed bar, or a bar stuck to the
        top of the view) puts the panel in the view's coordinates instead, for the same reason; were it carried, a page
        scrolled while it is open (a finger dragging inside the panel scrolls the page on iOS) took it off the anchor. An inner scroll area (a sidebar, a dialog body) moves the anchor within the page:
-       the panel follows by exactly as much, in the same scroll event (no frame of lag, no flipping or clamping
-       mid-scroll, so it never jumps). On resize it is placed again, on the side it opened on.
+       the panel follows by exactly as much, in the frame of that scroll (read in the scroll event, written before the
+       frame is drawn: no frame of lag, no flipping or clamping mid-scroll, so it never jumps). On resize it is placed again, on the side it opened on.
        A DOMRect anchor is a fixed point and has nothing to follow. */
     const follow = (to: Anchor) => {
       unfollow();
@@ -174,12 +174,17 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
          frame. Only the sides where the panel opened inside the area are clipped (a list that opens past a sidebar's
          edge keeps showing there), and a panel clipped away entirely is hidden (no invisible clicks). */
       const visibleBox = () => clippers.reduce((b, n) => { const r = n.getBoundingClientRect(); return { top: Math.max(b.top, r.top), left: Math.max(b.left, r.left), bottom: Math.min(b.bottom, r.bottom), right: Math.min(b.right, r.right) }; }, { top: -Infinity, left: -Infinity, bottom: Infinity, right: Infinity });
+      /* the panel's size, kept from when it was placed and from its own resizes: read in a scroll frame, after its
+         place was written, it forced a layout every frame (#57) */
+      let size = { w: p.offsetWidth, h: p.offsetHeight };
       /* the panel's own box (not its transformed one: it may be blooming), in viewport coordinates */
-      const box = () => { const left = parseFloat(p.style.left) - ox(), top = parseFloat(p.style.top) - oy(); return { left, top, right: left + p.offsetWidth, bottom: top + p.offsetHeight, width: p.offsetWidth, height: p.offsetHeight }; };
+      const boxAt = (left: number, top: number) => ({ left, top, right: left + size.w, bottom: top + size.h, width: size.w, height: size.h });
+      const box = () => boxAt(parseFloat(p.style.left) - ox(), parseFloat(p.style.top) - oy());
       const inside = (() => { if (!clippers.length) return null; const b = visibleBox(), q = box(); return { top: q.top >= b.top - 1, bottom: q.bottom <= b.bottom + 1, left: q.left >= b.left - 1, right: q.right <= b.right + 1 }; })();
-      const clip = () => {
+      /* clipped to the areas' visible box `b`, for the panel at `q` (both read before any write of this frame) */
+      const clip = (b?: { top: number; left: number; bottom: number; right: number } | null, q?: ReturnType<typeof boxAt>) => {
         if (!inside) return;
-        const b = visibleBox(), q = box();
+        b ??= visibleBox(); q ??= box();
         const t = inside.top ? Math.max(0, b.top - q.top) : 0, bo = inside.bottom ? Math.max(0, q.bottom - b.bottom) : 0;
         const l = inside.left ? Math.max(0, b.left - q.left) : 0, ri = inside.right ? Math.max(0, q.right - b.right) : 0;
         const gone = t + bo >= q.height - 0.5 || l + ri >= q.width - 0.5;
@@ -196,21 +201,41 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       const onScroll = (e: Event) => {
         const t = e.target;
         if (p.contains(t as Node)) return;   /* the panel's own list */
-        if (lost()) { close.current('anchor'); return; }
+        if (lost()) { pending = null; close.current('anchor'); return; }
         if (!target) return;
+        /* an anchor inside another anchored panel (a menu opened from a popover) moves when that panel is placed, in
+           its frame: it is measured there, after it */
+        if (inPanel) { pending = 'measure'; if (!raf) raf = requestAnimationFrame(write); return; }
+        /* read in the scroll event, written in the frame it belongs to (before it is drawn): written here, every read
+           after it in this event, the panel's own or another scroll handler's (an app bar's large title), forced a
+           layout, every frame (#57) */
+        pending = measure();
+        if (!raf) raf = requestAnimationFrame(write);
+      };
+      const measure = () => {
+        const r = boxOf(target!), x0 = ox(), y0 = oy(), b = inside ? visibleBox() : null;
         /* the page's scrolling usually moves neither (it carries both, or neither); a sticky bar not stuck yet moves */
-        const a = doc(boxOf(target));
-        const left = `${pos.x + a.left - base.left}px`, top = `${pos.y + a.top - base.top}px`;
-        if (left !== p.style.left || top !== p.style.top) { p.style.left = left; p.style.top = top; }
-        clip();
+        const x = pos.x + r.left + x0 - base.left, y = pos.y + r.top + y0 - base.top;
+        return { left: `${x}px`, top: `${y}px`, b, q: boxAt(x - x0, y - y0) };
+      };
+      const inPanel = !!target?.closest('.sg-portal--anchored');
+      let pending: ReturnType<typeof measure> | 'measure' | null = null, raf = 0;
+      const write = () => {
+        raf = 0;
+        const n = pending === 'measure' ? (target && !lost() ? measure() : null) : pending; pending = null;
+        if (!n) return;
+        if (n.left !== p.style.left || n.top !== p.style.top) { p.style.left = n.left; p.style.top = n.top; }
+        clip(n.b, n.q);
       };
       const replace = () => {
+        pending = null;   /* placed afresh: a scroll's pending place is stale */
         if (lost()) { close.current('anchor'); return; }
         if (!target) return;
         frame();
         const a = boxOf(target);
         if (opts.matchWidth) p.style.minWidth = `${a.width}px`;
-        const next = place({ width: p.offsetWidth, height: p.offsetHeight }, a, `${side}${align}` as Placement);
+        size = { w: p.offsetWidth, h: p.offsetHeight };
+        const next = place({ width: size.w, height: size.h }, a, `${side}${align}` as Placement);
         side = next.side; base = doc(a); pos = { x: next.x + ox(), y: next.y + oy() };
         p.style.left = `${pos.x}px`; p.style.top = `${pos.y}px`; p.dataset.side = next.side;
         p.style.transformOrigin = `${next.originX}px ${next.originY}px`;
@@ -220,11 +245,18 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
          it): its size (or its parent's, which it took space in) changes, and the panel closes then. Cheap: no
          observer of the page's mutations. */
       const ro = target && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { if (lost()) close.current('anchor'); }) : null;
+      /* the panel's size, kept current without reading it in a scroll frame (a list filtered as one types) */
+      const own = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
+        const w = p.offsetWidth, h = p.offsetHeight;
+        if (w === size.w && h === size.h) return;
+        size = { w, h }; clip();   /* clipped again for its new size: a scroll may have clipped it with the old one */
+      }) : null;
+      own?.observe(p, { box: 'border-box' });
       if (target) {
         ro?.observe(target); if (target.parentElement) ro?.observe(target.parentElement);
         window.addEventListener('scroll', onScroll, { capture: true, passive: true }); addEventListener('resize', replace);
       }
-      unfollow = () => { probe?.remove(); probe = null; ro?.disconnect(); window.removeEventListener('scroll', onScroll, true); removeEventListener('resize', replace); };
+      unfollow = () => { cancelAnimationFrame(raf); raf = 0; pending = null; probe?.remove(); probe = null; ro?.disconnect(); own?.disconnect(); window.removeEventListener('scroll', onScroll, true); removeEventListener('resize', replace); };
       anchored.current = { at: to, rect: new DOMRect(r.x, r.y, r.width, r.height), to: follow };   /* a copy: the app may change its DOMRect */
       return at;
     };
