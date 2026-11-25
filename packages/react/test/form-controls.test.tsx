@@ -8,12 +8,12 @@ import { useState } from 'react';
 import * as core from '@satin-glass/core';
 import {
   Select, DatePicker, DateRangePicker, TimePicker, Combobox, Slider, Stepper, Calendar, Wheel, Checkbox, Banner, FilterBar,
-  Pagination, TabBar, Tab, Tabs, Button, ThemeProvider, createTheme, RangeCalendar,
+  Pagination, TabBar, Tab, Tabs, Button, ThemeProvider, createTheme, RangeCalendar, Glass,
 } from '../src';
 
 vi.mock('@satin-glass/core', async (orig) => {
   const actual = await orig<typeof import('@satin-glass/core')>();
-  return { ...actual, createBridge: vi.fn(actual.createBridge), createOverflowStrip: vi.fn(actual.createOverflowStrip) };
+  return { ...actual, createBridge: vi.fn(actual.createBridge), createOverflowStrip: vi.fn(actual.createOverflowStrip), attachLight: vi.fn(actual.attachLight) };
 });
 
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
@@ -476,5 +476,24 @@ describe('useBridge', () => {
     rerender(tabs(false));
     expect(track.hasAttribute('data-sg-pressing') || track.hasAttribute('data-sg-dragging')).toBe(false);
     expect(track.querySelector('[data-hover]')).toBeNull();
+  });
+});
+
+describe('Glass light', () => {
+  it('its own option wins over the theme, both ways', () => {
+    const lit = vi.mocked(core.attachLight);
+    lit.mockClear();
+    render(<>
+      <ThemeProvider theme={createTheme({ light: false })}>
+        <Glass data-testid="own-on" light>a</Glass>
+        <Glass data-testid="theme-off">b</Glass>
+      </ThemeProvider>
+      <ThemeProvider theme={createTheme({ light: true })}>
+        <Glass data-testid="own-off" light={false}>c</Glass>
+        <Glass data-testid="theme-on">d</Glass>
+      </ThemeProvider>
+    </>);
+    const got = lit.mock.calls.map(([el]) => (el as HTMLElement).dataset.testid).sort();
+    expect(got).toEqual(['own-on', 'theme-on']);
   });
 });

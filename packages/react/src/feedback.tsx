@@ -3,7 +3,7 @@ import {
   cloneElement, isValidElement, useEffect, useRef, useState,
   type CSSProperties, type ReactElement, type ReactNode, type Ref,
 } from 'react';
-import { animate, fade, place, prefersReducedMotion, pushLayer, type Placement, timing } from '@satin-glass/core';
+import { animate, dirOf, fade, place, prefersReducedMotion, pushLayer, type Placement, timing } from '@satin-glass/core';
 import { cx, mergeRefs, useIsoLayoutEffect, usePresence, useStableId } from './utils';
 import { Portal } from './foundation';
 import { useMessages } from './messages';
@@ -56,7 +56,7 @@ export function Tooltip({ content, children, placement = 'top', delay = 500, dis
     const t = tip.current, a = trigger.current;
     if (!open || !mounted || !t || !a) return;   /* the tip mounts one render after open (it stays for its exit) */
     const r = a.getBoundingClientRect();
-    const at = place({ width: t.offsetWidth, height: t.offsetHeight }, r, placement, 6, 8);
+    const at = place({ width: t.offsetWidth, height: t.offsetHeight }, r, placement, 6, 8, dirOf(a));
     t.style.left = `${at.x + scrollX}px`; t.style.top = `${at.y + scrollY}px`; t.dataset.side = at.side;
     const off = { top: [0, 4], bottom: [0, -4], left: [4, 0], right: [-4, 0] }[at.side];
     t.getAnimations().forEach((x) => x.cancel());

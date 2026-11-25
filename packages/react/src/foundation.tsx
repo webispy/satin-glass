@@ -192,11 +192,14 @@ export type GlassOwnProps = {
   pressable?: boolean;
 };
 
-/** Hook form: registers an element with the pointer light. */
-export function useGlassLight(enabled = true) {
+/** Hook form: registers an element with the pointer light. `enabled` says whether the element takes the light at all
+    (a control that is glass only in one variant); `own` is the element's own option, which wins over the nearest
+    theme's `light` (the usual precedence: the component, then the ThemeProvider). */
+export function useGlassLight(enabled = true, own?: boolean) {
   const t = useTheme();
   const [el, setEl] = useState<HTMLElement | null>(null);
-  useEffect(() => (el && enabled && t.light ? attachLight(el) : undefined), [el, enabled, t.light]);
+  const on = enabled && (own ?? t.light);
+  useEffect(() => (el && on ? attachLight(el) : undefined), [el, on]);
   return setEl;
 }
 
@@ -209,7 +212,7 @@ export const Glass = forwardRef(function Glass<E extends ElementType = 'div'>(
   ref: React.Ref<HTMLElement>,
 ) {
   const Comp = (as ?? 'div') as ElementType;
-  const lightRef = useGlassLight(light ?? true);
+  const lightRef = useGlassLight(true, light);
   return (
     <Comp
       ref={mergeRefs(ref, lightRef)}

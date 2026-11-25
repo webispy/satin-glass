@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Spring, place, springEasing, springDuration, springs, springAt, motions, motionOf, prefersReducedMotion } from '../src';
 
 describe('springs', () => {
@@ -47,6 +47,15 @@ describe('place', () => {
     expect(r.x + 200).toBeLessThanOrEqual(vw - 12);
     expect(r.y).toBe(700 - 8 - 300);
   });
+  it('right to left, start and end above or below are the anchor\'s right and left edges', () => {
+    const a = new DOMRect(500, 100, 80, 40);
+    expect(place({ width: 200, height: 150 }, a, 'bottom-start', 8, 12, 'rtl').x).toBe(580 - 200);
+    expect(place({ width: 200, height: 150 }, a, 'bottom-end', 8, 12, 'rtl').x).toBe(500);
+    expect(place({ width: 200, height: 150 }, a, 'top-start', 8, 12, 'rtl').x).toBe(580 - 200);
+    /* beside the anchor, start and end are its top and bottom either way */
+    expect(place({ width: 200, height: 150 }, a, 'right-start', 8, 12, 'rtl').y).toBe(100);
+    expect(place({ width: 200, height: 150 }, a, 'bottom', 8, 12, 'rtl').x).toBe(540 - 100);
+  });
   it('sets the transform origin at the point nearest the anchor centre', () => {
     const r = place({ width: 200, height: 150 }, new DOMRect(100, 100, 80, 40), 'bottom-start');
     expect(r.originX).toBe(40); expect(r.originY).toBe(0);
@@ -58,6 +67,53 @@ describe('reduce motion scope', () => {
     document.body.innerHTML = '<div data-sg-reduce-motion="true"><span id="a"></span><div data-sg-reduce-motion="false"><span id="b"></span></div></div>';
     expect(prefersReducedMotion(document.getElementById('a'))).toBe(true);
     expect(prefersReducedMotion(document.getElementById('b'))).toBe(false);
+  });
+});
+
+describe('overflow strip reveal', () => {
+  const setup = async (dir: 'ltr' | 'rtl', scrollLeft: number, left: number) => {
+    const { createOverflowStrip } = await import('../src/overflow');
+    const strip = document.createElement('div'); strip.style.direction = dir;
+    const item = document.createElement('button'); strip.append(item); document.body.append(strip);
+    Object.defineProperty(strip, 'scrollWidth', { value: 800 }); Object.defineProperty(strip, 'clientWidth', { value: 300 });
+    Object.defineProperty(strip, 'scrollLeft', { value: scrollLeft, writable: true });
+    /* measured as laid out: the strip at x 100 on the page, the item `left` px into its scrolled content. Its
+       offsetLeft is from another box (a positioned wrapper) and must not be read */
+    strip.getBoundingClientRect = () => new DOMRect(100, 0, 300, 40);
+    item.getBoundingClientRect = () => new DOMRect(100 + left - scrollLeft, 0, 60, 40);
+    Object.defineProperty(item, 'offsetLeft', { value: 9999 });
+    const to = vi.fn(); strip.scrollTo = to as unknown as typeof strip.scrollTo;
+    return { s: createOverflowStrip(strip, () => [item]), item, to, strip };
+  };
+  it('left to right, scrolls an item past the end into view', async () => {
+    const { s, item, to, strip } = await setup('ltr', 0, 400);
+    s.reveal(item, false);
+    expect(to).toHaveBeenCalledWith({ left: 400 + 60 + 32 - 300, behavior: 'auto' });
+    s.destroy(); strip.remove();
+  });
+  it('right to left, scrolls to negative positions (the start is at 0, the end at -(scrollWidth - width))', async () => {
+    /* the view at the start: x 0–300; the item lies past the end, on the left, at -400 */
+    const { s, item, to, strip } = await setup('rtl', 0, -400);
+    s.reveal(item, false);
+    expect(to).toHaveBeenCalledWith({ left: -400 - 32, behavior: 'auto' });
+    s.destroy(); strip.remove();
+  });
+  it('under a scaled ancestor, measures in layout px (the rects are on screen)', async () => {
+    const { s, item, to, strip } = await setup('ltr', 0, 400);
+    /* scale(.5): the 300 px strip is 150 px on screen, and the item at content x 400 is at 200 on screen, 30 wide;
+       read as screen px it would look in view */
+    Object.defineProperty(strip, 'offsetWidth', { value: 300 });
+    strip.getBoundingClientRect = () => new DOMRect(100, 0, 150, 20);
+    item.getBoundingClientRect = () => new DOMRect(100 + 200, 0, 30, 20);
+    s.reveal(item, false);
+    expect(to).toHaveBeenCalledWith({ left: 400 + 60 + 32 - 300, behavior: 'auto' });
+    s.destroy(); strip.remove();
+  });
+  it('right to left, an item near the far end stops at the end, not at 0', async () => {
+    const { s, item, to, strip } = await setup('rtl', -100, -500);
+    s.reveal(item, false);
+    expect(to).toHaveBeenCalledWith({ left: -500, behavior: 'auto' });
+    s.destroy(); strip.remove();
   });
 });
 

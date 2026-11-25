@@ -1,6 +1,6 @@
 /* Internal overlay plumbing shared by the overlay components (not part of the public API). */
-import { useEffect, useRef } from 'react';
-import { bloomIn, bloomOut, canFocus, focusables, holdScrollLock, inLayerAbove, place, pushLayer, tabFrom, type Placement } from '@satin-glass/core';
+import { createContext, useContext, useEffect, useRef } from 'react';
+import { bloomIn, bloomOut, canFocus, dirOf, focusables, holdScrollLock, inLayerAbove, place, pushLayer, tabFrom, type Placement } from '@satin-glass/core';
 import { useIsoLayoutEffect, usePresence } from './utils';
 
 /** why an overlay asks to close; 'backdrop': a press outside it (or Tab leaving a menu or popover); 'anchor': the
@@ -73,8 +73,13 @@ const sameRect = (a: DOMRect, b: DOMRect) => a.x === b.x && a.y === b.y && a.wid
     by the browser's own Tab; Shift+Tab from a popover's first stop lands on the anchor.
     Scrolling never closes a panel: it stays glued to its anchor and moves with it, like part of the page —
     out of the window and back again. */
+/** Where a panel anchored to a bare DOMRect (a context menu at a point) takes its writing direction from: the element
+    that opened it. Internal; an element anchor is its own source. */
+export const AnchorSource = createContext<(() => Element | null) | null>(null);
+
 export function useAnchored(open: boolean, anchor: Anchor, placement: Placement, onClose: (r: CloseReason) => void, focusFirst: ((p: HTMLElement) => void) | null, opts: { matchWidth?: boolean; lockScroll?: boolean; tab?: 'close' | 'edge' } = {}) {
   const panel = useRef<HTMLDivElement>(null);
+  const source = useContext(AnchorSource), sourceRef = useRef(source); sourceRef.current = source;
   const release = useRelease();
   const close = useRef(onClose); close.current = onClose;
   const before = useRef<Element | null>(null);
@@ -133,6 +138,12 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       unfollow();
       el = to instanceof HTMLElement ? to : null;
       const r = rectOf(to);
+      /* the panel is portalled to the body, out of the anchor's writing direction: it takes the anchor's (or, for a
+         point, the opener's), so start and end are placed by it, its contents run in it, and a menu opened from an
+         item inside it finds it there */
+      const dirNow = () => dirOf(el ?? sourceRef.current?.() ?? p);
+      let dir = dirNow();
+      p.dir = dir;
       /* The panel's frame: the document, which the page's scrolling carries, or the view, for an anchor held still in
          it (in a fixed element, or a sticky one that sticks to the view rather than to an area around it). Decided
          again on resize (a breakpoint may make a bar sticky). Either way a page scroll that moves the anchor in the
@@ -163,7 +174,7 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       frame();
       const ox = () => (probe ? -probe.getBoundingClientRect().left : scrollX), oy = () => (probe ? -probe.getBoundingClientRect().top : scrollY);
       if (opts.matchWidth) p.style.minWidth = `${r.width}px`;
-      const at = place({ width: p.offsetWidth, height: p.offsetHeight }, r, placement);
+      const at = place({ width: p.offsetWidth, height: p.offsetHeight }, r, placement, undefined, undefined, dir);
       /* in the frame's coordinates (document ones: the panel is position: absolute in an anchored portal) */
       p.style.left = `${at.x + ox()}px`; p.style.top = `${at.y + oy()}px`; p.dataset.side = at.side;
       /* placed again (on another side, perhaps): it folds back towards the new anchor on closing */
@@ -232,10 +243,12 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
         if (lost()) { close.current('anchor'); return; }
         if (!target) return;
         frame();
+        /* the anchor's direction may have changed with the layout (a breakpoint) */
+        dir = dirNow(); p.dir = dir;
         const a = boxOf(target);
         if (opts.matchWidth) p.style.minWidth = `${a.width}px`;
         size = { w: p.offsetWidth, h: p.offsetHeight };
-        const next = place({ width: size.w, height: size.h }, a, `${side}${align}` as Placement);
+        const next = place({ width: size.w, height: size.h }, a, `${side}${align}` as Placement, undefined, undefined, dir);
         side = next.side; base = doc(a); pos = { x: next.x + ox(), y: next.y + oy() };
         p.style.left = `${pos.x}px`; p.style.top = `${pos.y}px`; p.dataset.side = next.side;
         p.style.transformOrigin = `${next.originX}px ${next.originY}px`;
@@ -249,7 +262,30 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       const own = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
         const w = p.offsetWidth, h = p.offsetHeight;
         if (w === size.w && h === size.h) return;
-        size = { w, h }; clip();   /* clipped again for its new size: a scroll may have clipped it with the old one */
+        /* the edge that meets the anchor stays where it is: a list that widens right to left keeps its right edge on
+           the anchor's, one above its anchor keeps its bottom there (placing it afresh would also pull a panel that
+           follows a scrolled-away anchor back into the view). While the anchor is in view the panel stays inside the
+           view's padding, as when it was placed: a menu widening right to left near the left edge stops at it. Then
+           clipped again for its new size: a scroll may have clipped it with the old one */
+        const a0 = (align.slice(1) || 'center') as 'start' | 'center' | 'end';
+        const h0 = dir === 'rtl' && a0 !== 'center' ? (a0 === 'start' ? 'end' : 'start') : a0;
+        const kx = side === 'left' ? 1 : side === 'right' ? 0 : h0 === 'end' ? 1 : h0 === 'center' ? 0.5 : 0;
+        const ky = side === 'top' ? 1 : side === 'bottom' ? 0 : a0 === 'end' ? 1 : a0 === 'center' ? 0.5 : 0;
+        let dx = (w - size.w) * kx, dy = (h - size.h) * ky;
+        size = { w, h };
+        const a = target ? target.getBoundingClientRect() : null;
+        if (a && a.bottom > 0 && a.right > 0 && a.top < innerHeight && a.left < innerWidth) {
+          const PAD = 12, x0 = parseFloat(p.style.left) - ox(), y0 = parseFloat(p.style.top) - oy();
+          const fit = (v: number, room: number, len: number) => Math.min(Math.max(PAD, v), room - PAD - len);
+          dx = x0 - fit(x0 - dx, innerWidth, w); dy = y0 - fit(y0 - dy, innerHeight, h);
+        }
+        if (dx || dy) {
+          pos = { x: pos.x - dx, y: pos.y - dy };
+          p.style.left = `${parseFloat(p.style.left) - dx}px`; p.style.top = `${parseFloat(p.style.top) - dy}px`;
+          const [gx, gy] = p.style.transformOrigin.split(' ').map(parseFloat);
+          if (Number.isFinite(gx) && Number.isFinite(gy)) p.style.transformOrigin = `${gx + dx}px ${gy + dy}px`;
+        }
+        clip();
       }) : null;
       own?.observe(p, { box: 'border-box' });
       if (target) {

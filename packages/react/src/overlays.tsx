@@ -8,7 +8,7 @@ import { Portal, glassClass, useGlassLight } from './foundation';
 import { Button } from './controls';
 import { CheckIcon, InfoIcon, SuccessIcon, AlertIcon } from './icons';
 
-import { useAnchored, useOverlayLifecycle, useRelease, type Anchor, type CloseReason } from './overlay-hooks';
+import { AnchorSource, useAnchored, useOverlayLifecycle, useRelease, type Anchor, type CloseReason } from './overlay-hooks';
 import { useMessages } from './messages';
 export type { CloseReason } from './overlay-hooks';
 
@@ -425,7 +425,10 @@ export function ContextMenu({ menu, children, previewSelector, 'aria-label': lab
           <div ref={lift} className="sg-lift" style={{ left: r.left, top: r.top, width: r.width, height: r.height }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: state.clone }} />
         </Portal>
       )}
-      <Menu open={state.open} onClose={close} anchor={anchorRect} placement="bottom-start" aria-label={label} lockScroll>{menu}</Menu>
+      {/* anchored to a point: the item that opened it gives the menu its writing direction */}
+      <AnchorSource.Provider value={target}>
+        <Menu open={state.open} onClose={close} anchor={anchorRect} placement="bottom-start" aria-label={label} lockScroll>{menu}</Menu>
+      </AnchorSource.Provider>
     </>
   );
 }

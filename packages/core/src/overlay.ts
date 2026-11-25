@@ -8,10 +8,16 @@ export type Align = 'start' | 'center' | 'end';
 export type Placement = Side | `${Side}-${Align}`;
 export type Placed = { x: number; y: number; side: Side; originX: number; originY: number };
 
-export function place(size: { width: number; height: number }, anchor: DOMRect, placement: Placement = 'bottom-start', offset = 8, pad = 12): Placed {
+/** The writing direction an element is laid out in: placements' start and end follow it. */
+export const dirOf = (el: Element | null | undefined): 'ltr' | 'rtl' => (el && getComputedStyle(el).direction === 'rtl' ? 'rtl' : 'ltr');
+
+/** `start` and `end` are logical: above or below the anchor, they are its left and right edges left to right, and its
+    right and left edges right to left (`dir`). Beside it (`left`, `right`), they are its top and bottom either way. */
+export function place(size: { width: number; height: number }, anchor: DOMRect, placement: Placement = 'bottom-start', offset = 8, pad = 12, dir: 'ltr' | 'rtl' = 'ltr'): Placed {
   const vw = innerWidth, vh = innerHeight;
   let [side, align] = placement.split('-') as [Side, Align | undefined];
   align = align ?? 'center';
+  if (dir === 'rtl' && (side === 'top' || side === 'bottom') && align !== 'center') align = align === 'start' ? 'end' : 'start';
   const room: Record<Side, number> = { top: anchor.top - pad, bottom: vh - anchor.bottom - pad, left: anchor.left - pad, right: vw - anchor.right - pad };
   const need = side === 'top' || side === 'bottom' ? size.height + offset : size.width + offset;
   const opposite: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };

@@ -86,9 +86,15 @@ export function createOverflowStrip(scroller: HTMLElement, items: () => HTMLElem
   /* a reveal asked for before the strip could overflow (e.g. on mount, before the stylesheet applied) waits for
      the first geometry change the observer reports */
   let pending: HTMLElement | null = null;
+  /* which way the fades run: the strip's own computed direction (CSS `direction` included, and a nearer dir="ltr"
+     inside a right-to-left page). Read when the fades change, when the first or last item changes and when one is
+     revealed, not on every refresh (it reads styles); a direction changed with none of those keeps the old fades
+     until then */
+  const markDir = () => scroller.toggleAttribute('data-sg-rtl', getComputedStyle(scroller).direction === 'rtl');
   const watch = () => {
     const list = items(), f = list[0] ?? null, l = list[list.length - 1] ?? null;
     if (f === first && l === last) return;
+    markDir();
     io?.disconnect(); first = f; last = l;
     scroller.removeAttribute('data-sg-more-start'); scroller.removeAttribute('data-sg-more-end');
     if (!f || !l || typeof IntersectionObserver === 'undefined') return;
@@ -97,6 +103,7 @@ export function createOverflowStrip(scroller: HTMLElement, items: () => HTMLElem
       if (io !== obs) return;
       for (const e of entries) {
         const hidden = e.intersectionRatio < 0.98;
+        markDir();
         if (e.target === first) scroller.toggleAttribute('data-sg-more-start', hidden);
         if (e.target === last) scroller.toggleAttribute('data-sg-more-end', hidden);
       }
@@ -113,12 +120,21 @@ export function createOverflowStrip(scroller: HTMLElement, items: () => HTMLElem
       const vw = scroller.clientWidth, sw = scroller.scrollWidth;
       if (sw <= vw + 1) return;
       pending = null;
-      const vl = scroller.scrollLeft, l = el.offsetLeft, r = l + el.offsetWidth;
+      /* physical, in the scroller's own scrolled frame (whatever the item's offsetParent): the view's left edge is
+         scrollLeft, and the item's edges are measured from the same origin. Right to left, scrollLeft runs from 0
+         (the start, at the right) down to -(scrollWidth - width). The rects are on screen, after any transform of
+         an ancestor (a strip in a sheet scaling in); scrollLeft and the widths are layout px: the rects are divided
+         by the strip's scale */
+      const vl = scroller.scrollLeft, box = scroller.getBoundingClientRect(), at = el.getBoundingClientRect();
+      const k = scroller.offsetWidth ? box.width / scroller.offsetWidth || 1 : 1;
+      const l = (at.left - box.left) / k - scroller.clientLeft + vl, r = l + at.width / k;
       const edge = Math.min(EDGE, Math.max(0, (vw - (r - l)) / 2));
       let to = vl;
       if (l - edge < vl) to = l - edge;
       else if (r + edge > vl + vw) to = r + edge - vw;
-      to = Math.max(0, Math.min(sw - vw, Math.round(to)));
+      markDir();
+      const [lo, hi] = scroller.hasAttribute('data-sg-rtl') ? [vw - sw, 0] : [0, sw - vw];
+      to = Math.max(lo, Math.min(hi, Math.round(to)));
       if (Math.abs(to - vl) < 1) return;
       scroller.scrollTo({ left: to, behavior: animate && !prefersReducedMotion(scroller) ? 'smooth' : 'auto' });
     },
@@ -126,7 +142,7 @@ export function createOverflowStrip(scroller: HTMLElement, items: () => HTMLElem
     destroy() {
       io?.disconnect(); io = null; pending = null; scroller.removeEventListener('wheel', wheel); glide(scroller).stop();
       /* the edge fades go with the strip (Tabs switched to wrapping pills keeps the same list) */
-      scroller.removeAttribute('data-sg-more-start'); scroller.removeAttribute('data-sg-more-end');
+      scroller.removeAttribute('data-sg-more-start'); scroller.removeAttribute('data-sg-more-end'); scroller.removeAttribute('data-sg-rtl');
     },
   };
   /* a mouse wheel (vertical only, no modifier) scrolls an overflowing strip sideways: down toward the end. It takes
