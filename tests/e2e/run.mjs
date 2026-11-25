@@ -41,9 +41,10 @@
 //   E2E_SHARD=2/4                     run only the 2nd of 4 shares of the suites (CI: one share per runner)
 //   E2E_LIST=1                        print the suites that would run, with their estimated time, and stop
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { availableParallelism } from 'node:os';
 import { setTimeout as wait } from 'node:timers/promises';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -187,10 +188,25 @@ if (process.env.E2E_LIST) {
   console.log(`${l.length} suites, ~${Math.round(l.reduce((t, x) => t + est(x), 0))}s of suite time`);
   process.exit(0);
 }
-const preview = spawn('npx', ['vite', 'preview', '--port', '4173', '--strictPort'], { cwd: new URL('../../apps/docs/', import.meta.url), stdio: 'ignore' });
+/* The docs build is served from this process by Vite's own preview(), which returns once its server listens: the
+   suites start then, not after a fixed pause (a busy CI runner took longer than 1.5 s, and the first suites of a
+   shard ended on a refused connection). A port already taken, by a preview left running or another worktree's run,
+   ends the run here rather than letting the suites test that server's build. */
+const DOCS = fileURLToPath(new URL('../../apps/docs/', import.meta.url));
+if (!existsSync(`${DOCS}dist/index.html`)) {
+  console.error('apps/docs/dist is not built: `pnpm e2e` builds it, or run `pnpm build && pnpm --filter docs build`');
+  process.exit(1);
+}
+const { preview: vitePreview } = await import(createRequire(`${DOCS}package.json`).resolve('vite'));
+let preview;
+try {
+  preview = await vitePreview({ root: DOCS, logLevel: 'warn', preview: { port: 4173, strictPort: true, open: false } });
+} catch (e) {
+  console.error(`could not serve the docs on :4173 (${e.message}): stop the server holding the port and run again`);
+  process.exit(1);
+}
 const t0 = performance.now();
 try {
-  await wait(1500);
   console.log(`engines: ${ENGINES.join(', ')}`);
   if (SHARD) console.log(`shard ${SHARD[1]} of ${SHARD[2]}: ${mine.size} suites`);
   await phase('1/3 checks', share(only(checks)), JOBS);
@@ -206,7 +222,7 @@ try {
       results.push([`${s[0]}${again ? ' (passed on the second run)' : ''}`, again]);
     }
   }
-} finally { preview.kill(); }
+} finally { await preview.close(); }
 console.log(`\n=== summary (${secs(t0)})`);
 /* failures last, so the end of the output names them (a `| tail` keeps them) */
 for (const [l, okk] of [...results.filter(([, o]) => o), ...results.filter(([, o]) => !o)]) console.log(`${okk ? 'PASS' : 'FAIL'}  ${l}`);
