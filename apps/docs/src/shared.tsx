@@ -58,8 +58,20 @@ function Contents({ root, tab }: { root: RefObject<HTMLDivElement | null>; tab: 
       setHeads(hs.map((h) => ({ id: h.id, text: (h.querySelector('code')?.textContent ?? h.textContent ?? '').trim(), sub: h.tagName === 'H3' })));
     };
     read();
-    const mo = new MutationObserver(read);
-    mo.observe(el, { childList: true, subtree: true });
+    /* read again only when a heading comes, goes or changes its text: a virtual table or a streaming log on the page
+       adds and removes nodes every frame, and reading each time rendered this list and its menu again in every frame
+       of a scroll */
+    const HEAD = 'section > h2, .api > h3', HOLDS = 'h2, h3, section, .api';
+    const touches = (n: Node) => n.nodeType === 1 && ((n as Element).matches(HOLDS) || (n as Element).querySelector(HOLDS) !== null);
+    const mo = new MutationObserver((records) => {
+      for (const r of records) {
+        /* inside a heading (its text, or a node in it), or a heading taken from its section */
+        const at = r.target.nodeType === 1 ? r.target as Element : r.target.parentElement;
+        if (at?.closest(HEAD) || at?.matches('section, .api')) return read();
+        for (const list of [r.addedNodes, r.removedNodes]) for (let i = 0; i < list.length; i++) if (touches(list[i])) return read();
+      }
+    });
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
     const onScroll = () => {
       const line = innerHeight / 3;
       let cur: string | null = null;
