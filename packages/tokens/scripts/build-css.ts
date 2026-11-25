@@ -25,7 +25,10 @@ const motionDecls = (m: (typeof motions)[keyof typeof motions]) => [
   ...SPRING_NAMES.flatMap((n) => [decl(`spring-${n}`, springEasing(m[n])), decl(`spring-${n}-duration`, `${springDuration(m[n])}ms`)]),
   decl('motion-squash', m.squash), decl('motion-gel', m.gel), decl('motion-lag', m.lag),
 ];
-root.push(...motionDecls(motions[defaultMotion]));
+/* each personality's values are kept apart (--_m-*), and the public --sg-spring-* are worked out from them at every
+   boundary below, where reduced motion may replace them */
+const priv = (lines: string[]) => lines.map((l) => l.replace('--sg-', '--_m-'));
+root.push(...priv(motionDecls(motions[defaultMotion])));
 for (const [name, [fs, lh, fw, tr]] of [...Object.entries(typography), ...Object.entries(controlText)]) {
   root.push(decl(`text-${name}-size`, `${fs}px`), decl(`text-${name}-line`, `${lh}px`), decl(`text-${name}-weight`, fw), decl(`text-${name}-tracking`, `${tr}em`));
 }
@@ -99,13 +102,20 @@ out.push('@media (prefers-contrast: more) {', '  :root:not([data-sg-theme]) {', 
 const flat = [decl('groove', 'var(--sg-fill-strong)'), decl('groove-soft', 'var(--sg-fill)'), decl('groove-hover', 'var(--sg-fill-hover)'), decl('depth-inset', '0 0 0 0 transparent')];
 out.push('[data-sg-theme][data-sg-grooves="flat"] {', ...flat, '}');
 out.push('[data-sg-theme$="-hc"][data-sg-grooves="flat"] {', decl('depth-inset', 'inset 0 0 0 1px var(--sg-separator-strong)'), '}');
-for (const [name, m] of Object.entries(motions)) out.push(`[data-sg-motion="${name}"] {`, ...motionDecls(m), '}');
-/* reduced motion wins over any personality inside it, up to the nearest area that says "false" (@scope's lower
-   bound): the nearest setting decides, as it does for the JS springs (prefersReducedMotion). ThemeProvider and
-   Portal write the resolved setting; the media query covers pages that use the CSS without them */
-const reduced = motionDecls(reducedMotion);
-out.push('@scope ([data-sg-reduce-motion="true"]) to ([data-sg-reduce-motion="false"]) {', '  :scope, [data-sg-motion] {', ...reduced.map((l) => '  ' + l), '  }', '}');
-out.push('@media (prefers-reduced-motion: reduce) {', '  @scope (:root) to ([data-sg-reduce-motion="false"]) {', '    :scope, [data-sg-motion] {', ...reduced.map((l) => '    ' + l), '    }', '  }', '}');
+for (const [name, m] of Object.entries(motions)) out.push(`[data-sg-motion="${name}"] {`, ...priv(motionDecls(m)), '}');
+/* Reduced motion: the nearest boundary decides, as it does for the JS springs (prefersReducedMotion) — an element
+   with data-sg-reduce-motion ("true", "false" or "system", written by ThemeProvider and Portal), else the page, which
+   follows the system setting. Each boundary sets the flag --_rm: empty when motion is reduced, the guaranteed-invalid
+   `initial` when not, so a value built on it ("var(--_rm) 0") is either that value or invalid. An inner "false"
+   resets it inside a "true", an inner "true" sets it again, at any depth (core's stylesheets build their reduced
+   values on the same flag). The springs are worked out again at every boundary of either kind: the reduced curve
+   where the flag is set, else the nearest personality's. */
+out.push(':root, [data-sg-reduce-motion="false"], [data-sg-reduce-motion="system"] {', '  --_rm: initial;', '}');
+out.push('@media (prefers-reduced-motion: reduce) {', '  :root:not([data-sg-reduce-motion]), [data-sg-reduce-motion="system"] {', '    --_rm: ;', '  }', '}');
+out.push('[data-sg-reduce-motion="true"] {', '  --_rm: ;', '}');
+const names = motionDecls(reducedMotion).map((l) => /--sg-([\w-]+):\s*(.*);/.exec(l)!);
+out.push(':root, [data-sg-reduce-motion] {', ...names.map(([, k, v]) => `  --_rmv-${k}: var(--_rm) ${v};`), '}');
+out.push(':root, [data-sg-motion], [data-sg-reduce-motion] {', ...names.map(([, k]) => `  --sg-${k}: var(--_rmv-${k}, var(--_m-${k}));`), '}');
 
 const block = (sel: string, t: ThemeName, scheme: 'light' | 'dark') =>
   [`${sel} {`, `  color-scheme: ${scheme};`, ...Object.entries(themes[t]).map(([k, v]) => decl(k, v)), '}'].join('\n');

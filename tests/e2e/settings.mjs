@@ -44,6 +44,62 @@ ok('a normal theme inside high contrast gets its 1 px glass rim back', r.innerRi
 ok('reduced motion: an inner "false" stops an outer "true" (calm springs inside)', r.rfSnappy !== r.rtSnappy, `outer ${r.rtSnappy}, inner ${r.rfSnappy}`);
 ok('reduced motion: sibling areas decide for themselves', r.s1 !== r.s2, `${r.s1} / ${r.s2}`);
 
+/* the nearest boundary decides at any depth, for the components' rules as for the springs: true → false → true, for
+   reduced motion (the pointer sheen is off, a pressed button does not press in) and reduced transparency (solid, no
+   blur), the class-only boundary included */
+const deep = async () => p.evaluate(() => {
+  const d = document.createElement('div');
+  d.innerHTML = `
+    <div data-sg-reduce-motion="true" data-sg-motion="lively"><i class="sg-glass m" id="m1"></i><b class="sg-spinner" id="sp1"></b>
+      <div data-sg-reduce-motion="false"><i class="sg-glass m" id="m2"></i><b class="sg-spinner" id="sp2"></b>
+        <div data-sg-reduce-motion="true"><i class="sg-glass m" id="m3"></i><b class="sg-spinner" id="sp3"></b></div>
+        <div data-sg-reduce-motion="system"><i class="sg-glass m" id="m4"></i></div></div></div>
+    <div data-sg-reduce-transparency="true"><i class="sg-glass t" id="t1"></i>
+      <div data-sg-reduce-transparency="false"><i class="sg-glass t" id="t2"></i>
+        <div class="sg-reduce-transparency"><i class="sg-glass t" id="t3"></i></div>
+        <div data-sg-reduce-transparency="system"><i class="sg-glass t" id="t4"></i></div></div></div>
+    <div data-sg-theme="light" data-sg-reduce-transparency="true"><i class="sg-glass sg-glass--clear" data-tint style="--sg-tint:#369" id="tc"></i>
+      <div class="sg-appbar" data-transparent-top data-at-top><div class="sg-glass sg-appbar__bar" id="bar"></div></div></div>
+    <i class="sg-glass m t" id="pg"></i>`;
+  document.body.appendChild(d);
+  const cs = (id, pe) => getComputedStyle(document.getElementById(id), pe);
+  const sheen = (id) => cs(id, '::after').display;
+  const blur = (id) => { const s = cs(id); return (s.backdropFilter || s.webkitBackdropFilter || 'none') !== 'none'; };
+  /* solid: the fill's alpha is 1 */
+  const solid = (id) => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = '#0000'; c.fillStyle = cs(id).backgroundColor; c.fillRect(0, 0, 1, 1); return c.getImageData(0, 0, 1, 1).data[3] === 255; };
+  /* luma and alpha of the same sample: a transparent background reads as black, so a dark plate needs both */
+  const luma = (id) => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = cs(id).backgroundColor; c.fillRect(0, 0, 1, 1); const [r, g, b, a] = c.getImageData(0, 0, 1, 1).data; return { l: Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b), a }; };
+  const out = {
+    sheen: ['m1', 'm2', 'm3', 'm4', 'pg'].map(sheen),
+    spin: ['sp1', 'sp2', 'sp3'].map((id) => cs(id).animationDuration),
+    blur: ['t1', 't2', 't3', 't4', 'pg'].map(blur),
+    solid: ['t1', 't2', 't3', 't4', 'pg'].map(solid),
+    clearTint: luma('tc'), bar: [solid('bar'), blur('bar')],
+  };
+  d.remove(); return out;
+});
+{
+  const v = await deep();
+  ok('reduced motion at any depth: true → false → true (sheen off, on, off; system and the page follow the system: on)', v.sheen.join() === 'none,block,none,block,block', v.sheen.join());
+  ok('reduced motion at any depth: the spinner turns slower only where reduced', v.spin.join() === '1.4s,0.8s,1.4s', v.spin.join());
+  ok('reduced transparency at any depth: true → false → class (no blur, blur, no blur; system and the page: blur)', v.blur.join() === 'false,true,false,true,true', v.blur.join());
+  ok('reduced transparency at any depth: solid where reduced, see-through elsewhere', v.solid.join() === 'true,false,true,false,false', v.solid.join());
+  ok('reduced transparency: tinted clear glass keeps its dark plate under white ink (light theme)', v.clearTint.l < 60 && v.clearTint.a === 255, `luma ${v.clearTint.l}, alpha ${v.clearTint.a}`);
+  ok('reduced transparency: an app bar see-through at the top is solid, with no blur', v.bar.join() === 'true,false', v.bar.join());
+  /* the system's reduced transparency (Chromium can emulate it): "system" and the page follow it, an explicit "false" does not */
+  if (engine === 'chromium') {
+    const cdp = await p.context().newCDPSession(p);
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }] });
+    const s = await deep();
+    ok('system reduced transparency: "system" and the page go solid, an explicit "false" stays glass', s.solid.join() === 'true,false,true,true,true', s.solid.join());
+    await cdp.send('Emulation.setEmulatedMedia', { features: [] });
+  }
+  await p.emulateMedia({ reducedMotion: 'reduce' });
+  const r = await deep();
+  ok('system reduced motion: an explicit "false" still keeps motion, "system" inside it and the page reduce', r.sheen.join() === 'none,block,none,none,none', r.sheen.join());
+  await p.emulateMedia({ reducedMotion: 'no-preference' });
+}
+
 /* the JS springs read the same nearest setting */
 const js = await p.evaluate(() => {
   const d = document.createElement('div');
@@ -115,7 +171,7 @@ await p.getByRole('button', { name: /길찾기/ }).first().click(); await p.wait
 const menu = await p.evaluate(() => {
   const m = document.querySelector('.sg-menu'); if (!m) return null;
   const cs = getComputedStyle(m), bg = cs.backgroundColor, a = bg.startsWith('rgba') ? +bg.split(',')[3].replace(')', '') : 1;
-  return { filter: cs.backdropFilter || cs.webkitBackdropFilter || 'none', alpha: a, portalRT: m.closest('.sg-portal')?.classList.contains('sg-reduce-transparency') };
+  return { filter: cs.backdropFilter || cs.webkitBackdropFilter || 'none', alpha: a, portalRT: m.closest('.sg-portal')?.getAttribute('data-sg-reduce-transparency') === 'true' };
 });
 ok('reduce transparency: an open menu is solid, with no backdrop blur', menu && menu.portalRT && (menu.filter === 'none' || menu.filter === '') && menu.alpha === 1, JSON.stringify(menu));
 

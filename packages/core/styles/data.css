@@ -59,6 +59,8 @@
 :where([data-sg-theme$="-hc"]) .sg-donut__track { stroke: var(--sg-separator-strong); }   /* :where: forced colours below win over it */
 @media (forced-colors: active) { .sg-donut__track { stroke: GrayText; } }
 .sg-donut__slice { transition: opacity var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+/* the active slice lifts outward along its middle (charts.tsx writes --_lift); not under reduced motion */
+.sg-donut__slice[data-active] { transform: var(--_rm-none, var(--_lift, none)); }
 .sg-donut__legend li { cursor: default; -webkit-tap-highlight-color: transparent; }
 .sg-donut__ring { -webkit-tap-highlight-color: transparent; }
 .sg-donut__center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
@@ -183,7 +185,7 @@
 .sg-table__empty { height: auto !important; padding: 0 !important; white-space: normal !important; }
 .sg-table__busy td { position: sticky; top: var(--_head-h, 0px) !important; z-index: 6 !important; height: 0; padding: 0 !important; overflow: visible !important; background: none !important; }
 .sg-table__busy span { position: absolute; left: 0; right: 0; top: -2px; height: 2px; overflow: hidden; background: var(--sg-accent-soft); }
-.sg-table__busy span::after { content: ""; position: absolute; inset: 0; width: 30%; background: var(--sg-accent); transform: translateX(-100%); animation: sg-indeterminate-busy 1.3s cubic-bezier(0.45, 0, 0.2, 1) infinite; }
+.sg-table__busy span::after { content: ""; position: absolute; inset: 0; width: var(--_rm-full, 30%); background: var(--sg-accent); transform: var(--_rm-none, translateX(-100%)); animation: var(--_rm-pulse, sg-indeterminate-busy 1.3s cubic-bezier(0.45, 0, 0.2, 1) infinite); }
 @keyframes sg-indeterminate-busy { to { transform: translateX(340%); } }   /* a 30 % bar from just off the left edge to just off the right */
 .sg-table tbody tr { transition: opacity var(--sg-duration-base) ease; }   /* on the base rule: rows fade back when loading ends, too */
 .sg-table--loading tbody tr:not([aria-hidden]) { opacity: 0.55; }

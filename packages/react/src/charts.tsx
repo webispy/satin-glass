@@ -936,7 +936,7 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
             {data.map((d, i) => (
               /* the active slice lifts outward along its middle — a transform, so it moves on a spring instead of jumping */
               <path key={d.label} className="sg-donut__slice" d={arc(i ? ang[i - 1] : 0, ang[i])} data-active={active === i || undefined}
-                style={{ fill: d.color ?? COLOR(i), opacity: active !== null && active !== i ? 0.45 : 1, transform: active === i ? (() => { const m = ((i ? ang[i - 1] : 0) + ang[i]) / 2; return `translate(${(Math.sin(m) * 4).toFixed(2)}px, ${(-Math.cos(m) * 4).toFixed(2)}px)`; })() : undefined }} />
+                style={{ fill: d.color ?? COLOR(i), opacity: active !== null && active !== i ? 0.45 : 1, ...(active === i ? { '--_lift': (() => { const m = ((i ? ang[i - 1] : 0) + ang[i]) / 2; return `translate(${(Math.sin(m) * 4).toFixed(2)}px, ${(-Math.cos(m) * 4).toFixed(2)}px)`; })() } as CSSProperties : {}) }} />
             ))}
           </g>
         </svg>

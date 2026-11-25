@@ -122,17 +122,19 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
   /* every setting is written resolved on the element, so the nearest provider decides for CSS, JS and portals alike.
      Reduced motion that follows the system is not known on the server, nor while hydrating: it is written "system"
      then, which neither forces motion on nor off, so the CSS follows the media query and prefersReducedMotion() asks
-     matchMedia (a chart's entrance in the hydration commit stays still in a reduced-motion browser) */
+     matchMedia (a chart's entrance in the hydration commit stays still in a reduced-motion browser). Reduced
+     transparency likewise: "system" until known, so the CSS follows its media query, and an explicit "false" stops an
+     outer "true" (the class stays for stylesheets that look for it) */
   const known = useClient();
   const reduceMotion = theme.reduceMotion === 'system' && !known ? 'system' : String(resolved.reducedMotion);
+  const reduceTransparency = theme.reduceTransparency === 'system' && !known ? 'system' : String(resolved.reducedTransparency);
   const motion = theme.motion ?? outerMotion;
-  const rt = resolved.reducedTransparency;
   return (
     <ThemeCtx.Provider value={resolved}>
      <ProvidedCtx.Provider value={true}>
      <MotionCtx.Provider value={motion}>
      <LangCtx.Provider value={lang}>
-      <div ref={ref} lang={theme.locale} data-sg-theme={resolved.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={reduceMotion} data-sg-grooves={resolved.grooves} className={cx('sg-root', rt && 'sg-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
+      <div ref={ref} lang={theme.locale} data-sg-theme={resolved.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={reduceMotion} data-sg-reduce-transparency={reduceTransparency} data-sg-grooves={resolved.grooves} className={cx('sg-root', reduceTransparency === 'true' && 'sg-reduce-transparency', className)} style={{ ...tokenStyle(theme.tokens), ...style }} {...rest}>
         {children}
       </div>
      </LangCtx.Provider>
@@ -155,7 +157,7 @@ export function Portal({ children, className }: { children: ReactNode; className
   const host = document.body;
   return createPortal(
     provided
-      ? <div className={cx('sg-root sg-portal', t.reducedTransparency && 'sg-reduce-transparency', className)} data-sg-theme={t.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(t.reducedMotion)} data-sg-grooves={t.grooves} lang={lang} style={tokenStyle(t.tokens)}>{children}</div>
+      ? <div className={cx('sg-root sg-portal', t.reducedTransparency && 'sg-reduce-transparency', className)} data-sg-theme={t.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(t.reducedMotion)} data-sg-reduce-transparency={String(t.reducedTransparency)} data-sg-grooves={t.grooves} lang={lang} style={tokenStyle(t.tokens)}>{children}</div>
       /* no theme above: the page's own settings and the system's apply (a default light, motion-on value would
          override prefers-color-scheme and prefers-reduced-motion) */
       : <div className={cx('sg-root sg-portal', className)} data-sg-motion={motion}>{children}</div>,

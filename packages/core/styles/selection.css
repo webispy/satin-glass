@@ -12,7 +12,7 @@
   transition: background-color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
 .sg-check--radio .sg-check__box { border-radius: 50%; }
-.sg-check:active:not([data-disabled="true"]) .sg-check__box { transform: scale(0.9); transition-duration: var(--sg-duration-instant); }
+.sg-check:active:not([data-disabled="true"]) .sg-check__box { transform: var(--_rm-none, scale(0.9)); transition-duration: var(--sg-duration-instant); }
 .sg-check__input:focus-visible + .sg-check__box { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-check__input:checked + .sg-check__box, .sg-check__input:indeterminate + .sg-check__box { background: var(--sg-accent); box-shadow: inset 0 0 0 1.5px var(--sg-accent); }
 .sg-check__input:checked:focus-visible + .sg-check__box, .sg-check__input:indeterminate:focus-visible + .sg-check__box { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
@@ -21,13 +21,16 @@
 /* the tick draws in on the snappy spring, and only on the way in: unchecked it fades with the box (undrawing on a
    spring outlived the box's colour and, past its end, wrapped the dash round into a speck), then resets unseen. The
    offsets sit 3 inside the dash (the tick is 13.2 long): the spring's overshoot never opens a gap at its start */
-.sg-check__tick { stroke-dasharray: 20; stroke-dashoffset: 23; opacity: 0; transition: opacity var(--sg-duration-fast) ease, stroke-dashoffset 0s linear var(--sg-duration-fast); }
-.sg-check__dash { opacity: 0; transform: scaleX(0.3); transform-origin: center; transition: opacity var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
-.sg-check__input:checked:not(:indeterminate) + .sg-check__box .sg-check__tick { stroke-dashoffset: 3; opacity: 1; transition: opacity 0s, stroke-dashoffset var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+/* reduced motion: the tick is not drawn, the dot does not grow, nothing presses in; each fades (the fade is worked out
+   here, so a duration set nearer than the boundary is followed) */
+.sg-check__tick, .sg-check__dash, .sg-check__dot, .sg-choice__check { --_rm-fade-t: var(--_rm) opacity var(--sg-duration-fast) ease; }
+.sg-check__tick { stroke-dasharray: 20; stroke-dashoffset: var(--_rm-zero, 23); opacity: 0; transition: var(--_rm-fade-t, opacity var(--sg-duration-fast) ease, stroke-dashoffset 0s linear var(--sg-duration-fast)); }
+.sg-check__dash { opacity: 0; transform: var(--_rm-none, scaleX(0.3)); transform-origin: center; transition: var(--_rm-fade-t, opacity var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy)); }
+.sg-check__input:checked:not(:indeterminate) + .sg-check__box .sg-check__tick { stroke-dashoffset: var(--_rm-zero, 3); opacity: 1; transition: var(--_rm-fade-t, opacity 0s, stroke-dashoffset var(--sg-spring-snappy-duration) var(--sg-spring-snappy)); }
 .sg-check__input:indeterminate + .sg-check__box .sg-check__dash { opacity: 1; transform: none; }
 /* radio: an inner dot grows on the snappy spring */
-.sg-check__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sg-on-accent); transform: scale(0); transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
-.sg-check__input:checked + .sg-check__box .sg-check__dot { transform: scale(1); }
+.sg-check__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sg-on-accent); transform: var(--_rm-none, scale(0)); opacity: var(--_rm-zero, 1); transition: var(--_rm-fade-t, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy)); }
+.sg-check__input:checked + .sg-check__box .sg-check__dot { transform: var(--_rm-none, scale(1)); opacity: 1; }
 .sg-check__text { display: flex; flex-direction: column; min-width: 0; font-size: 16px; line-height: 24px; }
 .sg-check__desc { font-size: 13px; line-height: 18px; color: var(--sg-label-secondary); }
 .sg-radio-group { display: flex; flex-direction: column; gap: 12px; border: 0; margin: 0; padding: 0; min-width: 0; }
@@ -36,7 +39,7 @@
 
 /* ---- Choice list: rows of a grouped list that are the options; a checkmark marks the chosen ---- */
 .sg-choice { justify-content: space-between; }
-.sg-choice__check { flex: none; width: 20px; height: 20px; color: var(--sg-accent-text); opacity: 0; transform: scale(0.5); transition: opacity var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
+.sg-choice__check { flex: none; width: 20px; height: 20px; color: var(--sg-accent-text); opacity: 0; transform: var(--_rm-none, scale(0.5)); transition: var(--_rm-fade-t, opacity var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy)); }
 .sg-choice[aria-checked="true"] .sg-choice__check { opacity: 1; transform: none; }
 .sg-choice[aria-disabled="true"] { opacity: 0.42; cursor: default; }
 @media (hover: hover) { .sg-choice[aria-disabled="true"]:hover { background: none; } }
@@ -131,7 +134,7 @@
   transition: background-color var(--sg-duration-instant) ease, color var(--sg-duration-instant) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
 @media (hover: hover) { .sg-day:hover:not([aria-disabled="true"]):not([aria-pressed="true"]) { background: var(--sg-fill); } }
-.sg-day:active:not([aria-disabled="true"]) { transform: scale(0.9); }
+.sg-day:active:not([aria-disabled="true"]) { transform: var(--_rm-none, scale(0.9)); }
 .sg-day:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-day[data-outside] { color: var(--sg-label-tertiary); }
 .sg-day[data-today] { color: var(--sg-accent-text); font-weight: 750; }
@@ -164,21 +167,6 @@
 .sg-select__meta { flex: none; color: var(--sg-label-secondary); font-size: 0.92em; }
 .sg-datepicker-panel { position: absolute; left: 0; top: 0; padding: 12px; --_radius: var(--sg-radius-xl); outline: none; }
 
-/* reduced motion: no tick drawing, no dot growth, no press-in; changes fade */
-[data-sg-reduce-motion="true"] .sg-check__box, [data-sg-reduce-motion="true"] .sg-day { transform: none !important; }
-[data-sg-reduce-motion="true"] .sg-check__tick { transition: opacity var(--sg-duration-fast) ease; stroke-dashoffset: 0; opacity: 0; }
-[data-sg-reduce-motion="true"] .sg-check__input:checked:not(:indeterminate) + .sg-check__box .sg-check__tick { opacity: 1; }
-[data-sg-reduce-motion="true"] .sg-check__dot, [data-sg-reduce-motion="true"] .sg-check__dash, [data-sg-reduce-motion="true"] .sg-choice__check { transform: none; transition: opacity var(--sg-duration-fast) ease; }
-[data-sg-reduce-motion="true"] .sg-check__dot { opacity: 0; }
-[data-sg-reduce-motion="true"] .sg-check__input:checked + .sg-check__box .sg-check__dot { opacity: 1; }
-@media (prefers-reduced-motion: reduce) {
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__box, .sg-root:not([data-sg-reduce-motion="false"]) .sg-day { transform: none !important; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__tick { transition: opacity var(--sg-duration-fast) ease; stroke-dashoffset: 0; opacity: 0; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__input:checked:not(:indeterminate) + .sg-check__box .sg-check__tick { opacity: 1; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__dot, .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__dash, .sg-root:not([data-sg-reduce-motion="false"]) .sg-choice__check { transform: none; transition: opacity var(--sg-duration-fast) ease; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__dot { opacity: 0; }
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-check__input:checked + .sg-check__box .sg-check__dot { opacity: 1; }
-}
 /* increased contrast: boxes get a solid 2 px border */
 [data-sg-theme$="-hc"] .sg-check__box { box-shadow: inset 0 0 0 2px var(--sg-label); }
 
@@ -248,7 +236,7 @@
   transition: background-color var(--sg-duration-instant) ease, color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy);
 }
 @media (hover: hover) { .sg-calendar__chip:hover:not([aria-expanded="true"]) { background: var(--sg-fill-hover); } }
-.sg-calendar__chip:active { transform: scale(0.965); }
+.sg-calendar__chip:active { transform: var(--_rm-none, scale(0.965)); }
 .sg-calendar__chip:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-calendar__chip[aria-expanded="true"] { background: var(--sg-glass-selection); color: var(--sg-accent-on-soft); box-shadow: inset 0 0 0 0.5px color-mix(in oklab, var(--sg-accent) 34%, transparent); }
 [data-sg-theme$="-hc"] .sg-calendar__chip[aria-expanded="true"] { box-shadow: var(--sg-selection-outline); }   /* the tint gives way to the outline */
@@ -278,10 +266,10 @@
 .sg-calendar__cell::before {
   content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--sg-accent);
   background-image: var(--sg-depth-sheen-accent); box-shadow: var(--sg-depth-raised-accent);
-  opacity: 0; transform: scale(0.4); transition: transform var(--sg-spring-pop-duration) var(--sg-spring-pop), opacity var(--sg-duration-fast) ease;
+  opacity: 0; transform: var(--_rm-none, scale(0.4)); transition: transform var(--sg-spring-pop-duration) var(--sg-spring-pop), opacity var(--sg-duration-fast) ease;
 }
 @media (hover: hover) { .sg-calendar__cell:hover:not([aria-disabled="true"]):not([aria-selected="true"]) { background: var(--sg-fill-hover); } }
-.sg-calendar__cell:active:not([aria-disabled="true"]) { transform: scale(0.965); }
+.sg-calendar__cell:active:not([aria-disabled="true"]) { transform: var(--_rm-none, scale(0.965)); }
 .sg-calendar__cell:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-calendar__cell[data-current] { color: var(--sg-accent-text); box-shadow: inset 0 0 0 1.5px var(--sg-accent-text); }
 .sg-calendar__cell[aria-selected="true"] { color: var(--sg-on-accent); font-weight: 700; }
@@ -289,10 +277,6 @@
 .sg-calendar__cell[aria-disabled="true"] { color: var(--sg-label-disabled); cursor: default; }
 [data-sg-theme$="-hc"] .sg-calendar__cell { box-shadow: inset 0 0 0 1px var(--sg-label-secondary); }
 [data-sg-theme$="-hc"] .sg-calendar__cell[data-current] { box-shadow: inset 0 0 0 1.5px var(--sg-label); }   /* the current month / year keeps its stronger outline */
-[data-sg-reduce-motion="true"] .sg-calendar__cell, [data-sg-reduce-motion="true"] .sg-calendar__cell::before, [data-sg-reduce-motion="true"] .sg-calendar__chip { transform: none !important; }
-@media (prefers-reduced-motion: reduce) {
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-calendar__cell, .sg-root:not([data-sg-reduce-motion="false"]) .sg-calendar__cell::before, .sg-root:not([data-sg-reduce-motion="false"]) .sg-calendar__chip { transform: none !important; }
-}
 .sg-calendar__wheels { height: calc(28px + 6 * var(--_cell)); display: flex; align-items: center; }
 .sg-calendar__wheels > .sg-wheels { flex: 1; --_rows: 7; }
 .sg-calendar__nav[hidden] { display: flex !important; visibility: hidden; }
@@ -312,21 +296,16 @@
 .sg-weekday::before {
   content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--sg-accent);
   background-image: var(--sg-depth-sheen-accent); box-shadow: var(--sg-depth-raised-accent);
-  opacity: 0; transform: scale(0.4); transition: transform var(--sg-spring-pop-duration) var(--sg-spring-pop), opacity var(--sg-duration-fast) ease;
+  opacity: 0; transform: var(--_rm-none, scale(0.4)); transition: transform var(--sg-spring-pop-duration) var(--sg-spring-pop), opacity var(--sg-duration-fast) ease;
 }
 .sg-weekday[aria-pressed="true"] { color: var(--sg-on-accent); }
 .sg-weekday[aria-pressed="true"]::before { opacity: 1; transform: none; }
 @media (hover: hover) { .sg-weekday:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--sg-fill-hover); } }
-.sg-weekday:active:not(:disabled) { transform: scale(0.9); }
+.sg-weekday:active:not(:disabled) { transform: var(--_rm-none, scale(0.9)); }
 .sg-weekday:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-weekday:disabled { opacity: 0.45; cursor: default; }
 [data-sg-theme$="-hc"] .sg-weekday:not([aria-pressed="true"]) { box-shadow: inset 0 0 0 1.5px var(--sg-label); }
 [data-sg-theme$="-hc"] .sg-weekday:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
-/* reduced motion: no fill growth, no press-in; the fill fades */
-[data-sg-reduce-motion="true"] .sg-weekday, [data-sg-reduce-motion="true"] .sg-weekday::before { transform: none !important; }
-@media (prefers-reduced-motion: reduce) {
-  .sg-root:not([data-sg-reduce-motion="false"]) .sg-weekday, .sg-root:not([data-sg-reduce-motion="false"]) .sg-weekday::before { transform: none !important; }
-}
 
 /* ---------------------------------------------------------------- Select: filter pill */
 .sg-select--filter { width: auto; height: var(--sg-size-control-sm); padding: 0 10px 0 14px; gap: 6px; border-radius: var(--sg-radius-full); background: none; box-shadow: inset 0 0 0 1px var(--sg-separator-strong); font-size: 14px; }

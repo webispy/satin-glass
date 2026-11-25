@@ -184,7 +184,9 @@ body { background: var(--sg-bg); }
 /* content arriving after a skeleton */
 .fade-in { animation: docs-fade-in 220ms ease backwards; }
 @keyframes docs-fade-in { from { opacity: 0; } }
-[data-sg-reduce-motion="true"] .fade-in { animation-duration: 140ms; }
+/* the nearest boundary decides (design language §4): --_rm is empty where motion is reduced, so the short
+   duration applies there and is invalid elsewhere */
+.fade-in { --_fade-in: var(--_rm) 140ms; animation-duration: var(--_fade-in, 220ms); }
 
 /* data pages: a selection bar above a table, a pager below, a list of small marks, a term with an explanation */
 .table-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-height: 36px; color: var(--sg-label-secondary); }

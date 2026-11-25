@@ -18,10 +18,10 @@
     -webkit-backdrop-filter var(--sg-duration-slow) var(--sg-ease-out), backdrop-filter var(--sg-duration-slow) var(--sg-ease-out);
 }
 .sg-appbar__bar::before { transition: opacity var(--sg-duration-slow) var(--sg-ease-out); }
-:where(.sg-appbar[data-transparent-top][data-at-top]) > .sg-appbar__bar {   /* low specificity: reduce transparency (solid glass) wins */
-  background-color: rgba(255, 255, 255, 0); --sg-bar-depth: rgba(255, 255, 255, 0);
+:where(.sg-appbar[data-transparent-top][data-at-top]) > .sg-appbar__bar {   /* reduced transparency: solid glass even here */
+  background-color: var(--_rt-fill, rgba(255, 255, 255, 0)); --sg-bar-depth: rgba(255, 255, 255, 0);
   box-shadow: 0 0 0 rgba(0, 0, 0, 0), 0 0 0 rgba(0, 0, 0, 0);
-  -webkit-backdrop-filter: blur(0px) saturate(1); backdrop-filter: blur(0px) saturate(1);
+  -webkit-backdrop-filter: var(--_rt-none, blur(0px) saturate(1)); backdrop-filter: var(--_rt-none, blur(0px) saturate(1));
 }
 :where(.sg-appbar[data-transparent-top][data-at-top]) > .sg-appbar__bar::before, :where(.sg-appbar[data-transparent-top][data-at-top]) > .sg-appbar__bar::after { opacity: 0; }
 .sg-appbar--attached { padding: 0; }
@@ -33,18 +33,16 @@
 /* large title hand-over, driven by scroll (--_p: 0 = large title fully below the bar, 1 = fully under it).
    Scroll-linked, so no transitions: it is exactly where the finger puts it. The small title rises 6 px into place
    over the second half; the large title fades as it slides under the glass. */
+/* reduced motion: the hand-over is a cross-fade only (no rising) */
 .sg-appbar[data-large="true"] .sg-appbar__title {
   opacity: clamp(0, calc((var(--_p, 0) - 0.45) / 0.55), 1);
-  transform: translateY(calc((1 - clamp(0, calc((var(--_p, 0) - 0.45) / 0.55), 1)) * 6px));
+  transform: var(--_rm-none, translateY(calc((1 - clamp(0, calc((var(--_p, 0) - 0.45) / 0.55), 1)) * 6px)));
 }
 .sg-appbar__large {
   margin: 12px 0 4px; padding: 0 calc(var(--sg-size-bar-inset) + 8px); font-size: var(--sg-text-title-1-size); line-height: var(--sg-text-title-1-line); font-weight: 750; letter-spacing: -0.02em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   opacity: clamp(0, calc(1 - var(--_p, 0) * 1.6), 1);   /* gone by the time the small title is half in: no double title */
 }
-/* reduced motion: the hand-over is a cross-fade only (no rising) */
-[data-sg-reduce-motion="true"] .sg-appbar[data-large="true"] .sg-appbar__title { transform: none; }
-@media (prefers-reduced-motion: reduce) { .sg-root:not([data-sg-reduce-motion="false"]) .sg-appbar[data-large="true"] .sg-appbar__title { transform: none; } }
 
 /* scroll edge: a cheap colour fade (no blur) under floating bars, so content never fights with the glass */
 .sg-scroll-fade { position: sticky; z-index: calc(var(--sg-z-bar) - 1); left: 0; right: 0; height: 28px; pointer-events: none; background: linear-gradient(var(--_dir, 180deg), var(--sg-bg), color-mix(in srgb, var(--sg-bg) 0%, transparent)); opacity: var(--_o, 1); transition: opacity var(--sg-duration-base) ease; }
@@ -94,7 +92,7 @@
 /* the icon carries its badge, so both press together and the badge is placed against the glyph, not the cell */
 .sg-tabbar__icon { position: relative; display: inline-flex; transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
 .sg-tabbar__item[aria-selected="true"], .sg-tabbar__item[data-hover] { color: var(--sg-accent-text); }
-.sg-tabbar__item:active .sg-tabbar__icon { transform: scale(0.9); }
+.sg-tabbar__item:active .sg-tabbar__icon { transform: var(--_rm-none, scale(0.9)); }
 .sg-tabbar__item:focus-visible { outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); }
 /* badge: sits on the glyph's top-right corner, only its inner edge overlapping (4 px), with a ring that
    cuts it out of the glyph; tab-bar size (16 px, 10 px digits) so it reads as a mark, not a button */
@@ -109,7 +107,7 @@
   transition: background-color var(--sg-duration-instant) ease;
 }
 @media (hover: hover) { .sg-tabbar__action:hover { background: var(--sg-fill); } }
-.sg-tabbar__action:active .sg-tabbar__icon { transform: scale(0.9); }
+.sg-tabbar__action:active .sg-tabbar__icon { transform: var(--_rm-none, scale(0.9)); }
 .sg-tabbar__action:focus-visible { outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); }
 .sg-tabbar__action svg { width: 24px; height: 24px; }
 /* compact: icons only */
@@ -240,7 +238,7 @@ a.sg-crumb__item:active, button.sg-crumb__item:active { background: var(--sg-fil
   transition: transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy), background-color var(--sg-duration-fast) ease, color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease;   /* the bead's shadow fades with its colour instead of popping */
 }
 /* pressed in like a button (0.965) */
-.sg-pagination__page:active, .sg-pagination__step:active:not(:disabled) { transform: scale(0.965); transition-duration: var(--sg-duration-instant), var(--sg-duration-fast), var(--sg-duration-fast), var(--sg-duration-fast); transition-timing-function: var(--sg-ease-out); }
+.sg-pagination__page:active, .sg-pagination__step:active:not(:disabled) { transform: var(--_rm-none, scale(0.965)); transition-duration: var(--sg-duration-instant), var(--sg-duration-fast), var(--sg-duration-fast), var(--sg-duration-fast); transition-timing-function: var(--sg-ease-out); }
 .sg-pagination__step svg { width: 18px; height: 18px; }
 @media (hover: hover) { .sg-pagination__page:hover, .sg-pagination__step:hover:not(:disabled) { background: var(--sg-fill); } }
 .sg-pagination__page:active, .sg-pagination__step:active:not(:disabled) { background: var(--sg-fill-strong); }   /* touch: the press is the feedback */
