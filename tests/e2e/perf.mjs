@@ -29,19 +29,41 @@ await p.addInitScript(() => {
   try { new PerformanceObserver((l) => { window.__long += l.getEntries().length; }).observe({ type: 'longtask', buffered: true }); } catch {}
 });
 let failed = 0;
+/* a press at the control's centre, the point found before measuring. Playwright's locator.click() scrolls, checks the
+   target and marks it with events inside the page first: work that ran in the measured window at CPU ×4 and counted
+   as the library's (a first tab bar tap dropped 1–3 frames that way, and none when pressed at its point) */
+async function tap(loc) {
+  await loc.scrollIntoViewIfNeeded();
+  const b = await loc.boundingBox();
+  return () => p.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+}
+/* checked after a sample, outside its window: a press that missed would otherwise measure an idle page and pass */
+async function expect(what, ok) {
+  if (await ok()) return;
+  failed++;
+  console.log(`FAIL ${what}: the press did not take effect, so the sample before it measured nothing`);
+}
+const on = (loc, attr = 'aria-selected') => async () => (await loc.getAttribute(attr)) === 'true';
+const shown = (loc) => async () => (await loc.count()) > 0;
 async function measure(name, act, ms = 700) {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
-  const run = p.evaluate((ms) => new Promise((res) => {
-    const d = []; let last = performance.now(); const t0 = last, l0 = window.__long;
-    const f = (now) => { d.push(now - last); last = now; if (now - t0 < ms) requestAnimationFrame(f); else res({ d, long: window.__long - l0 }); };
-    requestAnimationFrame(f);
+  /* the sampler's first frame is the baseline; the input goes in after it, and every interval from there counts, the
+     input's own handling included (sent before the first frame, it fell in an interval that was left out) */
+  await p.evaluate((ms) => new Promise((ready) => {
+    const s = window.__sample = { d: [] }, l0 = window.__long;
+    s.result = new Promise((done) => {
+      requestAnimationFrame((t0) => {
+        let last = t0;
+        const f = (now) => { s.d.push(now - last); last = now; if (now - t0 < ms) requestAnimationFrame(f); else done({ d: s.d, long: window.__long - l0 }); };
+        requestAnimationFrame(f);
+        ready();
+      });
+    });
   }), ms);
   await act();
-  const r = await run;
+  const r = await p.evaluate(() => window.__sample.result);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
-  /* the first delta runs from the evaluate to the first frame (throttling has just been switched on): not a frame of
-     the interaction, so it is left out of the drops as it is of max and p90 */
-  const d = r.d.slice(1).sort((a, b) => a - b), max = d[d.length - 1], p90 = d[Math.floor(d.length * 0.9)], drops = d.filter((x) => x > 25).length;
+  const d = [...r.d].sort((a, b) => a - b), max = d[d.length - 1], p90 = d[Math.floor(d.length * 0.9)], drops = d.filter((x) => x > 25).length;
   const info = name.includes('informational');
   const pass = info || (drops <= 1 && r.long === 0);
   if (!pass) failed++;
@@ -49,22 +71,32 @@ async function measure(name, act, ms = 700) {
 }
 await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(800);
 const tabs = p.locator('.sg-tabbar__item');
-await measure('tab bar: tap travel (droplet)', () => tabs.nth(3).click({ noWaitAfter: true }));
-await measure('tab bar: tap back', () => tabs.nth(0).click({ noWaitAfter: true }));
+await measure('tab bar: tap travel (droplet)', await tap(tabs.nth(3)));
+await expect('tab bar: tap travel', on(tabs.nth(3)));
+await measure('tab bar: tap back', await tap(tabs.nth(0)));
+await expect('tab bar: tap back', on(tabs.nth(0)));
 await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(800);
-await measure('menu bloom', () => p.getByRole('button', { name: '길찾기' }).click({ noWaitAfter: true }));
+await measure('menu bloom', await tap(p.getByRole('button', { name: '길찾기' })));
+await expect('menu bloom', shown(p.getByRole('menu')));
 await p.keyboard.press('Escape'); await p.waitForTimeout(500);
-await measure('dialog open', () => p.getByRole('button', { name: '장소 삭제…' }).click({ noWaitAfter: true }));
+await measure('dialog open', await tap(p.getByRole('button', { name: '장소 삭제…' })));
+await expect('dialog open', shown(p.getByRole('alertdialog').or(p.getByRole('dialog'))));
 await p.keyboard.press('Escape'); await p.waitForTimeout(500);
 /* the very first overlay of a page pays a one-off cost (code paths and styles warm up); measured separately */
-await measure('sheet open (cold, first ever) — informational', () => p.getByRole('button', { name: '장소 편집' }).click({ noWaitAfter: true }), 900).catch(() => {});
+await measure('sheet open (cold, first ever) — informational', await tap(p.getByRole('button', { name: '장소 편집' })), 900).catch(() => {});
+await expect('sheet open (cold)', shown(p.getByRole('dialog')));
 await p.keyboard.press('Escape'); await p.waitForTimeout(700);
-await measure('sheet open', () => p.getByRole('button', { name: '장소 편집' }).click({ noWaitAfter: true }), 900);
+await measure('sheet open', await tap(p.getByRole('button', { name: '장소 편집' })), 900);
+await expect('sheet open', shown(p.getByRole('dialog')));
 await p.keyboard.press('Escape'); await p.waitForTimeout(600);
-await measure('toast in', () => p.getByRole('button', { name: '토스트', exact: true }).click({ noWaitAfter: true }));
+await measure('toast in', await tap(p.getByRole('button', { name: '토스트', exact: true })));
+await expect('toast in', shown(p.locator('.sg-toast')));
 await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(800);
-await measure('switch toggle', () => p.locator('.docs__page .sg-switch').first().click({ noWaitAfter: true }), 500);
-await measure('segmented tap', () => p.locator('.docs__page .sg-segmented').first().locator('.sg-segmented__item').nth(3).click({ noWaitAfter: true }));
+{ const sw = p.locator('.docs__page .sg-switch').first(), was = await sw.getAttribute('aria-checked');
+  await measure('switch toggle', await tap(sw), 500);
+  await expect('switch toggle', async () => (await sw.getAttribute('aria-checked')) !== was); }
+await measure('segmented tap', await tap(p.locator('.docs__page .sg-segmented').first().locator('.sg-segmented__item').nth(3)));
+await expect('segmented tap', on(p.locator('.docs__page .sg-segmented').first().locator('.sg-segmented__item').nth(3), 'aria-checked'));
 await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
 {
   const sl = p.locator('.grid--3 > *').nth(2).locator('.sg-slider'), b = await sl.boundingBox();
@@ -73,7 +105,8 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
     for (let k = 1; k <= 20; k++) await p.mouse.move(b.x + 8 + (b.width - 16) * (k % 10) / 10, b.y + b.height / 2);
     await p.mouse.up();
   }, 900);
-  await measure('segmented tap, playful squash', () => p.locator('.grid--3 > *').nth(2).locator('.sg-segmented__item').nth(2).click({ noWaitAfter: true }));
+  await measure('segmented tap, playful squash', await tap(p.locator('.grid--3 > *').nth(2).locator('.sg-segmented__item').nth(2)));
+  await expect('segmented tap, playful squash', on(p.locator('.grid--3 > *').nth(2).locator('.sg-segmented__item').nth(2), 'aria-checked'));
 }
 await p.goto('http://localhost:4173/#/material'); await p.waitForTimeout(800);
 await measure('pointer light over 5 glass cards', async () => { for (let i = 0; i < 30; i++) await p.mouse.move(350 + i * 25, 380 + (i % 5) * 20); }, 900);
@@ -86,8 +119,12 @@ await p.goto('http://localhost:4173/#/display'); await p.waitForTimeout(900);
   await sc.evaluate((e) => { e.scrollTop = 0; });
   await p.getByRole('button', { name: '다시 불러오기' }).click(); await p.waitForTimeout(100);
   await measure('skeleton light sweep (11 placeholders)', async () => {}, 900);
+  /* the reload above ends after 1.8 s and replaces the placeholders above the thumbnail: wait for it (its button is
+     disabled while it loads), so the layout does not move under the press or into the viewer's sample */
+  await p.waitForFunction(() => [...document.querySelectorAll('[data-demo=skeleton] button')].some((b) => !b.disabled), null, { timeout: 5000 });
   const th = p.locator('[data-demo=media] button').nth(1); await th.scrollIntoViewIfNeeded(); await p.waitForTimeout(300);
-  await measure('media viewer opens out of its thumbnail', () => th.click({ noWaitAfter: true }), 800);
+  await measure('media viewer opens out of its thumbnail', await tap(th), 800);
+  await expect('media viewer opens', shown(p.locator('.sg-media')));
   await p.waitForTimeout(300);
   await measure('media viewer: page to the next photo', () => p.keyboard.press('ArrowRight'), 800);
   await measure('media viewer: swipe with the finger (mouse)', async () => { await p.mouse.move(900, 450); await p.mouse.down(); for (let i = 1; i <= 10; i++) await p.mouse.move(900 - i * 40, 452); await p.mouse.up(); }, 900);
@@ -102,13 +139,16 @@ await p.goto('http://localhost:4173/#/dashboard'); await p.waitForTimeout(1500);
   const plot = p.locator('.sg-chart__plot').first(), pr = await plot.boundingBox();
   await measure('line chart: crosshair following the pointer', async () => { for (let i = 0; i < 30; i++) await p.mouse.move(pr.x + 40 + i * (pr.width - 80) / 30, pr.y + pr.height / 2); }, 900);
   /* the first time a page lays out this content it pays a one-off cost (text shaping, styles); measured apart */
-  await measure('tabs: first switch to products (cold, first ever) — informational', () => p.getByRole('tab', { name: '상품' }).click({ noWaitAfter: true }), 1000);
+  await measure('tabs: first switch to products (cold, first ever) — informational', await tap(p.getByRole('tab', { name: '상품' })), 1000);
+  await expect('tabs: first switch to products', on(p.getByRole('tab', { name: '상품' })));
   await p.waitForTimeout(1200);
   const t = p.locator('[data-demo=dashboard] .sg-table').first(); await t.scrollIntoViewIfNeeded(); const r = await t.boundingBox();
   await measure('data table (24 rows × 8 columns, groups, pinned, sticky): scroll both ways', async () => { await p.mouse.move(r.x + r.width / 2, r.y + 200); for (let i = 0; i < 10; i++) { await p.mouse.wheel(i % 2 ? 60 : 0, 50); } }, 800);
   await p.getByRole('tab', { name: '개요' }).click(); await p.waitForTimeout(1200);
-  await measure('tabs: switch to products (warm)', () => p.getByRole('tab', { name: '상품' }).click({ noWaitAfter: true }), 1000);
-  await measure('tabs: back to the overview (4 stats, 3 charts, sparklines, a table mount)', () => p.getByRole('tab', { name: '개요' }).click({ noWaitAfter: true }), 1000);
+  await measure('tabs: switch to products (warm)', await tap(p.getByRole('tab', { name: '상품' })), 1000);
+  await expect('tabs: switch to products', on(p.getByRole('tab', { name: '상품' })));
+  await measure('tabs: back to the overview (4 stats, 3 charts, sparklines, a table mount)', await tap(p.getByRole('tab', { name: '개요' })), 1000);
+  await expect('tabs: back to the overview', on(p.getByRole('tab', { name: '개요' })));
 }
 await p.goto('http://localhost:4173/#/table'); await p.waitForTimeout(1200);
 {
