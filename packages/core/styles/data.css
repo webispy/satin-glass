@@ -149,7 +149,7 @@
 .sg-table tbody tr { height: var(--_rh); }
 .sg-table tbody th, .sg-table tbody td { --_bg: var(--_row-bg); --_hline: var(--sg-separator); font-weight: inherit; color: var(--sg-label); }
 .sg-table tbody th { font-weight: 500; }
-@media (hover: hover) { .sg-table tbody tr:hover > * { --_row-bg: color-mix(in srgb, var(--sg-surface), var(--sg-label) 3.5%); } }
+@media (hover: hover) { .sg-table tbody tr:where(:not(.sg-table__fling)):hover > * { --_row-bg: color-mix(in srgb, var(--sg-surface), var(--sg-label) 3.5%); } }
 .sg-table tbody tr[aria-selected="true"] > * { --_row-bg: color-mix(in srgb, var(--sg-surface), var(--sg-accent) 9%); }
 .sg-table tbody tr[data-muted] > * { color: var(--sg-label-tertiary); }
 .sg-table__row--action { cursor: pointer; }
@@ -185,6 +185,20 @@
 .sg-table .sg-skeleton { max-width: 100%; }
 .sg-table [data-align="end"] .sg-skeleton { margin-left: auto; }
 .sg-table [data-align="center"] .sg-skeleton { margin-inline: auto; }
+/* a fling's placeholder (DataTable): one tall row whose cells repeat, every row height, the row's line and a still bar
+   where the text runs, on the table's own ground; no light sweep, as it shows only while the rows fly past */
+.sg-table .sg-table__fling > td { padding: 0;
+  --_fl-line: repeating-linear-gradient(transparent 0 calc(var(--_rh) - 1px), var(--_hline) calc(var(--_rh) - 1px) var(--_rh));
+  background: var(--_fl-line), linear-gradient(var(--_vline), var(--_vline)) right top / 1px 100% no-repeat, var(--_bg); }
+.sg-table .sg-table__fling > td[data-bar] {
+  background: linear-gradient(transparent calc(50% - 5px), var(--sg-fill) calc(50% - 5px) calc(50% + 5px), transparent calc(50% + 5px)) left 12px top 0 / calc((100% - 24px) * 0.6) var(--_rh) repeat-y,
+    var(--_fl-line), linear-gradient(var(--_vline), var(--_vline)) right top / 1px 100% no-repeat, var(--_bg); }
+.sg-table .sg-table__fling > td[data-bar="end"] { background-position: right 12px top 0, 0 0, right top, 0 0; }
+.sg-table .sg-table__fling > td[data-bar="center"] { background-position: center top, 0 0, right top, 0 0; }
+.sg-table:dir(rtl) .sg-table__fling > td { background-position: 0 0, left top, 0 0; }
+.sg-table:dir(rtl) .sg-table__fling > td[data-bar] { background-position: right 12px top 0, 0 0, left top, 0 0; }
+.sg-table:dir(rtl) .sg-table__fling > td[data-bar="end"] { background-position: left 12px top 0, 0 0, left top, 0 0; }
+.sg-table:dir(rtl) .sg-table__fling > td[data-bar="center"] { background-position: center top, 0 0, left top, 0 0; }
 /* virtualised rows are one fixed height (the spacers assume it): taller cell content is cut, not allowed to grow the row */
 .sg-table--virtual tbody td > *, .sg-table--virtual tbody th > * { max-height: var(--_rh); overflow: hidden; }
 /* cell helpers (named after the shared tones): a number with its meter, a value that stands out, values that need

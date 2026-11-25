@@ -273,10 +273,11 @@ describe('DataTable', () => {
     for (const y of [1000, 2000, 44 * 100]) { box.scrollTop = y; fireEvent.scroll(box); }
     expect(frames).toHaveLength(1);
     expect(container.querySelector('[data-r="100"]')).toBeNull();
-    /* rendered in the frame itself, before anything after it (the browser's drawing of that frame) */
+    /* rendered in the frame itself, before anything after it: the window starts at row 100 less the overscan (a jump
+       this long draws the fling's placeholder in place of the rows) */
     act(() => {
       const run = frames; frames = []; run.forEach((f) => f(performance.now()));
-      expect(container.querySelector('[data-r="100"]')).not.toBeNull();
+      expect(box.querySelector<HTMLElement>('tbody:last-of-type > tr[aria-hidden="true"]')!.style.height).toBe(`${(99 - 8) * 44}px`);
     });
   });
   it('a frame that comes after the row height changed measures with the new height', () => {
@@ -291,6 +292,84 @@ describe('DataTable', () => {
     act(() => { observers.forEach((f) => f()); });   /* measured again now, with what the table has now */
     expect(spacer()).toBe(after);
   });
+  describe('a fling', () => {
+    const frame = () => act(() => { const run = frames; frames = []; run.forEach((f) => f(performance.now())); });
+    const table = (n = 200) => <DataTable<R> aria-label="t" rows={many(n)} columns={cols} rowKey={(r) => r.id} maxHeight={300} />;
+    const to = (box: HTMLElement, y: number) => { box.scrollTop = y; fireEvent.scroll(box); frame(); };
+    const flingRow = (c: HTMLElement) => c.querySelector('.sg-table__fling');
+    afterEach(() => { vi.useRealTimers(); });
+    it('draws a still placeholder while each frame scrolls half the box or more, and the rows 120 ms after the last', () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      layout();
+      const { container } = render(table());
+      const box = container.querySelector<HTMLElement>('.sg-table')!;
+      to(box, 44 * 50);
+      expect(flingRow(container)).not.toBeNull();
+      expect(container.querySelector('tbody:last-of-type [data-r]')).toBeNull();
+      act(() => { vi.advanceTimersByTime(100); });
+      to(box, 44 * 100);   /* still flying, 100 ms on: the wait starts again */
+      act(() => { vi.advanceTimersByTime(100); });
+      expect(flingRow(container)).not.toBeNull();
+      act(() => { vi.advanceTimersByTime(20); });
+      expect(flingRow(container)).toBeNull();
+      expect(container.querySelector('[data-r="100"]')).not.toBeNull();
+    });
+    it('keeps the rows for a frame that scrolls less than half the box, wherever the table is', () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      layout();
+      const { container } = render(table());
+      const box = container.querySelector<HTMLElement>('.sg-table')!;
+      to(box, 4400); act(() => { vi.advanceTimersByTime(200); });
+      to(box, 4400 + 149);
+      expect(flingRow(container)).toBeNull();
+      to(box, 4400 + 149 + 150);
+      expect(flingRow(container)).not.toBeNull();
+    });
+    it('keeps the rows while the grid holds the focus', () => {
+      layout();
+      const { container } = render(table());
+      const box = container.querySelector<HTMLElement>('.sg-table')!;
+      act(() => { container.querySelector<HTMLElement>('[data-r="3"][data-c="0"]')!.focus(); });
+      to(box, 44 * 100);
+      expect(flingRow(container)).toBeNull();
+      expect(box.contains(document.activeElement)).toBe(true);
+    });
+    it('ends at once when focus comes in or the table is pressed, and the keys work from there', () => {
+      layout();
+      const { container } = render(table());
+      const box = container.querySelector<HTMLElement>('.sg-table')!;
+      to(box, 44 * 100);
+      expect(flingRow(container)).not.toBeNull();
+      /* Tab lands on the stop the header holds meanwhile */
+      act(() => { container.querySelector<HTMLElement>('[tabindex="0"]')!.focus(); });
+      expect(flingRow(container)).toBeNull();
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
+      expect(document.activeElement!.getAttribute('data-r')).not.toBe('-1');
+      act(() => { (document.activeElement as HTMLElement).blur(); });
+      to(box, 44 * 150);
+      fireEvent.pointerDown(box);
+      expect(flingRow(container)).toBeNull();
+    });
+    it('shows the rows of a table that stops being virtual', () => {
+      layout();
+      const { container, rerender } = render(table());
+      const box = container.querySelector<HTMLElement>('.sg-table')!;
+      to(box, 44 * 100);
+      expect(flingRow(container)).not.toBeNull();
+      rerender(table(20));
+      expect(flingRow(container)).toBeNull();
+      expect(container.querySelectorAll('tbody:last-of-type tr[aria-rowindex]')).toHaveLength(20);
+    });
+    it('keeps the rows in forced colours, which would take the placeholder away', () => {
+      layout();
+      vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('forced-colors'), media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
+      const { container } = render(table());
+      const box = container.querySelector<HTMLElement>('.sg-table')!;
+      to(box, 44 * 100);
+      expect(flingRow(container)).toBeNull();
+      vi.unstubAllGlobals();
+    });
+  });
   it('does not take the focus back once it has left the grid', async () => {
     layout();
     const { container } = render(<><DataTable<R> aria-label="t" rows={many(200)} columns={cols} rowKey={(r) => r.id} maxHeight={300} /><button>elsewhere</button></>);
@@ -303,6 +382,8 @@ describe('DataTable', () => {
     scrolled(box);
     expect(document.activeElement).toBe(document.body);
     expect(container.querySelectorAll('[tabindex="0"]')).toHaveLength(1);
+    /* the rows fly past as a placeholder: the column's header holds the stop meanwhile */
+    expect(container.querySelector('[tabindex="0"]')!.getAttribute('data-r')).toBe('-1');
   });
   it('a resize measures the window with the current row height', () => {
     const { container, rerender } = render(<DataTable<R> aria-label="t" rows={many(200)} columns={cols} rowKey={(r) => r.id} maxHeight={300} />);
