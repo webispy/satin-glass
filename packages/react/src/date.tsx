@@ -8,7 +8,7 @@
    RangeCalendar and DateRangePicker (0.4) choose a start and an end on the same grid: the days between are joined
    by one band whose head rides a spring: it follows the pointer while the end is chosen and runs a touch past the
    end when it is picked, which the end day then takes (stretch, then stick). */
-import { createContext, forwardRef, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { createContext, forwardRef, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { Spring, animate, fade, loop, motionFor, prefersReducedMotion, type Placement, timing } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { Portal, glassClass, useGlassLight } from './foundation';
@@ -22,23 +22,36 @@ import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
    A date is a local day: the helpers build it at local noon. Given an instant instead (new Date('…T00:00:00Z')), it
    falls on different days in different time zones, so a server and the browser hydrating its HTML disagree. */
 const ymd = (d: Date) => d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-const day = (y: number, m: number, d: number) => new Date(y, m, d, 12);   /* noon: immune to DST edges */
-const startOfMonth = (d: Date) => day(d.getFullYear(), d.getMonth(), 1);
+/* noon: immune to DST edges. setFullYear, not the constructor, which reads years 0–99 as 1900–1999 */
+const day = (y: number, m: number, d: number) => { const t = new Date(2000, 0, 1, 12); t.setFullYear(y, m, d); return t; };
 const addDays = (d: Date, n: number) => day(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const addMonths = (d: Date, n: number) => {
   const t = day(d.getFullYear(), d.getMonth() + n, 1);
   const last = day(t.getFullYear(), t.getMonth() + 1, 0).getDate();
   return day(t.getFullYear(), t.getMonth(), Math.min(d.getDate(), last));
 };
+const monthKey = (d: Date) => d.getFullYear() * 12 + d.getMonth();
+const fromMonthKey = (k: number) => day(Math.floor(k / 12), k - Math.floor(k / 12) * 12, 1);
 const sameMonth = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
-export const toISODate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+/* yyyy-mm-dd, the year in four digits (0042); outside 0–9999, a sign and six digits (-000001: 2 BC), as in ISO 8601's
+   expanded years and in what Date parses */
+const isoYear = (y: number) => (y >= 0 && y <= 9999 ? String(y).padStart(4, '0') : `${y < 0 ? '-' : '+'}${String(Math.abs(y)).padStart(6, '0')}`);
+export const toISODate = (d: Date) => `${isoYear(d.getFullYear())}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /* ---------------------------------------------------------------- today
    The browser's own day, in its own time zone, moving on at midnight while a calendar is shown. Unknown (null) on the
    server and while the browser hydrates what the server wrote: a server in another time zone, or one that rendered
    just before midnight, would mark another day than the reader's, so the marker (and a month taken from today) waits
    for the render right after hydration. A browser rendering on its own knows it from the first render. */
+/* one watch for every calendar and picker on the page: a timer and a listener, however many subscribe */
+const dayWatchers = new Set<() => void>();
+let unwatchDay: (() => void) | null = null;
 function watchDay(on: () => void) {
+  dayWatchers.add(on);
+  unwatchDay ??= startDayWatch(() => dayWatchers.forEach((f) => f()));
+  return () => { dayWatchers.delete(on); if (!dayWatchers.size && unwatchDay) { unwatchDay(); unwatchDay = null; } };
+}
+function startDayWatch(on: () => void) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   /* look at the day, and wait for the next local midnight from now: the time zone may have changed since (a laptop
      that travelled), so the wait is measured again each time, never kept from before */
@@ -66,7 +79,19 @@ function useToday(): Today | null {
   const s = useSyncExternalStore(watchDay, todayNow, () => null);
   return useMemo(() => (s === null ? null : { key: +s.slice(0, 8), zone: s.slice(9) }), [s]);
 }
-const fromKey = (k: number) => day(Math.floor(k / 10000), Math.floor(k / 100) % 100 - 1, k % 100);
+/* the year is floored and the rest taken from it, so a year before 1 (ymd -8885 is 15 November, year -1) decodes too */
+const fromKey = (k: number) => { const y = Math.floor(k / 10000), r = k - y * 10000; return day(y, Math.floor(r / 100) - 1, r % 100); };
+const keyOf = (d: Date | null) => (d ? ymd(d) : null);
+const dayOf = (k: number | null) => (k === null ? null : fromKey(k));
+/* A day a component keeps itself (a value it was not given, a range's first day, the day under the pointer) is held
+   as its civil key, like the month on show: kept as a Date, it would read as another day after a change of time
+   zone. A value the app passes is the app's: it is read in the zone in force (pass local dates, see the README). */
+function useDayValue(value: Date | null | undefined, defaultValue: Date | null, onChange?: (d: Date | null) => void): [Date | null, (d: Date | null) => void] {
+  const [k, setK] = useControllable<number | null>(value === undefined ? undefined : keyOf(value), keyOf(defaultValue));
+  const cb = useRef(onChange);
+  cb.current = onChange;
+  return [value === undefined ? dayOf(k) : value, useCallback((d: Date | null) => { setK(keyOf(d)); cb.current?.(d); }, [setK])];
+}
 /* stands in for the month while it is not known yet; never shown (the grid is drawn empty) */
 const NO_MONTH = day(2000, 0, 1);
 
@@ -104,20 +129,27 @@ export type CalendarProps = {
 export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calendar(
   { value, defaultValue = null, onChange, min, max, isDateDisabled, locale: localeProp, weekStartsOn = 0, autoFocus, defaultMonth, openTo = 'day', monthPicker = 'grid', className, style, 'aria-label': ariaLabel }, ref,
 ) {
-  const [v, setV] = useControllable<Date | null>(value, defaultValue, onChange as (d: Date | null) => void);
+  const [v, setV] = useDayValue(value, defaultValue, onChange as (d: Date | null) => void);
   const range = useContext(RangeContext);
   /* while the end is being chosen, the day under the pointer (or keyboard focus) previews it */
-  const [hover, setHover] = useState<Date | null>(null);
+  const [hoverK, setHoverK] = useState<number | null>(null);
+  const hover = dayOf(hoverK), setHover = (d: Date | null) => setHoverK(keyOf(d));
   /* today's civil day (yyyymmdd) and its year and month: compared as numbers, never through a Date kept from an
      earlier render (see useToday) */
   const now = useToday(), todayK = now ? now.key : null;
   const todayY = todayK === null ? null : Math.floor(todayK / 10000), todayM = todayK === null ? -1 : Math.floor(todayK / 100) % 100 - 1;
   const initial = v ?? (defaultMonth ? day(defaultMonth.getFullYear(), defaultMonth.getMonth(), 1) : todayK === null ? null : fromKey(todayK));
-  const [focused, setFocused] = useState<Date>(() => initial ?? NO_MONTH);
+  /* The focused day and the month on show are kept as civil numbers (yyyymmdd; year × 12 + month), like today, and
+     made into Dates (local noon) in each render: a Date kept from before is an instant, and after a change of time
+     zone it can read as the day before (the 1st, local noon in Auckland, is the 31st in Honolulu). */
+  const [focusedK, setFocusedK] = useState<number>(() => ymd(initial ?? NO_MONTH));
+  const focused = fromKey(focusedK);
+  const setFocused = (u: Date | ((f: Date) => Date)) => setFocusedK((k) => ymd(typeof u === 'function' ? u(fromKey(k)) : u));
   /* null: no value, no defaultMonth and today not known yet (hydrating); the month comes with today, below */
-  const [shownMonth, setMonth] = useState<Date | null>(() => initial && startOfMonth(initial));
-  const pending = shownMonth === null, month = shownMonth ?? NO_MONTH;
-  useIsoLayoutEffect(() => { if (pending && todayK !== null) { const d = fromKey(todayK); setMonth(startOfMonth(d)); setFocused(d); } }, [todayK]);
+  const [shownM, setShownM] = useState<number | null>(() => initial && monthKey(initial));
+  const setMonth = (d: Date) => setShownM(monthKey(d));
+  const pending = shownM === null, month = shownM === null ? NO_MONTH : fromMonthKey(shownM);
+  useIsoLayoutEffect(() => { if (pending && todayK !== null) { const d = fromKey(todayK); setMonth(d); setFocused(d); } }, [todayK]);
   const wheels = monthPicker === 'wheel';
   const [view, setView] = useState<'day' | 'month' | 'year'>(wheels && openTo === 'year' ? 'month' : openTo);
   const root = useRef<HTMLDivElement>(null), body = useRef<HTMLTableSectionElement>(null);
@@ -170,18 +202,18 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
 
   const disabled = (d: Date) => (min && ymd(d) < ymd(min)) || (max && ymd(d) > ymd(max)) || Boolean(isDateDisabled?.(d));
   /* follow an outside change of value to its month */
-  useEffect(() => { if (v && (pending || !sameMonth(v, month))) { setMonth(startOfMonth(v)); setFocused(v); } }, [v ? ymd(v) : 0]);
+  useEffect(() => { if (v && (pending || !sameMonth(v, month))) { setMonth(v); setFocused(v); } }, [v ? ymd(v) : 0]);
 
   /* the month changed: slide the grid in from the side it came from */
-  const last = useRef(shownMonth);
+  const last = useRef(shownM);
   useIsoLayoutEffect(() => {
-    const prev = last.current; last.current = shownMonth;
+    const prev = last.current; last.current = shownM;
     const b = body.current;
-    if (!b || !prev || !shownMonth || sameMonth(prev, shownMonth)) return;   /* the first month known does not slide in */
-    const dir = ymd(month) > ymd(prev) ? 1 : -1;
+    if (!b || prev === null || shownM === null || prev === shownM) return;   /* the first month known does not slide in */
+    const dir = shownM > prev ? 1 : -1;
     if (prefersReducedMotion(b)) { fade(b, 0, 1, timing.appear); return; }
     animate(b, [{ transform: `translateX(${dir * 28}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }], 'smooth');
-  }, [month]);
+  }, [shownM]);
 
   /* keep keyboard focus on the focused day after it moves (only when focus is already in the grid) */
   const keyboard = useRef(false);
@@ -189,14 +221,17 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     if (!keyboard.current) return;
     keyboard.current = false;
     root.current?.querySelector<HTMLButtonElement>(`[data-date="${toISODate(focused)}"]`)?.focus();
-  }, [focused]);
+  }, [focusedK]);
+  /* a flag no move took (going back to the same month's days) is dropped once the render is in, so a later move made
+     elsewhere (the next month's button) does not pull focus into the grid */
+  useEffect(() => { keyboard.current = false; });
   useEffect(() => {
     if (autoFocus && !pending) root.current?.querySelector<HTMLButtonElement>(`[data-date="${toISODate(focused)}"]`)?.focus({ preventScroll: true });
   }, [pending]);
 
   const goMonth = (n: number) => {
     const m = addMonths(month, n);
-    setMonth(startOfMonth(m));
+    setMonth(m);
     setFocused((f) => (sameMonth(f, m) ? f : addMonths(f, n)));
   };
   const focusDay = (d0: Date) => {
@@ -204,9 +239,11 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     let d = d0;
     if (min && ymd(d) < ymd(min)) d = day(min.getFullYear(), min.getMonth(), min.getDate());
     if (max && ymd(d) > ymd(max)) d = day(max.getFullYear(), max.getMonth(), max.getDate());
+    /* a press that stays put (at min or max) changes no state, so nothing would take the flag: leave it down */
+    if (ymd(d) === focusedK) return;
     keyboard.current = true;
     setFocused(d);
-    if (!sameMonth(d, month)) setMonth(startOfMonth(d));
+    if (!sameMonth(d, month)) setMonth(d);
   };
   const onKey = (e: KeyboardEvent<HTMLTableElement>) => {
     const k = e.key;
@@ -398,7 +435,7 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
                         aria-pressed={sel} aria-current={isToday ? 'date' : undefined} aria-disabled={off || undefined}
                         data-today={isToday ? '' : undefined} data-outside={out ? '' : undefined}
                         onMouseEnter={range ? () => setHover(d) : undefined} onFocus={range ? () => setHover(d) : undefined}
-                        onClick={() => { if (off) return; setFocused(d); if (out) setMonth(startOfMonth(d)); if (range) range.pick(d); else setV(d); }}>
+                        onClick={() => { if (off) return; setFocused(d); if (out) setMonth(d); if (range) range.pick(d); else setV(d); }}>
                         {range && sel && <span className="sg-day__face" aria-hidden="true" />}
                         {/* the number is what you see; the full date is what a screen reader hears */}
                         <span aria-hidden="true">{d.getDate()}</span>
@@ -572,8 +609,9 @@ const CalendarIcon = () => (
 export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(function DatePicker(
   { value, defaultValue = null, onChange, placeholder, label, helperText, error, disabled, name, format, placement = 'bottom-start', locale: localeProp, id, className, style, 'aria-label': ariaLabel, ...calendar }, ref,
 ) {
-  const [v, setV] = useControllable<Date | null>(value, defaultValue, onChange as (d: Date | null) => void);
+  const [v, setV] = useDayValue(value, defaultValue, onChange as (d: Date | null) => void);
   const [open, setOpen] = useState(false);
+  useToday();   /* written again when the time zone changes, so the field shows the day the form submits */
   const trigger = useRef<HTMLButtonElement>(null);
   const auto = useStableId('sg-date');
   const fid = id ?? auto;
@@ -617,7 +655,19 @@ export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(functio
 
 /* ================================================================================================ ranges (0.4) */
 export type DateRange = { start: Date; end: Date };
-const spanDays = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / 864e5);
+/* days between two dates as days on the calendar, whatever their time of day */
+const utcDay = (d: Date) => { const t = new Date(0); t.setUTCFullYear(d.getFullYear(), d.getMonth(), d.getDate()); return t.getTime(); };
+const spanDays = (a: Date, b: Date) => Math.round((utcDay(b) - utcDay(a)) / 864e5);
+/* a range the picker keeps itself is held as two civil keys, as a day is (useDayValue) */
+type RangeKeys = { s: number; e: number } | null;
+function useRangeValue(value: DateRange | null | undefined, defaultValue: DateRange | null, onChange?: (r: DateRange | null) => void): [DateRange | null, (r: DateRange | null) => void] {
+  const keys = (r: DateRange | null | undefined): RangeKeys | undefined => (r === undefined ? undefined : r && { s: ymd(r.start), e: ymd(r.end) });
+  const [k, setK] = useControllable<RangeKeys>(keys(value), keys(defaultValue) ?? null);
+  const cb = useRef(onChange);
+  cb.current = onChange;
+  return [value === undefined ? k && { start: fromKey(k.s), end: fromKey(k.e) } : value,
+    useCallback((r: DateRange | null) => { setK(keys(r) ?? null); cb.current?.(r); }, [setK])];
+}
 
 export type RangeCalendarProps = Omit<CalendarProps, 'value' | 'defaultValue' | 'onChange' | 'openTo'> & {
   value?: DateRange | null; defaultValue?: DateRange | null;
@@ -643,10 +693,22 @@ export type RangeCalendarProps = Omit<CalendarProps, 'value' | 'defaultValue' | 
 export const RangeCalendar = forwardRef<HTMLDivElement, RangeCalendarProps>(function RangeCalendar(
   { value, defaultValue = null, onChange, onPartial, minLength = 0, maxLength = Infinity, unit = 'days', labels, status = true, locale: localeProp, min, max, isDateDisabled, className, style, ...cal }, ref,
 ) {
-  const [v, setV] = useControllable<DateRange | null>(value, defaultValue, onChange as (r: DateRange | null) => void);
-  const [draft, setDraft] = useState<{ start: Date | null; end: Date | null }>(() => ({ start: v?.start ?? null, end: v?.end ?? null }));
-  useEffect(() => { setDraft({ start: v?.start ?? null, end: v?.end ?? null }); }, [v ? ymd(v.start) : 0, v ? ymd(v.end) : 0]);
+  const [v, setV] = useRangeValue(value, defaultValue, onChange as (r: DateRange | null) => void);
+  /* the days being chosen, as civil keys (see useDayValue) */
+  const [draftK, setDraftK] = useState<{ s: number | null; e: number | null }>(() => ({ s: v ? ymd(v.start) : null, e: v ? ymd(v.end) : null }));
+  const draft = { start: dayOf(draftK.s), end: dayOf(draftK.e) };
+  const setDraft = (r: { start: Date | null; end: Date | null }) => setDraftK({ s: keyOf(r.start), e: keyOf(r.end) });
+  /* the draft follows the value when its days change; the same instants read in a new time zone leave a range
+     being chosen (a first day without its end) as it is */
+  const seen = useRef<string>('');
+  useEffect(() => {
+    const now = v ? `${v.start.getTime()}/${v.end.getTime()}` : '';
+    const same = now === seen.current; seen.current = now;
+    if (same && draftK.s !== null && draftK.e === null) return;
+    setDraft({ start: v?.start ?? null, end: v?.end ?? null });
+  }, [v ? ymd(v.start) : 0, v ? ymd(v.end) : 0]);   // eslint-disable-line react-hooks/exhaustive-deps
   const locale = useLocaleOf(localeProp), t = messagesFor(locale).date;
+  const zone = useToday()?.zone;   /* the status is written again in a new time zone, by a formatter built in it */
   const S = labels?.start ?? t.rangeStart, E = labels?.end ?? t.rangeEnd;
   const blocked = (d: Date) => Boolean((min && ymd(d) < ymd(min)) || (max && ymd(d) > ymd(max)) || isDateDisabled?.(d));
   /* can d end the range that starts at the draft's start? Long enough, not too long, nothing disabled on the way */
@@ -665,13 +727,16 @@ export const RangeCalendar = forwardRef<HTMLDivElement, RangeCalendarProps>(func
     if (reach(d)) { const r = { start: draft.start, end: d }; setDraft(r); setV(r); return; }
     begin(d);
   };
-  const fmtDay = useMemo(() => new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', weekday: 'short' }), [locale]);
+  const fmtDay = useMemo(() => new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', weekday: 'short' }), [locale, zone]);
   const length = (a: Date, b: Date) => (unit === 'nights' ? t.nights(spanDays(a, b)) : t.days(spanDays(a, b) + 1));
   const line = !draft.start ? t.pickNext(S)
     : !draft.end ? `${t.partial(S, fmtDay.format(draft.start))} · ${t.pickNext(E)}`
     : `${formatRange(fmtDay, draft.start, draft.end)} · ${length(draft.start, draft.end)}`;
-  const ctx = useMemo<RangeCtx>(() => ({ start: draft.start, end: draft.end, pick, reach, starts: S, ends: E }),
-    [draft.start ? ymd(draft.start) : 0, draft.end ? ymd(draft.end) : 0, minLength, maxLength, S, E, min ? ymd(min) : 0, max ? ymd(max) : 0, isDateDisabled]);
+  /* the context's pick calls the latest one, with this render's setter and onPartial */
+  const latestPick = useRef(pick);
+  latestPick.current = pick;
+  const ctx = useMemo<RangeCtx>(() => ({ start: draft.start, end: draft.end, pick: (d: Date) => latestPick.current(d), reach, starts: S, ends: E }),
+    [draft.start ? ymd(draft.start) : 0, draft.end ? ymd(draft.end) : 0, minLength, maxLength, S, E, min ? ymd(min) : 0, max ? ymd(max) : 0, isDateDisabled, zone]);   /* its days are Dates of this zone */
   return (
     <div ref={ref} className={cx('sg-rangecalendar', className)} style={style} lang={localeProp}>
       <RangeContext.Provider value={ctx}>
@@ -706,7 +771,7 @@ export type DateRangePickerProps = Omit<RangeCalendarProps, 'status' | 'onPartia
 export const DateRangePicker = forwardRef<HTMLButtonElement, DateRangePickerProps>(function DateRangePicker(
   { value, defaultValue = null, onChange, placeholder, label, helperText, error, disabled, name, format, placement = 'bottom-start', locale: localeProp, unit = 'days', id, className, style, 'aria-label': ariaLabel, ...range }, ref,
 ) {
-  const [v, setV] = useControllable<DateRange | null>(value, defaultValue, onChange as (r: DateRange | null) => void);
+  const [v, setV] = useRangeValue(value, defaultValue, onChange as (r: DateRange | null) => void);
   const [open, setOpenNow] = useState(false);
   /* the close that follows a finished range: cancelled by any other open or close (and on unmount), so a quick
      reopen is not shut by the earlier choice's timer */
@@ -718,7 +783,9 @@ export const DateRangePicker = forwardRef<HTMLButtonElement, DateRangePickerProp
   const fid = id ?? auto;
   const locale = useLocaleOf(localeProp), t = messagesFor(locale).date;
   const lightRef = useGlassLight();
-  const fmtDay = useMemo(() => new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', weekday: 'short' }), [locale]);
+  /* written again in a new time zone, by a formatter built in it, so the field shows the days the form submits */
+  const zone = useToday()?.zone;
+  const fmtDay = useMemo(() => new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', weekday: 'short' }), [locale, zone]);
   const text = (r: DateRange) => format ? format(r) : formatRange(fmtDay, r.start, r.end);
   const length = (r: DateRange) => (unit === 'nights' ? t.nights(spanDays(r.start, r.end)) : t.days(spanDays(r.start, r.end) + 1));
   const { panel, mounted } = useAnchored(open, trigger.current, placement, () => setOpen(false), (p) => {
