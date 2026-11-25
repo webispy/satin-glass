@@ -41,11 +41,15 @@ function Replay({ version, copy: c, run, del }: { version: Version; copy: Copy; 
   const a2ui = useA2ui({ onOutbound: (m) => setSent((l) => [...l, m]), icons: ICONS });
   const [model, setModel] = useState('');
   const pendingDelete = useRef<ReturnType<typeof setTimeout>>(undefined);
+  /* busy until the turn's last message has arrived (the surface is still being built) */
+  const [replaying, setReplaying] = useState(true);
   useEffect(() => {
     clearTimeout(pendingDelete.current);   // a deletion asked for in the replay before does not reach this one
     a2ui.reset();
     setSent([]);
-    const timers = alertTurn(version, words.current).map((s) => setTimeout(() => a2ui.process(s.message), s.at));
+    setReplaying(true);
+    const turn = alertTurn(version, words.current), last = Math.max(...turn.map((s) => s.at));
+    const timers = turn.map((s) => setTimeout(() => { a2ui.process(s.message); if (s.at === last) setReplaying(false); }, s.at));
     return () => timers.forEach(clearTimeout);
   }, [version, run, a2ui]);
   /* the deletion is asked for once per press, and a new replay (or another version) cancels it */
@@ -60,7 +64,7 @@ function Replay({ version, copy: c, run, del }: { version: Version; copy: Copy; 
     return () => clearInterval(poll);
   });
   return (
-    <div className="a2ui-replay">
+    <div className="a2ui-replay" aria-busy={replaying || undefined}>
       <A2uiSurfaces a2ui={a2ui} className="a2ui-replay__surface" />
       <div className="a2ui-replay__side">
         <Text variant="subhead" as="h3">{t({ en: 'Sent to the agent', ko: '에이전트로 보낸 메시지' })}</Text>
