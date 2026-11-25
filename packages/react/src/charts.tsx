@@ -30,15 +30,60 @@ const nf = (locale: string, opts: Intl.NumberFormatOptions) => {
   return f;
 };
 const fmts = new Map<string, Fmt>();
+/* a value (tooltips, the data table, a donut's centre): compact from 10,000 (scientific from 10¹⁵, which compact
+   spells out in full), at most one decimal from 1, two significant digits below 1 (0.25, not 0.3; 0.04, not 0),
+   scientific below 0.0001 (3.2E-12, not 0) */
 const defaultFmt = (locale: string): Fmt => {
   let fn = fmts.get(locale);
   if (!fn) {
     const f = nf(locale, { maximumFractionDigits: 1 }), c = nf(locale, { notation: 'compact', maximumFractionDigits: 1 });
-    fn = (v) => (Math.abs(v) >= 10000 ? c.format(v) : f.format(v));
+    const small = nf(locale, { maximumSignificantDigits: 2 }), tiny = nf(locale, { notation: 'scientific', maximumSignificantDigits: 2 });
+    const huge = nf(locale, { notation: 'scientific', maximumSignificantDigits: 3 });
+    /* -0 reads 0, as the axis does */
+    fn = (v) => { if (v === 0) return f.format(0); const a = Math.abs(v); return a >= 1e15 ? huge.format(v) : a >= 10000 ? c.format(v) : a >= 1 ? f.format(v) : a >= 1e-4 ? small.format(v) : tiny.format(v); };
     fmts.set(locale, fn);
   }
   return fn;
 };
+/** An axis's tick labels, written with the digits its step needs and no more: a step of 0.25 reads 0.25 and 0.75 (one
+    decimal read 0.3 and 0.8), one of 2 × 10⁻¹² reads 2E-12 (the value format read 0), 1,250,000 reads 1.25M. As values
+    are, a tick from 10,000 is compact and one below is written out (an axis reads 5,000 then 10K, so its labels keep
+    their width when its range grows past 10,000 and the plot does not jump sideways); the whole axis is scientific for
+    a step below 0.0001 or a tick from 10¹⁵ (compact notation spells those out in hundreds of digits). */
+function tickFormat(ticks: number[], locale: string): Fmt {
+  if (ticks.length < 2) return defaultFmt(locale);
+  const gap = STEP.get(ticks) ?? Math.abs(ticks[1] - ticks[0]);
+  const top = ticks.reduce((m, t) => Math.max(m, Math.abs(t)), 0);
+  if (!(gap > 0) || !Number.isFinite(gap) || !(top > 0)) return defaultFmt(locale);
+  /* the step niceTicks chose; else the nominal one read back from a gap that carries float error (0.0001 from
+     0.00009999999999999996). Steps are m × 10^e with m one of 1, 2, 2.5, 5, and 2.5 needs one digit more */
+  const step = +gap.toPrecision(3);
+  const e = Math.floor(Math.log10(step) + 1e-9), m = +(step / 10 ** e).toPrecision(3);
+  const extra = Number.isInteger(m) ? 0 : 1;
+  const zero = nf(locale, {}).format(0);
+  /* significant digits from a tick's magnitude down to the step's last digit; more if two ticks would still read the
+     same (a tick held at the largest number sits off the step) */
+  const digits = (v: number, more: number) => Math.min(21, Math.max(1, Math.floor(Math.log10(Math.abs(v)) + 1e-9) - e + 1 + extra + more));
+  const plain = nf(locale, { maximumFractionDigits: Math.min(20, Math.max(0, extra - e)) });
+  const sci = step < 1e-4 || top >= 1e15;
+  for (let more = 0; ; more++) {
+    const fn: Fmt = (v) => {
+      if (v === 0) return zero;
+      if (sci) return nf(locale, { notation: 'scientific', maximumSignificantDigits: digits(v, more) }).format(v);
+      return Math.abs(v) >= 10000 ? nf(locale, { notation: 'compact', maximumSignificantDigits: digits(v, more) }).format(v) : plain.format(v);
+    };
+    const labels = ticks.map(fn);
+    if (more >= 21 || new Set(labels).size === labels.length) {
+      /* made once: each tick's label is looked up, not formatted again on every frame of a move */
+      const known = new Map(ticks.map((t, i) => [t, labels[i]]));
+      return (v) => known.get(v) ?? fn(v);
+    }
+  }
+}
+
+/* the step niceTicks chose for the ticks it returned: inferred from two ticks, a float gap can miss it (1e10 to
+   1e10 + 0.00035 has gaps below 0.0001) */
+const STEP = new WeakMap<number[], number>();
 
 /** "Nice" axis: rounds the domain out to 1 / 2 / 2.5 / 5 × 10ⁿ steps. */
 export function niceTicks(min: number, max: number, count = 5): number[] {
@@ -69,8 +114,29 @@ export function niceTicks(min: number, max: number, count = 5): number[] {
     if (k1 - k0 > 1000) { if (++j === steps.length) { j = 0; e++; } continue; }
     const out: number[] = [];
     for (let k = k0; k <= k1; k++) { const v = at(k); if (out[out.length - 1] !== v) out.push(v); }
+    STEP.set(out, +`${m}e${e}`);
     return out;
   }
+}
+
+/* An axis's tick labels, and the ticks it is leaving with the labels they were drawn with. The outgoing ticks are the
+   ones on screen when the axis changed (rebuilt from the old endpoints, they could be ticks never shown: a 0.2 step
+   rebuilt as 0.25). Labels are made once per set of ticks, not on every frame of the move. */
+function useAxisLabels(ticks: number[], locale: string, own: Fmt | undefined) {
+  const key = `${ticks.join(',')}|${locale}`;
+  const fmt = useMemo(() => own ?? tickFormat(ticks, locale), [key, own]);   // eslint-disable-line react-hooks/exhaustive-deps
+  /* the ticks before these, kept as "previous props in state": set during render (React renders again at once), so a
+     render that is dropped leaves nothing behind */
+  type Kept = { key: string; ticks: number[]; fmt: Fmt; prev: { ticks: number[]; fmt: Fmt } | null };
+  const [kept, setKept] = useState<Kept>({ key, ticks, fmt, prev: null });
+  let h = kept;
+  if (kept.key !== key) { h = { key, ticks, fmt, prev: { ticks: kept.ticks, fmt: kept.fmt } }; setKept(h); }
+  else if (kept.fmt !== fmt) { h = { ...kept, fmt }; setKept(h); }
+  const prev = h.prev;
+  /* while the axis moves (p < 1): the ticks it is leaving, each with its own label */
+  const outgoing = (p: number) => (p < 1 && prev ? prev.ticks : ticks);
+  const label = (t: number) => (ticks.includes(t) || !prev ? fmt : prev.fmt)(t);
+  return { fmt, outgoing, label };
 }
 
 /** the least and greatest of many numbers (NaN ignored): spreading a long series into Math.min / Math.max
@@ -352,17 +418,23 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
   const vals = shown.flatMap((s) => data.map((d) => d[s.key]).filter(isNum));
   const [vlo, hi] = extent(vals), lo = Math.min(vlo, zero ?? area ? 0 : Infinity);
   const ticks = niceTicks(lo, hi, Math.max(2, Math.round(height / 56)));
+  const axis = useAxisLabels(ticks, locale, yFormat), tickFmt = axis.fmt;
   const y0 = ticks[0], y1 = ticks[ticks.length - 1];
-  const left = yAxisWidth(ticks.map(fmt));
-  const iw = Math.max(10, width - left - M.right), ih = height - M.top - M.bottom;
-  const X = (i: number) => left + (data.length <= 1 ? iw / 2 : (i / (data.length - 1)) * iw);
+  /* the gutter for the labels moves with the scale (useMorph): set at once, the plot jumped sideways when the labels'
+     width changed (0.25 → 90) */
+  const leftTo = yAxisWidth(ticks.map(tickFmt)), ih = height - M.top - M.bottom;
   /* the scale and every point (per series × point, in data units) move as one (useMorph). A gap stands on the
      straight line between its neighbours: unseen while it is a gap, and where a value that fills it rises from */
-  const morph = useMorph([y0, y1, ...series.flatMap((s) => bridged(data.map((d) => d[s.key]), y0))], box);
+  const morph = useMorph([y0, y1, ...series.flatMap((s) => bridged(data.map((d) => d[s.key]), y0)), leftTo], box);
+  const left = morph.now[morph.now.length - 1];
+  const iw = Math.max(10, width - left - M.right);
+  const X = (i: number) => left + (data.length <= 1 ? iw / 2 : (i / (data.length - 1)) * iw);
   const [sy0, sy1] = morph.now, [py0, py1] = morph.from;
   const Y = (v: number) => M.top + ih - ((v - sy0) / (sy1 - sy0 || 1)) * ih;
-  const ys = morph.now.slice(2).map(Y);
-  const prevTicks = py0 === y0 && py1 === y1 ? ticks : niceTicks(py0, py1, Math.max(2, Math.round(height / 56))).filter((t) => t >= py0 && t <= py1);
+  const ys = morph.now.slice(2, -1).map(Y);
+  /* the ticks on screen when the axis changed fade out, each with the label it was drawn with */
+  const prevTicks = py0 === y0 && py1 === y1 ? ticks : axis.outgoing(morph.p);
+  const tickLabel = axis.label;
   useDrawIn(g, [measured !== null]);
   const step = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor(iw / 72))));
   const onMove = (e: React.PointerEvent) => {
@@ -386,7 +458,7 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
           <defs>{series.map((s, i) => (
             <linearGradient key={s.key} id={`${gid}-${i}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={s.color ?? COLOR(i)} stopOpacity="0.22" /><stop offset="1" stopColor={s.color ?? COLOR(i)} stopOpacity="0" /></linearGradient>
           ))}</defs>
-          {tickLayer(ticks, prevTicks, morph.p).map(({ t, o }) => <g key={t} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{fmt(t)}</text></g>)}
+          {tickLayer(ticks, prevTicks, morph.p).map(({ t, o }) => <g key={t} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{tickLabel(t)}</text></g>)}
           {/* every step-th label, plus the last one when it does not crowd its neighbour */}
           {data.map((d, i) => (i % step === 0 || (i === data.length - 1 && i % step >= step / 2)) ? (
             <text key={i} className="sg-chart__tick" x={X(i)} y={height - 6} textAnchor={i === 0 ? 'start' : i === data.length - 1 ? 'end' : 'middle'}>{xFormat(String(d[x]))}</text>
@@ -524,12 +596,16 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
   const count = Math.max(2, Math.round(height / 56));
   const ax = axisOf(visible.map((i) => num(data[i], x, xl)!), xl, Math.max(2, Math.round(width / 110)));
   const ay = axisOf(visible.map((i) => num(data[i], y, yl)!), yl, count);
+  /* tick labels at the step's precision on a linear axis; a log axis's ticks are whole powers, read as values */
+  const xAxis = useAxisLabels(ax.ticks, locale, xFormat ?? (xl ? fx : undefined)), yAxis = useAxisLabels(ay.ticks, locale, yFormat ?? (yl ? fy : undefined));
+  const tfy = yAxis.fmt;
   const u = (v: number, log: boolean) => (log ? lg(v) : v);
   const top = M.top + (yLabel ? 16 : 0), bottom = M.bottom + (xLabel ? 18 : 0);
-  const left = yAxisWidth(ay.ticks.map(fy));
-  const iw = Math.max(10, width - left - M.right), ih = height - top - bottom;
+  const leftTo = yAxisWidth(ay.ticks.map(tfy)), ih = height - top - bottom;
   /* the two scales and every point (in axis units) move as one */
-  const morph = useMorph([ax.lo, ax.hi, ay.lo, ay.hi, ...data.flatMap((d) => [u(num(d, x, xl) ?? (xl ? 1 : 0), xl), u(num(d, y, yl) ?? (yl ? 1 : 0), yl)])], box);
+  const morph = useMorph([ax.lo, ax.hi, ay.lo, ay.hi, ...data.flatMap((d) => [u(num(d, x, xl) ?? (xl ? 1 : 0), xl), u(num(d, y, yl) ?? (yl ? 1 : 0), yl)]), leftTo], box);
+  /* the gutter moves with the scales */
+  const left = morph.now[morph.now.length - 1], iw = Math.max(10, width - left - M.right);
   const [sx0, sx1, sy0, sy1] = morph.now, [px0, px1, py0, py1] = morph.from;
   /* the scale the move started from: after a switch between linear and log the old range is in the other scale's units, so its
      ticks are not drawn again (they would be read in the new units); the new ticks fade in as the axis moves */
@@ -554,8 +630,9 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
   const inY = (t: number) => { const v = ty(t); return isFinite(v) && v >= top - 1 && v <= top + ih + 1; };
   const X = (uv: number) => left + ((uv - sx0) / (sx1 - sx0 || 1)) * iw;
   const Y = (uv: number) => top + ih - ((uv - sy0) / (sy1 - sy0 || 1)) * ih;
-  const prevX = xSwitched ? [] : px0 === ax.lo && px1 === ax.hi ? ax.ticks : (xl ? logTicks(10 ** px0, 10 ** px1) : niceTicks(px0, px1, Math.max(2, Math.round(width / 110))).filter((t) => t >= px0 && t <= px1));
-  const prevY = ySwitched ? [] : py0 === ay.lo && py1 === ay.hi ? ay.ticks : (yl ? logTicks(10 ** py0, 10 ** py1) : niceTicks(py0, py1, count).filter((t) => t >= py0 && t <= py1));
+  const prevX = xSwitched ? [] : px0 === ax.lo && px1 === ax.hi ? ax.ticks : xAxis.outgoing(morph.p);
+  const prevY = ySwitched ? [] : py0 === ay.lo && py1 === ay.hi ? ay.ticks : yAxis.outgoing(morph.p);
+  const xLabelOf = xAxis.label, yLabelOf = yAxis.label;
   const picked = new Set(highlight ?? []);
   const name = (i: number) => String(data[i][pointLabel] ?? '');
   /* entrance: the points pop in from left to right */
@@ -611,8 +688,8 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
         onPointerMove={onMove} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}
         onKeyDown={(e) => { setKbd(true); const at = active === null ? null : byX.indexOf(active); plotKeys(e, byX.length, at !== null && at >= 0 ? at : null, (n) => setActive(n === null ? null : byX[n] ?? null)); }}>
         {measured === null ? <div style={{ height }} /> : <svg width={width} height={height} aria-hidden="true">
-          {tickLayer(ay.ticks, prevY, morph.p).filter(({ t }) => inY(t)).map(({ t, o }) => <g key={`y${t}`} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={ty(t)} y2={ty(t)} /><text className="sg-chart__tick" x={left - 8} y={ty(t)} dy="0.35em" textAnchor="end">{fy(t)}</text></g>)}
-          {tickLayer(ax.ticks, prevX, morph.p).filter(({ t }) => inX(t)).map(({ t, o }) => <g key={`x${t}`} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={tx(t)} x2={tx(t)} y1={top} y2={top + ih} /><text className="sg-chart__tick" x={tx(t)} y={top + ih + 16} textAnchor="middle">{fx(t)}</text></g>)}
+          {tickLayer(ay.ticks, prevY, morph.p).filter(({ t }) => inY(t)).map(({ t, o }) => <g key={`y${t}`} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={ty(t)} y2={ty(t)} /><text className="sg-chart__tick" x={left - 8} y={ty(t)} dy="0.35em" textAnchor="end">{yLabelOf(t)}</text></g>)}
+          {tickLayer(ax.ticks, prevX, morph.p).filter(({ t }) => inX(t)).map(({ t, o }) => <g key={`x${t}`} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={tx(t)} x2={tx(t)} y1={top} y2={top + ih} /><text className="sg-chart__tick" x={tx(t)} y={top + ih + 16} textAnchor="middle">{xLabelOf(t)}</text></g>)}
           {yLabel && <text className="sg-chart__axis-title" x={left} y={M.top + 2} dy="0.35em" textAnchor="start">{yLabel}</text>}
           {xLabel && <text className="sg-chart__axis-title" x={left + iw} y={height - 4} textAnchor="end">{xLabel}</text>}
           <g ref={g} data-picking={picked.size > 0 || undefined}>
@@ -660,10 +737,9 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
   const num = (d: ChartDatum, k: string) => { const v = d[k]; return isNum(v) ? v : 0; };
   const peak = Math.max(0, extent(data.map((d) => (stacked ? shown.reduce((a, s) => a + Math.max(0, num(d, s.key)), 0) : Math.max(0, ...shown.map((s) => num(d, s.key))))))[1]);
   const ticks = niceTicks(0, peak || 1, Math.max(2, Math.round(height / 56)));
+  const axis = useAxisLabels(ticks, locale, yFormat), tickFmt = axis.fmt;
   const top = ticks[ticks.length - 1];
-  const left = yAxisWidth(ticks.map(fmt));
-  const iw = Math.max(10, width - left - M.right), ih = height - M.top - M.bottom;
-  const band = iw / Math.max(1, data.length), pad = Math.min(band * 0.28, 18);
+  const leftTo = yAxisWidth(ticks.map(tickFmt)), ih = height - M.top - M.bottom;
   /* the scale's top and every bar (base and end per series × category, in data units) move as one (useMorph) */
   const ends: number[] = [];
   data.forEach((d) => {
@@ -682,12 +758,16 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
     if (stacked) slots.push(0, 1);
     else slots.push(before / Math.max(1, shown.length), hidden.has(s.key) ? 0 : 1 / Math.max(1, shown.length));
   });
-  const morph = useMorph([top, ...ends, stacked ? 1 : 0, ...slots], box);
+  const morph = useMorph([top, ...ends, stacked ? 1 : 0, ...slots, leftTo], box);
+  /* the gutter moves with the scale */
+  const left = morph.now[morph.now.length - 1], iw = Math.max(10, width - left - M.right);
+  const band = iw / Math.max(1, data.length), pad = Math.min(band * 0.28, 18);
   const sTop = morph.now[0], pTop = morph.from[0];
   const Y = (v: number) => M.top + ih - (v / (sTop || 1)) * ih;
   const gv: number[] = [];
   for (let j = 1; j < 1 + ends.length; j += 2) { const a = morph.now[j], b2 = morph.now[j + 1]; gv.push(Y(b2), Y(a) - Y(b2)); }
-  const prevTicks = pTop === top ? ticks : niceTicks(0, pTop || 1, Math.max(2, Math.round(height / 56))).filter((t) => t <= pTop);
+  const prevTicks = pTop === top ? ticks : axis.outgoing(morph.p);
+  const tickLabel = axis.label;
   /* entrance: each category rises from the baseline as one bar (its pieces stay stacked), one after another */
   useIsoLayoutEffect(() => {
     const el = g.current;
@@ -717,7 +797,7 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
         onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }}>
         {measured === null ? <div style={{ height }} /> : <svg width={width} height={height} aria-hidden="true">
           {active !== null && <rect className="sg-chart__band" x={left + active * band} y={M.top} width={band} height={ih} rx={6} />}
-          {tickLayer(ticks, prevTicks, morph.p).map(({ t, o }) => <g key={t} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{fmt(t)}</text></g>)}
+          {tickLayer(ticks, prevTicks, morph.p).map(({ t, o }) => <g key={t} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{tickLabel(t)}</text></g>)}
           {data.map((d, i) => (i % step === 0 ? <text key={i} className="sg-chart__tick" x={left + i * band + band / 2} y={height - 6} textAnchor="middle">{xFormat(String(d[x]))}</text> : null))}
           <g ref={g}>
             {data.map((_, i) => {
@@ -794,7 +874,8 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
   const pct = nf(locale, { style: 'percent', maximumFractionDigits: 1 });
   const svg = useRef<SVGSVGElement>(null);
   const [activeState, setActive] = useState<Active>(null);
-  const active = within(activeState, data.length);
+  /* nothing to share out: no slice is drawn, so none can be pointed at or stepped to */
+  const active = sum === 0 ? null : within(activeState, data.length);
   /* a point the data no longer has is let go, so it does not come back when the data grows again */
   if (activeState !== null && active === null) setActive(null);
   const [kbd, setKbd] = useState(false);
@@ -843,12 +924,14 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
   const say = (i: number) => `${data[i].label}: ${value(data[i])} (${pct.format(part(data[i]) / total)})`;
   return (
     <figure ref={fig} className={cx('sg-chart', 'sg-donut', className)} style={style} aria-label={label}>
-      <div className="sg-donut__ring" tabIndex={0} role="img" aria-label={label} style={{ width: size, height: size }}
+      <div className="sg-donut__ring" tabIndex={0} role="img" aria-label={sum === 0 ? messagesFor(locale).chartEmpty(label) : label} style={{ width: size, height: size }}
         onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }} onBlur={() => setActive(null)}
         onPointerMove={(e) => { touch.current = e.pointerType === 'touch'; if (!touch.current) { setKbd(false); setActive(at(e)); } }}
         onPointerLeave={hover(null)} onPointerDown={(e) => { touch.current = e.pointerType === 'touch'; }}
         onClick={(e) => { const i = at(e); if (touch.current && i !== null) tap(i)(); }}>
         <svg ref={svg} width={size} height={size} aria-hidden="true">
+          {/* nothing to share out (no data, or every value 0): the ring's empty track, a groove as an empty rail is */}
+          {sum === 0 && <circle className="sg-donut__track" cx={c} cy={c} r={r - thickness / 2} fill="none" strokeWidth={thickness} />}
           <g data-rings style={{ transformOrigin: 'center' }}>
             {data.map((d, i) => (
               /* the active slice lifts outward along its middle — a transform, so it moves on a spring instead of jumping */

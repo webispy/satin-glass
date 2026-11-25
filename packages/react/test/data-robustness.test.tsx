@@ -164,6 +164,21 @@ describe('charts: values that are not finite numbers', () => {
     expect([...container.querySelectorAll('.sg-donut__num')].map((p) => p.textContent)).toEqual(['1', '—', '1']);
     expect(container.querySelector('.sg-donut__value')!.textContent).toBe('2');
   });
+  it('a donut with nothing to share out draws its empty track, and one with values does not (#61)', () => {
+    const { container, rerender } = render(<DonutChart aria-label="d" data={[{ label: 'a', value: 0 }, { label: 'b', value: 0 }]} />);
+    expect(container.querySelectorAll('.sg-donut__track')).toHaveLength(1);
+    expect(container.querySelector('.sg-donut__ring')!.getAttribute('aria-label')).toBe('d: no data');   /* said, not only drawn */
+    rerender(<DonutChart aria-label="d" data={[]} />);
+    expect(container.querySelectorAll('.sg-donut__track')).toHaveLength(1);
+    rerender(<DonutChart aria-label="d" data={[{ label: 'a', value: 1 }, { label: 'b', value: 0 }]} />);
+    expect(container.querySelector('.sg-donut__track')).toBeNull();
+  });
+  it('an empty donut has no slice to step to: the keys leave its total showing', () => {
+    const { container } = render(<DonutChart aria-label="d" data={[{ label: 'a', value: 0 }]} />);
+    const ring = container.querySelector<HTMLElement>('.sg-donut__ring')!;
+    fireEvent.keyDown(ring, { key: 'ArrowRight' });
+    expect(container.querySelector('.sg-donut__value')!.textContent).toBe('0');
+  });
   it('a negative donut slice counts as 0 and shows 0%, not a negative share', () => {
     const { container } = render(<DonutChart aria-label="d" data={[{ label: 'a', value: 1 }, { label: 'b', value: -1 }, { label: 'c', value: 1 }]} />);
     expect([...container.querySelectorAll('.sg-donut__pct')].map((p) => p.textContent)).toEqual(['50%', '0%', '50%']);
@@ -172,6 +187,93 @@ describe('charts: values that are not finite numbers', () => {
     fireEvent.keyDown(container.querySelector('.sg-donut__ring')!, { key: 'ArrowRight' });
     fireEvent.keyDown(container.querySelector('.sg-donut__ring')!, { key: 'ArrowRight' });
     expect(container.querySelector('.sg-donut__value')!.textContent).toBe('0%');
+  });
+});
+
+describe('charts: numbers at the step\'s precision', () => {
+  const ticksOf = (c: HTMLElement) => [...c.querySelectorAll('svg text.sg-chart__tick')].map((t) => t.textContent).filter((t) => t && /\d/.test(t));
+  it('a tiny domain\'s tick labels are distinct and not 0 (#61)', () => {
+    const { container } = render(<LineChart aria-label="l" x="x" series={[{ key: 'v', label: 'V' }]} data={[{ x: 'a', v: 1e-12 }, { x: 'b', v: 9e-12 }]} />);
+    const t = ticksOf(container);
+    expect(t.length).toBeGreaterThan(2);
+    expect(new Set(t).size).toBe(t.length);
+    expect(t.filter((x) => x === '0')).toHaveLength(1);   /* only the zero tick */
+    expect(t).toContain('2E-12');
+    /* the values too: 3E-12, not 0 */
+    expect([...container.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['1E-12', '9E-12']);
+  });
+  it('a step of 0.25 reads 0.25 and 0.75, not 0.3 and 0.8; values below 1 keep two significant digits', () => {
+    const { container } = render(<BarChart aria-label="b" x="x" series={[{ key: 'v', label: 'V' }]} data={[{ x: 'a', v: 0.04 }, { x: 'b', v: 0.9 }]} height={200} />);
+    const t = ticksOf(container);
+    expect(t).toEqual(expect.arrayContaining(['0.25', '0.75']));
+    expect(t).not.toContain('0.3');
+    expect([...container.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['0.04', '0.9']);
+  });
+  it('large steps keep their digits in the compact form, in the locale\'s words', () => {
+    const data = [{ x: 'a', v: 100000 }, { x: 'b', v: 1240000 }];
+    const { container, rerender } = render(<BarChart aria-label="b" x="x" series={[{ key: 'v', label: 'V' }]} data={data} height={300} locale="en-US" />);
+    expect(ticksOf(container)).toContain('1.25M');
+    rerender(<BarChart aria-label="b" x="x" series={[{ key: 'v', label: 'V' }]} data={data} height={300} locale="ko-KR" />);
+    expect(ticksOf(container)).toContain('125만');
+  });
+  it('a step of 0.0001 reads as decimals, from the nominal step, not the float gap', () => {
+    const { container } = render(<LineChart aria-label="l" x="x" series={[{ key: 'v', label: 'V' }]} data={[{ x: 'a', v: 1 }, { x: 'b', v: 1.0004 }]} />);
+    const t = ticksOf(container);
+    expect(t).toContain('1.0002');
+    expect(t.some((x) => /E/.test(x!))).toBe(false);
+  });
+  it('huge values are short and distinct (scientific, not hundreds of compact digits)', () => {
+    const { container } = render(<LineChart aria-label="l" x="x" series={[{ key: 'v', label: 'V' }]} data={[{ x: 'a', v: 0 }, { x: 'b', v: 1e300 }]} />);
+    const t = ticksOf(container);
+    expect(new Set(t).size).toBe(t.length);
+    expect(t.every((x) => x!.length <= 12)).toBe(true);
+    expect(t.some((x) => /E300/.test(x!))).toBe(true);
+    expect([...container.querySelectorAll('td')].map((td) => td.textContent)[1]).toBe('1E300');
+  });
+  it('a tick on its way out keeps the label of the axis it came from', () => {
+    const { container, rerender } = render(<BarChart aria-label="b" x="x" series={[{ key: 'v', label: 'V' }]} data={[{ x: 'a', v: 0.9 }]} height={200} />);
+    expect(ticksOf(container)).toContain('0.25');
+    rerender(<BarChart aria-label="b" x="x" series={[{ key: 'v', label: 'V' }]} data={[{ x: 'a', v: 90 }]} height={200} />);
+    /* the move has just begun: the old ticks are still drawn, at their own values */
+    const t = ticksOf(container);
+    expect(t).toContain('0.25');
+    expect(t.filter((x) => x === '0')).toHaveLength(1);
+  });
+  it('the ticks fading out are the ones that were drawn, not ticks rebuilt from the old range', () => {
+    const series = [{ key: 'v', label: 'V' }];
+    const { container, rerender } = render(<LineChart aria-label="l" x="x" series={series} data={[{ x: 'a', v: 0.1 }, { x: 'b', v: 0.89 }]} />);
+    const before = ticksOf(container);
+    expect(before).toContain('0.2');
+    rerender(<LineChart aria-label="l" x="x" series={series} data={[{ x: 'a', v: 0 }, { x: 'b', v: 90 }]} />);
+    const during = ticksOf(container);
+    /* the old 0.2-step labels are still there; a 0.25 step was never on screen */
+    expect(during).toContain('0.2');
+    expect(during.some((t) => t === '0.25' || t === '0.75')).toBe(false);
+  });
+  it('takes the step niceTicks chose, not one inferred from a float gap', () => {
+    const { container } = render(<LineChart aria-label="l" x="x" series={[{ key: 'v', label: 'V' }]} data={[{ x: 'a', v: 1e10 }, { x: 'b', v: 1e10 + 0.00035 }]} />);
+    const t = ticksOf(container);
+    expect(t.length).toBeGreaterThan(1);
+    expect(new Set(t).size).toBe(t.length);
+    expect(t.some((x) => /E/.test(x!))).toBe(false);   /* a 0.0001 step is not below the scientific cutoff */
+  });
+  it('the label gutter moves with the scale: the plot does not jump sideways when the labels change width', () => {
+    const series = [{ key: 'v', label: 'V' }];
+    const { container, rerender } = render(<BarChart aria-label="b" x="x" series={series} data={[{ x: 'a', v: 0.00041 }]} height={200} />);
+    const edge = () => Math.min(...[...container.querySelectorAll('svg text.sg-chart__tick')].map((t) => Number(t.getAttribute('x'))).filter((n) => Number.isFinite(n) && n > 0));
+    const before = edge();
+    rerender(<BarChart aria-label="b" x="x" series={series} data={[{ x: 'a', v: 90 }]} height={200} />);
+    expect(edge()).toBe(before);   /* the first frame of the move: still where it was */
+  });
+  it('values: -0 reads 0, and tiny values keep two significant digits', () => {
+    const { container } = render(<LineChart aria-label="l" x="x" series={[{ key: 'v', label: 'V' }]} data={[{ x: 'a', v: -0 }, { x: 'b', v: 0.000012345 }]} />);
+    expect([...container.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['0', '1.2E-5']);
+  });
+  it('an app\'s own format still writes the ticks', () => {
+    const { container } = render(<LineChart aria-label="l" x="x" series={[{ key: 'v', label: 'V' }]} data={[{ x: 'a', v: 0 }, { x: 'b', v: 1 }]} yFormat={(v) => `${v * 100}%`} />);
+    const t = ticksOf(container);
+    expect(t.length).toBeGreaterThan(1);
+    expect(t.every((x) => x!.endsWith('%'))).toBe(true);
   });
 });
 

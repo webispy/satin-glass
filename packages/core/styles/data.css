@@ -53,6 +53,11 @@
 .sg-donut { display: flex; flex-wrap: wrap; align-items: center; gap: 20px 28px; }
 .sg-donut__ring { position: relative; flex: none; outline: none; border-radius: 50%; }
 .sg-donut__ring:focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
+.sg-donut__track { stroke: var(--sg-groove); }   /* nothing to share out: the ring's empty track is a groove, as an empty rail is */
+/* the groove is a translucent shade: on dark high contrast's black ground it would vanish, so there the track is the
+   strong separator; in forced colours, the system's grey text colour */
+:where([data-sg-theme$="-hc"]) .sg-donut__track { stroke: var(--sg-separator-strong); }   /* :where: forced colours below win over it */
+@media (forced-colors: active) { .sg-donut__track { stroke: GrayText; } }
 .sg-donut__slice { transition: opacity var(--sg-duration-fast) ease, transform var(--sg-spring-snappy-duration) var(--sg-spring-snappy); }
 .sg-donut__legend li { cursor: default; -webkit-tap-highlight-color: transparent; }
 .sg-donut__ring { -webkit-tap-highlight-color: transparent; }
