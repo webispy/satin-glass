@@ -8,7 +8,7 @@ import { useState } from 'react';
 import * as core from '@satin-glass/core';
 import {
   Select, DatePicker, DateRangePicker, TimePicker, Combobox, Slider, Stepper, Calendar, Wheel, Checkbox, Banner, FilterBar,
-  Pagination, TabBar, Tab, Tabs, Button, ThemeProvider, createTheme,
+  Pagination, TabBar, Tab, Tabs, Button, ThemeProvider, createTheme, RangeCalendar,
 } from '../src';
 
 vi.mock('@satin-glass/core', async (orig) => {
@@ -195,6 +195,47 @@ describe('DateRangePicker', () => {
     fireEvent.click(trigger); fireEvent.click(trigger);   /* closed and opened again within the delay */
     act(() => { vi.advanceTimersByTime(1000); });
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
+  });
+});
+
+describe('dates the pickers keep', () => {
+  it('a year below 100 stays that year, in the calendar and in the field', async () => {
+    const v = new Date(2000, 2, 5, 12); v.setFullYear(42);
+    const { container } = render(<form><DatePicker aria-label="d" name="d" defaultValue={v} locale="en-US" /></form>);
+    expect(container.querySelector<HTMLInputElement>('input[name="d"]')!.value).toBe('0042-03-05');
+    /* the calendar builds its days: March 42, not 1942 */
+    fireEvent.click(screen.getByRole('button', { name: 'd' }));
+    await waitFor(() => expect(document.querySelector('.sg-datepicker-panel [aria-pressed="true"]')).toBeTruthy());
+    expect(document.querySelector<HTMLElement>('.sg-datepicker-panel [aria-pressed="true"]')!.dataset.date).toBe('0042-03-05');
+    expect(document.querySelector('.sg-datepicker-panel h2')!.textContent).not.toContain('1942');
+  });
+  it('a range is as long in the field as in its calendar, whatever the times of day', () => {
+    const r = { start: new Date(2026, 10, 1, 0), end: new Date(2026, 10, 2, 23) };
+    render(<><DateRangePicker aria-label="r" value={r} /><RangeCalendar aria-label="c" value={r} locale="en-US" /></>);
+    expect(screen.getByRole('button', { name: 'r' }).textContent).toContain('2 days');
+    expect(document.querySelector('.sg-calendar__status')!.textContent).toContain('2 days');
+  });
+  it('a range calendar calls the onPartial it was last given', () => {
+    const a = vi.fn(), b = vi.fn();
+    const { rerender } = render(<RangeCalendar aria-label="c" defaultMonth={new Date(2026, 0, 1, 12)} onPartial={a} />);
+    rerender(<RangeCalendar aria-label="c" defaultMonth={new Date(2026, 0, 1, 12)} onPartial={b} />);
+    fireEvent.click(document.querySelector('[data-date="2026-01-05"]')!);
+    expect(a).not.toHaveBeenCalled();
+    expect(b).toHaveBeenCalledTimes(1);
+  });
+  it('going back to the same month leaves focus on the next month\'s button', async () => {
+    render(<Calendar aria-label="c" defaultValue={new Date(2026, 2, 5, 12)} locale="en-US" />);
+    fireEvent.click(screen.getByRole('button', { name: /Choose a month/ }));
+    fireEvent.click(screen.getByRole('option', { name: 'March' }));
+    /* the frame its focus is queued in: the user is back on the days */
+    await act(async () => { await new Promise<void>((r) => requestAnimationFrame(() => r())); });
+    const next = screen.getByRole('button', { name: 'Next month' });
+    next.focus();
+    fireEvent.click(next);
+    /* after the frame a refocus would be queued in */
+    await act(async () => { await new Promise<void>((r) => requestAnimationFrame(() => r())); });
+    expect(screen.getByRole('heading').textContent).toBe('April 2026');
+    expect(document.activeElement).toBe(next);
   });
 });
 

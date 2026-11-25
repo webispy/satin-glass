@@ -391,6 +391,121 @@ describe('today across time zones', () => {
       if (zone === undefined) delete process.env.TZ; else process.env.TZ = zone;
     }
   });
+
+  it('keeps the month on show and the focused day when the zone changes', async () => {
+    const zone = process.env.TZ;
+    /* 10:00 on 1 November in Auckland is 11:00 on 31 October in Honolulu; the 1st, local noon in Auckland, would read
+       as the 31st there */
+    process.env.TZ = 'Pacific/Auckland';
+    vi.useFakeTimers({ now: Date.UTC(2026, 9, 31, 21) });
+    try {
+      const { Calendar } = await import('../src');
+      const { render, act: tlAct } = await import('@testing-library/react');
+      const { container, unmount } = render(createElement(Calendar, { 'aria-label': 'Day' }));
+      const shown = () => ({
+        title: container.querySelector('h2')?.textContent,
+        first: container.querySelector<HTMLElement>('[data-date]')?.dataset.date,
+        last: [...container.querySelectorAll<HTMLElement>('[data-date]')].at(-1)?.dataset.date,
+        focused: container.querySelector<HTMLElement>('[data-date][tabindex="0"]')?.dataset.date,
+      });
+      const before = { title: 'November 2026', first: '2026-11-01', last: '2026-12-12', focused: '2026-11-01' };
+      expect(shown()).toEqual(before);
+      expect(container.querySelector<HTMLElement>('[aria-current="date"]')?.dataset.date).toBe('2026-11-01');
+      process.env.TZ = 'Pacific/Honolulu';
+      tlAct(() => { document.dispatchEvent(new Event('visibilitychange')); });
+      /* today is the 31st there, which this grid does not hold: the 1st is no longer marked */
+      expect(container.querySelector('[aria-current="date"]')).toBeNull();
+      expect(shown()).toEqual(before);
+      unmount();
+    } finally {
+      if (zone === undefined) delete process.env.TZ; else process.env.TZ = zone;
+    }
+  });
+
+  it('keeps a day before year 1 when the zone changes', async () => {
+    const zone = process.env.TZ;
+    process.env.TZ = 'Pacific/Auckland';
+    vi.useFakeTimers({ now: Date.UTC(2026, 9, 31, 21) });
+    try {
+      const { Calendar } = await import('../src');
+      const { render, act: tlAct } = await import('@testing-library/react');
+      const v = new Date(2000, 10, 15, 12); v.setFullYear(-1);   /* local noon in Auckland: the 14th in Honolulu */
+      const { container, unmount } = render(createElement(Calendar, { 'aria-label': 'Day', defaultValue: v }));
+      const chosen = () => container.querySelector<HTMLElement>('[aria-pressed="true"]')?.dataset.date;
+      expect(chosen()).toBe('-000001-11-15');
+      process.env.TZ = 'Pacific/Honolulu';
+      tlAct(() => { document.dispatchEvent(new Event('visibilitychange')); });
+      expect(chosen()).toBe('-000001-11-15');
+      expect(container.querySelector<HTMLElement>('[data-date][tabindex="0"]')?.dataset.date).toBe('-000001-11-15');
+      unmount();
+    } finally {
+      if (zone === undefined) delete process.env.TZ; else process.env.TZ = zone;
+    }
+  });
+
+  it('keeps a range being chosen when a controlled value reads as other days in the new zone', async () => {
+    const zone = process.env.TZ;
+    process.env.TZ = 'Pacific/Auckland';
+    vi.useFakeTimers({ now: Date.UTC(2026, 9, 31, 21) });
+    try {
+      const { RangeCalendar } = await import('../src');
+      const { render, fireEvent, act: tlAct } = await import('@testing-library/react');
+      /* 1–3 November at Auckland noon: 31 October – 2 November in Honolulu */
+      const value = { start: new Date(2026, 10, 1, 12), end: new Date(2026, 10, 3, 12) };
+      const { container, unmount } = render(createElement(RangeCalendar, { 'aria-label': 'Stay', value, onChange: () => {} }));
+      fireEvent.click(container.querySelector('[data-date="2026-11-10"]')!);
+      expect(container.querySelector<HTMLElement>('[aria-pressed="true"]')?.dataset.date).toBe('2026-11-10');
+      process.env.TZ = 'Pacific/Honolulu';
+      tlAct(() => { document.dispatchEvent(new Event('visibilitychange')); });
+      /* the same value, read as other days: the first day just chosen is still the range being chosen */
+      expect(container.querySelector<HTMLElement>('[aria-pressed="true"]')?.dataset.date).toBe('2026-11-10');
+      expect(container.querySelector('.sg-calendar__status')!.textContent).toContain('Nov 10');
+      unmount();
+    } finally {
+      if (zone === undefined) delete process.env.TZ; else process.env.TZ = zone;
+    }
+  });
+
+  it('keeps the days a picker chose itself when the zone changes', async () => {
+    const zone = process.env.TZ;
+    process.env.TZ = 'Pacific/Auckland';
+    vi.useFakeTimers({ now: Date.UTC(2026, 9, 31, 21) });   /* 10:00 on 1 November in Auckland */
+    try {
+      const { Calendar, DatePicker, RangeCalendar, DateRangePicker } = await import('../src');
+      const { render, fireEvent, act: tlAct } = await import('@testing-library/react');
+      const { container, unmount } = render(createElement('div', null,
+        createElement('div', { className: 'cal' }, createElement(Calendar, { 'aria-label': 'Day' })),
+        createElement('form', { className: 'pick' }, createElement(DatePicker, { 'aria-label': 'When', name: 'when', defaultValue: new Date(2026, 10, 1, 12) })),
+        createElement('div', { className: 'range' }, createElement(RangeCalendar, { 'aria-label': 'Stay' })),
+        createElement('form', { className: 'rpick' }, createElement(DateRangePicker, { 'aria-label': 'Trip', name: 'trip' }))));
+      const q = <T extends Element>(sel: string) => container.querySelector<T>(sel)!;
+      fireEvent.click(q('.cal [data-date="2026-11-01"]'));
+      fireEvent.click(q('.range [data-date="2026-11-10"]'));
+      process.env.TZ = 'Pacific/Honolulu';
+      tlAct(() => { document.dispatchEvent(new Event('visibilitychange')); });
+      /* the chosen 1st stays chosen, in November (it was an instant that reads as 31 October there) */
+      expect(q('.cal h2').textContent).toBe('November 2026');
+      expect(q<HTMLElement>('.cal [aria-pressed="true"]').dataset.date).toBe('2026-11-01');
+      expect(q<HTMLInputElement>('.pick input[name="when"]').value).toBe('2026-11-01');
+      expect(q('.pick .sg-select__value').textContent).toBe('Nov 1, 2026');
+      /* a range's first day stays the 10th, in the grid and in the status, and so does the range it starts */
+      expect(q<HTMLElement>('.range [aria-pressed="true"]').dataset.date).toBe('2026-11-10');
+      expect(q('.range .sg-calendar__status').textContent).toContain('Nov 10');
+      fireEvent.click(q('.range [data-date="2026-11-12"]'));
+      expect(q('.range .sg-calendar__status').textContent).toMatch(/^Tue, Nov 10\s–\sThu, Nov 12/);
+      /* a range chosen after the move is written as the days it submits */
+      fireEvent.click(q('.rpick button'));
+      const panel = document.querySelector<HTMLElement>('.sg-datepicker-panel')!;
+      fireEvent.click(panel.querySelector('[aria-label="Next month"]')!);   /* it opens on today there, 31 October */
+      fireEvent.click(panel.querySelector('[data-date="2026-11-10"]')!);
+      fireEvent.click(panel.querySelector('[data-date="2026-11-12"]')!);
+      expect(q<HTMLInputElement>('.rpick input[name="trip"]').value).toBe('2026-11-10/2026-11-12');
+      expect(q('.rpick .sg-select__value').textContent).toMatch(/^Tue, Nov 10\s–\sThu, Nov 12/);
+      unmount();
+    } finally {
+      if (zone === undefined) delete process.env.TZ; else process.env.TZ = zone;
+    }
+  });
 });
 
 /* each public entry point (`@satin-glass/react/<category>`), with a ThemeProvider from the foundation entry: rendered

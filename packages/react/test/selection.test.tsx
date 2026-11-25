@@ -144,6 +144,22 @@ describe('Calendar', () => {
     fireEvent.keyDown(grid, { key: 'PageUp' });
     expect(grid.querySelector<HTMLButtonElement>('button[tabindex="0"]')!.dataset.date).toBe('2026-03-05');
   });
+  it('a key pressed against min leaves focus where it goes next', async () => {
+    render(<Calendar defaultValue={d(2026, 3, 5)} min={d(2026, 3, 5)} locale="en-US" />);
+    const grid = screen.getByRole('grid');
+    grid.querySelector<HTMLButtonElement>('[data-date="2026-03-05"]')!.focus();
+    fireEvent.keyDown(grid, { key: 'ArrowLeft' });
+    await act(async () => { await new Promise<void>((r) => requestAnimationFrame(() => r())); });
+    expect(document.activeElement).toBe(grid.querySelector('[data-date="2026-03-05"]'));
+    /* the press changed nothing; the next month's button keeps focus when it is used */
+    const next = screen.getByRole('button', { name: 'Next month' });
+    next.focus();
+    fireEvent.click(next);
+    /* after the frame a refocus would be queued in */
+    await act(async () => { await new Promise<void>((r) => requestAnimationFrame(() => r())); });
+    expect(screen.getByRole('heading').textContent).toBe('April 2026');
+    expect(document.activeElement).toBe(next);
+  });
   it('min / max / isDateDisabled disable days and they cannot be chosen', () => {
     const on = vi.fn();
     render(<Calendar defaultValue={d(2026, 3, 10)} min={d(2026, 3, 5)} max={d(2026, 3, 20)} isDateDisabled={(x) => x.getDate() === 12} onChange={on} locale="en-US" />);
