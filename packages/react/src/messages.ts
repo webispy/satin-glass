@@ -27,6 +27,8 @@ const en = {
   table: { selectAll: 'Select all rows', selectRow: 'Select row', empty: 'No data', sortedAsc: 'sorted ascending', sortedDesc: 'sorted descending', columns: 'Columns', showAll: 'Show all' },
   timeline: { done: 'Completed', current: 'Current', upcoming: 'Upcoming' },
   chartSeries: (chart: string) => `${chart} — series`,
+  /** a donut with nothing to share out (no data, or no positive value) */
+  chartEmpty: (chart: string) => `${chart}: no data`,
   weekdays: { never: 'Never', every: 'Every day', weekdays: 'Weekdays', weekends: 'Weekends' },
   time: { hour: 'Hour', minute: 'Minute', period: 'AM/PM', choose: 'Choose a time', placeholder: 'Select a time', done: 'Done' },
   date: {
@@ -60,6 +62,7 @@ const ko: Messages = {
   table: { selectAll: '모든 행 선택', selectRow: '행 선택', empty: '데이터 없음', sortedAsc: '오름차순 정렬', sortedDesc: '내림차순 정렬', columns: '열', showAll: '모두 보기' },
   timeline: { done: '완료', current: '진행 중', upcoming: '예정' },
   chartSeries: (chart) => `${chart} — 계열`,
+  chartEmpty: (chart) => `${chart}: 데이터 없음`,
   weekdays: { never: '안 함', every: '매일', weekdays: '주중', weekends: '주말' },
   time: { hour: '시', minute: '분', period: '오전/오후', choose: '시간 선택', placeholder: '시간 선택', done: '완료' },
   date: {
