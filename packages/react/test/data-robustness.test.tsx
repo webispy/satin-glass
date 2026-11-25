@@ -225,7 +225,15 @@ describe('DataTable', () => {
   const many = (n: number): R[] => Array.from({ length: n }, (_, i) => ({ id: String(i), name: `row ${i}` }));
   const cols: Column<R>[] = [{ key: 'name', header: 'Name' }];
   /* a 300 px box under a 44 px header: data row i lies at 44 + 44·i, the rows in sight are those clear of the header */
+  /* the window follows a scroll in the next frame: the frames are run here when the test says */
+  let frames: FrameRequestCallback[] = [];
+  const scrolled = (box: HTMLElement) => {
+    fireEvent.scroll(box);
+    act(() => { const run = frames; frames = []; run.forEach((f) => f(performance.now())); });
+  };
   const layout = () => {
+    frames = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((f) => { frames.push(f); return frames.length; });
     vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(300);
     vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) { return this.tagName === 'THEAD' ? 44 : 0; });
   };
@@ -238,7 +246,7 @@ describe('DataTable', () => {
     /* down: the focused row went off the top; the first row in sight takes it (row 100 at the top of the box, not
        an overscan row behind the header) */
     box.scrollTop = 44 * 100;
-    fireEvent.scroll(box);
+    scrolled(box);
     expect(container.querySelector('[data-r="3"]')).toBeNull();
     let stops = container.querySelectorAll('[tabindex="0"]');
     expect(stops).toHaveLength(1);
@@ -251,12 +259,37 @@ describe('DataTable', () => {
     /* up: the focused row went off the bottom; the last row wholly in sight takes it (row 4 ends at 264 px, row 5
        at 308, past the 300 px box) */
     box.scrollTop = 0;
-    fireEvent.scroll(box);
+    scrolled(box);
     stops = container.querySelectorAll('[tabindex="0"]');
     expect(stops).toHaveLength(1);
     expect(stops[0].getAttribute('data-r')).toBe('4');
     expect(document.activeElement).toBe(stops[0]);
     expect(box.scrollTop).toBe(0);
+  });
+  it('moves the window once a frame, however many scroll events the frame brings', () => {
+    layout();
+    const { container } = render(<DataTable<R> aria-label="t" rows={many(200)} columns={cols} rowKey={(r) => r.id} maxHeight={300} />);
+    const box = container.querySelector<HTMLElement>('.sg-table')!;
+    for (const y of [1000, 2000, 44 * 100]) { box.scrollTop = y; fireEvent.scroll(box); }
+    expect(frames).toHaveLength(1);
+    expect(container.querySelector('[data-r="100"]')).toBeNull();
+    /* rendered in the frame itself, before anything after it (the browser's drawing of that frame) */
+    act(() => {
+      const run = frames; frames = []; run.forEach((f) => f(performance.now()));
+      expect(container.querySelector('[data-r="100"]')).not.toBeNull();
+    });
+  });
+  it('a frame that comes after the row height changed measures with the new height', () => {
+    layout();
+    const { container, rerender } = render(<DataTable<R> aria-label="t" rows={many(200)} columns={cols} rowKey={(r) => r.id} maxHeight={300} />);
+    const box = container.querySelector<HTMLElement>('.sg-table')!;
+    box.scrollTop = 3600; fireEvent.scroll(box);
+    rerender(<DataTable<R> aria-label="t" rows={many(200)} columns={cols} rowKey={(r) => r.id} maxHeight={300} density="compact" />);
+    act(() => { const run = frames; frames = []; run.forEach((f) => f(performance.now())); });
+    const spacer = () => box.querySelector<HTMLElement>('tbody:last-of-type tr[aria-hidden="true"]')!.style.height;
+    const after = spacer();
+    act(() => { observers.forEach((f) => f()); });   /* measured again now, with what the table has now */
+    expect(spacer()).toBe(after);
   });
   it('does not take the focus back once it has left the grid', async () => {
     layout();
@@ -267,7 +300,7 @@ describe('DataTable', () => {
     act(() => { (document.activeElement as HTMLElement).blur(); });
     await act(async () => {});
     box.scrollTop = 44 * 100;
-    fireEvent.scroll(box);
+    scrolled(box);
     expect(document.activeElement).toBe(document.body);
     expect(container.querySelectorAll('[tabindex="0"]')).toHaveLength(1);
   });

@@ -1,6 +1,23 @@
 // Frame pacing while each interaction animates, CPU throttled ×4 (Chromium, headless). usage: node tests/e2e/perf.mjs
+import os from 'node:os';
 import { chromium } from './pw.mjs';
-const b = await chromium.launch();
+/* Rendered on the GPU, as in every user's browser: software rendering (SwiftShader, Playwright's default headless) pays
+   a large backdrop blur on the CPU compositor, and its frames say more about the test machine than about the library.
+   PERF_RENDER=software measures that way (where no GPU is available). The limits are set on an M1 MacBook Air: CPU
+   throttling is relative to the host, so a faster machine passes what that one fails. */
+const gpu = process.env.PERF_RENDER !== 'software';
+const angle = process.platform === 'darwin' ? 'metal' : process.platform === 'win32' ? 'd3d11' : 'vulkan';
+const b = await chromium.launch(gpu ? { args: [`--use-angle=${angle}`, '--enable-gpu'] } : {});
+/* what the browser actually renders with, not what was asked for: a GPU run that fell back to software would be
+   judged against the GPU limits */
+const { gpu: info } = await (await b.newBrowserCDPSession()).send('SystemInfo.getInfo');
+const compositing = info.featureStatus?.gpu_compositing ?? '?', renderer = info.auxAttributes?.glRenderer ?? info.devices?.[0]?.deviceString ?? '?';
+console.log(`host: ${os.cpus()[0]?.model.trim()}, ${os.cpus().length} cores, ${Math.round(os.totalmem() / 2 ** 30)} GB; renderer: ${renderer}; GPU compositing ${compositing}`);
+if (gpu && !compositing.startsWith('enabled')) {
+  console.log(`no GPU rendering here (asked for ANGLE ${angle}): run with PERF_RENDER=software to measure in software`);
+  await b.close();
+  process.exit(1);
+}
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 const cdp = await p.context().newCDPSession(p);
 /* the docs font comes from a CDN in unicode-range pieces: a piece that some page's text asks for arrives whenever it arrives, and the

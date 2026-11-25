@@ -12,6 +12,7 @@ import {
   Fragment, useEffect, useMemo, useRef, useState,
   type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode,
 } from 'react';
+import { flushSync } from 'react-dom';
 import { cx, useControllable, useIsoLayoutEffect, useStableId } from './utils';
 import { Tooltip } from './feedback';
 import { Skeleton } from './skeleton';
@@ -221,6 +222,16 @@ export function DataTable<T>({
     return () => ro.disconnect();
   }, [virtual]);
   const range = virtual ? win : { start: 0, end: sorted.length };
+  /* the window follows the scroll once per frame, just before the frame is drawn: a fast wheel or fling sends several
+     scroll events a frame, and a window rendered for each was replaced before it was seen (three renders a frame on a
+     fast wheel). Rendered there rather than left to React's scheduler, which would render it in a task of its own
+     after that frame, and the frame would show the old window. */
+  const frame = useRef(0);
+  const onScroll = virtual ? () => {
+    /* the latest measure when the frame comes: the row height or row count may have changed since the scroll */
+    if (!frame.current) frame.current = requestAnimationFrame(() => { frame.current = 0; flushSync(() => measureRef.current()); });
+  } : undefined;
+  useEffect(() => () => { cancelAnimationFrame(frame.current); frame.current = 0; }, []);
 
   /* ---- keyboard grid: rows −1 (header) · pinned · data; one tab stop */
   const P = pinnedRows.length, N = sorted.length;
@@ -425,7 +436,7 @@ export function DataTable<T>({
   return (
     /* tabIndex -1: Firefox makes a scrolling box a tab stop of its own; here the grid's single tab stop scrolls it */
     <div ref={box} tabIndex={-1} className={cx('sg-table', `sg-table--${density}`, loading && 'sg-table--loading', virtual && 'sg-table--virtual', maxHeight !== undefined && 'sg-table--scroll-y', className)} style={{ maxHeight, ...style, ['--_rh' as string]: `${rowH}px`, ['--_pin-h' as string]: `${P * rowH}px`, ['--_stick-w' as string]: `${stickyW}px` } as CSSProperties}
-      onScroll={virtual ? measure : undefined} aria-busy={loading || undefined}>
+      onScroll={onScroll} aria-busy={loading || undefined}>
       <table role="grid" aria-label={label} aria-rowcount={total} aria-colcount={C} aria-multiselectable={selectable || undefined} style={{ minWidth }} onKeyDown={onKey}
         onBlur={(e) => {
           /* focus left the grid (a click elsewhere, Tab away): the grid no longer holds it, and must not take it
