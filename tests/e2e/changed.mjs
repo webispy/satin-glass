@@ -15,7 +15,7 @@
 // 2. A changed stylesheet that others need (README table) pulls those in too: controls -> selection, data;
 //    overlays -> selection; selection -> data.
 // 3. Every suite says what it covers on a `// covers:` line. A suite runs in all three engines when it covers a
-//    selected category or is itself changed. Suites that cover `*` (render matrix, edge cases, reduced motion) run
+//    selected category or is itself changed. Suites that cover `*` (render matrix, edge cases, axe, reduced motion) run
 //    once, in Chromium, when anything in the library changed; `css` (the split-stylesheet check) when a stylesheet
 //    did. The timing phase (performance) is left to the full run.
 // Before a release the full `pnpm e2e` still runs: this is for checking work in progress quickly.
@@ -163,5 +163,6 @@ else {
   console.log(`-> Chromium only: ${broad.join(', ') || '(none)'}`);
 }
 if (process.argv.includes('--dry')) process.exit(0);
-const env = all ? process.env : { ...process.env, E2E_FILES: full.join(','), E2E_BROAD: broad.join(',') };
+/* E2E_CHANGED: a changed run, even when it falls back to every suite, leaves out the full run's English pass */
+const env = all ? { ...process.env, E2E_CHANGED: '1' } : { ...process.env, E2E_CHANGED: '1', E2E_FILES: full.join(','), E2E_BROAD: broad.join(',') };
 process.exit(spawnSync('node', ['tests/e2e/run.mjs'], { stdio: 'inherit', env }).status ?? 1);

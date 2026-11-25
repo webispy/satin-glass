@@ -36,6 +36,10 @@ for (const c of combos) {
     for (const id of PAGES) {
       errs.length = 0;
       await p.goto(`http://localhost:4173/${q}#/${id}`);
+      /* the page in main (it loads lazily into an empty placeholder) and in the language asked for: a scan of the frame
+         alone, or of the other language, would pass without reading the page */
+      const mounted = await p.waitForFunction((lang) => document.querySelector('main .docs__page')?.childElementCount > 0 && document.documentElement.lang === lang, pw.LANG, { timeout: 10000 }).then(() => true, () => false);
+      if (!mounted) { note('errors', `${tag} @${width} ${id}: not mounted in ${pw.LANG} within 10 s`); continue; }
       await p.waitForTimeout(450);
       const r = await p.evaluate(({ hc, rt }) => {
         /* rgb()/rgba() (0–255), and color(srgb r g b / a) (0–1) — what color-mix() computes to */

@@ -75,7 +75,8 @@ defects these checks would have found.
 - Prose is reviewed separately from code (this project uses Gemini through the `agy` CLI; see
   [CLAUDE.md](CLAUDE.md), or ask a human reviewer). Verify each finding against the code and these rules before
   taking it; reject it with a reason otherwise.
-- The e2e suites read the Korean docs. Changing a Korean string means updating the suites that match it.
+- The e2e suites read the Korean docs (the full run also checks the render matrix and axe in English). Changing a
+  Korean string means updating the suites that match it.
 
 ## Tests
 

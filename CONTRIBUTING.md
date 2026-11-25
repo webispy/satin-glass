@@ -75,7 +75,7 @@ Signed-off-by: Your Name <you@example.com>
    `apps/docs/src/examples/`, and its name in that page's `<Page api={…}>`. Run `node scripts/docs-props.mjs`.
    Add it to the category table in `README.md` and `README.ko.md`.
 5. Add unit tests for its behaviour. Once the design is chosen, add e2e for interaction and motion (see below).
-   The suites that walk every page (`corners`, `blur-budget`, `focus`, `edge` with axe and 320 px reflow,
+   The suites that walk every page (`corners`, `blur-budget`, `focus`, `edge` with 320 px reflow, `axe`,
    `matrix`, `sweep`, `css-split`, `i18n`) pick it up by themselves.
 6. Add a `CHANGELOG.md` entry under the unreleased version.
 
@@ -92,5 +92,6 @@ so that `e2e:changed` picks it.
 The three packages are versioned together. A release is one commit, `release: X.Y.Z`: the version in every
 `packages/*/package.json`, the date on the unreleased section of `CHANGELOG.md`, the status line in both READMEs.
 It is tagged `vX.Y.Z`. Before tagging, `pnpm typecheck`, `pnpm test`, `node scripts/docs-props.mjs --check` and the
-full `pnpm e2e` pass: every suite in all three engines, plus the Chromium runs with each theme, motion personality
-and reduced setting, and performance with the CPU slowed 4×.
+full `pnpm e2e` pass: every suite in all three engines, plus the Chromium runs (each theme, motion personality and
+reduced setting; the render matrix and the axe scan with the docs in English) and performance with the CPU slowed
+4×.
