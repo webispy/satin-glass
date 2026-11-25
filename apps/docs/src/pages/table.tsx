@@ -268,8 +268,8 @@ function Virtual() {
   const cols = useMemo(() => orderColumns.map((c, i) => (i === 0 ? { ...c, sticky: true } : c)), [orderColumns]);
   return (
     <Section title={t({ en: 'Thousands of rows', ko: '수천 행' })} intro={<L
-      en="A table given a maxHeight draws only the rows in view once it has more than 80. As it scrolls, the visible rows update once a frame, in time for the frame that shows them. A key that jumps far (such as Ctrl+End) draws that row first, then moves focus to it."
-      ko="maxHeight로 높이를 정한 표는 80행이 넘으면 화면에 보이는 행만 그립니다. 스크롤할 때는 프레임마다 한 번, 화면이 스크롤되는 바로 그 프레임에 새로 들어오는 행을 그립니다. Ctrl+End처럼 키보드로 먼 행까지 가면 그 행을 그린 뒤 포커스를 옮깁니다." />}>
+      en="A table given a maxHeight draws only the rows in view once it has more than 80. As it scrolls, the visible rows update once a frame, in time for the frame that shows them. Flung half its height or more in a frame, the table shows still placeholders until it slows. A key that jumps far (such as Ctrl+End) draws that row first, then moves focus to it."
+      ko="maxHeight로 높이를 정한 표는 80행이 넘으면 화면에 보이는 행만 그립니다. 스크롤할 때는 프레임마다 한 번, 화면이 스크롤되는 바로 그 프레임에 새로 들어오는 행을 그립니다. 한 프레임에 표 높이의 절반 이상 빠르게 스크롤하면, 느려질 때까지 행 대신 움직이지 않는 자리 표시를 보여 줍니다. Ctrl+End처럼 키보드로 먼 행까지 가면 그 행을 그린 뒤 포커스를 옮깁니다." />}>
       <Demo col data-demo="table-virtual">
         <DataTable<Order> aria-label={t({ en: '5,000 orders', ko: '주문 5,000건' })} rows={d.ORDERS} columns={cols} rowKey={(r) => r.id} defaultSort={{ key: 'time', dir: 'desc' }} density="compact" maxHeight={420}
           selectable selected={sel} onSelectedChange={setSel} labels={{ ...labels, selectRow: (o) => t({ en: `Select order ${o.id}`, ko: `주문 ${o.id} 선택` }) }} />

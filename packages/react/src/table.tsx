@@ -106,7 +106,7 @@ export type DataTableProps<T> = {
 };
 
 const ROW_H = { compact: 36, regular: 44 };
-const SEL_W = 44, DEFAULT_W = 120, OVERSCAN = 8, VIRTUAL_FROM = 80;
+const SEL_W = 44, DEFAULT_W = 120, OVERSCAN = 8, VIRTUAL_FROM = 80, FLING_SETTLE = 120;
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]';
 /* controls inside cells that are still in the tab order */
 const INNER_TABBABLE = ['a[href]', 'button', 'input', 'select', 'textarea', '[tabindex]'].map((s) => `[data-r] ${s}:not([tabindex="-1"])`).join(', ');
@@ -227,11 +227,38 @@ export function DataTable<T>({
      fast wheel). Rendered there rather than left to React's scheduler, which would render it in a task of its own
      after that frame, and the frame would show the old window. */
   const frame = useRef(0);
+  /* a fling: a frame that scrolled half the box or more draws the window's rows as one still placeholder (a tall row
+     whose cells repeat, every row height, the row's line and a bar where each column's text runs), and the rows are
+     rendered once no such frame has come for FLING_SETTLE ms. Rendering a window of rows that will not be read, frame
+     after frame, is more than a frame holds on slower machines. Never while the grid holds the focus (the focused cell
+     stays), and never in forced colours, which take the placeholder's gradients away and would leave the body blank;
+     focus coming in, or a press, ends it at once. */
+  const [flinging, setFlinging] = useState(false);
+  const settle = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const lastTop = useRef(0);
+  const endFling = () => { clearTimeout(settle.current); settle.current = undefined; setFlinging(false); };
   const onScroll = virtual ? () => {
     /* the latest measure when the frame comes: the row height or row count may have changed since the scroll */
-    if (!frame.current) frame.current = requestAnimationFrame(() => { frame.current = 0; flushSync(() => measureRef.current()); });
+    if (!frame.current) frame.current = requestAnimationFrame(() => {
+      frame.current = 0;
+      flushSync(() => {
+        const b = box.current;
+        measureRef.current();
+        if (!b) return;
+        const moved = Math.abs(b.scrollTop - lastTop.current);
+        lastTop.current = b.scrollTop;
+        if (moved < b.clientHeight / 2 || b.contains(document.activeElement)) return;
+        if (typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches) return;
+        setFlinging(true);
+        clearTimeout(settle.current);
+        settle.current = setTimeout(() => { settle.current = undefined; setFlinging(false); }, FLING_SETTLE);
+      });
+    });
   } : undefined;
-  useEffect(() => () => { cancelAnimationFrame(frame.current); frame.current = 0; }, []);
+  /* the placeholder stands for a virtual window: a table that stops being virtual (filtered to a few rows, no
+     maxHeight) shows its rows */
+  const fling = flinging && virtual && !loading && range.end > range.start;
+  useEffect(() => () => { cancelAnimationFrame(frame.current); frame.current = 0; clearTimeout(settle.current); settle.current = undefined; }, []);
 
   /* ---- keyboard grid: rows −1 (header) · pinned · data; one tab stop */
   const P = pinnedRows.length, N = sorted.length;
@@ -300,7 +327,7 @@ export function DataTable<T>({
        (behind the sticky header and pinned rows, or below the box), where focus would sit unseen and the next
        arrow key scroll the table back */
     let el = cellEl(cell.r, cell.c);
-    if (!el && cell.r >= P && range.end > range.start) {
+    if (!el && cell.r >= P && range.end > range.start && !fling) {
       const top = (head.current?.offsetHeight ?? 0) + (pin.current?.offsetHeight ?? 0);
       /* rows wholly in sight; when the pinned rows leave room for less than one, the row that shows more */
       const end = b.scrollTop + b.clientHeight - top;
@@ -309,6 +336,9 @@ export function DataTable<T>({
       const clamp = (i: number) => P + Math.max(range.start, Math.min(range.end - 1, i));
       el = cellEl(cell.r < P + first ? clamp(first) : clamp(last), cell.c);
     }
+    /* rows flying past are placeholders: the column's header holds the stop until they are rendered, so Tab still
+       reaches the grid */
+    if (!el && fling) el = cellEl(-1, cell.c);
     if (!el) return;
     target(el).tabIndex = 0;
     /* the focused cell was taken away (its row scrolled out of the window, or was filtered out): focus went to the
@@ -436,7 +466,7 @@ export function DataTable<T>({
   return (
     /* tabIndex -1: Firefox makes a scrolling box a tab stop of its own; here the grid's single tab stop scrolls it */
     <div ref={box} tabIndex={-1} className={cx('sg-table', `sg-table--${density}`, loading && 'sg-table--loading', virtual && 'sg-table--virtual', maxHeight !== undefined && 'sg-table--scroll-y', className)} style={{ maxHeight, ...style, ['--_rh' as string]: `${rowH}px`, ['--_pin-h' as string]: `${P * rowH}px`, ['--_stick-w' as string]: `${stickyW}px` } as CSSProperties}
-      onScroll={onScroll} aria-busy={loading || undefined}>
+      onScroll={onScroll} onPointerDown={flinging ? endFling : undefined} aria-busy={loading || undefined}>
       <table role="grid" aria-label={label} aria-rowcount={total} aria-colcount={C} aria-multiselectable={selectable || undefined} style={{ minWidth }} onKeyDown={onKey}
         onBlur={(e) => {
           /* focus left the grid (a click elsewhere, Tab away): the grid no longer holds it, and must not take it
@@ -444,9 +474,10 @@ export function DataTable<T>({
              without this mattering, so it is decided once the removal is done */
           const t = e.target as HTMLElement, to = e.relatedTarget as Node | null;
           if (to && e.currentTarget.contains(to)) return;
+          want.current = null;   /* a cell asked for by a key, not yet rendered, must not pull focus back later */
           queueMicrotask(() => { if (focused.current === t && t.isConnected && document.activeElement !== t) focused.current = null; });
         }}
-        onFocus={(e) => { focused.current = e.target as HTMLElement; const el = (e.target as HTMLElement).closest<HTMLElement>('[data-r]'); if (el) { const r = +el.dataset.r!, c = +el.dataset.c!; if (r !== cell.r || c !== cell.c) setCell({ r, c }); } }}>
+        onFocus={(e) => { if (flinging) endFling(); focused.current = e.target as HTMLElement; const el = (e.target as HTMLElement).closest<HTMLElement>('[data-r]'); if (el) { const r = +el.dataset.r!, c = +el.dataset.c!; if (r !== cell.r || c !== cell.c) setCell({ r, c }); } }}>
         <colgroup>{widths.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
         <thead ref={head}>
           {groups ? (
@@ -484,7 +515,15 @@ export function DataTable<T>({
             <tr><td colSpan={C} className="sg-table__empty">{empty ?? labels.empty ?? t.empty}</td></tr>
           )}
           {virtual && range.start > 0 && <tr aria-hidden="true" style={{ height: range.start * rowH }} />}
-          {sorted.slice(range.start, range.end).map((row, k) => {
+          {fling && (
+            <tr aria-hidden="true" className="sg-table__fling" style={{ height: (range.end - range.start) * rowH }}>{Array.from({ length: C }, (_, j) => {
+              const col = selectable ? (j === 0 ? null : cols[j - 1]) : cols[j];
+              return <td key={j} data-bar={col ? (col.align ?? 'start') : undefined}
+                className={col ? colClass(j, j - (selectable ? 1 : 0)) : 'sg-table__sticky sg-table__check'}
+                style={stickyLeft[j] !== undefined ? { left: stickyLeft[j] } : undefined} />;
+            })}</tr>
+          )}
+          {!fling && sorted.slice(range.start, range.end).map((row, k) => {
             const ri = range.start + k, key = keys[ri], isSel = selSet.has(key), st = rowState?.(row);
             return (
               <Fragment key={key}>
