@@ -341,3 +341,10 @@ body { background: var(--sg-bg); }
 .api__req { margin-inline-start: 6px; font-size: 11px; font-weight: 600; color: var(--sg-warning-text); }
 .api__none { color: var(--sg-label-tertiary); }
 [data-sg-theme$="-hc"] .api__scroll { box-shadow: inset 0 0 0 1px var(--sg-separator-strong); }
+
+/* A2UI experiment (#62): the surface, and beside it (below it under 760 px) what it sends back */
+.a2ui-replay { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; width: 100%; align-items: start; }
+@media (max-width: 759.98px) { .a2ui-replay { grid-template-columns: minmax(0, 1fr); } }
+.a2ui-replay__surface { min-height: 120px; border-radius: var(--sg-radius-lg); }
+.a2ui-replay__side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.a2ui-log { margin: 0; padding: 8px 10px; max-height: 200px; overflow: auto; font-family: var(--sg-font-mono); font-size: 11.5px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--sg-fill); border-radius: var(--sg-radius-sm); color: var(--sg-label-secondary); }
