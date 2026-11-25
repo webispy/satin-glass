@@ -1,6 +1,6 @@
 /* A2UI (#62): a recorded agent turn in the A2UI protocol, drawn by @satin-glass/a2ui, with what would go back to the
    agent. The package is experimental and unpublished until both protocol versions' conformance fixtures pass. */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { A2uiSurfaces, useA2ui, type OutboundEnvelope } from '@satin-glass/a2ui';
 import { Button, SegmentedControl, Stack, Text } from '@satin-glass/react';
@@ -63,14 +63,16 @@ function Replay({ version, copy: c, run, del }: { version: Version; copy: Copy; 
     const poll = setInterval(() => setModel(JSON.stringify((a2ui.dataModel(version) as { surfaces?: unknown } | undefined)?.surfaces ?? {}, null, 1)), 250);
     return () => clearInterval(poll);
   });
+  const ids = useId();
   return (
     <div className="a2ui-replay" aria-busy={replaying || undefined}>
       <A2uiSurfaces a2ui={a2ui} className="a2ui-replay__surface" />
       <div className="a2ui-replay__side">
-        <Text variant="subhead" as="h3">{t({ en: 'Sent to the agent', ko: '에이전트로 보낸 메시지' })}</Text>
-        <pre className="a2ui-log" data-a2ui-log="">{sent.length ? sent.map((m) => JSON.stringify(m)).join('\n') : '—'}</pre>
-        <Text variant="subhead" as="h3">{t({ en: 'Data model', ko: '데이터 모델' })}</Text>
-        <pre className="a2ui-log" data-a2ui-model="">{model || '—'}</pre>
+        {/* each log scrolls: a region in the Tab order, named by its heading, so a keyboard can scroll it too */}
+        <Text variant="subhead" as="h3" id={`${ids}-sent`}>{t({ en: 'Sent to the agent', ko: '에이전트로 보낸 메시지' })}</Text>
+        <pre className="a2ui-log" data-a2ui-log="" tabIndex={0} role="region" aria-labelledby={`${ids}-sent`}>{sent.length ? sent.map((m) => JSON.stringify(m)).join('\n') : '—'}</pre>
+        <Text variant="subhead" as="h3" id={`${ids}-model`}>{t({ en: 'Data model', ko: '데이터 모델' })}</Text>
+        <pre className="a2ui-log" data-a2ui-model="" tabIndex={0} role="region" aria-labelledby={`${ids}-model`}>{model || '—'}</pre>
       </div>
     </div>
   );

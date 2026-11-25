@@ -38,6 +38,11 @@ for (const id of mine) {
      still swept */
   const loaded = await p.goto(url).then(() => true, () => false);
   if (!loaded) { ok(`${id} (${width} px): the page did not load`, false); await p.close().catch(() => {}); continue; }
+  /* until the page itself is in `main` (its chunk loads lazily, and until then an empty placeholder stands there),
+     then 900 ms for its demos to come in (a replay adds its controls after mounting): a page that mounts late is
+     otherwise scanned as its frame alone, and passes with none of its own controls swept */
+  const mount = () => p.waitForFunction(() => document.querySelector('main .docs__page')?.childElementCount > 0, null, { timeout: 10000 }).then(() => true, () => false);
+  if (!(await mount())) { ok(`${id} (${width} px): the page did not mount in main within 10 s`, false); await p.close().catch(() => {}); continue; }
   await p.waitForTimeout(900);
   const answers = () => Promise.race([p.evaluate(() => true), new Promise((r) => setTimeout(() => r(false), 4000))]).catch(() => false);
   /* two frames after each step: React has committed and its effects have run, which is all this suite judges (errors
@@ -59,7 +64,14 @@ for (const id of mine) {
      sort buttons are different controls */
   const FP = (sel) => { const seen = {}; return [...document.querySelectorAll(sel)].map((e) => { const box = e.parentElement?.closest('[aria-label], [data-demo]'); const k = `${box ? box.getAttribute('aria-label') || box.getAttribute('data-demo') : ''}>${e.getAttribute('role') || e.tagName}|${(e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 40)}`; seen[k] = (seen[k] ?? 0) + 1; return [e, `${k}#${seen[k]}`]; }); };
   const bounded = (work) => Promise.race([work, new Promise((r) => setTimeout(() => r(Hang), 4000))]).then((v) => { if (v === Hang) throw new Hang(); return v; });
-  const prints = await bounded(p.evaluate(([sel, fp]) => new Function(`return (${fp})`)()(sel).map(([e, f], i) => { e.setAttribute('data-sweep', String(i)); return f; }), [SEL, FP.toString()])).catch((e) => { if (e instanceof Hang) return null; throw e; });
+  /* and whether each is in reach (shown and enabled), read in the same moment as it is marked: read later, a control
+     replaced in between would lose its mark, read as out of reach, and leave the count unseen */
+  const first = await bounded(p.evaluate(([sel, fp]) => new Function(`return (${fp})`)()(sel).map(([e, f], i) => {
+    e.setAttribute('data-sweep', String(i));
+    const shown = e.getClientRects().length > 0 && (e.checkVisibility ? e.checkVisibility({ visibilityProperty: true }) : getComputedStyle(e).visibility !== 'hidden');
+    return [f, shown && !e.matches(':disabled') && !e.closest('[aria-disabled="true"]')];
+  }), [SEL, FP.toString()])).catch((e) => { if (e instanceof Hang) return null; throw e; });
+  const prints = first?.map(([f]) => f);
   if (!prints) { ok(`${id} (${width} px): the page stopped answering before its controls were read`, false); await p.close().catch(() => {}); continue; }
   /* the ordinal is counted on the live page, so a kind of control is relinked only while the page shows as many of
      it as the first scan did: with one of two "Remove" buttons gone, or one still behind a placeholder, the other
@@ -76,30 +88,62 @@ for (const id of mine) {
     }
   }, [SEL, FP.toString(), prints]));
   const count = prints.length;
-  let operated = 0, hidden = 0, hung = false;
-  const threw = [], gone = [];
-  for (let i = 0; i < count && !hung; i++) {
+  /* the controls in sight and enabled at the first scan are what the page is judged against: one an earlier step
+     disabled or hid (the pagination's Next once page 40 is chosen) is looked at again on the page loaded afresh, and
+     counts as not operated if it is still out of reach there, instead of quietly leaving the count */
+  const sight = first.map(([, inReach]) => inReach);
+  const shown = sight.filter(Boolean).length;
+  let operated = 0, hung = false, lost = false, fresh = false;
+  const threw = [], gone = [], again = [];
+  const afresh = async (el) => {
+    fresh = true;
+    /* afresh: an earlier step may have changed what the docs keep (the language), and the page's names with it */
+    await bounded(p.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch { /* none */ } }));
+    /* the page's own URL, not the current one: switching the language writes `?lang=` into it, and the query wins
+       over storage. Through a blank page, so that it loads again: going to a URL that differs only in the hash
+       keeps the document and the app's state */
+    await p.goto('about:blank'); await p.goto(url);
+    /* the page in main first, as on the first load (one that does not mount again fails, and the rest of it is not
+       swept: its controls would be looked for in the frame alone), then 900 ms for its demos; then until the control
+       is there again (a page may show placeholders first: the dashboard's skeleton), at most 2.5 s */
+    if (!(await mount())) { lost = true; return; }
+    await p.waitForTimeout(900);
+    for (const t1 = Date.now(); Date.now() - t1 < 2500 && !(await el.count()); await p.waitForTimeout(150)) await relink();
+  };
+  const reach = async (el) => (await el.isVisible()) && (await el.isEnabled());
+  /* in reach a moment ago but not clickable now: an earlier step is still taking it away (a page being pushed on a
+     navigation stack slides over it, and Escape does not pop it) or left something over it. A trial click
+     (actionability only, nothing pressed, with the real click's scrolling and retries) says so, and why */
+  const blocked = (el) => el.click({ trial: true, timeout: 1500 }).then(() => '', (e) =>
+    String(e.message).split('\n').map((l) => l.trim().replace(/^- /, '')).filter((l) => /intercepts|^element is/.test(l)).pop()?.slice(0, 100) ?? 'not clickable');
+  for (let i = 0; i < count && !hung && !lost; i++) {
+    /* out of reach from the start (in a collapsed section, disabled): not this page's to operate */
+    if (!sight[i]) continue;
     const el = p.locator(`[data-sweep="${i}"]`);
+    fresh = false;
     try {
       if (!(await el.count())) await relink();
       /* still gone: an earlier step took it away (a tab switched, a month paged): the page as it first was has it */
-      if (!(await el.count())) {
-        /* afresh: an earlier step may have changed what the docs keep (the language), and the page's names with it */
-        await bounded(p.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch { /* none */ } }));
-        /* the page's own URL, not the current one: switching the language writes `?lang=` into it, and the query wins
-           over storage. Through a blank page, so that it loads again: going to a URL that differs only in the hash
-           keeps the document and the app's state */
-        await p.goto('about:blank'); await p.goto(url);
-        /* until it is there again (a page may show placeholders first: the dashboard's skeleton), at most 2.5 s */
-        for (const t0 = Date.now(); Date.now() - t0 < 2500 && !(await el.count()); await p.waitForTimeout(150)) await relink();
-      }
+      if (!(await el.count())) await afresh(el);
+      if (lost) break;
       if (!(await el.count())) { gone.push(prints[i]); continue; }
-      /* not operable as the page stands: out of sight (a collapsed section, a disabled control) */
-      if (!(await el.isVisible()) || !(await el.isEnabled())) { hidden++; continue; }
+      /* in reach at first, out of it now: an earlier step disabled or hid it */
+      if (!(await reach(el))) await afresh(el);
+      if (lost) break;
+      if (!(await el.count())) { gone.push(prints[i]); continue; }
+      if (!(await reach(el))) { threw.push(`${prints[i]}: ${(await el.isVisible()) ? 'disabled' : 'hidden'} even on the page loaded afresh`); continue; }
       const role = await el.getAttribute('role');
       const label = ((await el.getAttribute('aria-label')) || (await el.textContent()) || '').trim().slice(0, 30);
       where = `${role ?? 'button'} “${label}”`;
       let returned = true;
+      /* the trial scrolls to the control itself, as a click does */
+      if (role !== 'slider' && await blocked(el)) {
+        await afresh(el);
+        if (lost) break;
+        if (!(await el.count()) || !(await reach(el))) { threw.push(`${prints[i]}: not clickable, and out of reach on the page loaded afresh`); continue; }
+        const why = await blocked(el);
+        if (why) { threw.push(`${prints[i]}: not clickable even on the page loaded afresh (${why})`); continue; }
+      }
       await el.scrollIntoViewIfNeeded({ timeout: 1500 });
       if (role === 'slider') { await el.focus(); for (const key of ['ArrowRight', 'End', 'Home']) await p.keyboard.press(key); }
       else if (role === 'combobox') {
@@ -136,7 +180,8 @@ for (const id of mine) {
       await p.keyboard.press('Escape'); await settle();
       if (!(await answers())) { hung = true; errors.push(`${where}: the page stopped answering`); break; }
       if (!p.url().endsWith(`#/${id}`)) { await p.goto(url); await p.waitForTimeout(700); await relink(); }
-      if (returned) operated++; else threw.push(`${where}: no way back after the first click`);
+      /* listed when it took a fresh page to reach it, for whatever reason */
+      if (returned) { operated++; if (fresh) again.push(prints[i]); } else threw.push(`${where}: no way back after the first click`);
     } catch (e) {
       if (e instanceof Hang) { hung = true; errors.push(`${where}: the page stopped drawing frames`); break; }
       threw.push(`${where}: ${String(e.message).split('\n')[0].slice(0, 120)}`);
@@ -144,15 +189,17 @@ for (const id of mine) {
       try { await settle(); } catch { hung = true; errors.push(`${where}: the page stopped drawing frames`); }
     }
   }
+  if (lost) errors.push('loaded again, the page did not mount in main within 10 s; the rest was not swept');
   /* errors thrown late (an exit animation's end) still belong to this page, and it must still answer after them */
   await p.waitForTimeout(500);
   if (!hung && !(await answers())) errors.push('after the last control: the page stopped answering');
   /* a control that went away, or is covered by what the last one opened, is not a failure by itself; but a page
      where most of the controls in sight could not be operated was not swept (it used to pass with one of many).
-     Controls that were gone and not found again count as not operated */
-  const shown = count - hidden;
+     Controls that were gone and not found again count as not operated, against the controls in reach at the first
+     scan */
   ok(`${id} (${width} px): ${operated} of ${shown} controls in sight operated, no page errors and no hang`, errors.length === 0 && operated > 0 && operated * 2 >= shown, [...new Set(errors)].slice(0, 3).join(' | '));
   if (threw.length) console.log(`  not operated: ${threw.slice(0, 5).join(' | ')}${threw.length > 5 ? ` (+${threw.length - 5})` : ''}`);
+  if (again.length) console.log(`  operated only on the page loaded afresh: ${again.slice(0, 5).join(' | ')}${again.length > 5 ? ` (+${again.length - 5})` : ''}`);
   if (gone.length) console.log(`  gone before their turn: ${gone.slice(0, 5).join(' | ')}${gone.length > 5 ? ` (+${gone.length - 5})` : ''}`);
   await p.close();
 }

@@ -15,13 +15,11 @@
 // usage: node tests/e2e/corners.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
-import { readFileSync } from 'node:fs';
+import { PAGES } from './pages.mjs';
 const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const PAGES = [...readFileSync(new URL('../../apps/docs/src/routes.ts', import.meta.url), 'utf8').matchAll(/\{ id: '([a-z-]+)', label:/g)].map((m) => m[1]);
-if (PAGES.length < 15) throw new Error(`found only ${PAGES.length} docs pages in routes.ts`);   /* a moved list must not pass by comparing nothing */
 const TOL = 2, MIN = 4;   /* ±2 px cannot be told apart */
 
 const scan = ({ TOL, MIN, root }) => {
