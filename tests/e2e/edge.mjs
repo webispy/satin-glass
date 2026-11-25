@@ -1,10 +1,9 @@
 // Edge cases a user can produce: rapid repeats, changes mid-animation, navigation mid-gesture, bounds, disabled
 // and refused (controlled) states, long text, touch, keyboard-only use, 320 px reflow, leftovers after many
-// open/close cycles, and an axe accessibility scan. Uses the docs "lab" page plus the regular pages.
+// open/close cycles. Uses the docs "lab" page plus the regular pages. The axe scan is axe.mjs.
 // usage: node tests/e2e/edge.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
-import { readFileSync } from 'node:fs';
 import { PAGES } from './pages.mjs';
 const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
@@ -380,29 +379,7 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   await p.context().close();
 }
 
-/* ================================================================ axe accessibility scan */
-{
-  const axe = readFileSync(new URL('../../node_modules/axe-core/axe.min.js', import.meta.url), 'utf8');
-  const found = new Map();
-  for (const q of ['', '?mode=dark&hc=1']) {
-    const p = await newPage();
-    /* every page but the foundation specimens (colour swatches and type samples are shown, not read) */
-    for (const id of PAGES.filter((x) => !['material', 'colors', 'type', 'motion'].includes(x))) {
-      await p.goto(U(id, q)); await settle(p, 500);
-      /* let entrance animations (fades) finish first — half-faded text would read as low contrast; endless ones
-         (spinners, shimmer) are left running */
-      await p.evaluate(() => Promise.race([Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {}))), new Promise((r) => setTimeout(r, 3000))]));
-      await p.addScriptTag({ content: axe });
-      const v = await p.evaluate(async () => {
-        const r = await window.axe.run(document, { resultTypes: ['violations'], rules: { 'color-contrast': { enabled: true } } });
-        return r.violations.filter((x) => x.impact === 'serious' || x.impact === 'critical').map((x) => ({ id: x.id, n: x.nodes.length, ex: x.nodes[0]?.target?.join(' ') }));
-      });
-      for (const x of v) found.set(`${x.id} (${id}${q ? ' ' + q : ''})`, `${x.n}× e.g. ${x.ex}`);
-    }
-    await p.context().close();
-  }
-  ok('axe: no serious or critical accessibility violations', found.size === 0, [...found].slice(0, 8).map(([k, v]) => `${k}: ${v}`).join(' | '));
-}
+/* the axe scan is a suite of its own (axe.mjs), so it can run in English too */
 
 /* ---------------------------------------------------------------- a panel in a scroll area is clipped like its anchor */
 {

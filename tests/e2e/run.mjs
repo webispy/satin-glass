@@ -8,7 +8,8 @@
 //   reduced motion: in-app toggle and system setting
 //   finger drags with real touch input: sheet, switch, slider, segmented control, tab bar, wheel fling, swipe back (Chromium)
 //   edge cases: rapid repeats, mid-animation changes, bounds, disabled/refused, long text, touch, keyboard,
-//     320 px reflow, open/close leftovers, axe
+//     320 px reflow, open/close leftovers
+//   axe: no serious or critical accessibility violations on any page
 //   stylesheets split by category: every page computes the same with the per-category files in any order, with
 //     each category's listed dependencies only, and with the layered build (Chromium)
 //   concentric corners: boxes nested near a corner follow inner = outer − gap (Chromium)
@@ -16,7 +17,8 @@
 //   settings at the nearest boundary: nested themes, high contrast, reduced motion, reduce transparency in portals
 //   performance (CPU ×4), momentum across updates, arrival timing (informational)
 // Everything runs in all three engines (Chromium, WebKit, Firefox); the variants (motion personalities, dark / high
-// contrast / reduced transparency, reduced motion) in Chromium.
+// contrast / reduced transparency, reduced motion) in Chromium. The suites read the docs in Korean; the full run
+// (every engine) also runs the render matrix and the axe scan in English, in Chromium, where labels run longest.
 //
 // How — three phases, by how much a suite cares about the machine being busy:
 //   1. checks   suites that only look at results (render matrix in shards, edge cases, many-item strips, data &
@@ -69,7 +71,14 @@ const sharded = (to, label, file, shardsFor) => { for (const b of ENGINES) { con
 for (const b of ENGINES) checks.push([`many items (overflowing segmented / tab bar) · ${b}`, 'overflow.mjs', { BROWSER: b, OVF_PART: 'checks' }]);
 for (const b of ENGINES) motion.push([`strip browsing (wheel, pan, fling) · ${b}`, 'overflow.mjs', { BROWSER: b, OVF_PART: 'browse' }]);
 perEngine(checks, 'edge cases', 'edge.mjs');
+perEngine(checks, 'axe', 'axe.mjs');
 sharded(checks, 'render matrix', 'matrix.mjs', (b) => (b === 'chromium' ? 3 : 2));
+/* English, the default language, whose labels run longer: in the full run (every engine, no suites picked, not
+   E2E_ONLY, not `e2e:changed` falling back to every suite), once, in Chromium (#3) */
+if (!QUICK && !PICKED && !ONLY && !process.env.E2E_CHANGED && ENGINES.includes('chromium')) {
+  for (let i = 1; i <= 3; i++) checks.push([`render matrix · chromium en ${i}/3`, 'matrix.mjs', { BROWSER: 'chromium', SHARD: `${i}/3`, E2E_LANG: 'en' }]);
+  checks.push(['axe · chromium en', 'axe.mjs', { BROWSER: 'chromium', E2E_LANG: 'en' }]);
+}
 perEngine(checks, 'data components & dashboard', 'data.mjs');
 perEngine(checks, 'settings decide at the nearest boundary', 'settings.mjs');
 /* every control on every page, there and back: no page error, no hang — by page in shares; phone width once, in Chromium */
@@ -121,7 +130,7 @@ const only = (l) => l.filter(([label, file, env]) => {
 /* E2E_SHARD=k/n: this machine runs the k-th of n shares (CI runs the shares on separate runners). Suites go,
    longest first, to the share with the least so far, by the time each took on a CI runner (Chromium; other
    engines a third longer); every runner computes the same split */
-const EST = { 'css-split.mjs': 126, 'focus.mjs': 40, 'edge.mjs': 102, 'overflow.mjs': 95, 'overflow.mjs#browse': 15, 'matrix.mjs': 52, 'interact.mjs': 59, 'data.mjs': 57,
+const EST = { 'css-split.mjs': 126, 'focus.mjs': 40, 'edge.mjs': 75, 'axe.mjs': 30, 'overflow.mjs': 95, 'overflow.mjs#browse': 15, 'matrix.mjs': 52, 'interact.mjs': 59, 'data.mjs': 57,
   'corners.mjs': 51, 'reduce-motion.mjs': 49, 'pickers.mjs': 37, 'wheel-motion.mjs': 33, 'display.mjs': 32, 'selection.mjs': 28,
   'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'sweep.mjs': 48, 'settings.mjs': 4 };
 const SHARD = /^(\d+)\/(\d+)$/.exec(process.env.E2E_SHARD || '');
@@ -155,7 +164,8 @@ let phaseJobs = 1, kept = 0;
 const secs = (t) => `${((performance.now() - t) / 1000).toFixed(0)}s`;
 const run = ([label, file, env], record = true) => new Promise((res) => {
   const t = performance.now(), out = [];
-  const c = spawn('node', [`tests/e2e/${file}`], { env: { ...process.env, ...env } });
+  /* Korean unless the suite is one of the English runs: an E2E_LANG left in the shell does not turn every suite */
+  const c = spawn('node', [`tests/e2e/${file}`], { env: { ...process.env, E2E_LANG: 'ko', ...env } });
   c.stdout.on('data', (d) => out.push(d)); c.stderr.on('data', (d) => out.push(d));
   c.on('exit', (n) => {
     const pass = n === 0, text = Buffer.concat(out).toString().trimEnd();
