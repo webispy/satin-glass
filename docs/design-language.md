@@ -54,9 +54,8 @@ This document records the values the design language settles on and why; it is w
 - **색**: `--sg-<hue>-<step>`(원시) + `--sg-<semantic>`(테마별). 빌드할 때 대비를 검사하고, 기준에 못 미치면 빌드가 실패한다.
   - 기본 테마: 본문 7:1, 보조 텍스트 4.5:1, 강조 텍스트 4.5:1
   - 고대비 테마: 기준을 한 단계씩 올림(본문·보조·강조 텍스트 모두 7:1)
-- **재질**: `--sg-glass-fill(-strong|-subtle|-clear)`, `--sg-glass-rim-lit/-shade`, `--sg-glass-depth`, `--sg-glass-highlight`, `--sg-blur(-strong|-subtle)`
+- **재질**: `--sg-glass-fill(-strong|-subtle|-clear)`, `--sg-glass-rim-lit/-shade`, `--sg-glass-depth`, `--sg-glass-highlight`, `--sg-glass-hover-ink`·`--sg-glass-hover-amount`(유리 컨트롤을 가리킬 때 채움에 섞는 색에서 글자색의 몫과, 그 색을 섞는 양. 기본 테마는 그 컨트롤의 하이라이트를 30%, 고대비는 하이라이트가 없어 글자색을 6%), `--sg-blur(-strong|-subtle)`
   - **팔레트의 단계는 밝기 순서다:** 같은 단계(예: 500)는 같은 OKLCH 밝기에서 출발하지만, 최종 sRGB 색의 WCAG 대비는 색마다 다르다(500의 흰 글자 대비가 jade 3.1 : 1, ruby 3.7 : 1). 글자와 상태 표시에는 단계 번호가 아니라 검사를 통과한 의미 색을 쓴다. 문서의 색 페이지가 칸마다 흰·검은 글자 대비를 보여 준다.
-- **재질**: `--sg-glass-fill(-strong|-subtle|-clear)`, `--sg-glass-rim-lit/-shade`, `--sg-glass-depth`, `--sg-glass-highlight`, `--sg-blur(-strong|-subtle)`
 - **간격**: `--sg-space-<n>`(0 · 0.5 · 1 · 1.5 · 2 · 2.5 · 3 · 4 · 5 · 6 · 8 · 10 · 12 · 16 = 4px 단위). `Stack`의 `gap={3}`처럼 단계 숫자를 쓰면 그 토큰을 읽으므로 테마에서 간격 토큰을 바꾸면 따라온다(단계에 없는 숫자는 4px 배수).
 - **글자**: 본문·제목은 `Text`의 변형(`--sg-text-<variant>-size/-line/-weight/-tracking`). 컨트롤은 글자 역할을 따로 갖는다 — 테마가 바꾸면 모든 컨트롤이 따라온다.
 

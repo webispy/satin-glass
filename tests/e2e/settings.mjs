@@ -92,22 +92,72 @@ const deep = async () => p.evaluate(() => {
   for (const theme of ['light', 'dark', 'light-hc', 'dark-hc']) {
     const ids = await p.evaluate((theme) => {
       const d = document.createElement('div'); d.id = 'hov'; d.style.cssText = 'position: fixed; left: 20px; top: 20px; z-index: 99999; display: flex; gap: 20px';
-      d.innerHTML = `<div data-sg-theme="${theme}" data-sg-reduce-transparency="true"><button class="sg-button sg-button--glass sg-glass" id="gbr">A</button></div>
-        <div data-sg-theme="${theme}" data-sg-reduce-transparency="false"><button class="sg-button sg-button--glass sg-glass" id="gbn">B</button></div>`;
-      document.body.appendChild(d); return ['gbr', 'gbn'];
+      /* a glass button and a glass search field (its control), with reduced transparency and without */
+      /* the glass search field as SearchField draws it: the glass on the control itself */
+      const field = (id, inner = 'Find', off = false) => `<div class="sg-search sg-search--glass" style="width: 140px"><div class="sg-field"${off ? ' data-disabled="true"' : ''}><div class="sg-field__control sg-glass" id="${id}" style="height: 36px">${inner}</div></div></div>`;
+      d.innerHTML = `<div data-sg-theme="${theme}" data-sg-reduce-transparency="true" style="display: flex; gap: 12px"><button class="sg-button sg-button--glass sg-glass" id="gbr">A</button>${field('sfr')}</div>
+        <div data-sg-theme="${theme}" data-sg-reduce-transparency="false" style="display: flex; gap: 12px"><button class="sg-button sg-button--glass sg-glass" id="gbn">B</button>${field('sfn')}
+          ${field('sff', '<input id="sffi" style="width: 60px" aria-label="find">')}${field('sfd', 'Off', true)}
+          <button class="sg-button sg-button--glass sg-glass sg-glass--clear" id="cbn">C</button></div>`;
+      document.body.appendChild(d); return ['gbr', 'gbn', 'sfr', 'sfn', 'cbn'];
     }, theme);
     const look = {};
+    /* the background's alpha (0-255) and its colour, read through a canvas */
+    const read = (el) => el.evaluate((e) => {
+      const bg = getComputedStyle(e).backgroundColor, c = document.createElement('canvas').getContext('2d');
+      c.fillStyle = '#0000'; c.fillStyle = bg; c.fillRect(0, 0, 1, 1);
+      return { bg, alpha: c.getImageData(0, 0, 1, 1).data[3], image: /gradient/.test(getComputedStyle(e).backgroundImage) };
+    });
     for (const id of ids) {
       const el = p.locator(`#${id}`);
-      const before = await el.evaluate((e) => getComputedStyle(e).backgroundColor);
+      const rest = await read(el);
       await el.hover(); await p.waitForTimeout(250);
-      look[id] = await el.evaluate((e, before) => {
-        const c = document.createElement('canvas').getContext('2d'); c.fillStyle = '#0000'; c.fillStyle = getComputedStyle(e).backgroundColor; c.fillRect(0, 0, 1, 1);
-        return { alpha: c.getImageData(0, 0, 1, 1).data[3], changed: getComputedStyle(e).backgroundColor !== before };
-      }, before);
+      const hov = await read(el);
+      look[id] = { rest: rest.alpha, alpha: hov.alpha, changed: hov.bg !== rest.bg, image: hov.image };
     }
+    /* a focused search field keeps its focus surface under the pointer */
+    /* a clear glass button hovers with its own highlight (a 35% white, set on clear glass), mixed in at the theme's
+       amount: the expected colour, worked out by the browser from the button's own values */
+    const clearExpected = await p.locator('#cbn').evaluate((e) => {
+      const cs = getComputedStyle(e), probe = document.createElement('i');
+      probe.style.backgroundColor = `color-mix(in oklab, ${cs.getPropertyValue('--_fill').trim()}, ${cs.getPropertyValue('--sg-glass-highlight').trim()} 30%)`;
+      document.body.appendChild(probe); const v = getComputedStyle(probe).backgroundColor; probe.remove(); return v;
+    });
+    const same = (a, b) => p.evaluate(([a, b]) => { const px = (c) => { const x = document.createElement('canvas').getContext('2d'); x.fillStyle = '#0000'; x.fillStyle = c; x.fillRect(0, 0, 1, 1); return [...x.getImageData(0, 0, 1, 1).data]; }; const [p1, p2] = [px(a), px(b)]; return p1.every((v, i) => Math.abs(v - p2[i]) <= 3); }, [a, b]);   /* engines round nested colour mixes a little differently */
+    await p.locator('#cbn').hover(); await p.waitForTimeout(250);
+    const clearHov = await read(p.locator('#cbn'));
+    /* a disabled glass search field does not answer the pointer, as a disabled glass button does not */
+    const fd = p.locator('#sfd'); const offBg = await read(fd); await fd.hover(); await p.waitForTimeout(250); const offHov = await read(fd);
+    /* a focused search field (its input focused) keeps its focus surface under the pointer */
+    const ff = p.locator('#sff');
+    await p.locator('#sffi').focus(); await p.waitForTimeout(300); const focusBg = await read(ff); await ff.hover(); await p.waitForTimeout(250); const focusHov = await read(ff);
     await p.mouse.move(0, 0); await p.evaluate(() => document.getElementById('hov').remove());
-    ok(`reduced transparency: a hovered glass button stays solid and still shows the hover (${theme})`, look.gbr.alpha === 255 && look.gbr.changed && look.gbn.changed, JSON.stringify(look));
+    ok(`reduced transparency: a hovered glass button stays solid and still shows the hover (${theme})`, look.gbr.alpha === 255 && look.gbr.changed && look.gbn.changed, JSON.stringify({ gbr: look.gbr, gbn: look.gbn }));
+    /* in high contrast glass is solid, and its highlight is transparent: hover shades the fill instead of mixing that in,
+       which took the fill to 70% (#95). Over working glass in the normal themes, hover lifts toward the highlight (in dark
+       themes a faint, see-through white, so the hovered glass is a little clearer, as designed) */
+    const hc = theme.endsWith('-hc');
+    if (hc) ok(`high contrast: a hovered glass button stays as opaque as at rest (${theme}, #95)`, look.gbn.alpha >= look.gbn.rest && look.gbn.changed, JSON.stringify(look.gbn));
+    /* the glass search field keeps its glass on hover, as a glass button does, instead of the field's own groove tint
+       (#96): solid with reduced transparency, solid in high contrast, and the hover shows */
+    ok(`a hovered glass search field keeps its glass and its depth, and the hover shows (${theme}, #96)`,
+      look.sfr.alpha === 255 && look.sfr.changed && look.sfn.changed && look.sfn.image && (!hc || look.sfn.alpha >= look.sfn.rest) && look.sfn.alpha === look.gbn.alpha, JSON.stringify({ sfr: look.sfr, sfn: look.sfn, gbn: look.gbn }));
+    ok(`a disabled glass search field does not answer the pointer (${theme})`, offHov.bg === offBg.bg && offHov.image, JSON.stringify({ offBg, offHov }));
+    ok(`a focused glass search field keeps its focus surface under the pointer (${theme})`, focusHov.bg === focusBg.bg, JSON.stringify({ focusBg, focusHov }));
+    if (!hc) ok(`a hovered clear glass button mixes in its own highlight (${theme})`, await same(clearHov.bg, clearExpected), `${clearHov.bg} / expected ${clearExpected}`);
+  }
+  /* the hover tint is the nearest theme's: a normal theme inside a high-contrast one hovers as a normal theme does */
+  {
+    await p.evaluate(() => {
+      const d = document.createElement('div'); d.id = 'nest'; d.style.cssText = 'position: fixed; left: 20px; top: 20px; z-index: 99999; display: flex; gap: 20px';
+      d.innerHTML = `<div data-sg-theme="light" data-sg-reduce-transparency="false"><button class="sg-button sg-button--glass sg-glass" id="nl">L</button></div>
+        <div data-sg-theme="light-hc" data-sg-reduce-transparency="false"><div data-sg-theme="light"><button class="sg-button sg-button--glass sg-glass" id="nhl">N</button></div></div>`;
+      document.body.appendChild(d);
+    });
+    const hovered = async (id) => { const el = p.locator(`#${id}`); await el.hover(); await p.waitForTimeout(250); return el.evaluate((e) => getComputedStyle(e).backgroundColor); };
+    const plain = await hovered('nl'), nested = await hovered('nhl');
+    await p.mouse.move(0, 0); await p.evaluate(() => document.getElementById('nest').remove());
+    ok('a normal theme inside a high-contrast one hovers its glass as a normal theme does (#95)', plain === nested, `${plain} / ${nested}`);
   }
   /* without backdrop filters (#92): the page's styles again in a frame, the @supports (backdrop-filter) rules left out, as a
      browser without them reads the stylesheet. Glass is solid there; clear glass, standalone or as a button, takes its dark
@@ -124,7 +174,7 @@ const deep = async () => p.evaluate(() => {
           <button class="sg-button sg-button--glass sg-glass sg-glass--clear" id="cb-${t}">Clear</button>
           <button class="sg-button sg-button--glass sg-glass" id="gb-${t}">Glass</button>
           <div class="sg-glass sg-glass--clear" id="cp-${t}" style="padding: 6px"><button class="sg-button sg-button--glass sg-glass" id="nb-${t}">In</button></div>
-          <div class="sg-search sg-search--glass"><div class="sg-field sg-glass"><div class="sg-field__control" id="sf-${t}">Find</div></div></div></div>`).join('')}</body>`); d.close();
+          <div class="sg-search sg-search--glass" style="width: 120px"><div class="sg-field"><div class="sg-field__control sg-glass" id="sf-${t}" style="height: 34px">Find</div></div></div></div>`).join('')}</body>`); d.close();
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       return true;
     });
@@ -141,7 +191,9 @@ const deep = async () => p.evaluate(() => {
       const gh = await read(`gb-${t}`);
       await p.mouse.move(cb.x, cb.y); await p.waitForTimeout(250);
       const ch = await read(`cb-${t}`);
-      out[t] = { c, cb, gb, gh, ch, cp, nbt, sf };
+      await p.mouse.move(sf.x, sf.y); await p.waitForTimeout(250);
+      const sh = await read(`sf-${t}`);
+      out[t] = { c, cb, gb, gh, ch, cp, nbt, sf, sh };
     }
     await p.mouse.move(0, 400); await p.evaluate(() => document.getElementById('nbf').remove());
     const plate = (x) => x.bg.a === 255 && x.bg.l < 60 && x.ink.l > 200;
@@ -151,7 +203,7 @@ const deep = async () => p.evaluate(() => {
       ok(`without backdrop filters, glass buttons are solid at rest and hovered, and the hover shows on the plate too (${t}, #92)`,
         o.gb.bg.a === 255 && o.gh.bg.a === 255 && o.ch.bg.a === 255 && o.gh.bg.l !== o.gb.bg.l && Math.abs(o.ch.bg.l - o.cb.bg.l) >= 5, JSON.stringify({ gb: o.gb.bg, gh: o.gh.bg, cb: o.cb.bg, ch: o.ch.bg }));
       ok(`without backdrop filters, a glass button inside clear glass stays flat over the plate, under white ink (${t}, #92)`, plate(o.cp) && o.nbt.bg.a === 0 && o.nbt.ink.l > 200, JSON.stringify({ cp: o.cp.bg, nb: o.nbt }));
-      ok(`without backdrop filters, the glass search field is solid at rest (${t}, #92)`, o.sf.bg.a === 255, JSON.stringify(o.sf.bg));
+      ok(`without backdrop filters, the glass search field is solid at rest and hovered, and the hover shows (${t}, #92, #96)`, o.sf.bg.a === 255 && o.sh.bg.a === 255 && o.sh.bg.l !== o.sf.bg.l, JSON.stringify({ sf: o.sf.bg, sh: o.sh.bg }));
     }
   }
   /* the system's reduced transparency (Chromium can emulate it): "system" and the page follow it, an explicit "false" does not */
@@ -189,6 +241,12 @@ ok('JS: the nearest setting decides (inner false, outer true, none → system)',
     await q.goto('http://localhost:4173/#/overview'); await q.waitForTimeout(500);
     const d = await q.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--sg-depth-inset').trim());
     ok('system high contrast without a theme attribute: depth becomes outlines on :root', /1px/.test(d) && !/rgba/.test(d), d);
+    /* a glass button under no theme follows the system's high contrast on hover too: as opaque as at rest (#95) */
+    await q.evaluate(() => { const b = document.createElement('button'); b.className = 'sg-button sg-button--glass sg-glass'; b.id = 'sysb'; b.textContent = 'S'; b.style.cssText = 'position: fixed; left: 20px; top: 20px; z-index: 99999'; document.body.appendChild(b); });
+    const alpha = () => q.locator('#sysb').evaluate((e) => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = '#0000'; c.fillStyle = getComputedStyle(e).backgroundColor; c.fillRect(0, 0, 1, 1); return c.getImageData(0, 0, 1, 1).data[3]; });
+    const bgOf = () => q.locator('#sysb').evaluate((e) => getComputedStyle(e).backgroundColor);
+    const rest = await alpha(), restBg = await bgOf(); await q.locator('#sysb').hover(); await q.waitForTimeout(250); const hov = await alpha(), hovBg = await bgOf();
+    ok('system high contrast without a theme attribute: a hovered glass button stays as opaque as at rest, and the hover shows (#95)', hov >= rest && hovBg !== restBg, `${rest} → ${hov}; ${restBg} → ${hovBg}`);
   }
   await ctx.close();
 }
