@@ -177,9 +177,18 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
     const e0 = errors.length, open = await holdModule(/\/assets\/a2ui-[\w-]+\.js/);
     let scrubbed, loading, after, asked;
     try {
-      const d3 = await dots.nth(3).boundingBox(), d2 = await dots.nth(2).boundingBox();
-      await p.mouse.move(d3.x + d3.width / 2, d3.y + d3.height / 2); await p.mouse.down();
-      await p.mouse.move(d2.x + d2.width / 2, d2.y + d2.height / 2, { steps: 6 }); await settle(p, 100);
+      /* scrub from the fourth dot to the third and wait for it to take. Under load in Firefox the page could still shift
+         after the dots were measured, and the press missed the control: let go, measure again and try once more */
+      let d2;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        await pc.scrollIntoViewIfNeeded(); await settle(p, 200);
+        const d3 = await dots.nth(3).boundingBox(); d2 = await dots.nth(2).boundingBox();
+        await p.mouse.move(d3.x + d3.width / 2, d3.y + d3.height / 2); await p.mouse.down();
+        await p.mouse.move(d2.x + d2.width / 2, d2.y + d2.height / 2, { steps: 6 });
+        const took = await p.waitForFunction(() => document.querySelectorAll('.docs__page .sg-pagecontrol')[0]?.querySelectorAll('.sg-pagecontrol__dot')[2]?.getAttribute('aria-current') === 'true', null, { timeout: 2000 }).then(() => true, () => false);
+        if (took) break;
+        await p.mouse.up(); await dots.nth(3).click(); await settle(p, 300);
+      }
       scrubbed = await current();
       loading = await toLoading('#/a2ui');
       await p.mouse.move(d2.x + 200, d2.y, { steps: 4 }); await p.mouse.up();
