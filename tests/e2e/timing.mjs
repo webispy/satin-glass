@@ -1,7 +1,7 @@
 // How long until things arrive, per motion personality (motion page columns). usage: node tests/e2e/timing.mjs
 import * as pw from './pw.mjs';
 const b = await pw[process.env.BROWSER || 'chromium'].launch(); const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
-await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
+await p.goto(`${pw.ORIGIN}/#/motion`); await p.waitForTimeout(900);
 const names = ['calm', 'lively', 'playful'];
 for (let i = 0; i < 3; i++) {
   const col = p.locator('.grid--3 > *').nth(i);

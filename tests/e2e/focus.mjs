@@ -3,7 +3,7 @@
 // In the four themes and with forced colours (Windows high contrast), where the browser drops box-shadows: the
 // focus mark is an outline, never a shadow (a shadow list with a `none` depth token in it was void, and selected
 // states painted over it). Chromium only (forced colours are emulated there).
-// usage: node tests/e2e/focus.mjs   (vite preview on :4173; SHARD=k/n for a share of the themes)
+// usage: node tests/e2e/focus.mjs   (vite preview on :4173 or E2E_PORT; SHARD=k/n for a share of the themes)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 const b = await pw.chromium.launch();
@@ -19,7 +19,7 @@ for (const [mode, qs, media] of MODES.filter((_, i) => i % n === k - 1)) {
   const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
   await p.emulateMedia({ reducedMotion: 'reduce', ...media });
   for (const page of PAGES) {
-    await p.goto(`http://localhost:4173/${qs}#/${page}`); await p.waitForTimeout(700);
+    await p.goto(`${pw.ORIGIN}/${qs}#/${page}`); await p.waitForTimeout(700);
     await p.mouse.move(2, 2);
     /* start from the page's own content, not the docs chrome */
     await p.evaluate(() => { const a = document.querySelector('.docs__page'); a?.setAttribute('tabindex', '-1'); a?.focus(); });

@@ -8,7 +8,7 @@
 // running to its sides (photos fulfilled here with a local picture), a cropped one opening whole in the media viewer,
 // a short single choice as a segmented control, weighted panels in a narrow row stacking, in the themes and settings
 // that change cards, and the nested corners (corners-scan.mjs) of what an example draws.
-// usage: node tests/e2e/a2ui.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+// usage: node tests/e2e/a2ui.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT)
 // covers: controls, layout, navigation, overlays, selection   (the components the gallery and the A2UI renderer draw with; a change to packages/a2ui or the docs frame runs everything)
 import * as pw from './pw.mjs';
 import { scan, TOL, MIN } from './corners-scan.mjs';
@@ -38,7 +38,7 @@ async function open(width = 1440, { query = '', photos = false } = {}) {
     outside.push(url);
     return photos && r.request().resourceType() === 'image' ? r.fulfill({ status: 200, contentType: 'image/svg+xml', body: PHOTO(url) }) : r.abort();
   });
-  await p.goto(`http://localhost:4173/${query}#/a2ui`);
+  await p.goto(`${pw.ORIGIN}/${query}#/a2ui`);
   await p.waitForSelector('[data-demo="a2ui-gallery"] .a2ui-thumb');
   await p.locator('[data-demo="a2ui-gallery"]').scrollIntoViewIfNeeded();
   await p.waitForTimeout(400);
@@ -201,7 +201,7 @@ async function openExample(p, q) {
 
   /* the copy button says it copied (where the engine lets the page write to the clipboard) */
   if (engine === 'chromium') {
-    await p.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://localhost:4173' });
+    await p.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: pw.ORIGIN });
     await p.getByRole('tab', { name: /에이전트 → 화면/ }).click();
     await p.locator('.a2ui-inspector__panel .a2ui-code__copy').first().click();
     await p.waitForTimeout(400);

@@ -3,10 +3,10 @@
 //   sheet: a short slow drag springs back, a long drag closes it, the header drags too
 //   switch, slider, segmented control, tab bar: the drag follows the finger and lands where it is released
 //   wheel: a flick runs on with momentum and lands on a row; navigation stack: swipe from the edge to go back
-// usage: node tests/e2e/touch.mjs   (Chromium only; PORT (default 4173); Q for settings)
+// usage: node tests/e2e/touch.mjs   (Chromium only; E2E_PORT (default 4173); Q for settings)
 // covers: controls, navigation, overlays, selection   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
-const PORT = process.env.PORT || '4173', Q = process.env.Q || '';
+const Q = process.env.Q || '';
 const b = await pw.chromium.launch();
 const ctx = await b.newContext({ ...pw.devices['iPhone 13'] });
 const p = await ctx.newPage();
@@ -15,7 +15,7 @@ const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const go = async (id) => { await p.goto(`http://localhost:${PORT}/${Q}#/${id}`); await p.waitForTimeout(1200); };
+const go = async (id) => { await p.goto(`${pw.ORIGIN}/${Q}#/${id}`); await p.waitForTimeout(1200); };
 const swipe = async (x0, y0, x1, y1, steps = 15, ms = 16) => {
   const t = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
   await t('touchStart', x0, y0);

@@ -2,7 +2,7 @@
 // apart from what is Korean on purpose (marked lang="ko", such as the language switch's own name), and renders in
 // Korean too; every API tab lists its components with a row and a description for every option; switching the
 // language keeps the page and the tab.
-// usage: node tests/e2e/i18n.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+// usage: node tests/e2e/i18n.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 import { PAGES } from './pages.mjs';
@@ -10,7 +10,7 @@ const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const U = (id, lang) => `http://localhost:4173/?lang=${lang}#/${id}`;
+const U = (id, lang) => `${pw.ORIGIN}/?lang=${lang}#/${id}`;
 const errors = [];
 const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } });
 const p = await ctx.newPage();
@@ -55,7 +55,7 @@ for (const id of PAGES) {
 
 for (const id of apiPages) {
   for (const lang of ['en', 'ko']) {
-    await p.goto(`http://localhost:4173/?lang=${lang}#/${id}/api`); await p.waitForSelector('.api-list', { timeout: 15000 });
+    await p.goto(`${pw.ORIGIN}/?lang=${lang}#/${id}/api`); await p.waitForSelector('.api-list', { timeout: 15000 });
     const r = await p.evaluate(() => [...document.querySelectorAll('.api')].map((a) => ({
       name: a.dataset.api,
       rows: a.querySelectorAll('tbody tr').length,
@@ -73,7 +73,7 @@ for (const id of apiPages) {
 /* switching keeps the page and the tab, and <html lang> follows */
 {
   const id = apiPages[0] ?? 'table';
-  await p.goto(`http://localhost:4173/?lang=en#/${id}/api`); await p.waitForSelector('.api-list');
+  await p.goto(`${pw.ORIGIN}/?lang=en#/${id}/api`); await p.waitForSelector('.api-list');
   await p.locator('.docs__lang [role="radio"], .docs__lang button').filter({ hasText: '한국어' }).first().click();
   await p.waitForTimeout(600);
   const s = await p.evaluate(() => ({ hash: location.hash, lang: document.documentElement.lang, api: !!document.querySelector('.api-list') }));

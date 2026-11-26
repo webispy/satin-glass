@@ -1,15 +1,15 @@
 // Wheels, time and weekday pickers, the calendar's month / year wheels, and the navigation stack.
-// usage: node tests/e2e/pickers.mjs   (BROWSER=webkit|firefox; PORT (default 4173); Q for settings)
+// usage: node tests/e2e/pickers.mjs   (BROWSER=webkit|firefox; E2E_PORT (default 4173); Q for settings)
 // covers: selection, navigation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
-const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '', PORT = process.env.PORT || '4173';
+const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '';
 const b = await pw[engine].launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const go = async (id) => { await p.goto(`http://localhost:${PORT}/${Q}#/${id}`); await p.waitForTimeout(900); };
+const go = async (id) => { await p.goto(`${pw.ORIGIN}/${Q}#/${id}`); await p.waitForTimeout(900); };
 const reduced = /rm=1/.test(Q);
 const demo = (id) => p.locator(`[data-demo="${id}"]`);
 /* until a reading stops changing (a wheel settling, a page sliding) */

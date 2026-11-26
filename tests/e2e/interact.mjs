@@ -1,4 +1,4 @@
-// Interaction checks on the docs app (vite preview on :4173). usage: node tests/e2e/interact.mjs [shotDir]
+// Interaction checks on the docs app (vite preview on :4173 or E2E_PORT). usage: node tests/e2e/interact.mjs [shotDir]
 // covers: controls, navigation, overlays, layout   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 const chromium = pw[process.env.BROWSER || 'chromium'];
@@ -7,7 +7,7 @@ const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
 /* Q: display settings for the whole run, e.g. Q='?motion=calm' or Q='?mode=dark&hc=1&rt=1' */
 const Q = process.env.Q || '';
-{ const g = p.goto.bind(p); p.goto = (u, o) => g(u.replace('localhost:4173/#', `localhost:4173/${Q}#`), o); }
+{ const g = p.goto.bind(p); p.goto = (u, o) => g(u.replace(`${pw.ORIGIN}/#`, `${pw.ORIGIN}/${Q}#`), o); }
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
 /* our own errors only: a third-party resource (the font CDN) failing is reported separately, not as a page error */
@@ -19,7 +19,7 @@ const shot = async (n) => out && p.screenshot({ path: `${out}/i-${n}.png` });
 const center = async (loc) => { const r = await loc.boundingBox(); return [r.x + r.width / 2, r.y + r.height / 2]; };
 
 /* ---------- tab bar: tap travels as a stretching drop, drag follows the finger, release selects ---------- */
-await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(600);
+await p.goto(`${pw.ORIGIN}/#/navigation`); await p.waitForTimeout(600);
 const bar = p.locator('.sg-tabbar__bar').first(), tabs = bar.locator('.sg-tabbar__item');
 const ind = bar.locator('.sg-tabbar__indicator');
 const w0 = (await ind.boundingBox()).width;
@@ -52,12 +52,12 @@ ok('tab keyboard: arrow keys move the selection', (await tabs.nth(1).getAttribut
   ok('tab bar: the action sits inside the bar after a hairline; pressing it leaves the selection where it is', inside && selAfter === selBefore && Math.abs(i1.x - i0.x) < 1, `inside ${inside}, tab ${selBefore} -> ${selAfter}`);
 }
 
-await p.goto('http://localhost:4173/#/buttons'); await p.waitForTimeout(500);
+await p.goto(`${pw.ORIGIN}/#/buttons`); await p.waitForTimeout(500);
 const gh = (await p.locator('.sg-button-group').first().boundingBox()).height, ih = (await p.locator('.demo--media .sg-button--glass.sg-button--icon').first().boundingBox()).height;
 const gr = await p.locator('.sg-button-group').first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius), ir = await p.locator('.demo--media .sg-button--glass.sg-button--icon').first().evaluate((e) => getComputedStyle(e).borderTopLeftRadius);
 ok('button group: same height and corner as the buttons beside it', gh === ih && gr === ir, `group ${gh}px/${gr}, button ${ih}px/${ir}`);
 
-await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(1000); /* badges pop in on mount */
+await p.goto(`${pw.ORIGIN}/#/navigation`); await p.waitForTimeout(1000); /* badges pop in on mount */
 {
   const geo = await p.locator('.sg-tabbar__icon:has(.sg-badge)').first().evaluate((ic) => {
     const g = ic.querySelector('svg').getBoundingClientRect(), b = ic.querySelector('.sg-badge').getBoundingClientRect(), bar = ic.closest('.sg-tabbar__bar').getBoundingClientRect();
@@ -67,7 +67,7 @@ await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(1000)
 }
 
 /* ---------- inputs ---------- */
-await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(600);
+await p.goto(`${pw.ORIGIN}/#/inputs`); await p.waitForTimeout(600);
 const sw = p.locator('.docs__page .sg-switch').first();
 const before = await sw.getAttribute('aria-checked');
 await sw.click(); await p.waitForTimeout(350);
@@ -111,7 +111,7 @@ await field.fill('헤론'); await p.locator('.sg-field__clear').first().click();
 ok('text field: clear button empties the field and keeps focus', (await field.inputValue()) === '' && (await field.evaluate((e) => e === document.activeElement)));
 
 /* ---------- overlays ---------- */
-await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(600);
+await p.goto(`${pw.ORIGIN}/#/overlays`); await p.waitForTimeout(600);
 const dirBtn = p.getByRole('button', { name: '길찾기' });
 await dirBtn.click(); await p.waitForTimeout(80);
 const early = await p.locator('.sg-menu').evaluate((e) => new DOMMatrix(getComputedStyle(e).transform).a);
@@ -225,7 +225,7 @@ await p.locator('.sg-toast').getByRole('button', { name: '다시 시도' }).clic
 ok('toast: its action button works (and dismisses it)', (await p.locator('.sg-toast').count()) < n0);
 
 /* ---------- showcase: an open popover, then another ⓘ — the new one must open (it used to get stuck) ---------- */
-await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(700);
+await p.goto(`${pw.ORIGIN}/#/showcase`); await p.waitForTimeout(700);
 /* the showcase's tab bar does not opt in to dragging: a drag across it leaves the selection and the drop alone */
 {
   const sbar = p.locator('.sg-tabbar__bar').first(), stabs = sbar.locator('.sg-tabbar__item'), sind = sbar.locator('.sg-tabbar__indicator');
@@ -262,7 +262,7 @@ const sampleAfter = (fnSrc, ms = 450) => p.evaluate(({ fnSrc, ms }) => new Promi
 }), { fnSrc, ms });
 const distinct = (a) => new Set(a.map((v) => Math.round(v))).size;
 
-await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(600);
+await p.goto(`${pw.ORIGIN}/#/inputs`); await p.waitForTimeout(600);
 {
   const sl2 = p.locator('.docs__page .sg-slider').first(), b2 = await sl2.boundingBox();
   const thumbX = () => p.locator('.docs__page .sg-slider__thumb').first().evaluate((e) => e.getBoundingClientRect().left);
@@ -294,7 +294,7 @@ await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(600);
   ok('search field: Cancel slides in (width grows over several frames)', ws.filter((w) => w > 1 && w < end - 1).length >= 3 && end > 40, `frames between ${ws.filter((w) => w > 1 && w < end - 1).length}, end ${end.toFixed(0)}`);
   await p.locator('.docs__page .sg-search input').blur();
 }
-await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(600);
+await p.goto(`${pw.ORIGIN}/#/overlays`); await p.waitForTimeout(600);
 {
   /* error toast (with an action) on top, a plain one below; dismissing the top one makes the other glide up */
   await p.getByRole('button', { name: '오류 토스트' }).click(); await p.waitForTimeout(120);
@@ -309,7 +309,7 @@ await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(600);
   ok('toasts: when one leaves, the rest glide into place', flip.end < flip.y0 - 20 && flip.between >= 3, JSON.stringify(flip));
 }
 /* the app bar demo that is see-through at the top (the showcase's top bar is attached: one floating bar per screen) */
-await p.goto(`http://localhost:4173/${Q}#/display`); await p.waitForTimeout(700);
+await p.goto(`${pw.ORIGIN}/${Q}#/display`); await p.waitForTimeout(700);
 {
   const bgs = await sampleAfter(`({ act: () => document.querySelector('.phone__screen[data-scroll="largetitle"]').scrollTo(0, 400), read: () => parseFloat(getComputedStyle(document.querySelector('.phone__screen[data-scroll="largetitle"] .sg-appbar__bar')).backgroundColor.split(',')[3] || '1') })`, 500);
   const mid = bgs.filter((a) => a > 0.02 && a < 0.98).length;
@@ -318,7 +318,7 @@ await p.goto(`http://localhost:4173/${Q}#/display`); await p.waitForTimeout(700)
 }
 
 /* ---------- motion personalities: calm / lively / playful really differ ---------- */
-await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
+await p.goto(`${pw.ORIGIN}/#/motion`); await p.waitForTimeout(900);
 {
   const cols = p.locator('.grid--3 > *');
   const squash = async (i) => cols.nth(i).locator('.sg-segmented').evaluate((seg) => new Promise((res) => {
@@ -388,11 +388,11 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
 {
   const offenders = [];
   for (const id of ['overview', 'material', 'buttons', 'inputs', 'navigation', 'lists', 'overlays', 'motion', 'showcase']) {
-    await p.goto(`http://localhost:4173/#/${id}`); await p.waitForTimeout(400);
+    await p.goto(`${pw.ORIGIN}/#/${id}`); await p.waitForTimeout(400);
     offenders.push(...await p.evaluate((id) => [...document.querySelectorAll('.sg-glass')].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowX + getComputedStyle(e).overflowY)).map((e) => `${id}: ${e.className}`), id));
   }
   /* open a menu and a dialog too (they are rendered on demand) */
-  await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(400);
+  await p.goto(`${pw.ORIGIN}/#/overlays`); await p.waitForTimeout(400);
   await p.getByRole('button', { name: '길찾기' }).click(); await p.waitForTimeout(400);
   offenders.push(...await p.evaluate(() => [...document.querySelectorAll('.sg-menu')].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowY)).map((e) => 'menu: ' + e.className)));
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
@@ -416,7 +416,7 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
 {
   const rootAttr = () => p.evaluate(() => document.querySelector('.sg-root')?.getAttribute('data-sg-reduce-motion'));
   await p.setViewportSize({ width: 820, height: 900 });
-  await p.goto('http://localhost:4173/#/overview'); await p.waitForTimeout(500);
+  await p.goto(`${pw.ORIGIN}/#/overview`); await p.waitForTimeout(500);
   const barHidden = await p.locator('.docs__settings--bar').evaluate((e) => getComputedStyle(e).display === 'none');
   await p.getByRole('button', { name: '표시 설정' }).click(); await p.waitForTimeout(500);
   const inPop = p.locator('.sg-popover').getByRole('switch', { name: '동작 줄이기' });
@@ -425,7 +425,7 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
   await inPop.click(); await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   await p.setViewportSize({ width: 1280, height: 900 });
 
-  await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(600);
+  await p.goto(`${pw.ORIGIN}/#/showcase`); await p.waitForTimeout(600);
   await p.getByRole('button', { name: '설정', exact: true }).click(); await p.waitForTimeout(700);
   await p.locator('.sg-sheet').getByRole('switch', { name: '동작 줄이기' }).click(); await p.waitForTimeout(200);
   /* the page under the open sheet is hidden from assistive technology (aria-hidden): reach the bar's switch anyway */

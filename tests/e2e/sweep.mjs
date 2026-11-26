@@ -4,7 +4,7 @@
 // It does not judge results or looks (the other suites do); it catches the part that breaks the page on the way there
 // and back (a scatter switched to linear and back to log once hung the page this way).
 // usage: node tests/e2e/sweep.mjs   (BROWSER=webkit|firefox, WIDTH=390 for phone width, SHARD=2/3 for every 3rd page
-//        starting at the 2nd; vite preview on :4173)
+//        starting at the 2nd; vite preview on :4173 or E2E_PORT)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 import { PAGES } from './pages.mjs';   /* every page; a page missing from WEIGHT counts as 40 */
@@ -33,7 +33,7 @@ for (const id of mine) {
   /* console errors from the app; a resource the network failed to bring (a CDN font piece) is not the app's */
   p.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(`${where}: console ${m.text().slice(0, 160)}`); });
   p.on('dialog', (d) => d.dismiss());
-  const url = `http://localhost:4173/#/${id}`;
+  const url = `${pw.ORIGIN}/#/${id}`;
   /* a page that never loads, or stops answering before its controls are read, fails alone: the pages after it are
      still swept */
   const loaded = await p.goto(url).then(() => true, () => false);

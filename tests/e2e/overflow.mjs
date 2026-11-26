@@ -4,18 +4,17 @@
 // taps, keys and drags (also from a scrolled track), and the selected item is scrolled into view. Disabled items
 // are skipped, a refused (controlled) value stays put, and reduced motion (?rm=1) lands just the same. What is hidden
 // can be browsed without choosing: the wheel scrolls the strip sideways, a mouse drag off the selection pans it.
-// usage: node tests/e2e/overflow.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173, PORT=… to change;
+// usage: node tests/e2e/overflow.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT;
 //        DIST=1 serves apps/docs/dist through request interception instead — no server needed)
 // covers: controls, navigation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 import { readFile } from 'node:fs/promises';
 const engine = process.env.BROWSER || 'chromium';
-const PORT = process.env.PORT || 4173;
 /* Firefox refuses a few "bad" ports (4190 is one); the override is harmless for any other port */
-const b = await pw[engine].launch(engine === 'firefox' ? { firefoxUserPrefs: { 'network.security.ports.banned.override': String(PORT) } } : {});
+const b = await pw[engine].launch(engine === 'firefox' ? { firefoxUserPrefs: { 'network.security.ports.banned.override': pw.PORT } } : {});
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const ORIGIN = process.env.DIST ? 'http://satin-glass.test' : `http://localhost:${PORT}`;
+const ORIGIN = process.env.DIST ? 'http://satin-glass.test' : `${pw.ORIGIN}`;
 const U = (id, q = '') => `${ORIGIN}/${q}#/${id}`;
 const DIST = new URL('../../apps/docs/dist/', import.meta.url);
 const TYPES = { html: 'text/html', js: 'text/javascript', css: 'text/css', svg: 'image/svg+xml', png: 'image/png', json: 'application/json', woff2: 'font/woff2' };

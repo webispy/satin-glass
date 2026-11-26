@@ -1,4 +1,4 @@
-// The full verification run (vite preview of apps/docs/dist on :4173). `pnpm e2e` builds first.
+// The full verification run (vite preview of apps/docs/dist on :4173, or E2E_PORT). `pnpm e2e` builds first.
 //
 // What it checks:
 //   render matrix: theme × contrast × reduce transparency × reduce motion, every page, desktop + phone
@@ -44,6 +44,7 @@
 //   E2E_TIMING=0                      skip the timing phase (performance, momentum, arrival timing): CI
 //   E2E_SHARD=2/4                     run only the 2nd of 4 shares of the suites (CI: one share per runner)
 //   E2E_LIST=1                        print the suites that would run, with their estimated time, and stop
+//   E2E_PORT=4180                     serve the docs on this port (unset: 4173, or the next free one up to 4189)
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { availableParallelism } from 'node:os';
@@ -207,8 +208,10 @@ if (process.env.E2E_LIST) {
 }
 /* The docs build is served from this process by Vite's own preview(), which returns once its server listens: the
    suites start then, not after a fixed pause (a busy CI runner took longer than 1.5 s, and the first suites of a
-   shard ended on a refused connection). A port already taken, by a preview left running or another worktree's run,
-   ends the run here rather than letting the suites test that server's build. */
+   shard ended on a refused connection). The port is E2E_PORT when set, and a port already taken ends the run here;
+   unset, it is 4173 or, when another worktree's run or a preview left running holds that, the next free one up to
+   4189 (4190 is one browsers refuse). Either way the suites are handed the port this server got, so they never test
+   another server's build. */
 const DOCS = fileURLToPath(new URL('../../apps/docs/', import.meta.url));
 if (!existsSync(`${DOCS}dist/index.html`)) {
   console.error('apps/docs/dist is not built: `pnpm e2e` builds it, or run `pnpm build && pnpm --filter docs build`');
@@ -216,12 +219,57 @@ if (!existsSync(`${DOCS}dist/index.html`)) {
 }
 const { preview: vitePreview } = await import(createRequire(`${DOCS}package.json`).resolve('vite'));
 let preview;
-try {
-  preview = await vitePreview({ root: DOCS, logLevel: 'warn', preview: { port: 4173, strictPort: true, open: false } });
-} catch (e) {
-  console.error(`could not serve the docs on :4173 (${e.message}): stop the server holding the port and run again`);
+/* ports every browser refuses to load (the Fetch standard's "bad ports" above 1024) */
+const BLOCKED = [1719, 1720, 1723, 2049, 3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6679, 6697, 10080];
+const asked = process.env.E2E_PORT;
+if (asked && (!/^\d+$/.test(asked) || +asked < 1024 || +asked > 65535 || BLOCKED.includes(+asked))) {
+  console.error(`E2E_PORT=${asked}: give a port from 1024 to 65535 that browsers load (not ${BLOCKED.join(', ')})`);
   process.exit(1);
 }
+const ports = asked ? [+asked] : Array.from({ length: 17 }, (_, i) => 4173 + i);
+/* "localhost" can reach 127.0.0.1 or ::1, and a server on one leaves the other free, so Vite would start beside it
+   and the browser could reach either. A port counts as free only when both are; once Vite listens on one, the same
+   build is served on the other too, so no server started later can take it. A machine without one of the two
+   (no IPv6) has nothing to hold there. */
+const { createServer } = await import('node:net');
+const { createServer: httpServer } = await import('node:http');
+const absent = (e) => e.code === 'EADDRNOTAVAIL' || e.code === 'EAFNOSUPPORT';
+const inUse = () => Object.assign(new Error('port in use'), { code: 'EADDRINUSE' });
+/* true: free (or that address does not exist here); false: in use; anything else (no permission) is an error */
+const free = (port, host) => new Promise((done, fail) => {
+  const t = createServer().once('error', (e) => (e.code === 'EADDRINUSE' ? done(false) : absent(e) ? done(true) : fail(e)))
+    .once('listening', () => t.close(() => done(true))).listen(port, host);
+});
+let twin = null;
+for (const [i, port] of ports.entries()) {
+  try {
+    if (!(await free(port, '127.0.0.1') && await free(port, '::1'))) throw inUse();
+    preview = await vitePreview({ root: DOCS, logLevel: 'warn', preview: { port, strictPort: true, open: false } });
+    const other = preview.httpServer.address()?.family === 'IPv6' ? '127.0.0.1' : '::1';
+    twin = await new Promise((done) => {
+      const s = httpServer(preview.middlewares);
+      s.once('error', (e) => done(absent(e) ? null : false)).listen(port, other, () => done(s));
+    });
+    if (twin === false) { twin = null; await preview.close(); preview = null; throw inUse(); }
+    process.env.E2E_PORT = String(port);
+    break;
+  } catch (e) {
+    /* only a port in use moves on to the next one: any other failure (the config, a permission) is reported as is */
+    if (e.code !== 'EADDRINUSE' && !/already in use/.test(e.message)) { console.error(`could not serve the docs: ${e.message}`); process.exit(1); }
+    if (i === ports.length - 1) {
+      console.error(`could not serve the docs on :${ports.length > 1 ? `${ports[0]}-${port}` : port} (${e.message}): stop the server holding the port, or set E2E_PORT to a free one`);
+      process.exit(1);
+    }
+  }
+}
+console.log(`docs served on :${process.env.E2E_PORT}`);
+/* another e2e run on the machine (another worktree or session) shares its CPU: the timing and motion suites read
+   frames as they come, so they fail more often then (tests/e2e/FLAKES.md); say so up front */
+try {
+  const others = execSync('ps -Ao pid=,command=', { encoding: 'utf8' }).split('\n')
+    .filter((l) => /^\s*\d+\s+(\S*\/)?node\s(.*\s)?\S*tests\/e2e\/run\.mjs(\s|$)/.test(l) && Number(l.trim().split(/\s+/)[0]) !== process.pid);
+  if (others.length) console.log(`note: ${others.length} other e2e run(s) on this machine (pid ${others.map((l) => l.trim().split(/\s+/)[0]).join(', ')}): timing and motion suites may fail from the load`);
+} catch { /* no ps: nothing to say */ }
 const t0 = performance.now();
 try {
   console.log(`engines: ${ENGINES.join(', ')}`);
@@ -239,7 +287,7 @@ try {
       results.push([`${s[0]}${again ? ' (passed on the second run)' : ''}`, again]);
     }
   }
-} finally { await preview.close(); }
+} finally { twin?.close(); await preview.close(); }
 console.log(`\n=== summary (${secs(t0)})`);
 /* failures last, so the end of the output names them (a `| tail` keeps them) */
 for (const [l, okk] of [...results.filter(([, o]) => o), ...results.filter(([, o]) => !o)]) console.log(`${okk ? 'PASS' : 'FAIL'}  ${l}`);

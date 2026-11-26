@@ -1,5 +1,5 @@
 // Selection & input components in a real browser: checkbox, radio, choice list, select, calendar, date picker.
-// usage: node tests/e2e/selection.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173; Q for settings)
+// usage: node tests/e2e/selection.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT; Q for settings)
 // covers: selection   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '';
@@ -10,7 +10,7 @@ p.on('pageerror', (e) => errs.push(e.message));
 p.on('console', (m) => { if (m.type() === 'error' && (m.location()?.url ?? '').includes('localhost') && !/https?:\/\/(?!localhost)/.test(m.text())) errs.push(m.text()); });
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const go = async (id) => { await p.goto(`http://localhost:4173/${Q}#/${id}`); await p.waitForTimeout(600); };
+const go = async (id) => { await p.goto(`${pw.ORIGIN}/${Q}#/${id}`); await p.waitForTimeout(600); };
 /* record a reading every frame in the page while `act` runs */
 const frames = (act, read, ms = 450) => p.evaluate(({ act, read, ms }) => new Promise((res) => {
   const a = new Function(`return (${act})`)(), r = new Function(`return (${read})`)();

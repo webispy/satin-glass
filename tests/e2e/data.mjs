@@ -2,12 +2,12 @@
 //   navigation: tabs (auto / manual activation, many tabs), pagination · feedback: banner, tooltip · selection: filter
 //   select · display: accordion · table: sort, selection, keyboard grid, sticky, states, server mode, 5,000 rows ·
 //   charts: stat, line, bar, donut · dashboard: how the parts work together, axe on every section.
-// usage: node tests/e2e/data.mjs   (BROWSER=webkit|firefox; PORT (default 4173); Q for settings)
+// usage: node tests/e2e/data.mjs   (BROWSER=webkit|firefox; E2E_PORT (default 4173); Q for settings)
 // covers: data, navigation, feedback, overlays, layout   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 import { readFileSync } from 'node:fs';
 import { motions, springAt } from '../../packages/core/dist/index.js';
-const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '', PORT = process.env.PORT || '4173';
+const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '';
 const b = await pw[engine].launch();
 const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
 const errs = [];
@@ -15,7 +15,7 @@ p.on('pageerror', (e) => errs.push(e.message));
 p.on('console', (m) => { if (m.type() === 'error' && (m.location()?.url ?? '').includes('localhost')) errs.push(m.text()); });
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const go = async (id) => { await p.goto(`http://localhost:${PORT}/${Q}#/${id}`); await p.waitForTimeout(900); };
+const go = async (id) => { await p.goto(`${pw.ORIGIN}/${Q}#/${id}`); await p.waitForTimeout(900); };
 const demo = (id) => p.locator(`[data-demo="${id}"]`);
 const TAB = engine === 'webkit' ? 'Alt+Tab' : 'Tab';
 const active = () => p.evaluate(() => { const a = document.activeElement; const c = a?.closest('[data-r]'); return { tag: a?.tagName, r: c ? +c.dataset.r : null, c: c ? +c.dataset.c : null, grid: a?.closest('[role=grid]')?.getAttribute('aria-label') ?? null, text: (a?.textContent ?? '').trim().slice(0, 30) }; });
@@ -527,7 +527,7 @@ await go('dashboard');
   const mctx = await b.newContext(engine === 'firefox' ? { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: false } : { ...pw.devices['iPhone 13'] });
   const m = await mctx.newPage();
   m.on('pageerror', (e) => errs.push(e.message));
-  await m.goto(`http://localhost:${PORT}/${Q}#/charts`); await m.waitForTimeout(1200);
+  await m.goto(`${pw.ORIGIN}/${Q}#/charts`); await m.waitForTimeout(1200);
   /* hover styles only where there is hover: every :hover rule sits under @media (hover: hover), so a tapped control
      keeps no hover look once the finger lifts */
   const loose = await m.evaluate(() => { const bad = []; const walk = (rules, inHover) => { for (const r of rules) { if (r instanceof CSSMediaRule) walk(r.cssRules, inHover || /hover:\s*hover/.test(r.conditionText ?? r.media.mediaText)); else if (r.selectorText?.includes(':hover') && !inHover) bad.push(r.selectorText); else if (r.cssRules) walk(r.cssRules, inHover); } }; for (const sh of document.styleSheets) { try { walk(sh.cssRules, false); } catch {} } return bad; });
@@ -542,14 +542,14 @@ await go('dashboard');
   ok('donut (touch): a tap selects a slice and it stays after the finger lifts; another tap moves it; the same tap clears it', c1 === '생활' && c2 === '문구' && c3 === rest, `${c1} → ${c2} → ${c3}`);
   await tapSlice(0); await m.touchscreen.tap(20, 200); await m.waitForTimeout(350);
   ok('donut (touch): tapping outside the chart clears the selection', (await center()) === rest);
-  await m.goto(`http://localhost:${PORT}/${Q}#/table`); await m.waitForTimeout(1200);
+  await m.goto(`${pw.ORIGIN}/${Q}#/table`); await m.waitForTimeout(1200);
   const row = m.locator('[data-demo=table-basic] tbody tr').nth(1); await row.scrollIntoViewIfNeeded(); await row.locator('th').tap(); await m.waitForTimeout(300);
   const rowBg = await row.locator('td').first().evaluate((e) => getComputedStyle(e).getPropertyValue('--_row-bg').trim());
   const bodyBg = await row.locator('td').first().evaluate((e) => getComputedStyle(e.closest('.sg-table')).getPropertyValue('--_row-bg').trim());
   ok('table (touch): a tapped row keeps no hover tint', rowBg === bodyBg, `${rowBg} vs ${bodyBg}`);
   /* a phone-width banner puts its button below the text (the narrow rule used to have no container to measure, so the
      button stayed beside the text and squeezed it into a column) */
-  await m.goto(`http://localhost:${PORT}/${Q}#/feedback`); await m.waitForTimeout(1200);
+  await m.goto(`${pw.ORIGIN}/${Q}#/feedback`); await m.waitForTimeout(1200);
   const nb = await m.locator('.docs__page .sg-banner--danger').evaluate((e) => { const t = e.querySelector('.sg-banner__text').getBoundingClientRect(), a = e.querySelector('.sg-banner__actions').getBoundingClientRect(); return { below: a.top - t.bottom, left: a.left - t.left, textW: t.width, mainW: e.querySelector('.sg-banner__main').getBoundingClientRect().width }; });
   ok('banner (phone): the button goes below the text, which keeps the full width', nb.below >= 6 && Math.abs(nb.left) < 1 && nb.textW >= nb.mainW - 1, JSON.stringify(nb));
   await mctx.close();

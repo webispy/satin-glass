@@ -7,10 +7,10 @@
 // drawer comes from the start edge. Combobox: narrows as you type, ↓ and Enter choose, Escape goes back to the chosen
 // name, nothing found says so. Accordion: opens and closes to rest with no inline styles left; a closed region is inert;
 // a single accordion keeps one open.
-// usage: node tests/e2e/v05.mjs   (BROWSER=webkit|firefox; PORT (default 4173); Q for settings)
+// usage: node tests/e2e/v05.mjs   (BROWSER=webkit|firefox; E2E_PORT (default 4173); Q for settings)
 // covers: data, controls, layout, overlays, selection
 import * as pw from './pw.mjs';
-const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '', PORT = process.env.PORT || '4173';
+const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '';
 const b = await pw[engine].launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 const errs = [];
@@ -18,7 +18,7 @@ p.on('pageerror', (e) => errs.push(e.message));
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
 const wait = (ms) => p.waitForTimeout(ms);
-const go = async (route) => { await p.goto(`http://localhost:${PORT}/${Q}#/${route}`); await wait(900); };
+const go = async (route) => { await p.goto(`${pw.ORIGIN}/${Q}#/${route}`); await wait(900); };
 const focused = () => p.evaluate(() => { const a = document.activeElement; return a ? (a.getAttribute('aria-label') || a.textContent || '').trim().slice(0, 40) : ''; });
 
 /* ================================================================ Meter */

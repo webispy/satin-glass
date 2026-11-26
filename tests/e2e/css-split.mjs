@@ -7,7 +7,7 @@
 //   3. styles.layer.css  vs  styles.css (the layered build draws the same)
 // The docs app bundles the library CSS into its own asset, so the asset is replaced here by the variant under
 // test followed by the docs app's own stylesheet (the same for every variant).
-// usage: node tests/e2e/css-split.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173; E2E_PART=i/n for a slice of the pages)
+// usage: node tests/e2e/css-split.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT; E2E_PART=i/n for a slice of the pages)
 // covers: css   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 import { readFileSync } from 'node:fs';
@@ -36,7 +36,7 @@ async function snapshot(css, page, qs, only, foreign) {
   await p.route(/\/assets\/.*\.css$/, (r) => r.fulfill({ contentType: 'text/css', body: css + '\n' + docsCss }));
   /* the web font arrives at a different moment on each load and moves every line; all variants use the fallback */
   await p.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
-  await p.goto(`http://localhost:4173/${qs}#/${page}`);
+  await p.goto(`${pw.ORIGIN}/${qs}#/${page}`);
   await p.evaluate(() => document.fonts.ready);
   /* wait until the page has stopped building itself: charts measure their box and draw a frame later, which took
      longer than a fixed second under load, and a snapshot taken before a chart drew compared a missing element
