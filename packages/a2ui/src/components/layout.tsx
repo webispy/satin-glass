@@ -1,7 +1,7 @@
 /* Text, Row, Column, List, Card, Divider, Tabs and Modal of the A2UI basic catalog, drawn with Satin controls. */
 import { Fragment, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Button, Card, CardBody, Dialog, Divider, Stack, Tabs, Text } from '@satin-glass/react';
-import { agentA11y, CardDepthContext, grow, InButtonContext, kids, useEnv, useHostSink, type Child, type Rendered } from './shared';
+import { agentA11y, CardDepthContext, EdgeContext, grow, InButtonContext, useEnv, useHostSink, type Child, type Edge, type Rendered } from './shared';
 
 /* ---- Text: the catalog's basic Markdown — headings, bold, italics, inline code, lists and paragraphs. No HTML, and
    links and images are their text only, as the catalog allows. v0.9.1 names headings with `variant` h1–h5. */
@@ -72,11 +72,25 @@ const JUSTIFY: Record<string, CSSProperties['justifyContent']> = {
   start: 'flex-start', center: 'center', end: 'flex-end', spaceBetween: 'space-between', spaceAround: 'space-around', spaceEvenly: 'space-evenly', stretch: 'stretch',
 };
 const ALIGN: Record<string, CSSProperties['alignItems']> = { start: 'flex-start', center: 'center', end: 'flex-end', stretch: 'stretch' };
-export const a2uiFlow = (direction: 'row' | 'column') => function A2uiFlow({ props, buildChild }: Rendered<{ children?: Child[]; justify?: string; align?: string }>) {
+export const a2uiFlow = (direction: 'row' | 'column') => function A2uiFlow({ props, buildChild, context }: Rendered<{ children?: Child[]; justify?: string; align?: string }>) {
+  /* a stretched, unweighted Column that is a Card's child: its first and last children sit at the card's edges */
+  const edge = useContext(EdgeContext);
+  const atEdge = direction === 'column' && edge?.id === context.componentModel.id && edge.edge === 'all' && (props.align ?? 'stretch') === 'stretch' && !props.weight;
+  const list = props.children ?? [];
+  /* the children's IDs as the agent wrote them, in the same order (a template is not a list of IDs: no edges) */
+  const raw = context.componentModel.properties.children;
+  const ids = Array.isArray(raw) && raw.length === list.length ? raw.map(String) : null;
+  const edgeOf = (i: number): Edge | null => (i === 0 && i === list.length - 1 ? 'all' : i === 0 ? 'top' : i === list.length - 1 ? 'bottom' : null);
   return (
     <Stack direction={direction} gap={direction === 'row' ? 2 : 3} justify={JUSTIFY[props.justify ?? 'start']}
       align={ALIGN[props.align ?? (direction === 'row' ? 'center' : 'stretch')]} wrap={direction === 'row'} style={grow(props.weight)}>
-      {kids(props.children, buildChild)}
+      {/* every child in the same keyed wrapper whether or not the Column is at a card's edge: a change of `align` or
+          `weight` moves the edge, and must not remount the children (their focus and own state) */}
+      {list.map((c, i) => {
+        const e = atEdge && ids && typeof c === 'string' ? edgeOf(i) : null;   /* a templated child is one of many: no edge */
+        const key = typeof c === 'string' ? c : `${c.id}@${c.basePath}`;
+        return <EdgeContext.Provider key={key} value={e && ids ? { id: ids[i], edge: e } : null}>{typeof c === 'string' ? buildChild(c) : buildChild(c.id, c.basePath)}</EdgeContext.Provider>;
+      })}
     </Stack>
   );
 };
@@ -135,11 +149,17 @@ function Item({ across, children }: { across: boolean; children: ReactNode }) {
 }
 
 /* the outermost Card is Satin's surface card; one inside it keeps to the same level with a hairline */
-export function A2uiCard({ props, buildChild }: Rendered<{ child?: string }>) {
+export function A2uiCard({ props, buildChild, context }: Rendered<{ child?: string }>) {
   const depth = useContext(CardDepthContext);
+  /* the child's ID as the agent wrote it (the binder hands `child` over as its own node ID) */
+  const childId = context.componentModel.properties.child;
   return (
     <Card variant={depth ? 'outlined' : undefined} style={grow(props.weight)}>
-      <CardBody><CardDepthContext.Provider value={depth + 1}>{props.child ? buildChild(props.child) : null}</CardDepthContext.Provider></CardBody>
+      <CardBody>
+        <CardDepthContext.Provider value={depth + 1}>
+          <EdgeContext.Provider value={typeof childId === 'string' ? { id: childId, edge: 'all' } : null}>{props.child ? buildChild(props.child) : null}</EdgeContext.Provider>
+        </CardDepthContext.Provider>
+      </CardBody>
     </Card>
   );
 }

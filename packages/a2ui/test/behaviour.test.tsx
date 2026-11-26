@@ -362,3 +362,101 @@ describe.each<V>(['1.0', '0.9'])('button labels in v%s', (v) => {
     expect(screen.getByRole('button', { name: 'Send' }).querySelector('.sg-text')).toBeNull();
   });
 });
+
+describe.each<V>(['1.0', '0.9'])('edge images in v%s', (v) => {
+  const img = (id: string, extra: Record<string, unknown> = {}) => ({ id, component: 'Image', url: 'https://example.com/a.jpg', description: 'Poster', ...extra });
+  const edgeOf = (alt = 'Poster') => screen.getByAltText(alt).parentElement?.getAttribute('data-a2ui-edge') ?? null;
+  const allow = { allowUrl: () => true };
+  it('draws a feature image at the top of a card\'s column edge to edge', () => {
+    const { feed } = mount(allow);
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Card', child: 'col' }, { id: 'col', component: 'Column', children: ['pic', 'txt'] },
+      img('pic'), { id: 'txt', component: 'Text', text: 'Title' },
+    ]));
+    expect(edgeOf()).toBe('top');
+    expect((screen.getByAltText('Poster') as HTMLImageElement).style.borderRadius).toMatch(/^0/);
+  });
+  it('draws it at the bottom when it is the last, and all round when it is the card\'s only child', () => {
+    const { feed } = mount(allow);
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['c1', 'c2'] },
+      { id: 'c1', component: 'Card', child: 'col' }, { id: 'col', component: 'Column', children: ['txt', 'pic'] },
+      { id: 'txt', component: 'Text', text: 'Title' }, img('pic'),
+      { id: 'c2', component: 'Card', child: 'solo' }, img('solo', { description: 'Solo' }),
+    ]));
+    expect(edgeOf()).toBe('bottom');
+    expect(edgeOf('Solo')).toBe('all');
+  });
+  it('keeps inset an image in a centred column, in a row, as an avatar, or deeper inside', () => {
+    const { feed } = mount(allow);
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['a', 'b', 'c', 'd'] },
+      { id: 'a', component: 'Card', child: 'ac' }, { id: 'ac', component: 'Column', align: 'center', children: ['ai'] }, img('ai', { description: 'Centred' }),
+      { id: 'b', component: 'Card', child: 'br' }, { id: 'br', component: 'Row', children: ['bi'] }, img('bi', { description: 'In a row' }),
+      { id: 'c', component: 'Card', child: 'cc' }, { id: 'cc', component: 'Column', children: ['ci'] }, img('ci', { description: 'Avatar', variant: 'avatar' }),
+      { id: 'd', component: 'Card', child: 'dc' }, { id: 'dc', component: 'Column', children: ['dr'] }, { id: 'dr', component: 'Row', children: ['di'] }, img('di', { description: 'Deeper' }),
+    ]));
+    for (const alt of ['Centred', 'In a row', 'Avatar', 'Deeper']) expect(edgeOf(alt)).toBeNull();
+  });
+  it('decides again when the first child arrives late', () => {
+    const { feed } = mount(allow);
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Card', child: 'col' }, { id: 'col', component: 'Column', children: ['pic', 'txt'] }, { id: 'txt', component: 'Text', text: 'Title' },
+    ]));
+    feed(components(v, [img('pic')]));
+    expect(edgeOf()).toBe('top');
+  });
+  it('leaves no band for a refused image or one that fails to load', () => {
+    const { feed } = mount(allow);
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Card', child: 'col' }, { id: 'col', component: 'Column', children: ['pic', 'txt'] },
+      img('pic'), { id: 'txt', component: 'Text', text: 'Title' },
+    ]));
+    fireEvent.error(screen.getByAltText('Poster'));
+    expect(screen.queryByAltText('Poster')).toBeNull();
+    expect(document.querySelector('[data-a2ui-edge]')).toBeNull();
+    /* what a broken image would still have said, a screen reader still hears (#97 review) */
+    expect(screen.getByRole('img', { name: 'Poster' }).tagName).toBe('SPAN');
+  });
+  /* the edge is decided again when the Column's align changes, but its children stay mounted: a remount would drop
+     their focus and their own state, such as a chosen tab (#97 review) */
+  it('keeps a Column\'s children mounted when its align changes', () => {
+    const { feed } = mount(allow);
+    const col = (align?: string) => components(v, [
+      { id: 'root', component: 'Card', child: 'col' }, { id: 'col', component: 'Column', children: ['pic', 'txt'], ...(align ? { align } : {}) },
+      img('pic'), { id: 'txt', component: 'Text', text: 'Title' },
+    ]);
+    feed(create(v), col());
+    const before = screen.getByText('Title');
+    expect(edgeOf()).toBe('top');
+    feed(col('center'));
+    expect(edgeOf()).toBeNull();
+    expect(screen.getByText('Title')).toBe(before);
+    feed(col());
+    expect(screen.getByText('Title')).toBe(before);
+  });
+  /* the same node shown another URL and then the failed one again tries it again (#97 review) */
+  it('tries a failed URL again when it comes back', () => {
+    const { feed } = mount(allow);
+    const at = (url: string) => components(v, [
+      { id: 'root', component: 'Card', child: 'col' }, { id: 'col', component: 'Column', children: ['pic', 'txt'] },
+      img('pic', { url }), { id: 'txt', component: 'Text', text: 'Title' },
+    ]);
+    feed(create(v), at('https://example.com/a.jpg'));
+    fireEvent.error(screen.getByAltText('Poster'));
+    feed(at('https://example.com/b.jpg'));
+    expect(screen.getByAltText('Poster').getAttribute('src')).toBe('https://example.com/b.jpg');
+    feed(at('https://example.com/a.jpg'));
+    expect(screen.getByAltText('Poster').getAttribute('src')).toBe('https://example.com/a.jpg');
+  });
+  it('keeps the agent\'s fit, and covers when it gave none', () => {
+    const { feed } = mount(allow);
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['c1', 'c2'] },
+      { id: 'c1', component: 'Card', child: 'p1' }, img('p1', { description: 'No fit' }),
+      { id: 'c2', component: 'Card', child: 'p2' }, img('p2', { description: 'Contain', fit: 'contain' }),
+    ]));
+    expect((screen.getByAltText('No fit') as HTMLImageElement).style.objectFit).toBe('cover');
+    expect((screen.getByAltText('Contain') as HTMLImageElement).style.objectFit).toBe('contain');
+  });
+});

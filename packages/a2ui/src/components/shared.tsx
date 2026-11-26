@@ -22,6 +22,14 @@ export const CardDepthContext = createContext(0);
     surface of the app's own (every agent Card keeps to it, with a hairline). Set by A2uiProvider, read by the
     surfaces; undefined: not said */
 export type Ground = 'page' | 'surface';
+/** a child drawn at an agent Card's edge: the Card names its child (`all`), and a stretched, unweighted Column that is
+    that child names its first (`top`) and last (`bottom`) children. Matched by component ID, so only that child reads
+    it, not what is inside it. An image there is drawn edge to edge (design language §9: a flush child is clipped by
+    its parent). */
+export type Edge = 'top' | 'bottom' | 'all';
+export const EdgeContext = createContext<{ id: string; edge: Edge } | null>(null);
+/** `.sg-card__body`'s padding (packages/core/styles/layout.css), which an edge image steps over */
+export const BODY_PAD = { top: 14, inline: 16, bottom: 16 } as const;
 /** inside an agent Button: a plain Text there is the button's label, in the button's own type */
 export const InButtonContext = createContext(false);
 export const GroundContext = createContext<Ground | undefined>(undefined);
