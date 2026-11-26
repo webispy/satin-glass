@@ -82,8 +82,7 @@
 .sg-barmeter[data-tone="warning"] { --_c: var(--sg-warning); }
 .sg-barmeter[data-tone="danger"] { --_c: var(--sg-danger); }
 .sg-barmeter[data-tone="info"] { --_c: var(--sg-info, var(--sg-accent)); }
-.sg-barmeter__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--_c); transform-origin: left center; }
-.sg-barmeter__fill:dir(rtl), [dir="rtl"] .sg-barmeter__fill { transform-origin: right center; }
+.sg-barmeter__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--_c); transform-origin: var(--_sg-start, left) center; }   /* grows from the inline start: foundation.css */
 /* Meter (0.5): a value within a known range. The track is a groove (the path the value runs along), the fill flat,
    from the inline start; it changes at once (data, not a hand). Label and value above, the status line below */
 .sg-meter { display: grid; gap: 6px; min-width: 120px; --_c: var(--sg-accent); }
@@ -97,8 +96,7 @@
 .sg-meter__value { flex: none; color: var(--sg-label-secondary); font-size: var(--sg-text-footnote-size); line-height: var(--sg-text-footnote-line); font-weight: 560; font-variant-numeric: tabular-nums; }
 .sg-meter__track { position: relative; height: 8px; border-radius: var(--sg-radius-full); background: var(--sg-groove); box-shadow: var(--sg-depth-inset); overflow: hidden; }
 .sg-meter--sm .sg-meter__track { height: 4px; }
-.sg-meter__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--_c); transform-origin: left center; }
-.sg-meter__fill:dir(rtl), [dir="rtl"] .sg-meter__fill { transform-origin: right center; }
+.sg-meter__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--_c); transform-origin: var(--_sg-start, left) center; }
 .sg-meter__status { color: var(--sg-label-secondary); font-size: var(--sg-text-caption-size); line-height: var(--sg-text-caption-line); font-weight: var(--sg-text-caption-weight); }
 @media (forced-colors: active) {
   .sg-meter__track { border: 1px solid CanvasText; }
@@ -114,6 +112,9 @@
 /* ---------------------------------------------------------------- DataTable */
 /* isolation: the sticky header, columns and summary rows stack inside the table only — without it their z-index
    reached past the scroller, over the scroll indicator iOS draws on it (it looked cut in two by the frozen column) */
+/* the table's inline start and end, taken once on the table (foundation.css): a cell with a dir of its own keeps the
+   column lines and placeholders on the table's sides */
+.sg-table { --_tbl-start: var(--_sg-start, left); --_tbl-end: var(--_sg-end, right); }
 .sg-table { position: relative; isolation: isolate; overflow: auto; min-width: 0; overscroll-behavior-x: contain; scroll-padding-top: calc(var(--_head-h, 0px) + var(--_pin-h, 0px)); scroll-padding-left: var(--_stick-w, 0px); --_head-bg: var(--sg-surface); --_row-bg: var(--sg-surface); }
 .sg-table:focus { outline: none; }
 /* a table without a height scrolls sideways only: no vertical scroller (a horizontal scrollbar that takes room would
@@ -126,7 +127,7 @@
   /* lines are background layers (row line at the bottom, column line on the right), not inset shadows: shadows on
      cells of fractional width leave hairline seams between cells in Firefox, and box-shadow stays free for focus */
   --_hline: transparent; --_vline: transparent; --_bg: transparent;
-  background: linear-gradient(var(--_hline), var(--_hline)) left bottom / 100% 1px no-repeat, linear-gradient(var(--_vline), var(--_vline)) right top / 1px 100% no-repeat, var(--_bg); }
+  background: linear-gradient(var(--_hline), var(--_hline)) left bottom / 100% 1px no-repeat, linear-gradient(var(--_vline), var(--_vline)) var(--_tbl-end) top / 1px 100% no-repeat, var(--_bg); }
 .sg-table [data-align="end"] { text-align: end; }
 .sg-table [data-align="center"] { text-align: center; }
 .sg-table thead th { position: sticky; top: 0; z-index: 3; --_bg: var(--_head-bg); --_hline: var(--sg-separator-strong); color: var(--sg-label-secondary); font-size: 13px; font-weight: 600; padding-top: 8px; padding-bottom: 8px; vertical-align: bottom; }
@@ -173,8 +174,6 @@
    colour, so the grid reads as one weight */
 .sg-table .sg-table__vline { --_vline: var(--sg-separator); }
 [data-sg-theme$="-hc"] .sg-table .sg-table__vline { --_vline: var(--sg-separator-strong); }
-/* right to left: a column's end is its left edge (the row line spans the cell either way) */
-.sg-table:dir(rtl) :is(th, td) { background-position: left bottom, left top, 0 0; }
 .sg-table__check { padding: 0 !important; text-align: center !important; }
 .sg-table__checkbox { vertical-align: middle; }
 .sg-table thead .sg-table__check { padding-bottom: 8px !important; }   /* on the header text's line, like the other header cells */
@@ -196,16 +195,12 @@
    where the text runs, on the table's own ground; no light sweep, as it shows only while the rows fly past */
 .sg-table .sg-table__fling > td { padding: 0;
   --_fl-line: repeating-linear-gradient(transparent 0 calc(var(--_rh) - 1px), var(--_hline) calc(var(--_rh) - 1px) var(--_rh));
-  background: var(--_fl-line), linear-gradient(var(--_vline), var(--_vline)) right top / 1px 100% no-repeat, var(--_bg); }
+  background: var(--_fl-line), linear-gradient(var(--_vline), var(--_vline)) var(--_tbl-end) top / 1px 100% no-repeat, var(--_bg); }
 .sg-table .sg-table__fling > td[data-bar] {
-  background: linear-gradient(transparent calc(50% - 5px), var(--sg-fill) calc(50% - 5px) calc(50% + 5px), transparent calc(50% + 5px)) left 12px top 0 / calc((100% - 24px) * 0.6) var(--_rh) repeat-y,
-    var(--_fl-line), linear-gradient(var(--_vline), var(--_vline)) right top / 1px 100% no-repeat, var(--_bg); }
-.sg-table .sg-table__fling > td[data-bar="end"] { background-position: right 12px top 0, 0 0, right top, 0 0; }
-.sg-table .sg-table__fling > td[data-bar="center"] { background-position: center top, 0 0, right top, 0 0; }
-.sg-table:dir(rtl) .sg-table__fling > td { background-position: 0 0, left top, 0 0; }
-.sg-table:dir(rtl) .sg-table__fling > td[data-bar] { background-position: right 12px top 0, 0 0, left top, 0 0; }
-.sg-table:dir(rtl) .sg-table__fling > td[data-bar="end"] { background-position: left 12px top 0, 0 0, left top, 0 0; }
-.sg-table:dir(rtl) .sg-table__fling > td[data-bar="center"] { background-position: center top, 0 0, left top, 0 0; }
+  background: linear-gradient(transparent calc(50% - 5px), var(--sg-fill) calc(50% - 5px) calc(50% + 5px), transparent calc(50% + 5px)) var(--_tbl-start) 12px top 0 / calc((100% - 24px) * 0.6) var(--_rh) repeat-y,
+    var(--_fl-line), linear-gradient(var(--_vline), var(--_vline)) var(--_tbl-end) top / 1px 100% no-repeat, var(--_bg); }
+.sg-table .sg-table__fling > td[data-bar="end"] { background-position: var(--_tbl-end) 12px top 0, 0 0, var(--_tbl-end) top, 0 0; }
+.sg-table .sg-table__fling > td[data-bar="center"] { background-position: center top, 0 0, var(--_tbl-end) top, 0 0; }
 /* virtualised rows are one fixed height (the spacers assume it): taller cell content is cut, not allowed to grow the row */
 .sg-table--virtual tbody td > *, .sg-table--virtual tbody th > * { max-height: var(--_rh); overflow: hidden; }
 /* cell helpers (named after the shared tones): a number with its meter, a value that stands out, values that need
