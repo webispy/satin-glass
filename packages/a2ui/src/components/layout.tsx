@@ -1,7 +1,7 @@
 /* Text, Row, Column, List, Card, Divider, Tabs and Modal of the A2UI basic catalog, drawn with Satin controls. */
 import { Fragment, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Button, Card, CardBody, Dialog, Divider, Stack, Tabs, Text } from '@satin-glass/react';
-import { agentA11y, CardDepthContext, EdgeContext, grow, InButtonContext, InTriggerContext, useEnv, useHostSink, type Child, type Edge, type Rendered } from './shared';
+import { agentA11y, CardDepthContext, EdgeContext, grow, InButtonContext, InTriggerContext, PANEL_MIN, RowContext, useEnv, useHostSink, type Child, type Edge, type Rendered } from './shared';
 
 /* ---- Text: the catalog's basic Markdown — headings, bold, italics, inline code, lists and paragraphs. No HTML, and
    links and images are their text only, as the catalog allows. v0.9.1 names headings with `variant` h1–h5. */
@@ -81,9 +81,12 @@ export const a2uiFlow = (direction: 'row' | 'column') => function A2uiFlow({ pro
   const raw = context.componentModel.properties.children;
   const ids = Array.isArray(raw) && raw.length === list.length ? raw.map(String) : null;
   const edgeOf = (i: number): Edge | null => (i === 0 && i === list.length - 1 ? 'all' : i === 0 ? 'top' : i === list.length - 1 ? 'bottom' : null);
-  return (
-    <Stack direction={direction} gap={direction === 'row' ? 2 : 3} justify={JUSTIFY[props.justify ?? 'start']}
-      align={ALIGN[props.align ?? (direction === 'row' ? 'center' : 'stretch')]} wrap={direction === 'row'} style={grow(props.weight)}>
+  /* a weighted Column that is a Row's own child is a panel: it keeps a minimum width, so a narrow Row stacks it */
+  const row = useContext(RowContext);
+  const panel = direction === 'column' && !!props.weight && props.weight > 0 && !!row?.includes(context.componentModel.id);
+  const stack = (
+    <Stack direction={direction} gap={direction === 'row' ? 2 : 3} justify={JUSTIFY[props.justify ?? 'start']} data-a2ui-panel={panel ? '' : undefined}
+      align={ALIGN[props.align ?? (direction === 'row' ? 'center' : 'stretch')]} wrap={direction === 'row'} style={panel ? { ...grow(props.weight), minWidth: PANEL_MIN } : grow(props.weight)}>
       {/* every child in the same keyed wrapper whether or not the Column is at a card's edge: a change of `align` or
           `weight` moves the edge, and must not remount the children (their focus and own state) */}
       {list.map((c, i) => {
@@ -93,6 +96,7 @@ export const a2uiFlow = (direction: 'row' | 'column') => function A2uiFlow({ pro
       })}
     </Stack>
   );
+  return direction === 'row' ? <RowContext.Provider value={Array.isArray(ids) ? ids : null}>{stack}</RowContext.Provider> : stack;
 };
 
 /* ---- List: a list (its items are list items), vertical or horizontal; it scrolls along its direction when its
@@ -119,8 +123,9 @@ export function A2uiList({ props, buildChild }: Rendered<{ children?: Child[]; d
   return (
     <Tag ref={el as never} role="list" tabIndex={across && overflows ? 0 : undefined}
       style={{
-        margin: 0, padding: marked && !across ? '0 0 0 1.4em' : 0, listStyle: marked && !across ? (ordered ? 'decimal' : 'disc') : 'none',
-        display: 'flex', flexDirection: across ? 'row' : 'column', gap: across ? 8 : 12, alignItems: ALIGN[props.align ?? 'stretch'],
+        /* room for a card's shadow inside the scrolling box, given back outside it, so nothing moves */
+        margin: -4, padding: 4, ...(marked && !across ? { paddingInlineStart: 'calc(1.4em + 4px)' } : {}), listStyle: marked && !across ? (ordered ? 'decimal' : 'disc') : 'none',
+        display: 'flex', flexDirection: across ? 'row' : 'column', gap: across ? 'var(--sg-space-2, 8px)' : 'var(--sg-space-3, 12px)', alignItems: ALIGN[props.align ?? 'stretch'],
         overflow: 'auto', minHeight: 0, minWidth: 0, scrollbarWidth: across ? 'none' : undefined, ...grow(props.weight),
       }}>
       {sent.map((c) => {
@@ -153,8 +158,10 @@ export function A2uiCard({ props, buildChild, context }: Rendered<{ child?: stri
   const depth = useContext(CardDepthContext);
   /* the child's ID as the agent wrote it (the binder hands `child` over as its own node ID) */
   const childId = context.componentModel.properties.child;
+  const row = useContext(RowContext);
+  const panel = !!props.weight && props.weight > 0 && !!row?.includes(context.componentModel.id);
   return (
-    <Card variant={depth ? 'outlined' : undefined} style={grow(props.weight)}>
+    <Card variant={depth ? 'outlined' : undefined} data-a2ui-panel={panel ? '' : undefined} style={panel ? { ...grow(props.weight), minWidth: PANEL_MIN } : grow(props.weight)}>
       <CardBody>
         <CardDepthContext.Provider value={depth + 1}>
           <EdgeContext.Provider value={typeof childId === 'string' ? { id: childId, edge: 'all' } : null}>{props.child ? buildChild(props.child) : null}</EdgeContext.Provider>

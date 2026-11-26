@@ -30,6 +30,12 @@ export type Edge = 'top' | 'bottom' | 'all';
 export const EdgeContext = createContext<{ id: string; edge: Edge } | null>(null);
 /** `.sg-card__body`'s padding (packages/core/styles/layout.css), which an edge image steps over */
 export const BODY_PAD = { top: 14, inline: 16, bottom: 16 } as const;
+/** a Row's children as the agent wrote their IDs: a weighted Column or Card among them is a panel, which keeps a
+    minimum width so that a narrow Row stacks its panels instead of squeezing them (WCAG 1.4.10 reflow). Matched by
+    ID, so only the Row's own children read it. */
+export const RowContext = createContext<string[] | null>(null);
+/** a panel's minimum width in a Row */
+export const PANEL_MIN = 'min(15rem, 100%)';
 /** inside an agent Button: a plain Text there is the button's label, in the button's own type */
 export const InButtonContext = createContext(false);
 /** inside a Modal's trigger: the trigger is the press target, so nothing inside it becomes a button of its own */

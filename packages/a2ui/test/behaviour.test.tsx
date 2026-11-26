@@ -728,3 +728,53 @@ describe.each<V>(['1.0', '0.9'])('a short exclusive choice in v%s', (v) => {
     expect(container.querySelector('.sg-segmented[role="radiogroup"]')).toBeNull();
   });
 });
+
+describe.each<V>(['1.0', '0.9'])('row reflow in v%s', (v) => {
+  const panel = (text: string) => screen.getByText(text).closest('[data-a2ui-panel]');
+  it('marks weighted columns and cards in a row as panels that stack when the row is narrow', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Row', children: ['a', 'b'] },
+      { id: 'a', component: 'Column', weight: 1, children: ['at'] }, { id: 'at', component: 'Text', text: 'Editor' },
+      { id: 'b', component: 'Card', weight: 2, child: 'bt' }, { id: 'bt', component: 'Text', text: 'Preview' },
+    ]));
+    expect(panel('Editor')).not.toBeNull();
+    expect(panel('Preview')).not.toBeNull();
+  });
+  it('leaves compact rows alone: weighted text, an icon and a label, a key and a value, buttons', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['r1', 'r2'] },
+      { id: 'r1', component: 'Row', justify: 'spaceBetween', children: ['k', 'val'] },
+      { id: 'k', component: 'Text', text: 'Subtotal', weight: 1 }, { id: 'val', component: 'Text', text: '$10.70' },
+      { id: 'r2', component: 'Row', children: ['i', 'l'] }, { id: 'i', component: 'Icon', name: 'send' }, { id: 'l', component: 'Text', text: 'Send' },
+    ]));
+    expect(document.querySelector('[data-a2ui-panel]')).toBeNull();
+  });
+  it('does not mark an unweighted column, or a weighted one that is not the row\'s own child', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Row', children: ['a', 'b'] },
+      { id: 'a', component: 'Column', children: ['at'] }, { id: 'at', component: 'Text', text: 'Plain' },
+      { id: 'b', component: 'Column', weight: 1, children: ['inner'] },
+      { id: 'inner', component: 'Column', weight: 1, children: ['it'] }, { id: 'it', component: 'Text', text: 'Inner' },
+    ]));
+    expect(panel('Plain')).toBeNull();
+    expect(screen.getByText('Inner').closest('[data-a2ui-panel]')?.contains(screen.getByText('Inner').closest('.sg-stack')!.parentElement!)).toBe(true);
+    expect(document.querySelectorAll('[data-a2ui-panel]')).toHaveLength(1);
+  });
+  it('decides again when a panel arrives late', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [{ id: 'root', component: 'Row', children: ['a', 'b'] }, { id: 'b', component: 'Text', text: 'Later' }]));
+    feed(components(v, [{ id: 'a', component: 'Column', weight: 1, children: ['at'] }, { id: 'at', component: 'Text', text: 'Editor' }]));
+    expect(panel('Editor')).not.toBeNull();
+  });
+  it('gives a list room for its cards\' shadows, on the spacing scale', () => {
+    const { feed, container } = mount();
+    feed(create(v), components(v, [{ id: 'root', component: 'List', children: ['t'] }, { id: 't', component: 'Text', text: 'Item' }]));
+    const list = container.querySelector<HTMLElement>('[role="list"]')!;
+    expect(list.style.padding).toBe('4px');
+    expect(list.style.margin).toBe('-4px');
+    expect(list.style.gap).toBe('var(--sg-space-3, 12px)');
+  });
+});
