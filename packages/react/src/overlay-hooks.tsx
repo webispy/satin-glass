@@ -8,26 +8,53 @@ import { useIsoLayoutEffect, usePresence } from './utils';
     control for another — or removed) */
 export type CloseReason = 'escape' | 'backdrop' | 'action' | 'swipe' | 'select' | 'anchor';
 
+/** What an open overlay does while it is hidden (Suspense or Activity hid the page that holds it) and when it is
+    shown again: its layer is set aside in its place in the stack (so it locks, hides and takes nothing, and the order
+    of nested overlays holds), and comes back with the focus. */
+export type OverlayPause = { hide(): void; show(): void };
+
 /** Holds an overlay's cleanup (scroll lock, focus trap, listeners). Runs it at most once per opening — on close,
-    or on unmount if the overlay disappears while open (route change, a parent removing it mid-animation). */
+    or on unmount if the overlay disappears while open (route change, a parent removing it mid-animation). While
+    the overlay is hidden it is paused instead (`pause`, run by useOverlayLifecycle): Suspense and Activity take a
+    hidden tree's layout effects down but keep its passive ones, this one among them (#79). */
 export function useRelease() {
   const fn = useRef<() => void>(() => {});
+  const paused = useRef<OverlayPause | null>(null);
   const api = useRef({
-    set(f: () => void) { let done = false; fn.current = () => { if (done) return; done = true; f(); }; },
+    set(f: () => void, pause?: OverlayPause) {
+      let done = false;
+      fn.current = () => { if (done) return; done = true; paused.current = null; f(); };
+      paused.current = pause ?? null;
+    },
     run() { fn.current(); fn.current = () => {}; },
+    hide() { paused.current?.hide(); },
+    show() { paused.current?.show(); },
   }).current;
   useEffect(() => () => api.run(), []);
   return api;
 }
 
-/** Shared lifecycle: mount → enter animation → (open) → exit animation → unmount. */
-export function useOverlayLifecycle(open: boolean, enter: () => Promise<void> | void, exit: () => Promise<void>) {
+/** Shared lifecycle: mount → enter animation → (open) → exit animation → unmount. Hidden while open (Suspense,
+    Activity), the overlay is paused through `release` and resumed when shown, if it is still open: it is the same
+    opening, so enter does not run again (no second layer, no entrance nothing the hand did asked for). */
+export function useOverlayLifecycle(open: boolean, enter: () => Promise<void> | void, exit: () => Promise<void>, release?: { hide(): void; show(): void }) {
   const { mounted, closing, done } = usePresence(open);
   /* 'idle' → 'open' → 'exiting' → idle. Re-opened while exiting (e.g. a click on another anchor closes and
      re-opens in two events): the exit is abandoned and enter runs again, so the overlay never gets stuck. */
   const phase = useRef<'idle' | 'open' | 'exiting'>('idle');
-  /* unmounted (or StrictMode's simulated remount): start over, so a remount that is open runs enter again */
-  useIsoLayoutEffect(() => () => { phase.current = 'idle'; }, []);
+  const wanted = useRef(open); wanted.current = open;
+  /* the scroll lock held for the exit animation, given back if the overlay is hidden before that ends */
+  const held = useRef<() => void>(() => {});
+  /* hidden (or unmounting): paused; shown again while still open: resumed. A layout effect, which Suspense and
+     Activity take down and set up again, where passive ones stay */
+  const hidden = useRef(false);
+  useIsoLayoutEffect(() => {
+    if (hidden.current) { hidden.current = false; if (wanted.current && phase.current === 'open') release?.show(); }
+    return () => { hidden.current = true; release?.hide(); held.current(); };
+  }, []);
+  /* unmounted (or StrictMode's simulated remount, which also releases the opening): start over, so a remount that is
+     open runs enter again. Passive, so hiding keeps the phase: a hidden exit still ends, and a reveal does not enter */
+  useEffect(() => () => { phase.current = 'idle'; }, []);
   useIsoLayoutEffect(() => {
     if (mounted && !closing && phase.current !== 'open') { phase.current = 'open'; enter(); }
   }, [mounted, closing]);
@@ -36,6 +63,7 @@ export function useOverlayLifecycle(open: boolean, enter: () => Promise<void> | 
     phase.current = 'exiting';
     /* the page stays locked until the exit animation is over (no sideways jump when the scrollbar returns) */
     const hold = holdScrollLock();
+    held.current = hold;
     let alive = true;
     exit().then(() => {
       if (alive && phase.current === 'exiting') { phase.current = 'idle'; done(); }
@@ -63,6 +91,26 @@ const boxOf = (el: HTMLElement) => {
 const rectOf = (a: Anchor) => (a instanceof HTMLElement ? boxOf(a) : a ?? new DOMRect(innerWidth / 2, innerHeight / 2, 0, 0));
 const sameRect = (a: DOMRect, b: DOMRect) => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
 
+/* Anchored panels shown again (#79) are placed again outermost first. React shows the innermost first, and a panel
+   whose anchor lies inside another anchored panel must be measured after that one has moved. Each open panel's
+   element maps to its anchor element, so a panel's depth is how many panels its anchor sits in, link by link. */
+const anchorOf = new WeakMap<HTMLElement, HTMLElement | null>();
+const depthOf = (a: HTMLElement | null) => {
+  let d = 0;
+  for (let n = a; n && d < 32; d++) {   /* 32: a guard against a cycle, far past any real nesting */
+    let q: HTMLElement | null = n;
+    while (q && !anchorOf.has(q)) q = q.parentElement;
+    if (!q) break;
+    n = anchorOf.get(q) ?? null;
+  }
+  return d;
+};
+const replacing: { depth: number; run: () => void }[] = [];
+const replaceOnReveal = (a: HTMLElement | null, run: () => void) => {
+  if (!replacing.length) queueMicrotask(() => { for (const r of replacing.splice(0).sort((x, y) => x.depth - y.depth)) r.run(); });
+  replacing.push({ depth: depthOf(a), run });
+};
+
 /** Anchored floating panel shared by Menu, Popover, Select and DatePicker.
     focusFirst: move focus into the panel (and give it back on close); null keeps focus where it is (a combobox).
     matchWidth: the panel is at least as wide as the anchor (selects).
@@ -85,12 +133,18 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
   const before = useRef<Element | null>(null);
   /* while open: what the panel is placed against, and how to place it against another */
   const anchored = useRef<{ at: Anchor; rect: DOMRect; to: (a: Anchor) => void } | null>(null);
+  /* set aside while Suspense hides it (#79): a press on what shows instead, the anchor hidden with the panel, or an
+     anchor ref the hidden render read as null is not a reason to close; shown again, it is placed afresh against the
+     anchor it had, and closes then if that did not come back */
+  const hidden = useRef(false);
   const life = useOverlayLifecycle(open, () => {
     const p = panel.current!;
+    hidden.current = false;   /* a new opening (StrictMode's second, or one after a close while hidden) */
     p.removeAttribute('inert');   /* re-opened mid-exit */
     before.current = focusFirst ? document.activeElement : null;
     /* the element anchor the panel follows (null for a DOMRect or no anchor) */
     let el: HTMLElement | null = null, unfollow = () => {};
+    const shut = (why: 'anchor' | 'backdrop') => { if (!hidden.current) close.current(why); };
     /* Safari does not focus a button on click (the page, or a focusable container around it, has focus instead):
        fall back to the anchor so focus still goes home */
     const home = () => {
@@ -124,7 +178,7 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       if (p.contains(e.target as Node)) return;
       if (el && el.contains(e.target as Node)) return; /* the anchor toggles itself */
       if (inLayerAbove(p, e.target as Node)) return;   /* a list or dialog opened from inside this panel */
-      close.current('backdrop');
+      shut('backdrop');
     };
     /* Places the panel against `a` and, for an element, keeps it there.
        Glued to the anchor. Page scrolling needs nothing: the panel sits in document coordinates and the browser
@@ -212,7 +266,7 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       const onScroll = (e: Event) => {
         const t = e.target;
         if (p.contains(t as Node)) return;   /* the panel's own list */
-        if (lost()) { pending = null; close.current('anchor'); return; }
+        if (lost()) { pending = null; shut('anchor'); return; }
         if (!target) return;
         /* an anchor inside another anchored panel (a menu opened from a popover) moves when that panel is placed, in
            its frame: it is measured there, after it */
@@ -240,7 +294,7 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       };
       const replace = () => {
         pending = null;   /* placed afresh: a scroll's pending place is stale */
-        if (lost()) { close.current('anchor'); return; }
+        if (lost()) { shut('anchor'); return; }
         if (!target) return;
         frame();
         /* the anchor's direction may have changed with the layout (a breakpoint) */
@@ -257,7 +311,7 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       /* the anchor can also leave the layout with no scroll or resize (a state change hides it, a re-render removes
          it): its size (or its parent's, which it took space in) changes, and the panel closes then. Cheap: no
          observer of the page's mutations. */
-      const ro = target && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { if (lost()) close.current('anchor'); }) : null;
+      const ro = target && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { if (lost()) shut('anchor'); }) : null;
       /* the panel's size, kept current without reading it in a scroll frame (a list filtered as one types) */
       const own = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
         const w = p.offsetWidth, h = p.offsetHeight;
@@ -294,6 +348,7 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       }
       unfollow = () => { cancelAnimationFrame(raf); raf = 0; pending = null; probe?.remove(); probe = null; ro?.disconnect(); own?.disconnect(); window.removeEventListener('scroll', onScroll, true); removeEventListener('resize', replace); };
       anchored.current = { at: to, rect: new DOMRect(r.x, r.y, r.width, r.height), to: follow };   /* a copy: the app may change its DOMRect */
+      anchorOf.set(p, el);
       return at;
     };
     const at = follow(anchor);
@@ -302,9 +357,28 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
       pop();
       unfollow();
       anchored.current = null;
+      anchorOf.delete(p);
       document.removeEventListener('pointerdown', outside, true);
       const b = home();
       if (focusFirst && b && (p.contains(document.activeElement) || document.activeElement === document.body)) b.focus({ preventScroll: true });
+    /* shown again (#79): back in the stack; then, in the queue that places the panels outermost first, placed against
+       its anchor afresh (or closed, the anchor gone: checked there, after the rest of the commit's effects), and the
+       focus back in the panel if it went nowhere meanwhile (after the placement, which may make it visible again) */
+    }, {
+      hide: () => { hidden.current = true; pop.pause(true); },
+      show: () => {
+        hidden.current = false;
+        pop.pause(false);
+        const cur = anchored.current;
+        replaceOnReveal(cur?.at instanceof HTMLElement ? cur.at : null, () => {
+          const c = anchored.current;
+          if (!c || hidden.current) return;
+          if (c.at instanceof HTMLElement && (!c.at.isConnected || c.at.getClientRects().length === 0)) { close.current('anchor'); return; }
+          c.to(c.at);
+          /* not under a dialog opened above it meanwhile, whose opening hid this panel's portal */
+          if (focusFirst && (!document.activeElement || document.activeElement === document.body) && !p.closest('[aria-hidden="true"]')) focusFirst(p);
+        });
+      },
     });
     focusFirst?.(p);
     /* unfold away from the anchor: the axis pointing away from it starts flatter */
@@ -314,17 +388,21 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
     release.run();
     const vertical = (panel.current!.dataset.side ?? 'bottom').match(/top|bottom/);
     return bloomOut(panel.current!, vertical ? [0.7, 0.45] : [0.45, 0.7], 150);
-  });
+  }, release);
   /* leaving: no longer reachable by Tab or the pointer while it folds away. In the commit that closes it, so before
      the browser's Tab that follows a Tab handled above */
   useIsoLayoutEffect(() => { if (!open) panel.current?.setAttribute('inert', ''); }, [open]);
   /* the app points the open panel elsewhere. Away from the element it was placed against: that is no longer its
      anchor, as when the anchor leaves the layout, and it closes. From a point or none (a ref that was still null
      when it opened, a context menu's point moved): it is placed against the new anchor, and follows it if it is an
-     element. A new point at the place it was placed against is the same anchor. */
+     element. A new point at the place it was placed against is the same anchor. None is not a new anchor: the panel
+     keeps the anchor it has (an element closes it when it leaves the layout). `anchor={ref.current}` reads none
+     whenever React has the ref detached, as while Suspense hides the page and in the render that shows it again
+     (#79), and that render cannot be told from an app's own none. */
   useEffect(() => {
     const cur = anchored.current;
-    if (!open || !cur || anchor === cur.at) return;   /* not one already closing */
+    if (!open || !cur || anchor === cur.at || hidden.current) return;   /* not one already closing, nor one set aside */
+    if (anchor == null) return;
     if (cur.at instanceof HTMLElement) { close.current('anchor'); return; }
     if (!(anchor instanceof HTMLElement) && sameRect(cur.rect, rectOf(anchor))) return;
     cur.to(anchor);

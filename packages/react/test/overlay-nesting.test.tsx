@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor, cleanup } from '@testing-library/react';
-import { useRef, useState } from 'react';
-import { Button, Dialog, Menu, MenuItem, Popover, ActionSheet, Sheet, Drawer, ContextMenu, Toaster, useToast, ThemeProvider, createTheme } from '../src';
+import { StrictMode, Suspense, useLayoutEffect, useRef, useState, type ReactElement } from 'react';
+import { topLayerCount } from '@satin-glass/core';
+import { Button, Dialog, Menu, MenuItem, Popover, ActionSheet, Sheet, Drawer, ContextMenu, Toaster, useToast, ThemeProvider, createTheme, MediaViewer } from '../src';
 
 /* jsdom lays nothing out: offsetParent is always null and getClientRects empty. Stand in for layout so focus traps
    see their stops and anchors count as shown; an element under display: none has neither. */
@@ -743,5 +744,356 @@ describe('review follow-ups', () => {
     act(() => { fireEvent.keyDown(document, { key: 'Escape' }); });
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(document.activeElement).toBe(more);
+  });
+});
+
+/* Suspense hiding a page that holds an open overlay (the docs show the loading page while the next page's module
+   loads) runs the hidden tree's layout effect cleanups, not its passive ones. The overlay's layer is set aside in its
+   place: the loading page is not locked, not hidden from assistive technology, and Escape is not taken. Shown again,
+   it is the same opening (no second layer, no entrance, the focus back inside); closing it leaves nothing (#79) */
+describe('an open overlay hidden by Suspense and shown again (#79)', () => {
+  const gate = { hold: false, wake: () => {} };
+  function Gate() { if (gate.hold) throw new Promise<void>((r) => { gate.wake = r; }); return null; }
+  const hide = async (rerender: (ui: ReactElement) => void, ui: ReactElement) => { gate.hold = true; rerender(ui); await act(async () => {}); };
+  const reveal = async (rerender: (ui: ReactElement) => void, ui: ReactElement) => { gate.hold = false; rerender(ui); await act(async () => { gate.wake(); }); };
+  const hiddenFromAT = () => [...document.body.children].filter((c) => c.getAttribute('aria-hidden') === 'true').length;
+  const dialogEl = () => (screen.queryByRole('dialog') ?? screen.getByRole('alertdialog'));
+  const overlays: [string, (open: boolean, onClose: () => void) => ReactElement][] = [
+    ['Sheet', (open, onClose) => <Sheet open={open} onClose={onClose} title="s">body <button>inside</button></Sheet>],
+    ['Drawer', (open, onClose) => <Drawer open={open} onClose={onClose} title="d">body <button>inside</button></Drawer>],
+    ['Dialog', (open, onClose) => <Dialog open={open} onClose={onClose} title="t">body</Dialog>],
+  ];
+  for (const [name, overlay] of overlays) {
+    it(`${name}: set aside while hidden; the same opening when shown; nothing left once closed`, async () => {
+      gate.hold = false;
+      const onClose = vi.fn();
+      const view = (open: boolean) => <Suspense fallback={<p>loading</p>}>{overlay(open, onClose)}<Gate /></Suspense>;
+      const { rerender } = render(view(true));
+      await act(async () => {});
+      expect(topLayerCount()).toBe(1);
+      expect(document.body.style.overflow).toBe('hidden');
+      await hide(rerender, view(true));
+      expect(screen.getByText('loading')).toBeTruthy();
+      expect(document.body.style.overflow).toBe('');
+      expect(hiddenFromAT()).toBe(0);
+      act(() => { fireEvent.keyDown(document, { key: 'Escape' }); });
+      expect(onClose).not.toHaveBeenCalled();
+      const anim = vi.spyOn(Element.prototype, 'animate');
+      await reveal(rerender, view(true));
+      expect(topLayerCount()).toBe(1);
+      expect(document.body.style.overflow).toBe('hidden');
+      expect(anim).not.toHaveBeenCalled();
+      expect(dialogEl().contains(document.activeElement)).toBe(true);
+      anim.mockRestore();
+      rerender(view(false));
+      await waitFor(() => expect(topLayerCount()).toBe(0));
+      await waitFor(() => expect(document.body.style.overflow).toBe(''));
+      expect(hiddenFromAT()).toBe(0);
+    });
+  }
+  it('gives the focus back to the button that opened it, when it is closed after being shown again', async () => {
+    gate.hold = false;
+    function Page({ open }: { open: boolean }) { return <><button>opener</button><Sheet open={open} onClose={() => {}} title="s">body <button>inside</button></Sheet></>; }
+    const outside = <button>outside</button>;
+    const view = (open: boolean) => <>{outside}<Suspense fallback={<p>loading</p>}><Page open={open} /><Gate /></Suspense></>;
+    const { rerender } = render(view(false));
+    screen.getByRole('button', { name: 'opener' }).focus();
+    rerender(view(true));
+    await act(async () => {});
+    await hide(rerender, view(true));
+    screen.getByRole('button', { name: 'outside' }).focus();   /* the focus moved on while the page was hidden */
+    await reveal(rerender, view(true));
+    rerender(view(false));
+    await waitFor(() => expect(topLayerCount()).toBe(0));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'opener' }));
+  });
+  it('closed while hidden: shown again, it does not lock the page or take the focus, and goes', async () => {
+    gate.hold = false;
+    const view = (open: boolean) => <><button>outside</button><Suspense fallback={<p>loading</p>}><Sheet open={open} onClose={() => {}} title="s">body</Sheet><Gate /></Suspense></>;
+    const { rerender } = render(view(true));
+    await act(async () => {});
+    await hide(rerender, view(true));
+    gate.hold = true; rerender(view(false)); await act(async () => {});
+    screen.getByRole('button', { name: 'outside' }).focus();
+    const locks: string[] = [];
+    const obs = new MutationObserver(() => locks.push(document.body.style.overflow));
+    obs.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+    await reveal(rerender, view(false));
+    await waitFor(() => expect(topLayerCount()).toBe(0));
+    obs.disconnect();
+    expect(locks).not.toContain('hidden');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'outside' }));
+  });
+  it('hidden while closing: it still goes', async () => {
+    gate.hold = false;
+    const view = (open: boolean) => <Suspense fallback={<p>loading</p>}><Sheet open={open} onClose={() => {}} title="s">body</Sheet><Gate /></Suspense>;
+    const { rerender } = render(view(true));
+    await act(async () => {});
+    rerender(view(false));   /* the exit starts */
+    await hide(rerender, view(false));
+    await reveal(rerender, view(false));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(topLayerCount()).toBe(0);
+    expect(document.body.style.overflow).toBe('');
+  });
+  it('keeps nested overlays in order: Escape still closes the inner one first', async () => {
+    gate.hold = false;
+    const closed: string[] = [];
+    /* the inner one opened from the outer one, as a person would */
+    const view = (inner: boolean) => <Suspense fallback={<p>loading</p>}>
+      <Dialog open onClose={() => closed.push('dialog')} title="outer">outer
+        <Sheet open={inner} onClose={() => closed.push('sheet')} title="inner">inner</Sheet>
+      </Dialog><Gate /></Suspense>;
+    const { rerender } = render(view(false));
+    await act(async () => {});
+    rerender(view(true));
+    await act(async () => {});
+    expect(topLayerCount()).toBe(2);
+    await hide(rerender, view(true));
+    await reveal(rerender, view(true));
+    expect(topLayerCount()).toBe(2);
+    act(() => { fireEvent.keyDown(document, { key: 'Escape' }); });
+    expect(closed).toEqual(['sheet']);
+  });
+  it('a drag cut short by the hide is cancelled: released over the fallback it does not dismiss, and the Sheet comes back at rest', async () => {
+    gate.hold = false;
+    const onClose = vi.fn();
+    const view = () => <Suspense fallback={<p>loading</p>}><Sheet open onClose={onClose} title="s">body</Sheet><Gate /></Suspense>;
+    const { rerender } = render(view());
+    await act(async () => {});
+    const panel = screen.getByRole('dialog');
+    const at = (d: number) => ({ pointerId: 7, button: 0, pointerType: 'touch', clientX: 100, clientY: 100 + d });
+    fireEvent.pointerDown(screen.getByText('s'), at(0));
+    for (const d of [20, 120, 300]) fireEvent.pointerMove(window, at(d));
+    expect(panel.style.transform).not.toBe('');
+    await hide(rerender, view());
+    fireEvent.pointerMove(window, at(500));
+    fireEvent.pointerUp(window, at(500));   /* over the loading page */
+    expect(onClose).not.toHaveBeenCalled();
+    await reveal(rerender, view());
+    expect(panel.style.transform).toBe('');
+  });
+  it('a Dialog whose last button went while hidden takes the focus itself when shown again', async () => {
+    gate.hold = false;
+    const view = (withButton: boolean) => <><button>outside</button><Suspense fallback={<p>loading</p>}>
+      <Dialog open onClose={() => {}} title="t">{withButton ? <button>only</button> : 'text'}</Dialog><Gate /></Suspense></>;
+    const { rerender } = render(view(true));
+    await act(async () => {});
+    await hide(rerender, view(true));
+    gate.hold = true; rerender(view(false)); await act(async () => {});
+    screen.getByRole('button', { name: 'outside' }).focus();
+    await reveal(rerender, view(false));
+    const d = screen.queryByRole('dialog') ?? screen.getByRole('alertdialog');
+    expect(d.contains(document.activeElement)).toBe(true);
+  });
+  it('a Menu set aside is not closed by a press on the fallback, nor by its anchor hidden with it', async () => {
+    gate.hold = false;
+    const onClose = vi.fn();
+    function Page({ open }: { open: boolean }) {
+      const ref = useRef<HTMLButtonElement>(null);
+      return <><button ref={ref}>more</button><Menu open={open} onClose={onClose} anchor={ref.current} aria-label="actions"><MenuItem onSelect={() => {}}>one</MenuItem></Menu></>;
+    }
+    const view = (open: boolean) => <Suspense fallback={<p>loading</p>}><Page open={open} /><Gate /></Suspense>;
+    const { rerender } = render(view(false));
+    rerender(view(true));
+    await act(async () => {});
+    const more = screen.getByText('more');
+    expect(topLayerCount()).toBe(1);
+    await hide(rerender, view(true));
+    fireEvent.pointerDown(screen.getByText('loading'));
+    resized(more);   /* hidden with the page: no box */
+    expect(onClose.mock.calls).toEqual([]);
+    await reveal(rerender, view(true));
+    expect(onClose.mock.calls).toEqual([]);
+    expect(topLayerCount()).toBe(1);
+    expect(screen.getByRole('menu')).toBeTruthy();
+  });
+  it('nested anchored panels shown again are placed outermost first', async () => {
+    gate.hold = false;
+    /* layout stand-in: the page's button sits at `top`; a button inside a panel sits 10 px below the panel's top */
+    let top = 40;
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const el = this as HTMLElement;
+      if (el.id === 'a') return new DOMRect(10, top, 40, 20);
+      const panel = el.parentElement?.closest<HTMLElement>('[role=dialog], [role=menu]');
+      if (el.tagName === 'BUTTON' && panel) return new DOMRect(10, (parseFloat(panel.style.top) || 0) + 10, 40, 20);
+      return new DOMRect(0, 0, 0, 0);
+    });
+    function Page() {
+      const [a, setA] = useState<HTMLButtonElement | null>(null), [b, setB] = useState<HTMLButtonElement | null>(null), [c, setC] = useState<HTMLButtonElement | null>(null);
+      return <><button id="a" ref={setA}>a</button>
+        <Popover open onClose={() => {}} anchor={a} aria-label="one"><button ref={setB}>b</button>
+          <Popover open onClose={() => {}} anchor={b} aria-label="two"><button ref={setC}>c</button>
+            <Menu open onClose={() => {}} anchor={c} aria-label="three"><MenuItem onSelect={() => {}}>x</MenuItem></Menu>
+          </Popover>
+        </Popover></>;
+    }
+    const view = () => <Suspense fallback={<p>loading</p>}><Page /><Gate /></Suspense>;
+    const { rerender } = render(view());
+    await act(async () => {});
+    const tops = () => [screen.getByRole('dialog', { name: 'one' }), screen.getByRole('dialog', { name: 'two' }), screen.getByRole('menu', { name: 'three' })].map((p) => parseFloat(p.style.top));
+    await hide(rerender, view());
+    top = 100;   /* the page's button moved while hidden */
+    await reveal(rerender, view());
+    /* each against its anchor where that is now: the same step from panel to panel, the first below the moved button */
+    const [t1, t2, t3] = tops();
+    expect(t1).toBeGreaterThan(120);
+    expect(t2 - t1).toBe(t3 - t2);
+    expect(t2 - t1).toBeGreaterThan(0);
+    rect.mockRestore();
+  });
+  it('a Menu whose anchor a later effect hides as the page is shown again closes', async () => {
+    gate.hold = false;
+    const onClose = vi.fn();
+    const later = { hide: false };
+    /* after the Menu in the tree, so its layout effect runs after the Menu is shown again, in the same commit */
+    function HideAnchor() { useLayoutEffect(() => { if (later.hide) document.getElementById('anchor')!.style.display = 'none'; }, []); return null; }
+    function Page() {
+      const ref = useRef<HTMLButtonElement>(null);
+      const [, force] = useState(0);
+      useLayoutEffect(() => { force(1); }, []);   /* a second render, with the ref set */
+      return <><button id="anchor" ref={ref}>more</button><Menu open onClose={onClose} anchor={ref.current} aria-label="actions"><MenuItem onSelect={() => {}}>one</MenuItem></Menu><HideAnchor /></>;
+    }
+    const view = () => <Suspense fallback={<p>loading</p>}><Page /><Gate /></Suspense>;
+    const { rerender } = render(view());
+    await act(async () => {});
+    await hide(rerender, view());
+    later.hide = true;
+    await reveal(rerender, view());
+    expect(onClose).toHaveBeenCalledWith('anchor');
+  });
+  it('a Menu opened again after closing while hidden still closes on a press outside', async () => {
+    gate.hold = false;
+    const onClose = vi.fn();
+    function Page({ open }: { open: boolean }) {
+      const ref = useRef<HTMLButtonElement>(null);
+      return <><button ref={ref}>more</button><Menu open={open} onClose={onClose} anchor={ref.current} aria-label="actions"><MenuItem onSelect={() => {}}>one</MenuItem></Menu></>;
+    }
+    const view = (open: boolean) => <><p>page</p><Suspense fallback={<p>loading</p>}><Page open={open} /><Gate /></Suspense></>;
+    const { rerender } = render(view(false));
+    rerender(view(true));
+    await act(async () => {});
+    await hide(rerender, view(true));
+    gate.hold = true; rerender(view(false)); await act(async () => {});
+    await reveal(rerender, view(false));
+    await waitFor(() => expect(topLayerCount()).toBe(0));
+    rerender(view(true));
+    await act(async () => {});
+    fireEvent.pointerDown(screen.getByText('page'));
+    expect(onClose).toHaveBeenCalledWith('backdrop');
+  });
+  it('a Drawer resize cut short by the hide is cancelled: the height it started at, and the app is not told', async () => {
+    gate.hold = false;
+    const onHeightChange = vi.fn();
+    const view = () => <Suspense fallback={<p>loading</p>}><Drawer open onClose={() => {}} side="bottom" resizable height="300px" onHeightChange={onHeightChange} title="d">body</Drawer><Gate /></Suspense>;
+    const { rerender } = render(view());
+    await act(async () => {});
+    const panel = screen.getByRole('dialog'), grip = screen.getByRole('separator');
+    const at = (d: number) => ({ pointerId: 9, button: 0, pointerType: 'mouse', clientX: 100, clientY: 400 + d });
+    fireEvent.pointerDown(grip, at(0));
+    fireEvent.pointerMove(window, at(-50));
+    await hide(rerender, view());
+    fireEvent.pointerUp(window, at(-50));
+    expect(onHeightChange).not.toHaveBeenCalled();
+    await reveal(rerender, view());
+    expect(onHeightChange).not.toHaveBeenCalled();
+    expect(panel.style.getPropertyValue('--_h')).toBe('300px');
+  });
+  it('a Drawer resize cancelled keeps a height the app set before its first move', async () => {
+    gate.hold = false;
+    const view = (h: string) => <Suspense fallback={<p>loading</p>}><Drawer open onClose={() => {}} side="bottom" resizable height={h} onHeightChange={() => {}} title="d">body</Drawer><Gate /></Suspense>;
+    const { rerender } = render(view('300px'));
+    await act(async () => {});
+    const panel = screen.getByRole('dialog'), grip = screen.getByRole('separator');
+    const at = (d: number) => ({ pointerId: 9, button: 0, pointerType: 'mouse', clientX: 100, clientY: 400 + d });
+    fireEvent.pointerDown(grip, at(0));
+    rerender(view('350px'));   /* the app's own change, before the pointer moved */
+    fireEvent.pointerMove(window, at(-50));
+    await hide(rerender, view('350px'));
+    await reveal(rerender, view('350px'));
+    expect(panel.style.getPropertyValue('--_h')).toBe('350px');
+  });
+  it('a Drawer resize cancelled keeps a height the app set during it', async () => {
+    gate.hold = false;
+    const view = (h: string) => <Suspense fallback={<p>loading</p>}><Drawer open onClose={() => {}} side="bottom" resizable height={h} onHeightChange={() => {}} title="d">body</Drawer><Gate /></Suspense>;
+    const { rerender } = render(view('300px'));
+    await act(async () => {});
+    const panel = screen.getByRole('dialog'), grip = screen.getByRole('separator');
+    const at = (d: number) => ({ pointerId: 9, button: 0, pointerType: 'mouse', clientX: 100, clientY: 400 + d });
+    fireEvent.pointerDown(grip, at(0));
+    fireEvent.pointerMove(window, at(-50));
+    rerender(view('350px'));   /* the app's own change, mid-drag */
+    fireEvent.pointerMove(window, at(-60));
+    await hide(rerender, view('350px'));
+    await reveal(rerender, view('350px'));
+    expect(panel.style.getPropertyValue('--_h')).toBe('350px');
+  });
+  it('a MediaViewer closed while hidden leaves the focus where it was moved meanwhile', async () => {
+    gate.hold = false;
+    const items = [{ alt: 'one', width: 4, height: 3, render: () => <div /> }];
+    const view = (open: boolean) => <><button id="thumb">thumb</button><button>outside</button><Suspense fallback={<p>loading</p>}>
+      <MediaViewer open={open} onClose={() => {}} items={items} getOrigin={() => document.getElementById('thumb')} aria-label="photos" /><Gate /></Suspense></>;
+    const { rerender } = render(view(false));
+    document.getElementById('thumb')!.focus();
+    rerender(view(true));
+    await act(async () => {});
+    await hide(rerender, view(true));
+    screen.getByRole('button', { name: 'outside' }).focus();
+    gate.hold = true; rerender(view(false)); await act(async () => {});
+    await reveal(rerender, view(false));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'outside' }));
+  });
+});
+
+/* StrictMode runs an overlay's effects twice on mount (set up, taken down, set up): one layer, and closing leaves
+   nothing (#79) */
+describe('an anchored panel given no anchor while open', () => {
+  it('keeps a point it was placed against', async () => {
+    const view = (at: DOMRect | undefined) => <Menu open onClose={() => {}} anchor={at} aria-label="actions"><MenuItem onSelect={() => {}}>one</MenuItem></Menu>;
+    const { rerender } = render(view(new DOMRect(20, 30, 0, 0)));
+    await act(async () => {});
+    const menu = screen.getByRole('menu'), before = [menu.style.left, menu.style.top];
+    rerender(view(undefined));   /* `anchor={ref.current?.getBoundingClientRect()}` with the ref let go of */
+    await act(async () => {});
+    expect([menu.style.left, menu.style.top]).toEqual(before);
+  });
+});
+
+describe('an overlay opened under StrictMode', () => {
+  for (const [name, overlay] of [
+    ['Sheet', (open: boolean) => <Sheet open={open} onClose={() => {}} title="s">body</Sheet>],
+    ['Drawer', (open: boolean) => <Drawer open={open} onClose={() => {}} title="d">body</Drawer>],
+  ] as const) {
+    it(`${name}: one layer, nothing left once closed`, async () => {
+      const { rerender } = render(<StrictMode>{overlay(true)}</StrictMode>);
+      await act(async () => {});
+      expect(topLayerCount()).toBe(1);
+      expect(document.body.style.overflow).toBe('hidden');
+      rerender(<StrictMode>{overlay(false)}</StrictMode>);
+      await waitFor(() => expect(topLayerCount()).toBe(0));
+      await waitFor(() => expect(document.body.style.overflow).toBe(''));
+    });
+  }
+  it('Menu: a press outside still closes it; an anchor set to none keeps its element, and closes once that goes', async () => {
+    const onClose = vi.fn();
+    function T({ none, gone = false }: { none: boolean; gone?: boolean }) {
+      const ref = useRef<HTMLButtonElement>(null);
+      const [open, setOpen] = useState(false);
+      return <><p>page</p><button ref={ref} onClick={() => setOpen(true)} style={gone ? { display: 'none' } : undefined}>more</button><Menu open={open} onClose={onClose} anchor={none ? null : ref.current} aria-label="actions"><MenuItem onSelect={() => {}}>one</MenuItem></Menu></>;
+    }
+    const { rerender } = render(<StrictMode><T none={false} /></StrictMode>);
+    fireEvent.click(screen.getByText('more'));
+    await act(async () => {});
+    fireEvent.pointerDown(screen.getByText('page'));
+    expect(onClose).toHaveBeenLastCalledWith('backdrop');
+    onClose.mockClear();
+    rerender(<StrictMode><T none /></StrictMode>);
+    await act(async () => {});
+    expect(onClose).not.toHaveBeenCalled();
+    rerender(<StrictMode><T none gone /></StrictMode>);
+    resized(screen.getByText('more'));
+    expect(onClose).toHaveBeenLastCalledWith('anchor');
   });
 });
