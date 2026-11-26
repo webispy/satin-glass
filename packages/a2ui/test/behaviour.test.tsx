@@ -322,3 +322,43 @@ describe('where the surfaces sit (ground)', () => {
     expect(outlined()).toBe(false);
   });
 });
+
+describe.each<V>(['1.0', '0.9'])('button labels in v%s', (v) => {
+  const button = (child: Record<string, unknown>[], childId = 'l') => [create(v), components(v, [
+    { id: 'root', component: 'Button', child: childId, action: { event: { name: 'go' } } }, ...child,
+  ])];
+  it('writes a plain label in the button\'s own type', () => {
+    const { feed } = mount();
+    feed(...button([{ id: 'l', component: 'Text', text: 'Purchase' }]));
+    const b = screen.getByRole('button', { name: 'Purchase' });
+    expect(b.querySelector('.sg-text')).toBeNull();
+    expect(b.querySelector('p')).toBeNull();
+  });
+  /* as the paragraph it replaced: a newline in the label breaks the line, and a long label wraps in a narrow button
+     (Satin's button keeps its own label on one line) */
+  it('keeps the label\'s line breaks and wrapping', () => {
+    const { feed } = mount();
+    feed(...button([{ id: 'l', component: 'Text', text: 'Pay now\nor later' }]));
+    const label = screen.getByRole('button', { name: /Pay now/ }).querySelector('span[style]') as HTMLElement;
+    expect(label.textContent).toBe('Pay now\nor later');
+    expect(label.style.whiteSpace).toBe('pre-line');
+  });
+  it('keeps inline emphasis in a label', () => {
+    const { feed } = mount();
+    feed(...button([{ id: 'l', component: 'Text', text: '**Buy** now' }]));
+    expect(screen.getByRole('button', { name: 'Buy now' }).querySelector('strong')?.textContent).toBe('Buy');
+  });
+  it('leaves a heading in a button as it is', () => {
+    const { feed } = mount();
+    feed(...button([v === '1.0' ? { id: 'l', component: 'Text', text: '### Title' } : { id: 'l', component: 'Text', text: 'Title', variant: 'h3' }]));
+    expect(screen.getByRole('button', { name: 'Title' }).querySelector('.sg-text')).not.toBeNull();
+  });
+  it('writes a label beside an icon in the button\'s type too', () => {
+    const { feed } = mount();
+    feed(...button([
+      { id: 'r', component: 'Row', children: ['i', 'l'] },
+      { id: 'i', component: 'Icon', name: 'send' }, { id: 'l', component: 'Text', text: 'Send' },
+    ], 'r'));
+    expect(screen.getByRole('button', { name: 'Send' }).querySelector('.sg-text')).toBeNull();
+  });
+});

@@ -1,7 +1,7 @@
 /* Text, Row, Column, List, Card, Divider, Tabs and Modal of the A2UI basic catalog, drawn with Satin controls. */
 import { Fragment, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Button, Card, CardBody, Dialog, Divider, Stack, Tabs, Text } from '@satin-glass/react';
-import { agentA11y, CardDepthContext, grow, kids, useEnv, useHostSink, type Child, type Rendered } from './shared';
+import { agentA11y, CardDepthContext, grow, InButtonContext, kids, useEnv, useHostSink, type Child, type Rendered } from './shared';
 
 /* ---- Text: the catalog's basic Markdown — headings, bold, italics, inline code, lists and paragraphs. No HTML, and
    links and images are their text only, as the catalog allows. v0.9.1 names headings with `variant` h1–h5. */
@@ -38,6 +38,7 @@ function blocks(md: string): Block[] {
   return out;
 }
 export function A2uiText({ props }: Rendered<{ text?: unknown; variant?: string }>) {
+  const inButton = useContext(InButtonContext);
   const raw = props.text == null ? '' : String(props.text);
   const caption = props.variant === 'caption';
   const vh = /^h([1-5])$/.exec(props.variant ?? '');
@@ -47,6 +48,11 @@ export function A2uiText({ props }: Rendered<{ text?: unknown; variant?: string 
     return <Text variant={HEADING[level]} as={`h${Math.min(level + 1, 6)}` as 'h2'} style={style}>{inline(raw)}</Text>;
   }
   const list = blocks(raw);
+  /* a plain label in a button: no paragraph and no text style of its own, so it takes the button's type and colour.
+     Its line breaks and wrapping stay as the paragraph had them (the button keeps its own label on one line) */
+  if (inButton && !caption && list.length <= 1 && (!list[0] || list[0].kind === 'p')) {
+    return <span style={{ ...style, whiteSpace: 'pre-line' }}>{inline(list[0]?.kind === 'p' ? list[0].text : raw)}</span>;
+  }
   const para = (s: string, key?: number) => (
     <Text key={key} variant={caption ? 'footnote' : 'body'} tone={caption ? 'secondary' : 'default'} style={{ whiteSpace: 'pre-line', ...(key === undefined ? style : {}) }}>{inline(s)}</Text>
   );

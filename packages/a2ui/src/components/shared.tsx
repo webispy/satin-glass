@@ -22,6 +22,8 @@ export const CardDepthContext = createContext(0);
     surface of the app's own (every agent Card keeps to it, with a hairline). Set by A2uiProvider, read by the
     surfaces; undefined: not said */
 export type Ground = 'page' | 'surface';
+/** inside an agent Button: a plain Text there is the button's label, in the button's own type */
+export const InButtonContext = createContext(false);
 export const GroundContext = createContext<Ground | undefined>(undefined);
 /** the ID of the surface a component is drawn in; carried by React context, so it reaches into portals (dialogs) */
 export const SurfaceIdContext = createContext<string | undefined>(undefined);

@@ -3,7 +3,7 @@
    left it; a button its checks disable says why at once. */
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Button, Checkbox, Chip, ChoiceList, DatePicker, Radio, RadioGroup, SearchField, Slider, Stack, Text, TextField, TimePicker } from '@satin-glass/react';
-import { grow, ids, useAgentName, useEnv, useFieldErrors, type Rendered } from './shared';
+import { grow, ids, InButtonContext, useAgentName, useEnv, useFieldErrors, type Rendered } from './shared';
 import { checkText } from '../words';
 import { markTrustedGesture } from '../urls';
 import { MAX_TEXT, safePattern } from '../patterns';
@@ -20,7 +20,7 @@ export function A2uiButton(r: Rendered<{ child?: string; variant?: keyof typeof 
     <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'stretch', gap: 4, maxWidth: '100%', ...grow(props.weight) }}>
       <Button ref={ref} variant={BUTTON[props.variant ?? 'default'] ?? 'tinted'} disabled={blocked} aria-describedby={ids(described, reason ? why : undefined)} {...aria}
         onClick={(e) => { if (e.nativeEvent.isTrusted) markTrustedGesture(); void props.action?.(); }}>
-        {props.child ? buildChild(props.child) : null}
+        <InButtonContext.Provider value={true}>{props.child ? buildChild(props.child) : null}</InButtonContext.Provider>
       </Button>
       {reason && <Text id={why} variant="footnote" tone="secondary">{reason}</Text>}
       {describe}
