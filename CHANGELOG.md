@@ -2,6 +2,16 @@
 
 ## 0.7.0 — unreleased
 
+### New
+- **`@satin-glass/a2ui`** (experimental, not yet published; [#62](https://github.com/webispy/satin-glass/issues/62)): draws A2UI agent surfaces (protocol v1.0 and v0.9.1, the 18 components of the basic catalog) with Satin Glass controls, in the app's theme and language. Where the catalog leaves the look open, an agent's screen takes Satin Glass's, so it reads as part of the app:
+  - The agent's outermost Card is a surface card, and a Card inside it has a hairline. When the app already draws the surfaces on a card, sheet or bubble of its own, `ground="surface"` gives every agent Card a hairline, so nothing lifts twice. Inside a dialog the agent opens, the outermost Card is a surface card again.
+  - Button labels use the control text role (`--sg-text-control-*`).
+  - A medium or large feature image, or a header, at the top or bottom of a Card runs to the Card's sides and edge. It keeps the image's proportions, up to a 4:5 portrait (5/4 of the Card's width) and 400 px; a header is 200 px high. It fills that box (`cover`) unless the agent sets `fit`.
+  - When that box crops the image (under `cover`, proportions more than 3% off the image's), the image is a button ("View the whole image") that opens it in full in the media viewer.
+  - A single choice of two to four chips without a filter is drawn as a segmented control when the agent's value is one of the options and the labels fit on one line, and as chips otherwise.
+  - A Column or Card with a `weight` in a Row keeps a minimum width of 15rem (or the whole row, when narrower), so a narrow Row stacks such panels instead of squeezing them.
+  - The date and time pickers write dates and times in the session's language, and `formatDate` treats single-quoted text in its pattern as literal text (`'at'`).
+
 ### Fixed
 - `Calendar` (and the pickers built on it): picking a shorter month from the month grid with the 31st focused put the focus back on the 31st of the month before, still shown in the new month's first row; it stays on the new month's last day, the day the grid marks as focused.
 
