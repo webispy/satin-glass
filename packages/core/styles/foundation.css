@@ -50,7 +50,10 @@
 
 .sg-stack { display: flex; flex-direction: column; }
 .sg-stack--row { flex-direction: row; }
-.sg-divider { border: 0; margin: 0; height: 1px; background: var(--sg-separator); flex: none; }
+/* a horizontal divider spans its container whatever the container's align-items (it has no width of its own): the
+   width left after its margins (stretch; 100% where that is not known), so an inset divider stays inside. An explicit
+   width still wins and is placed by the container */
+.sg-divider { border: 0; margin: 0; width: 100%; width: -webkit-fill-available; width: -moz-available; width: stretch; height: 1px; background: var(--sg-separator); flex: none; }
 .sg-divider--vertical { width: 1px; height: auto; align-self: stretch; }
 
 .sg-icon { width: 1.25em; height: 1.25em; flex: none; display: inline-block; vertical-align: middle; }

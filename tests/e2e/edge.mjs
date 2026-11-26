@@ -497,6 +497,25 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   ok('…and comes back whole when its anchor scrolls back', !back.hidden && back.inside, JSON.stringify(back));
   await q.close();
 }
+/* ---------------------------------------------------------------- no width of their own: a divider and a slider fill a
+   column that centres its items, and a slider beside a label in a row takes the rest of it, not 0 px */
+{
+  const p = await newPage();
+  await p.goto(U('lab')); await settle(p, 600);
+  const m = await p.evaluate(() => {
+    const w = (e) => e.getBoundingClientRect().width;
+    const col = document.querySelector('[data-lab="fill-column"]'), row = document.querySelector('[data-lab="fill-row"]');
+    const label = row.querySelector('.sg-text, p, span');
+    return { col: w(col), divider: w(col.querySelector('.sg-divider')), slider: w(col.querySelector('.sg-slider')),
+      row: w(row), label: w(row.firstElementChild), gap: parseFloat(getComputedStyle(row).columnGap) || 0, rowSlider: w(row.querySelector('.sg-slider')),
+      /* given 16 px margins, each takes the width left after them and stays inside the column */
+      inset: [...col.querySelectorAll('[data-lab="fill-inset"]')].map((e) => { const r = e.getBoundingClientRect(), c = col.getBoundingClientRect(); return [+(r.left - c.left).toFixed(1), +(c.right - r.right).toFixed(1)]; }) };
+  });
+  ok('a divider and a slider in a centred column span it', Math.abs(m.divider - m.col) < 0.5 && Math.abs(m.slider - m.col) < 0.5, JSON.stringify(m));
+  ok('a divider and a slider with 16 px margins in a centred column span it inside their margins', m.inset.length === 2 && m.inset.every(([l, r]) => Math.abs(l - 16) < 0.5 && Math.abs(r - 16) < 0.5), JSON.stringify(m.inset));
+  ok('a slider beside a label in a row takes the rest of the row', Math.abs(m.rowSlider - (m.row - m.label - m.gap)) < 0.5 && m.rowSlider >= 120, JSON.stringify(m));
+  await p.close();
+}
 ok('no page errors during the whole run', errors.length === 0, [...new Set(errors)].slice(0, 3).join(' | '));
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');
 await b.close();

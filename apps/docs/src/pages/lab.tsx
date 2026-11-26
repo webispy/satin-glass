@@ -2,7 +2,7 @@
    The e2e edge suite drives this page; it is also a quick way to eyeball the awkward cases. */
 import { useRef, useState } from 'react';
 import {
-  Button, ButtonGroup, Checkbox, Chip, DatePicker, Dialog, Select, IconButton, List, ListItem, ListSection, Menu, MenuItem, PageControl, Progress, SearchField,
+  Button, ButtonGroup, Checkbox, Chip, DatePicker, Dialog, Divider, Select, IconButton, List, ListItem, ListSection, Menu, MenuItem, PageControl, Progress, SearchField,
   SegmentedControl, Slider, Stack, Stepper, Switch, Tab, TabBar, TabBarAction, Text, TextField, Badge,
 } from '@satin-glass/react';
 import { Home, Map, Bookmark, User, Settings, Bell, Heart, Share, Trash2, Search, Image as ImageIcon, Film, FileText, Music, Download } from 'lucide-react';
@@ -106,6 +106,24 @@ export function Lab() {
           <div data-lab="many-tabs-300-compact" style={{ maxWidth: 300 }}><TabBar draggable showLabels={false} defaultValue="home" aria-label={t({ en: 'Many tabs 300 icons only', ko: '많은 탭 300 아이콘만' })}>{manyTabs(t)}</TabBar></div>
           <Text variant="footnote" tone="secondary">{t({ en: 'Icons only · a tab without an icon shows its label', ko: '아이콘만 · 아이콘 없는 탭은 라벨을 표시함' })}</Text>
           <div data-lab="tabs-icons-text" style={{ maxWidth: 300 }}><TabBar showLabels={false} defaultValue="home" aria-label={t({ en: 'Icons only, one text tab', ko: '아이콘만, 텍스트 탭 하나' })}>{[<Tab key="home" value="home" label={t({ en: 'Home', ko: '홈' })} icon={<Home />} />, <Tab key="map" value="map" label={t({ en: 'Map', ko: '지도' })} icon={<Map />} />, <Tab key="more" value="more" label={t({ en: 'More', ko: '더 보기' })} />]}</TabBar></div>
+        </Demo>
+      </Section>
+
+      <Section title={t({ en: 'No width of their own', ko: '자체 폭이 없는 컴포넌트' })}>
+        <Demo col data-lab="fill">
+          {/* a divider and a slider in a column that centres its items, and a slider beside a label in a row */}
+          <Stack align="center" gap={3} data-lab="fill-column" style={{ width: 320 }}>
+            <Text>{t({ en: 'Centred column', ko: '가운데 정렬 세로 스택' })}</Text>
+            <Divider />
+            <Slider aria-label={t({ en: 'Slider in a centred column', ko: '가운데 정렬 세로 스택의 슬라이더' })} defaultValue={40} />
+            {/* with margins: the width left after them, not the column's whole width plus them */}
+            <Divider data-lab="fill-inset" style={{ marginInline: 16 }} />
+            <Slider data-lab="fill-inset" style={{ marginInline: 16 }} aria-label={t({ en: 'Slider with margins in a centred column', ko: '가운데 정렬 세로 스택에서 여백을 준 슬라이더' })} defaultValue={40} />
+          </Stack>
+          <Stack direction="row" align="center" gap={3} data-lab="fill-row" style={{ width: 320 }}>
+            <Text style={{ flex: 'none' }}>{t({ en: 'Volume', ko: '음량' })}</Text>
+            <Slider aria-label={t({ en: 'Slider beside a label', ko: '라벨 옆의 슬라이더' })} defaultValue={40} />
+          </Stack>
         </Demo>
       </Section>
 

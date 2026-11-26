@@ -111,7 +111,9 @@
 /* ============================================================================================
    Slider: 6 px track, accent fill, 24 px thumb; a glass value bubble rises while held
    ============================================================================================ */
-.sg-slider { --_p: 0; position: relative; height: 32px; touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+/* a slider spans its container (it has no width of its own; the width left after its margins, as .sg-divider) and keeps
+   120 px of travel beside fixed siblings in a row; an app sets a narrower one with width and min-width */
+.sg-slider { --_p: 0; position: relative; width: 100%; width: -webkit-fill-available; width: -moz-available; width: stretch; min-width: 120px; height: 32px; touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
 .sg-slider:focus-visible { outline: none; }
 .sg-slider:focus-visible .sg-slider__thumb { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 .sg-slider[aria-disabled="true"] { opacity: 0.42; cursor: default; }
