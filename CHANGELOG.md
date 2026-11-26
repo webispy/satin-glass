@@ -10,7 +10,7 @@
   - When that box crops the image (under `cover`, proportions more than 3% off the image's), the image is a button ("View the whole image") that opens it in full in the media viewer.
   - A single choice of two to four chips without a filter is drawn as a segmented control when the agent's value is one of the options and the labels fit on one line, and as chips otherwise.
   - A Column or Card with a `weight` in a Row keeps a minimum width of 15rem (or the whole row, when narrower), so a narrow Row stacks such panels instead of squeezing them.
-  - The date and time pickers write dates and times in the session's language, and `formatDate` treats single-quoted text in its pattern as literal text (`'at'`).
+  - The date and time pickers write dates and times in the session's language, and `formatDate` treats single-quoted text in its pattern as literal text (`'at'`) and parses a date-only value (`2025-12-28`) in Safari too, where web_core failed to parse it.
 
 ### Fixed
 - `Calendar` (and the pickers built on it): picking a shorter month from the month grid with the 31st focused put the focus back on the 31st of the month before, still shown in the new month's first row; it stays on the new month's last day, the day the grid marks as focused.

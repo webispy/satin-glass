@@ -1,10 +1,11 @@
-/* The basic catalogs' functions, per protocol version, from web_core's own implementations. Four changes:
+/* The basic catalogs' functions, per protocol version, from web_core's own implementations. Five changes:
    - the formatting functions read the session's current locale each time they run, so a language change keeps the
      session (its edits, focus and open controls) instead of making new catalogs;
    - `openUrl` goes through the app's URL policy, and needs a user gesture in v0.9.1 too (its declaration there omits
      the flag that makes web_core refuse it in a passive binding);
    - `regex` runs only a pattern whose work is bounded (patterns.ts), on bounded text; another is a failed check;
-   - `formatDate` keeps quoted text in its pattern as written (TR35), which web_core formats as fields. */
+   - `formatDate` keeps quoted text in its pattern as written (TR35), which web_core formats as fields, and reads a
+     date-only value ("2025-12-28") in every engine (web_core appends Z, which WebKit refuses for a date alone). */
 import { A2uiExpressionError, createFunctionImplementation, type FunctionImplementation } from '@a2ui/web_core';
 import * as v1 from '@a2ui/web_core/catalogs/basic/v1';
 import * as v09 from '@a2ui/web_core/v0_9/basic_catalog';
@@ -43,7 +44,7 @@ export function catalogFunctions(version: Version, env: Env): FunctionImplementa
   return base.map((f) => (f.name === 'openUrl' ? open : f.name === 'regex' ? regex : {
     ...f,
     execute: (args: Record<string, unknown>, context: Parameters<FunctionImplementation['execute']>[1], signal?: AbortSignal) => {
-      const run = (a: Record<string, unknown>) => at(env.locale()).get(f.name)!.execute(a, context, signal);
+      const run = (a: Record<string, unknown>) => at(env.locale()).get(f.name)!.execute(f.name === 'formatDate' ? { ...a, value: dateValue(a.value) } : a, context, signal);
       /* formatDate: web_core reads every letter of the pattern as a field, quoted text too ("'at'" wrote "'PMt'") */
       /* and with no date to write (empty or unreadable, web_core writes ''), the quoted text is not written alone */
       /* a run that reads "ISO" is letters of the longer pattern: web_core writes a whole ISO timestamp only for the
@@ -59,6 +60,10 @@ export function catalogFunctions(version: Version, env: Env): FunctionImplementa
 
 /** A TR35 date pattern with its quoted text kept as written: a run in single quotes is literal, `''` is one quote, and
     every other run is given to `format`. */
+/** a date-only value ("2025-12-28") with a midnight time: web_core reads it as `${value}Z`, which WebKit refuses */
+export function dateValue<T>(v: T): T | string {
+  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T00:00:00` : v;
+}
 export function keepQuoted(pattern: string, format: (part: string) => string): string {
   let out = '', run = '';
   const flush = () => { if (run) { out += format(run); run = ''; } };
