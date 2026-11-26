@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0 — unreleased
+
+### Fixed
+- `Calendar` (and the pickers built on it): picking a shorter month from the month grid with the 31st focused put the focus back on the 31st of the month before, still shown in the new month's first row; it stays on the new month's last day, the day the grid marks as focused.
+
 ## 0.6.0 — 2026-11-26
 
 New components and options for comparing items across several measures — a column chooser, a combobox that takes several values, a filter bar whose controls line up, tabs that wrap and a scatter chart — are shown together in a new model evaluation example. The theme gains a locale setting (`en-US` by default), and the sidebar gains named sections, a header and footer that stay in place, and an attached style for dense screens. Anchored panels and tooltips, tables and strips of tabs or segments follow a right-to-left layout, and reduced motion and reduced transparency are decided at the nearest boundary that sets them. Fixes run across overlays, charts, the data table and server rendering. Four changes break existing code: `SidebarSection`, `Sidebar`'s outer element, three internal helpers no longer exported, and the default locale (see below).

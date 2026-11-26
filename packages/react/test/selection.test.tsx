@@ -130,6 +130,16 @@ describe('Calendar', () => {
     expect(on).toHaveBeenCalledWith(d(2026, 2, 25));
     expect(screen.getByRole('heading').textContent).toContain('February');
   });
+  /* picked from the month grid with the 31st focused: the focus goes to the shorter month's last day, not back to the
+     31st of the month before (still shown in the new month's first row) by a frame reading an older render (#89) */
+  it('picking a shorter month from the month grid focuses its last day', async () => {
+    render(<Calendar defaultValue={d(2026, 3, 31)} locale="en-US" aria-label="cal" />);
+    fireEvent.click(screen.getByRole('button', { name: /Choose a month/ }));
+    fireEvent.click(screen.getByRole('option', { name: /April/ }));
+    for (let i = 0; i < 3; i++) await act(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
+    expect((document.activeElement as HTMLElement | null)?.dataset.date).toBe('2026-04-30');
+    expect(screen.getByRole('grid').querySelector<HTMLButtonElement>('button[tabindex="0"]')!.dataset.date).toBe('2026-04-30');
+  });
   it('clamps the day when a month is shorter (Jan 31 + 1 month → Feb 28)', () => {
     render(<Calendar defaultValue={d(2026, 1, 31)} locale="en-US" />);
     const grid = screen.getByRole('grid');
