@@ -9,6 +9,11 @@ import * as playwright from 'playwright';
 export * from 'playwright';
 
 export const LANG = process.env.E2E_LANG === 'en' ? 'en' : 'ko';
+
+// Where the docs build is served: run.mjs serves it on E2E_PORT and hands the port it got to every suite; a suite run
+// by hand reads the same variable, 4173 (`pnpm --filter docs preview`) when it is unset.
+export const PORT = process.env.E2E_PORT || '4173';
+export const ORIGIN = `http://localhost:${PORT}`;
 const LOCALE = LANG === 'en' ? 'en-US' : 'ko-KR';
 
 // macOS 27 guards ~/Library/Application Support/Firefox, and Gecko reads that folder even when given a profile of its

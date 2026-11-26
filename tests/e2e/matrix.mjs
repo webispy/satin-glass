@@ -35,7 +35,7 @@ for (const c of combos) {
     p.on('console', (m) => { if (m.type() !== 'error') return; const t = m.text(); if (!(m.location()?.url ?? '').includes('localhost') || /https?:\/\/(?!localhost)/.test(t)) return; errs.push(t); });
     for (const id of PAGES) {
       errs.length = 0;
-      await p.goto(`http://localhost:4173/${q}#/${id}`);
+      await p.goto(`${pw.ORIGIN}/${q}#/${id}`);
       /* the page in main (it loads lazily into an empty placeholder) and in the language asked for: a scan of the frame
          alone, or of the other language, would pass without reading the page */
       const mounted = await p.waitForFunction((lang) => document.querySelector('main .docs__page')?.childElementCount > 0 && document.documentElement.lang === lang, pw.LANG, { timeout: 10000 }).then(() => true, () => false);

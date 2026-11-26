@@ -2,7 +2,7 @@
 // The rule is NOT "everything instant" — a control stepping through several states in a few frames reads as
 // stutter. Small state changes slide briefly in one direction with no overshoot and no stretch; anything that
 // travels, grows or bounces becomes a fade; the pointer light is off; progress indicators keep moving gently.
-// usage: node tests/e2e/reduce-motion.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+// usage: node tests/e2e/reduce-motion.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 const b = await pw[process.env.BROWSER || 'chromium'].launch();
@@ -217,11 +217,11 @@ async function check(label, setup) {
 
 /* SANITY=1: run the same checks with motion NOT reduced — most should fail, proving the checks see motion */
 if (process.env.SANITY) {
-  await check('not reduced (sanity: expect FAILs)', async (p) => async (id) => { await p.goto(`http://localhost:4173/#/${id}`); await p.waitForTimeout(600); });
+  await check('not reduced (sanity: expect FAILs)', async (p) => async (id) => { await p.goto(`${pw.ORIGIN}/#/${id}`); await p.waitForTimeout(600); });
   await b.close(); process.exit(0);
 }
 await check('in-app toggle', async (p) => {
-  await p.goto('http://localhost:4173/#/overview'); await p.waitForTimeout(500);
+  await p.goto(`${pw.ORIGIN}/#/overview`); await p.waitForTimeout(500);
   /* at 1280 px the settings sit behind their button (the bar shows from 1360 px): the switch in its popover */
   await p.locator('.docs__settings-btn').click(); await p.waitForTimeout(400);
   await p.locator('.sg-popover').getByRole('switch', { name: '동작 줄이기' }).click();
@@ -231,13 +231,13 @@ await check('in-app toggle', async (p) => {
 });
 await check('system setting', async (p) => {
   await p.emulateMedia({ reducedMotion: 'reduce' });
-  return async (id) => { await p.goto(`http://localhost:4173/#/${id}`); await p.waitForTimeout(600); };
+  return async (id) => { await p.goto(`${pw.ORIGIN}/#/${id}`); await p.waitForTimeout(600); };
 });
 
 /* control: without reduced motion the same tab tap stretches (so the rigidity check above means something) */
 {
   const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
-  await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(700);
+  await p.goto(`${pw.ORIGIN}/#/navigation`); await p.waitForTimeout(700);
   const w = await trace(p, `() => document.querySelectorAll('.sg-tabbar__bar .sg-tabbar__item')[3].click()`, `() => document.querySelector('.sg-tabbar__indicator').getBoundingClientRect().width`);
   ok('control: without reduced motion the tab drop stretches', Math.max(...w.map(([, x]) => x)) - w[0][1] > 15, `stretch ${(Math.max(...w.map(([, x]) => x)) - w[0][1]).toFixed(0)} px`);
   await p.close();

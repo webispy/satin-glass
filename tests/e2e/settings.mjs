@@ -7,7 +7,7 @@
 //   · reduce transparency reaches portals: a menu opened with it on is solid, with no backdrop blur
 //   · depth by role: floating dense glass vs an overlay, a light handle in every theme, a selection outline in high contrast
 //   · tokens reach the controls: a control text role and a spacing step changed by a theme change buttons, labels, Stack
-// usage: node tests/e2e/settings.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+// usage: node tests/e2e/settings.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium';
@@ -16,7 +16,7 @@ let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
 
 const p = await b.newPage({ viewport: { width: 1000, height: 800 } });
-await p.goto('http://localhost:4173/?mode=light#/overview'); await p.waitForTimeout(700);
+await p.goto(`${pw.ORIGIN}/?mode=light#/overview`); await p.waitForTimeout(700);
 
 /* ---------------------------------------------------------------- nested themes (CSS only) */
 const r = await p.evaluate(() => {
@@ -238,7 +238,7 @@ ok('JS: the nearest setting decides (inner false, outer true, none → system)',
   if (engine === 'chromium') {
     const cdp = await ctx.newCDPSession(q);
     await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-contrast', value: 'more' }] });
-    await q.goto('http://localhost:4173/#/overview'); await q.waitForTimeout(500);
+    await q.goto(`${pw.ORIGIN}/#/overview`); await q.waitForTimeout(500);
     const d = await q.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--sg-depth-inset').trim());
     ok('system high contrast without a theme attribute: depth becomes outlines on :root', /1px/.test(d) && !/rgba/.test(d), d);
     /* a glass button under no theme follows the system's high contrast on hover too: as opaque as at rest (#95) */
@@ -277,7 +277,7 @@ ok('JS: the nearest setting decides (inner false, outer true, none → system)',
 
 /* ---------------------------------------------------------------- spacing and control text follow their tokens */
 {
-  await p.goto('http://localhost:4173/?mode=light#/material'); await p.waitForTimeout(500);
+  await p.goto(`${pw.ORIGIN}/?mode=light#/material`); await p.waitForTimeout(500);
   const r = await p.evaluate(() => {
     const host = document.createElement('div');
     host.style.cssText = '--sg-text-control-size: 19px; --sg-text-label-size: 11px; --sg-space-3: 30px';
@@ -292,7 +292,7 @@ ok('JS: the nearest setting decides (inner false, outer true, none → system)',
 }
 
 /* ---------------------------------------------------------------- reduce transparency reaches portals */
-await p.goto('http://localhost:4173/?mode=light&rt=1#/overlays'); await p.waitForTimeout(700);
+await p.goto(`${pw.ORIGIN}/?mode=light&rt=1#/overlays`); await p.waitForTimeout(700);
 await p.getByRole('button', { name: /길찾기/ }).first().click(); await p.waitForTimeout(500);
 const menu = await p.evaluate(() => {
   const m = document.querySelector('.sg-menu'); if (!m) return null;
@@ -306,15 +306,15 @@ ok('reduce transparency: an open menu is solid, with no backdrop blur', menu && 
 {
   const ctx = await b.newContext({ viewport: { width: 1280, height: 800 }, locale: 'en-US' });
   const q = await ctx.newPage();
-  await q.goto('http://localhost:4173/#/table'); await q.waitForTimeout(900);
+  await q.goto(`${pw.ORIGIN}/#/table`); await q.waitForTimeout(900);
   const sw = await q.locator('.docs__lang').evaluate((e) => ({ h: e.getBoundingClientRect().height, w: e.getBoundingClientRect().width }));
   ok('docs language: the switch under the brand is a full control', sw.h >= 28 && sw.w >= 120, JSON.stringify(sw));
   ok('docs language: an English browser opens in English', (await q.evaluate(() => document.documentElement.lang)) === 'en');
   await q.locator('.docs__lang').getByRole('radio', { name: '한국어' }).click(); await q.waitForTimeout(400);
   ok('docs language: choosing Korean sets ?lang=ko and <html lang="ko">', (await q.evaluate(() => [new URL(location.href).searchParams.get('lang'), document.documentElement.lang].join())) === 'ko,ko');
-  await q.goto('http://localhost:4173/#/table'); await q.waitForTimeout(900);
+  await q.goto(`${pw.ORIGIN}/#/table`); await q.waitForTimeout(900);
   ok('docs language: the choice is kept without ?lang=', (await q.evaluate(() => document.documentElement.lang)) === 'ko');
-  await q.goto('http://localhost:4173/?lang=en#/table'); await q.waitForTimeout(900);
+  await q.goto(`${pw.ORIGIN}/?lang=en#/table`); await q.waitForTimeout(900);
   ok('docs language: ?lang= wins over the saved choice', (await q.evaluate(() => document.documentElement.lang)) === 'en');
   await ctx.close();
 }
@@ -325,7 +325,7 @@ ok('reduce transparency: an open menu is solid, with no backdrop blur', menu && 
 for (const [w, locale] of [[390, 'en-US'], [1000, 'ko-KR'], [1359, 'en-US'], [1360, 'ko-KR'], [1600, 'en-US']]) {
   const ctx = await b.newContext({ viewport: { width: w, height: 800 }, locale });
   const q = await ctx.newPage();
-  await q.goto('http://localhost:4173/#/table'); await q.waitForTimeout(900);
+  await q.goto(`${pw.ORIGIN}/#/table`); await q.waitForTimeout(900);
   const snap = () => q.evaluate(() => {
     const out = {};
     for (const [k, sel] of Object.entries({ menu: '.docs__menu-btn', contents: '.docs__contents-btn', settingsBtn: '.docs__settings-btn', bar: '.docs__settings--bar', rail: '.docs__toc' })) {
@@ -360,7 +360,7 @@ for (const [w, locale] of [[390, 'en-US'], [1000, 'ko-KR'], [1359, 'en-US'], [13
   const ctx = await b.newContext({ viewport: { width: 1000, height: 800 }, locale: 'ko-KR' });
   const q = await ctx.newPage();
   const panels = () => q.evaluate(() => [...document.querySelectorAll('.sg-popover, .sg-menu, .sg-listbox')].filter((e) => getComputedStyle(e).visibility !== 'hidden' && e.getBoundingClientRect().width > 0).length);
-  await q.goto('http://localhost:4173/#/table'); await q.waitForTimeout(900);
+  await q.goto(`${pw.ORIGIN}/#/table`); await q.waitForTimeout(900);
   await q.locator('.docs__settings-btn').click(); await q.waitForTimeout(500);
   const before = await panels();
   await q.setViewportSize({ width: 1500, height: 800 }); await q.waitForTimeout(700);

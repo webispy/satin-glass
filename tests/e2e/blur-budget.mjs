@@ -7,7 +7,7 @@
 // Checked at a desktop and a phone width, on the pages as they open, with the showcase scrolled and with a menu and
 // a dialog open; the flattening itself is checked on a fixture (glass button in a glass panel, and in a clear bar). A surface counts as blurred when
 // its computed backdrop-filter has a blur above 0.
-// usage: node tests/e2e/blur-budget.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+// usage: node tests/e2e/blur-budget.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT)
 // covers: css, foundation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium';
@@ -38,14 +38,14 @@ const judge = (where, r) => {
 
 for (const [w, h] of [[1280, 900], [390, 844]]) {
   const p = await b.newPage({ viewport: { width: w, height: h } });
-  for (const pg of PAGES) { await p.goto(`http://localhost:4173/?mode=light#/${pg}`); await p.waitForTimeout(500); judge(`${pg} @${w}`, await measure(p)); }
+  for (const pg of PAGES) { await p.goto(`${pw.ORIGIN}/?mode=light#/${pg}`); await p.waitForTimeout(500); judge(`${pg} @${w}`, await measure(p)); }
   await p.close();
 }
 
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 /* glass inside glass draws flat (a fixture: no docs page needs it any more) — and an app bar still clear at the
    top of the page lets its glass buttons keep their own glass */
-await p.goto('http://localhost:4173/?mode=light#/overview'); await p.waitForTimeout(500);
+await p.goto(`${pw.ORIGIN}/?mode=light#/overview`); await p.waitForTimeout(500);
 {
   const r = await p.evaluate(() => {
     const host = document.createElement('div');
@@ -60,11 +60,11 @@ await p.goto('http://localhost:4173/?mode=light#/overview'); await p.waitForTime
   ok('glass in an app bar still clear at the top keeps its own glass', /blur\([1-9]/.test(r.clear), JSON.stringify(r));
 }
 /* the showcase scrolled */
-await p.goto('http://localhost:4173/?mode=light#/showcase'); await p.waitForTimeout(600);
+await p.goto(`${pw.ORIGIN}/?mode=light#/showcase`); await p.waitForTimeout(600);
 await p.locator('.phone__screen').evaluate((el) => { el.scrollTop = 400; }); await p.waitForTimeout(700);
 judge('showcase scrolled', await measure(p));
 /* a menu and a dialog open over a page */
-await p.goto('http://localhost:4173/?mode=light#/overlays'); await p.waitForTimeout(600);
+await p.goto(`${pw.ORIGIN}/?mode=light#/overlays`); await p.waitForTimeout(600);
 await p.getByRole('button', { name: /길찾기/ }).first().click(); await p.waitForTimeout(500);
 judge('overlays with a menu open', await measure(p));
 await p.keyboard.press('Escape'); await p.waitForTimeout(300);

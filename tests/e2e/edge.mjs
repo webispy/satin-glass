@@ -1,7 +1,7 @@
 // Edge cases a user can produce: rapid repeats, changes mid-animation, navigation mid-gesture, bounds, disabled
 // and refused (controlled) states, long text, touch, keyboard-only use, 320 px reflow, leftovers after many
 // open/close cycles. Uses the docs "lab" page plus the regular pages. The axe scan is axe.mjs.
-// usage: node tests/e2e/edge.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+// usage: node tests/e2e/edge.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 import { PAGES } from './pages.mjs';
@@ -9,7 +9,7 @@ const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const U = (id, q = '') => `http://localhost:4173/${q}#/${id}`;
+const U = (id, q = '') => `${pw.ORIGIN}/${q}#/${id}`;
 const errors = [];
 const newPage = async (opts = {}) => {
   const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, ...opts });
@@ -486,7 +486,7 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
 /* ---------------------------------------------------------------- a panel in a scroll area is clipped like its anchor */
 {
   const q = await b.newPage({ viewport: { width: 1280, height: 1100 } });
-  await q.goto('http://localhost:4173/?mode=light#/showcase'); await q.waitForTimeout(800);
+  await q.goto(`${pw.ORIGIN}/?mode=light#/showcase`); await q.waitForTimeout(800);
   await q.evaluate(() => document.querySelector('.phone').scrollIntoView({ block: 'center' }));
   const scr = q.locator('.phone__screen');
   await scr.evaluate((e) => { e.scrollTop = e.scrollHeight; }); await q.waitForTimeout(300);

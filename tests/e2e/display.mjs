@@ -1,5 +1,5 @@
 // Large-title app bar, breadcrumbs, skeleton and media viewer in a real browser.
-// usage: node tests/e2e/display.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173; Q for settings)
+// usage: node tests/e2e/display.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT; Q for settings)
 // covers: layout, navigation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 import { motions, springDuration } from '../../packages/core/dist/index.js';
@@ -15,7 +15,7 @@ p.on('pageerror', (e) => errs.push(e.message));
 p.on('console', (m) => { if (m.type() === 'error' && (m.location()?.url ?? '').includes('localhost')) errs.push(m.text()); });
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const go = async (id) => { await p.goto(`http://localhost:4173/${Q}#/${id}`); await p.waitForTimeout(700); };
+const go = async (id) => { await p.goto(`${pw.ORIGIN}/${Q}#/${id}`); await p.waitForTimeout(700); };
 const page = p.locator('.docs__page');
 /* record `read` every frame while `act` runs */
 const frames = (act, read, ms = 500) => p.evaluate(({ act, read, ms }) => new Promise((res) => {
@@ -209,7 +209,7 @@ await go('display');
 {
   const t = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: engine !== 'firefox' });
   const q = await t.newPage();
-  await q.goto(`http://localhost:4173/${Q}#/display`); await q.waitForTimeout(700);
+  await q.goto(`${pw.ORIGIN}/${Q}#/display`); await q.waitForTimeout(700);
   const th = q.locator('.docs__page').getByRole('button', { name: /한강 위로/ });
   await th.scrollIntoViewIfNeeded(); await th.tap(); await q.waitForTimeout(800);
   ok('touch: tap a thumbnail opens the viewer', (await q.getByRole('dialog').count()) === 1);

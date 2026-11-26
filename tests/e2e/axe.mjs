@@ -1,6 +1,6 @@
 // An axe accessibility scan of every docs page but the foundation specimens, in light and in dark high contrast:
 // no serious or critical violations. Reads the docs in Korean unless E2E_LANG=en (pw.mjs); the full run does both.
-// usage: node tests/e2e/axe.mjs   (BROWSER=webkit|firefox, E2E_LANG=en; vite preview on :4173)
+// usage: node tests/e2e/axe.mjs   (BROWSER=webkit|firefox, E2E_LANG=en; vite preview on :4173 or E2E_PORT)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 import { readFileSync } from 'node:fs';
@@ -9,7 +9,7 @@ const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const U = (id, q = '') => `http://localhost:4173/${q}#/${id}`;
+const U = (id, q = '') => `${pw.ORIGIN}/${q}#/${id}`;
 /* the page in main (it loads lazily into an empty placeholder) and in the language asked for: an audit of the frame
    alone, or of the other language, would pass without reading the page */
 const mounted = (p) => p.waitForFunction((lang) => document.querySelector('main .docs__page')?.childElementCount > 0 && document.documentElement.lang === lang, pw.LANG, { timeout: 10000 }).then(() => true, () => false);

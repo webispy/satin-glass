@@ -5,10 +5,10 @@
 // The field: it opens on a day, closes when the end is chosen and submits an ISO 8601 interval; Escape or a click
 // outside before then leaves the range as it was; a disabled day cannot be picked.
 // Dates come from the page (today, the sold-out days), so the checks hold on any day of the month.
-// usage: node tests/e2e/range.mjs   (BROWSER=webkit|firefox; PORT (default 4173); Q for settings)
+// usage: node tests/e2e/range.mjs   (BROWSER=webkit|firefox; E2E_PORT (default 4173); Q for settings)
 // covers: selection
 import * as pw from './pw.mjs';
-const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '', PORT = process.env.PORT || '4173';
+const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '';
 const b = await pw[engine].launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 const errs = [];
@@ -34,7 +34,7 @@ const run = async (root, n) => {
   return null;
 };
 
-await p.goto(`http://localhost:${PORT}/${Q}#/selection`); await wait(900);
+await p.goto(`${pw.ORIGIN}/${Q}#/selection`); await wait(900);
 
 /* ================================================================ RangeCalendar (nights, minLength 1, from today) */
 {

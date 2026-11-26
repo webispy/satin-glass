@@ -11,10 +11,10 @@
 // keys go through the points from the left, reading each aloud.
 // Every read waits until what it checks holds (at most 3 s) rather than after a fixed pause, so a busy machine slows
 // the suite down instead of failing it.
-// usage: node tests/e2e/v06.mjs   (BROWSER=webkit|firefox; PORT (default 4173); Q for settings)
+// usage: node tests/e2e/v06.mjs   (BROWSER=webkit|firefox; E2E_PORT (default 4173); Q for settings)
 // covers: data, selection, navigation, controls, overlays
 import * as pw from './pw.mjs';
-const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '', PORT = process.env.PORT || '4173';
+const engine = process.env.BROWSER || 'chromium', Q = process.env.Q || '';
 const b = await pw[engine].launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 const errs = [];
@@ -32,7 +32,7 @@ const until = async (f, ms = 3000) => {
     await wait(50);
   }
 };
-const go = async (route) => { await p.goto(`http://localhost:${PORT}/${Q}#/${route}`); await p.waitForSelector('main .docs__page > *'); await wait(600); };
+const go = async (route) => { await p.goto(`${pw.ORIGIN}/${Q}#/${route}`); await p.waitForSelector('main .docs__page > *'); await wait(600); };
 const isFocused = (l) => l.evaluate((e) => e === document.activeElement);
 
 /* ================================================================ ColumnChooser */

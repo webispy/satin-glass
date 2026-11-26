@@ -1,6 +1,6 @@
 // Frame pacing while each interaction animates, CPU throttled ×4 (Chromium, headless). usage: node tests/e2e/perf.mjs
 import os from 'node:os';
-import { chromium } from './pw.mjs';
+import { chromium, ORIGIN } from './pw.mjs';
 /* Rendered on the GPU, as in every user's browser: software rendering (SwiftShader, Playwright's default headless) pays
    a large backdrop blur on the CPU compositor, and its frames say more about the test machine than about the library.
    PERF_RENDER=software measures that way (where no GPU is available). The limits are set on an M1 MacBook Air: CPU
@@ -69,7 +69,7 @@ async function measure(name, act, ms = 700) {
   if (!pass) failed++;
   console.log(`${info ? 'INFO' : pass ? 'PASS' : 'FAIL'} ${name}: ${r.d.length} frames, p90 ${p90.toFixed(1)} ms, max ${max.toFixed(1)} ms, >25ms ${drops}, long tasks ${r.long}`);
 }
-await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(800);
+await p.goto(`${ORIGIN}/#/navigation`); await p.waitForTimeout(800);
 const tabs = p.locator('.sg-tabbar__item');
 /* the first tap after load rasterizes something for the first time (#87): 1-2 frames of 33-50 ms right after it, and
    none on any later tap. A one-time first cost (design language 3.7, exceptions): recorded, not judged, and the travel
@@ -81,7 +81,7 @@ await measure('tab bar: tap travel (droplet)', await tap(tabs.nth(3)));
 await expect('tab bar: tap travel', on(tabs.nth(3)));
 await measure('tab bar: tap back', await tap(tabs.nth(0)));
 await expect('tab bar: tap back', on(tabs.nth(0)));
-await p.goto('http://localhost:4173/#/overlays'); await p.waitForTimeout(800);
+await p.goto(`${ORIGIN}/#/overlays`); await p.waitForTimeout(800);
 await measure('menu bloom', await tap(p.getByRole('button', { name: '길찾기' })));
 await expect('menu bloom', shown(p.getByRole('menu')));
 await p.keyboard.press('Escape'); await p.waitForTimeout(500);
@@ -97,13 +97,13 @@ await expect('sheet open', shown(p.getByRole('dialog')));
 await p.keyboard.press('Escape'); await p.waitForTimeout(600);
 await measure('toast in', await tap(p.getByRole('button', { name: '토스트', exact: true })));
 await expect('toast in', shown(p.locator('.sg-toast')));
-await p.goto('http://localhost:4173/#/inputs'); await p.waitForTimeout(800);
+await p.goto(`${ORIGIN}/#/inputs`); await p.waitForTimeout(800);
 { const sw = p.locator('.docs__page .sg-switch').first(), was = await sw.getAttribute('aria-checked');
   await measure('switch toggle', await tap(sw), 500);
   await expect('switch toggle', async () => (await sw.getAttribute('aria-checked')) !== was); }
 await measure('segmented tap', await tap(p.locator('.docs__page .sg-segmented').first().locator('.sg-segmented__item').nth(3)));
 await expect('segmented tap', on(p.locator('.docs__page .sg-segmented').first().locator('.sg-segmented__item').nth(3), 'aria-checked'));
-await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
+await p.goto(`${ORIGIN}/#/motion`); await p.waitForTimeout(900);
 {
   const sl = p.locator('.grid--3 > *').nth(2).locator('.sg-slider'), b = await sl.boundingBox();
   await measure('slider drag, playful gel (JS spring)', async () => {
@@ -114,11 +114,11 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
   await measure('segmented tap, playful squash', await tap(p.locator('.grid--3 > *').nth(2).locator('.sg-segmented__item').nth(2)));
   await expect('segmented tap, playful squash', on(p.locator('.grid--3 > *').nth(2).locator('.sg-segmented__item').nth(2), 'aria-checked'));
 }
-await p.goto('http://localhost:4173/#/material'); await p.waitForTimeout(800);
+await p.goto(`${ORIGIN}/#/material`); await p.waitForTimeout(800);
 await measure('pointer light over 5 glass cards', async () => { for (let i = 0; i < 30; i++) await p.mouse.move(350 + i * 25, 380 + (i % 5) * 20); }, 900);
-await p.goto('http://localhost:4173/#/showcase'); await p.waitForTimeout(800);
+await p.goto(`${ORIGIN}/#/showcase`); await p.waitForTimeout(800);
 await measure('showcase scroll under glass bars', async () => { await p.mouse.move(780, 600); for (let i = 0; i < 12; i++) { await p.mouse.wheel(0, 60); } }, 900);
-await p.goto('http://localhost:4173/#/display'); await p.waitForTimeout(900);
+await p.goto(`${ORIGIN}/#/display`); await p.waitForTimeout(900);
 {
   const sc = p.locator('[data-scroll=largetitle]'), r = await sc.boundingBox();
   await measure('large title hand-over while scrolling', async () => { await p.mouse.move(r.x + r.width / 2, r.y + 300); for (let i = 0; i < 10; i++) await p.mouse.wheel(0, 15); }, 700);
@@ -139,7 +139,7 @@ await p.goto('http://localhost:4173/#/display'); await p.waitForTimeout(900);
   await p.keyboard.press('0'); await p.waitForTimeout(500);
   await measure('media viewer: swipe down to close (back into the thumbnail)', async () => { await p.mouse.move(640, 300); await p.mouse.down(); for (let i = 1; i <= 10; i++) await p.mouse.move(640, 300 + i * 30); await p.mouse.up(); }, 900);
 }
-await p.goto('http://localhost:4173/#/dashboard'); await p.waitForTimeout(1500);
+await p.goto(`${ORIGIN}/#/dashboard`); await p.waitForTimeout(1500);
 {
   /* the overview: 4 stats, line, bars, donut, sparklines, a table — then the products table and its tab switch */
   const plot = p.locator('.sg-chart__plot').first(), pr = await plot.boundingBox();
@@ -156,7 +156,7 @@ await p.goto('http://localhost:4173/#/dashboard'); await p.waitForTimeout(1500);
   await measure('tabs: back to the overview (4 stats, 3 charts, sparklines, a table mount)', await tap(p.getByRole('tab', { name: '개요' })), 1000);
   await expect('tabs: back to the overview', on(p.getByRole('tab', { name: '개요' })));
 }
-await p.goto('http://localhost:4173/#/table'); await p.waitForTimeout(1200);
+await p.goto(`${ORIGIN}/#/table`); await p.waitForTimeout(1200);
 {
   const v = p.locator('[data-demo=table-virtual] .sg-table'); await v.scrollIntoViewIfNeeded(); const vr = await v.boundingBox();
   await measure('virtual table, 5,000 rows: fast wheel scrolling', async () => { await p.mouse.move(vr.x + vr.width / 2, vr.y + 200); for (let i = 0; i < 16; i++) await p.mouse.wheel(0, 400); }, 900);

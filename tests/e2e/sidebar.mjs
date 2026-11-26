@@ -4,15 +4,14 @@
 // the left), the header and footer stay in place while the list scrolls and sit outside the navigation landmark,
 // sections are groups named by their header, a short window scrolls the whole panel so the last item can be
 // reached, and in forced colours the current item keeps a visible selection.
-// usage: node tests/e2e/sidebar.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173, PORT=… to change)
+// usage: node tests/e2e/sidebar.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT)
 // covers: navigation, layout   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium';
-const PORT = process.env.PORT || 4173;
-const b = await pw[engine].launch(engine === 'firefox' ? { firefoxUserPrefs: { 'network.security.ports.banned.override': String(PORT) } } : {});
+const b = await pw[engine].launch(engine === 'firefox' ? { firefoxUserPrefs: { 'network.security.ports.banned.override': pw.PORT } } : {});
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const U = (id, q = '') => `http://localhost:${PORT}/${q}#/${id}`;
+const U = (id, q = '') => `${pw.ORIGIN}/${q}#/${id}`;
 const errors = [];
 const open = async (url, opts = {}) => {
   const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, ...opts });

@@ -13,7 +13,7 @@
 // a wrong radius and an unclipped flush box must be caught, a right one and an off-centre one must pass, and a page
 // pass (a theme at a width) or an open panel that compares nothing fails — a check that sees nothing proves nothing
 // (a single page may have no nested corners in view). Animations are stopped at rest first.
-// usage: node tests/e2e/corners.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+// usage: node tests/e2e/corners.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT)
 // covers: *   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 import { PAGES } from './pages.mjs';
@@ -26,7 +26,7 @@ const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${co
 /* ---------------------------------------------------------------- fixtures: the check must catch what it is for */
 {
   const p = await b.newPage({ viewport: { width: 800, height: 600 } });
-  await p.goto('http://localhost:4173/?mode=light#/overview'); await p.waitForTimeout(500);
+  await p.goto(`${pw.ORIGIN}/?mode=light#/overview`); await p.waitForTimeout(500);
   const fx = async (html) => p.evaluate(({ html, TOL, MIN, scan }) => {
     const host = document.createElement('div'); host.className = 'fx-host'; host.style.cssText = 'position:fixed;left:20px;top:20px;z-index:99999';
     host.innerHTML = html; document.body.appendChild(host);
@@ -52,7 +52,7 @@ for (const mode of ['light', 'dark']) for (const [w, h] of [[1280, 900], [390, 8
   const p = await b.newPage({ viewport: { width: w, height: h }, colorScheme: mode });
   let seen = 0;
   for (const page of PAGES) {
-    await p.goto(`http://localhost:4173/?mode=${mode}&rm=1#/${page}`); await p.waitForTimeout(600);
+    await p.goto(`${pw.ORIGIN}/?mode=${mode}&rm=1#/${page}`); await p.waitForTimeout(600);
     const { bad, pairs } = await p.evaluate(scan, { TOL, MIN });
     seen += pairs;
     ok(`concentric corners · ${page} · ${mode} · ${w} (${pairs} compared)`, bad.length === 0, bad.slice(0, 5).join(' ;; ') + (bad.length > 5 ? ` … (+${bad.length - 5})` : ''));
@@ -66,7 +66,7 @@ for (const mode of ['light', 'dark']) for (const [w, h] of [[1280, 900], [390, 8
 {
   const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
   const open = async (page, name, click, root) => {
-    await p.goto(`http://localhost:4173/?mode=light&rm=1#/${page}`); await p.waitForTimeout(600);
+    await p.goto(`${pw.ORIGIN}/?mode=light&rm=1#/${page}`); await p.waitForTimeout(600);
     await click(); await p.waitForTimeout(500);
     const { bad, pairs } = await p.evaluate(scan, { TOL, MIN, root });
     ok(`concentric corners · ${name} open`, bad.length === 0 && pairs > 0, pairs === 0 ? 'nothing compared' : bad.slice(0, 5).join(' ;; '));

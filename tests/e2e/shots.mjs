@@ -9,7 +9,7 @@ const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
 p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
 for (const id of pages) {
-  await p.goto(`http://localhost:4173/#/${id}`);
+  await p.goto(`${pw.ORIGIN}/#/${id}`);
   await p.waitForTimeout(500);
   await p.screenshot({ path: `${out}/${theme}-${width}-${id}.png` });
 }

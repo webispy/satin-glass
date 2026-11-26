@@ -9,7 +9,7 @@
 //   · the row in the lens is magnified, the others recede; the columns of a group share one lens
 //   · a click or a key pops as soon as its row arrives (as quick as a turn); a two-row column (AM/PM) squeezes too
 //   · a disabled wheel (an alarm that is off) does not turn and leaves the tab order
-// usage: node tests/e2e/wheel-motion.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
+// usage: node tests/e2e/wheel-motion.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT)
 // covers: selection   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium';
@@ -19,7 +19,7 @@ const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${co
 
 const p = await b.newPage({ viewport: { width: 1200, height: 900 } });
 p.on('pageerror', (e) => { failed++; console.log('FAIL page error —', e.message); });
-await p.goto('http://localhost:4173/?mode=light#/selection'); await p.waitForTimeout(900);
+await p.goto(`${pw.ORIGIN}/?mode=light#/selection`); await p.waitForTimeout(900);
 const tw = p.locator('[data-demo="alarm"] .sg-timewheel');
 await tw.scrollIntoViewIfNeeded(); await p.waitForTimeout(300);
 const cols = tw.locator('.sg-wheel__scroller');

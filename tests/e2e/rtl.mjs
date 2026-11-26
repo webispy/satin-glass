@@ -2,15 +2,14 @@
 // :dir() selector into a list of right-to-left languages): the data table's column line and a meter's growth move to
 // the inline start and end, an LTR section inside an RTL page stays left to right, a navigation stack's edge shadow
 // follows the direction its motion uses, and the drawer's header pads its start.
-// usage: node tests/e2e/rtl.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173, PORT=… to change)
+// usage: node tests/e2e/rtl.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173 or E2E_PORT)
 // covers: data, navigation, overlays, layout, foundation   (categories, for `pnpm e2e:changed`; * = any, css = any stylesheet)
 import * as pw from './pw.mjs';
 const engine = process.env.BROWSER || 'chromium';
-const PORT = process.env.PORT || 4173;
-const b = await pw[engine].launch(engine === 'firefox' ? { firefoxUserPrefs: { 'network.security.ports.banned.override': String(PORT) } } : {});
+const b = await pw[engine].launch(engine === 'firefox' ? { firefoxUserPrefs: { 'network.security.ports.banned.override': pw.PORT } } : {});
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const U = (id) => `http://localhost:${PORT}/?lang=en#/${id}`;
+const U = (id) => `${pw.ORIGIN}/?lang=en#/${id}`;
 const errors = [];
 const page = async (id) => {
   const ctx = await b.newContext({ viewport: { width: 1280, height: 900 } });
