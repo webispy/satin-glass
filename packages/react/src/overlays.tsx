@@ -45,13 +45,13 @@ export function Dialog({ open, onClose, title, children, icon, tone = 'accent', 
     scrim.current?.classList.add('is-open');
     const pop = pushLayer(() => close.current('escape'), true, p);
     const trap = trapFocus(p);
-    release.set(() => { pop(); trap(); });
+    release.set(() => { pop(); trap(); }, { hide: () => pop.pause(true), show: () => { pop.pause(false); trap.resume(); } });
     return bloomIn(p, { x: p.offsetWidth / 2, y: p.offsetHeight / 2 }, 0.9);
   }, () => {
     release.run();
     scrim.current?.classList.remove('is-open');
     return bloomOut(panel.current!, 0.96);
-  });
+  }, release);
   if (!mounted) return null;
   const many = Children.count(actions) >= 3;
   return (
@@ -130,7 +130,9 @@ export function Sheet({ open, onClose, title, leading, trailing, children, heigh
         y = 0;
       },
     });
-    release.set(() => { pop(); trap(); off(); });
+    /* hidden mid-drag (#79): the drag is cancelled (its release would land elsewhere) and the sheet shown again at
+       rest, not half dismissed */
+    release.set(() => { pop(); trap(); off(); }, { hide: () => { off.cancel(); pop.pause(true); }, show: () => { y = 0; p.style.transform = ''; if (scrim.current) scrim.current.style.opacity = ''; pop.pause(false); trap.resume(); } });
     if (wide()) return bloomIn(p, { x: p.offsetWidth / 2, y: p.offsetHeight / 2 }, 0.94);
     if (prefersReducedMotion(p)) return fade(p, 0, 1, timing.appear);   /* reduced: appears in place */
     return animate(p, [{ transform: 'translateY(calc(100% + 24px))' }, { transform: 'none' }], 'gentle').finished.then(() => undefined, () => undefined);
@@ -144,7 +146,7 @@ export function Sheet({ open, onClose, title, leading, trailing, children, heigh
     p.getAnimations().forEach((a) => a.cancel());
     if (prefersReducedMotion(p)) return fade(p, 1, 0, timing.leave);
     return p.animate([{ transform: from }, { transform: 'translateY(calc(100% + 24px))' }], { duration: timing.sheetOut, easing: easing.exit, fill: 'both' }).finished.then(() => undefined, () => undefined);
-  });
+  }, release);
   if (!mounted) return null;
   return (
     <Portal>
@@ -222,9 +224,11 @@ export type MenuProps = {
   open: boolean;
   onClose: (reason: CloseReason) => void;
   /** the element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does
-      not close the panel, and the panel closes when it leaves the layout. `ref.current` is read when the owner
-      renders, and setting a ref does not render: for a panel open from the first render, keep the element in state
-      (`ref={setAnchor}`) */
+      not close the panel, and the panel closes when it leaves the layout. Changed from one element to another while
+      open, the panel closes; from a point or none, it moves to the new anchor; set to none, it keeps the anchor it
+      has (a ref React has let go of, as while Suspense hides the page, reads none). `ref.current` is read when the
+      owner renders, and setting a ref does not render: for a panel open from the first render, keep the element in
+      state (`ref={setAnchor}`) */
   anchor: Anchor;
   placement?: Placement;
   children: ReactNode;
@@ -311,7 +315,7 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
     scrim.current?.classList.add('is-open');
     const pop = pushLayer(() => close.current('escape'), true, b);
     const trap = trapFocus(b, b.querySelector<HTMLElement>('[data-cancel]'));
-    release.set(() => { pop(); trap(); });
+    release.set(() => { pop(); trap(); }, { hide: () => pop.pause(true), show: () => { pop.pause(false); trap.resume(); } });
     if (prefersReducedMotion(b)) return fade(b, 0, 1, timing.appear);
     return animate(b, [{ transform: 'translateY(calc(100% + 24px))' }, { transform: 'none' }], 'smooth').finished.then(() => undefined, () => undefined);
   }, () => {
@@ -319,7 +323,7 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
     scrim.current?.classList.remove('is-open');
     if (prefersReducedMotion(box.current)) return fade(box.current!, 1, 0, timing.leave);
     return box.current!.animate([{ transform: 'none' }, { transform: 'translateY(calc(100% + 24px))' }], { duration: timing.actionSheetOut, easing: easing.exit, fill: 'both' }).finished.then(() => undefined, () => undefined);
-  });
+  }, release);
   if (!mounted) return null;
   /* arrows move between the rows like a menu (Tab still works); Home / End go to the ends */
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {

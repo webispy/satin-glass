@@ -4923,7 +4923,7 @@
     "type": "Anchor",
     "required": true,
     "default": null,
-    "description": "The element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does not close the panel, and the panel closes when it leaves the layout. `ref.current` is read when the owner renders, and setting a ref does not render: for a panel open from the first render, keep the element in state (`ref={setAnchor}`)."
+    "description": "The element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does not close the panel, and the panel closes when it leaves the layout. Changed from one element to another while open, the panel closes; from a point or none, it moves to the new anchor; set to none, it keeps the anchor it has (a ref React has let go of, as while Suspense hides the page, reads none). `ref.current` is read when the owner renders, and setting a ref does not render: for a panel open from the first render, keep the element in state (`ref={setAnchor}`)."
    },
    {
     "name": "placement",
@@ -4993,7 +4993,7 @@
     "type": "Anchor",
     "required": true,
     "default": null,
-    "description": "The element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does not close the panel, and the panel closes when it leaves the layout. `ref.current` is read when the owner renders, and setting a ref does not render: for a panel open from the first render, keep the element in state (`ref={setAnchor}`)."
+    "description": "The element (or a DOMRect in viewport coordinates) the panel opens next to and follows; a click on it does not close the panel, and the panel closes when it leaves the layout. Changed from one element to another while open, the panel closes; from a point or none, it moves to the new anchor; set to none, it keeps the anchor it has (a ref React has let go of, as while Suspense hides the page, reads none). `ref.current` is read when the owner renders, and setting a ref does not render: for a panel open from the first render, keep the element in state (`ref={setAnchor}`)."
    },
    {
     "name": "placement",

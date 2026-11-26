@@ -181,15 +181,27 @@ export function Drawer(props: DrawerProps) {
       },
     });
     /* the grip: the free edge follows the pointer 1:1, between the bounds; it stops there, nothing springs */
-    let h0 = 0, lim = { lo: 0, hi: 0 };
+    let h0 = 0, v0 = '', wrote = '', lim = { lo: 0, hi: 0 };
     const offGrip = resizable && grip.current ? drag(grip.current, {
       axis: 'y', threshold: 0,
-      start: () => { h0 = p.offsetHeight; lim = bounds(p); p.getAnimations().forEach((a) => a.cancel()); p.dataset.resizing = ''; },
-      move: ({ dy }) => { const h = Math.min(lim.hi, Math.max(lim.lo, h0 + growSign * dy)); p.style.setProperty('--_h', `${h.toFixed(1)}px`); },
-      end: () => { delete p.dataset.resizing; const h = Math.round(p.offsetHeight); commit(h); setGripNow({ now: h, ...bounds(p) }); },
-    }) : () => {};
+      start: () => { h0 = p.offsetHeight; v0 = p.style.getPropertyValue('--_h'); wrote = ''; lim = bounds(p); p.getAnimations().forEach((a) => a.cancel()); p.dataset.resizing = ''; },
+      move: ({ dy }) => {
+        /* the app set a new height meanwhile (a controlled one): that is the height a cancel goes back to */
+        const now = p.style.getPropertyValue('--_h'); if (now !== (wrote || v0)) v0 = now;
+        const h = Math.min(lim.hi, Math.max(lim.lo, h0 + growSign * dy)); wrote = `${h.toFixed(1)}px`; p.style.setProperty('--_h', wrote);
+      },
+      /* cancelled (hidden mid-resize, #79, or the system took the pointer): back to the height it started at, and the
+         app is not told of a height nobody let go at */
+      end: (_, cancelled) => {
+        delete p.dataset.resizing;
+        if (cancelled) { if (p.style.getPropertyValue('--_h') === wrote) p.style.setProperty('--_h', v0); return; }
+        const h = Math.round(p.offsetHeight); commit(h); setGripNow({ now: h, ...bounds(p) });
+      },
+    }) : Object.assign(() => {}, { cancel() {} });
     if (resizable) setGripNow({ now: p.offsetHeight, ...bounds(p) });
-    release.set(() => { pop(); trap(); off(); offGrip(); });
+    /* hidden mid-drag or mid-resize (#79): the gesture is cancelled (its release would land elsewhere) and the drawer
+       shown again at rest */
+    release.set(() => { pop(); trap(); off(); offGrip(); }, { hide: () => { off.cancel(); offGrip.cancel(); pop.pause(true); }, show: () => { x = 0; p.style.transform = ''; delete p.dataset.resizing; if (scrim.current) scrim.current.style.opacity = ''; pop.pause(false); trap.resume(); } });
     if (prefersReducedMotion(p)) return fade(p, 0, 1, timing.appear);
     /* the smooth spring's pace with the gentle one's damping: quick, and it does not swing past its edge (a panel
        docked to an edge that overshoots opens a gap there) */
@@ -205,7 +217,7 @@ export function Drawer(props: DrawerProps) {
     if (prefersReducedMotion(p)) return fade(p, 1, 0, timing.leave);
     /* an exit: a short ease-in from wherever it is (a release mid-drag too), like the sheet */
     return p.animate([{ transform: from }, { transform: offscreen(p) }], { duration: timing.sheetOut, easing: easing.exit, fill: 'both' }).finished.then(() => undefined, () => undefined);
-  });
+  }, release);
   if (!mounted) return null;
   const w = typeof width === 'number' ? `${width}px` : width, h = typeof height === 'number' ? `${height}px` : height;
   const gripEl = top && resizable ? (

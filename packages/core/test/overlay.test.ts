@@ -160,6 +160,113 @@ describe('layer stack', () => {
     popB(); popA();
   });
 
+  /* a layer set aside while its overlay is hidden (Suspense): it keeps its place but locks, hides, takes and holds
+     nothing, so the shown layers around it work as if it were not there; brought back, it is where it was (#79) */
+  it('a paused layer keeps its place and does nothing until it is resumed', () => {
+    const host = html('<div id="a"><button id="x">x</button></div><div id="b"><button id="y">y</button></div>');
+    const app = document.createElement('main'); document.body.append(app);
+    const a = host.querySelector('#a') as HTMLElement, b = host.querySelector('#b') as HTMLElement;
+    const escA = vi.fn(), escB = vi.fn(), tabB = vi.fn(() => true);
+    const popA = pushLayer(escA, true, a), popB = pushLayer(escB, true, b, { tab: tabB });
+    expect(document.body.style.overflow).toBe('hidden');
+    popB.pause(true);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(escB).not.toHaveBeenCalled(); expect(escA).toHaveBeenCalledTimes(1);   /* the shown one below takes it */
+    expect(inLayerAbove(a, b.querySelector('#y'))).toBe(false);   /* it holds nothing while paused */
+    expect(tabFrom(b.querySelector('#y') as HTMLElement)).toBe(false); expect(tabB).not.toHaveBeenCalled();
+    popA.pause(true);
+    expect(document.body.style.overflow).toBe('');
+    expect(app.getAttribute('aria-hidden')).toBeNull();
+    popA.pause(false); popB.pause(false);
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(app.getAttribute('aria-hidden')).toBe('true');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(escB).toHaveBeenCalledTimes(1);   /* back on top, where it was */
+    popB(); popA(); app.remove();
+    expect(document.body.style.overflow).toBe('');
+    expect(app.getAttribute('aria-hidden')).toBeNull();
+  });
+  it('a trap resumed takes the focus back, itself when nothing in it can', () => {
+    const root = html('<div id="t"><button id="in">in</button></div><button id="out">out</button>');
+    const t = root.querySelector('#t') as HTMLElement;
+    const pop = pushLayer(() => {}, true, t);
+    const trap = trapFocus(t);
+    (root.querySelector('#out') as HTMLElement).focus();
+    trap.resume();
+    expect(document.activeElement).toBe(root.querySelector('#in'));
+    root.querySelector('#in')!.remove();
+    (root.querySelector('#out') as HTMLElement).focus();
+    trap.resume();
+    expect(document.activeElement).toBe(t);
+    trap(); pop();
+  });
+  it('a trap resumed passes over a control that no longer takes the focus', () => {
+    const root = html('<div id="t"><button id="a" data-autofocus>a</button><button id="b">b</button></div><button id="out">out</button>');
+    const t = root.querySelector('#t') as HTMLElement, a = root.querySelector('#a') as HTMLButtonElement;
+    const pop = pushLayer(() => {}, true, t);
+    const trap = trapFocus(t);
+    expect(document.activeElement).toBe(a);
+    a.disabled = true;   /* disabled while hidden */
+    (root.querySelector('#out') as HTMLElement).focus();
+    trap.resume();
+    expect(document.activeElement).toBe(root.querySelector('#b'));
+    trap(); pop();
+  });
+  it('a trap resumed under a modal opened above it meanwhile leaves the focus to that one', () => {
+    const root = html('<div id="t"><button id="in">in</button></div><div id="m"><button id="top">top</button></div>');
+    const t = root.querySelector('#t') as HTMLElement, m = root.querySelector('#m') as HTMLElement;
+    const pop = pushLayer(() => {}, true, t);
+    const trap = trapFocus(t);
+    pop.pause(true);
+    const popM = pushLayer(() => {}, true, m);   /* opened while the first was hidden */
+    (document.activeElement as HTMLElement | null)?.blur();
+    pop.pause(false); trap.resume();
+    expect(t.contains(document.activeElement)).toBe(false);
+    popM(); trap(); pop();
+  });
+  it('a trap set up before its layer is still left out of Tab while that layer is paused', () => {
+    const root = html('<div id="t"><button id="x">x</button><button id="y">y</button></div>');
+    const t = root.querySelector('#t') as HTMLElement;
+    const trap = trapFocus(t);
+    const pop = pushLayer(() => {}, true, t);
+    pop.pause(true);
+    expect(tabFrom(root.querySelector('#x') as HTMLElement)).toBe(false);
+    pop.pause(false);
+    expect(tabFrom(root.querySelector('#x') as HTMLElement)).toBe(true);
+    pop(); trap();
+  });
+  it('a paused layer beside a trap in the same portal leaves the trap taking Tab', () => {
+    const host = html('<div id="s"><button>s</button></div><div id="t"><button id="x">x</button><button id="y">y</button></div>');
+    const s = host.querySelector('#s') as HTMLElement, t = host.querySelector('#t') as HTMLElement;
+    const popS = pushLayer(() => {}, false, s, { inert: false });
+    const trap = trapFocus(t);
+    popS.pause(true);
+    expect(tabFrom(host.querySelector('#x') as HTMLElement)).toBe(true);
+    trap(); popS();
+  });
+  it('a trap belongs to the nearest layer holding it, whichever was pushed last', () => {
+    const host = html('<div id="o"><div id="i"><div id="t"><button id="x">x</button><button id="y">y</button></div></div></div>');
+    const o = host.querySelector('#o') as HTMLElement, i = host.querySelector('#i') as HTMLElement, t = host.querySelector('#t') as HTMLElement;
+    const popI = pushLayer(() => {}, false, i, { inert: false });
+    const popO = pushLayer(() => {}, false, o, { inert: false });   /* the outer one pushed after */
+    const trap = trapFocus(t);
+    popI.pause(true);
+    expect(tabFrom(host.querySelector('#x') as HTMLElement)).toBe(false);
+    trap(); popO(); popI();
+  });
+  it('a paused layer inside a trap leaves the trap taking Tab', () => {
+    /* a core user's inline (not portalled) panel inside a dialog, set aside while the dialog stays shown */
+    const root = html('<div id="t"><button id="x">x</button><div id="c"><button id="y">y</button></div><button id="z">z</button></div>');
+    const t = root.querySelector('#t') as HTMLElement, c = root.querySelector('#c') as HTMLElement;
+    const pop = pushLayer(() => {}, true, t);
+    const trap = trapFocus(t);
+    const popC = pushLayer(() => {}, false, c, { inert: false });
+    popC.pause(true);
+    expect(tabFrom(root.querySelector('#x') as HTMLElement)).toBe(true);
+    expect(document.activeElement).toBe(root.querySelector('#y'));
+    popC(); trap(); pop();
+  });
+
   it('Escape that ends an IME composition does not close the top layer', () => {
     const esc = vi.fn();
     const pop = pushLayer(esc, false);

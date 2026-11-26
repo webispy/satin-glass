@@ -11,8 +11,12 @@ export type DragHandlers = {
   axis?: 'x' | 'y' | 'both';
 };
 
-export function drag(el: HTMLElement, h: DragHandlers): () => void {
+/** The drag's removal, whose `cancel()` ends a gesture in progress as cancelled (`end` is told so), as if the system
+    took the pointer: for an element hidden mid-drag (Suspense), whose release would land somewhere else. */
+export type DragRemoval = (() => void) & { cancel(): void };
+export function drag(el: HTMLElement, h: DragHandlers): DragRemoval {
   let id: number | null = null, sx = 0, sy = 0, lx = 0, ly = 0, lt = 0, vx = 0, vy = 0, active = false;
+  let last: PointerEvent | null = null;   /* the gesture's latest event, for a cancel from outside */
   const thr = h.threshold ?? 0;
   const info = (e: PointerEvent): DragInfo => ({ x: e.clientX, y: e.clientY, dx: e.clientX - sx, dy: e.clientY - sy, vx, vy, event: e });
   const capture = () => { try { if (id !== null) el.setPointerCapture(id); } catch { /* not supported */ } };
@@ -26,7 +30,7 @@ export function drag(el: HTMLElement, h: DragHandlers): () => void {
   };
   const down = (e: PointerEvent) => {
     if (id !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    sx = lx = e.clientX; sy = ly = e.clientY; lt = e.timeStamp; vx = vy = 0; active = thr === 0;
+    sx = lx = e.clientX; sy = ly = e.clientY; lt = e.timeStamp; vx = vy = 0; active = thr === 0; last = e;
     if (h.start?.(info(e)) === false) return;
     id = e.pointerId;
     listen(true);
@@ -39,7 +43,7 @@ export function drag(el: HTMLElement, h: DragHandlers): () => void {
     const dt = Math.max(1, e.timeStamp - lt);
     vx = 0.6 * vx + 0.4 * ((e.clientX - lx) / dt) * 1000;
     vy = 0.6 * vy + 0.4 * ((e.clientY - ly) / dt) * 1000;
-    lx = e.clientX; ly = e.clientY; lt = e.timeStamp;
+    lx = e.clientX; ly = e.clientY; lt = e.timeStamp; last = e;
     if (!active) {
       const dx = Math.abs(e.clientX - sx), dy = Math.abs(e.clientY - sy);
       const d = h.axis === 'x' ? dx : h.axis === 'y' ? dy : Math.hypot(dx, dy);
@@ -72,12 +76,13 @@ export function drag(el: HTMLElement, h: DragHandlers): () => void {
   el.addEventListener('lostpointercapture', lost);
   /* taken down mid-gesture: the listeners go and the pointer is let go; the gesture is not ended (no `end`): the caller
      decides what a drag cut short leaves behind */
-  return () => {
+  const remove = () => {
     listen(false);
     el.removeEventListener('pointerdown', down);
     el.removeEventListener('lostpointercapture', lost);
     if (id !== null) { const pid = id; id = null; active = false; try { if (el.hasPointerCapture(pid)) el.releasePointerCapture(pid); } catch { /* released */ } }
   };
+  return Object.assign(remove, { cancel() { if (id !== null && last) finish(last, true); } });
 }
 
 /** Fires `fire` after the pointer rests `ms` without moving more than `slop` px. Suppresses the click that follows. */

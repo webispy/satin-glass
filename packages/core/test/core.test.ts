@@ -161,4 +161,25 @@ describe('drag', () => {
     expect(end).not.toHaveBeenCalled();
     el.remove();
   });
+  /* cancelled from outside (its element hidden mid-drag): ended as cancelled, the pointer let go, a later release ignored */
+  it('cancel() ends a gesture in progress as cancelled', () => {
+    const el = document.createElement('div'); document.body.append(el);
+    let held: number | null = null;
+    el.setPointerCapture = vi.fn((id: number) => { held = id; });
+    el.releasePointerCapture = vi.fn(() => { held = null; });
+    el.hasPointerCapture = vi.fn((id: number) => held === id);
+    const ev = (type: string, x: number, target: EventTarget) => { const e = new MouseEvent(type, { bubbles: true, clientX: x, clientY: 0 }); Object.defineProperty(e, 'pointerId', { value: 7 }); target.dispatchEvent(e); };
+    const end = vi.fn();
+    const off = drag(el, { end });
+    off.cancel();   /* nothing in progress: nothing happens */
+    expect(end).not.toHaveBeenCalled();
+    ev('pointerdown', 0, el); ev('pointermove', 20, window);
+    off.cancel();
+    expect(end).toHaveBeenCalledTimes(1);
+    expect(end.mock.calls[0][1]).toBe(true);
+    expect(held).toBeNull();
+    ev('pointerup', 40, window);
+    expect(end).toHaveBeenCalledTimes(1);
+    off(); el.remove();
+  });
 });

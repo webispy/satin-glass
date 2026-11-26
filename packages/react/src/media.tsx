@@ -159,6 +159,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     if (t) t.style.visibility = 'hidden';
     hiddenThumb.current = t;
   };
+  const hideThumbNow = useRef(hideThumb); hideThumbNow.current = hideThumb;
   useEffect(() => { if (open) hideThumb(at); }, [at]);
 
   /* ---------------------------------------------------------------- size */
@@ -190,8 +191,13 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     const pop = pushLayer(() => close.current('escape'), true, el);
     /* the release is registered at once: anything below that throws (an app's getOrigin) still gives back the
        page's scroll and focus */
-    let trap = () => {};
-    release.set(() => { pop(); trap(); stopZ.current(); stopT.current(); });
+    let trap: (() => void) & { resume?: () => void } = () => {};
+    /* hidden while open (#79): the thumbnail it opened from shows again in the page meanwhile, and is hidden again
+       (the photo is back over it) when the viewer is shown */
+    release.set(() => { pop(); trap(); stopZ.current(); stopT.current(); }, {
+      hide: () => { pop.pause(true); if (hiddenThumb.current) hiddenThumb.current.style.visibility = ''; },
+      show: () => { pop.pause(false); trap.resume?.(); hideThumbNow.current(atRef.current); },   /* the latest getOrigin */
+    });
     const st = stage.current!; const b = { w: st.clientWidth, h: st.clientHeight };
     if (b.w !== box.w || b.h !== box.h) setBox(b);
     z.current = { s: 1, x: 0, y: 0 }; zs.current = null;
@@ -210,8 +216,9 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
   }, () => {
     const before = document.activeElement;
     release.run();
-    /* where the focus trap gave focus back (the opener: the first thumbnail pressed, not the one you are on now) */
-    const returned = document.activeElement;
+    /* where the focus trap gave focus back (the opener: the first thumbnail pressed, not the one you are on now);
+       none when it was elsewhere already (moved there while the viewer was hidden, #79) */
+    const returned = document.activeElement !== before ? document.activeElement : null;
     const el = root.current!;
     /* the photo folds back into the thumbnail of the item you were on: focus lands there too (once visible) */
     const restore = () => {
@@ -219,7 +226,9 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
       if (t) t.style.visibility = '';
       hiddenThumb.current = null;
       const a = document.activeElement;
-      if (t && document.contains(t) && (!a || a === document.body || !el.isConnected || el.contains(a) || a === before || a === returned)) t.focus({ preventScroll: true });
+      /* not from an element outside the viewer that had it before the close: one the focus was moved to while the
+         viewer was hidden (#79) is where someone put it */
+      if (t && document.contains(t) && (!a || a === document.body || !el.isConnected || el.contains(a) || a === returned)) t.focus({ preventScroll: true });
     };
     if (prefersReducedMotion(el)) return fade(el, 1, 0, timing.leave).then(restore);
     const l = layer(), f = frame();
@@ -233,7 +242,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     const st = stage.current, to = origin(atRef.current, st ? { w: st.clientWidth, h: st.clientHeight } : box);
     if (to) return l.animate([{ transform: start, clipPath: to.full }, { transform: to.transform, clipPath: to.clip }], { duration: timing.mediaReturn, easing: easing.move, fill: 'both' }).finished.then(restore, restore);
     return l.animate([{ transform: start, opacity: 1 }, { transform: `${start === 'none' ? '' : start} scale(0.94)`, opacity: 0 }], { duration: 180, easing: 'ease-in', fill: 'both' }).finished.then(restore, restore);
-  });
+  }, release);
   useEffect(() => () => { if (hiddenThumb.current) hiddenThumb.current.style.visibility = ''; }, []);
   /* the track goes to the committed index: on the paging spring (or the reduced-motion fade) when it changed — by
      the viewer's own paging or from outside (the parent's `index`, `items` shrinking under it) — and back to it
