@@ -6,8 +6,15 @@ import { ThemeProvider, createTheme, Sidebar, SidebarItem, SidebarSection, Glass
 import { DisplaySettingsProvider, DisplaySettingsBar, DisplaySettingsList, LanguageSwitch } from './settings';
 import type { MotionName } from '@satin-glass/tokens';
 import { Menu as MenuIcon, SlidersHorizontal, X } from 'lucide-react';
-import { ROUTES, GROUPS, routeFor } from './routes';
+import { ROUTES, GROUPS, routeFor, type Route } from './routes';
 import { LangProvider, intlLocale, useLang, useT } from './i18n';
+
+/* the pages in sidebar sections, one per group, in the routes' order */
+const SECTIONS = ROUTES.reduce<{ group: Route['group']; routes: Route[] }[]>((acc, r) => {
+  const last = acc.at(-1);
+  if (last && last.group === r.group) last.routes.push(r); else acc.push({ group: r.group, routes: [r] });
+  return acc;
+}, []);
 
 function useHash() {
   const read = () => location.hash.replace(/^#\/?/, '') || 'overview';
@@ -58,7 +65,6 @@ function App() {
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
   }, [navOpen, narrow]);
-  let group = '';
   return (
     <DisplaySettingsProvider value={display}>
     <ThemeProvider theme={theme} style={{ minHeight: '100vh' }}>
@@ -66,19 +72,18 @@ function App() {
         <div className="docs" data-nav-open={navOpen}>
           {/* a closed drawer is inert: its links are off screen and must not take Tab or a screen reader's cursor */}
           <div ref={nav} id="docs-nav" className="docs__nav" inert={(narrow && !navOpen) || undefined}>
-            <Sidebar aria-label={t({ en: 'Documentation', ko: '문서' })}>
-              <div className="docs__brand"><img className="docs__logo" src={`${import.meta.env.BASE_URL}logo-64.png`} alt="" width={36} height={36} /><div><b>Satin Glass</b><small>React UI · {__SG_VERSION__}</small></div>
-                {narrow && <IconButton ref={closeBtn} className="docs__nav-close" icon={<X />} label={t({ en: 'Close menu', ko: '메뉴 닫기' })} onClick={closeNav} />}</div>
-              <LanguageSwitch />
-              {ROUTES.map((p) => {
-                const head = p.group !== group ? (group = p.group) : null;
-                return (
-                  <div key={p.id} style={{ display: 'contents' }}>
-                    {head && <SidebarSection>{t(GROUPS[head])}</SidebarSection>}
-                    <SidebarItem href={`#/${p.id}`} icon={<p.icon />} selected={p.id === current.id} onClick={closeNav}>{t(p.label)}</SidebarItem>
-                  </div>
-                );
-              })}
+            <Sidebar aria-label={t({ en: 'Documentation', ko: '문서' })} header={
+              <header className="docs__head">
+                <div className="docs__brand"><img className="docs__logo" src={`${import.meta.env.BASE_URL}logo-64.png`} alt="" width={36} height={36} /><div><b>Satin Glass</b><small>React UI · {__SG_VERSION__}</small></div>
+                  {narrow && <IconButton ref={closeBtn} className="docs__nav-close" icon={<X />} label={t({ en: 'Close menu', ko: '메뉴 닫기' })} onClick={closeNav} />}</div>
+                <LanguageSwitch />
+              </header>
+            }>
+              {SECTIONS.map(({ group, routes }) => (
+                <SidebarSection key={group} header={t(GROUPS[group])}>
+                  {routes.map((p) => <SidebarItem key={p.id} href={`#/${p.id}`} icon={<p.icon />} selected={p.id === current.id} onClick={closeNav}>{t(p.label)}</SidebarItem>)}
+                </SidebarSection>
+              ))}
             </Sidebar>
           </div>
           <div className="docs__scrim" aria-hidden="true" onClick={closeNav} />

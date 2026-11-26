@@ -402,13 +402,14 @@ await p.goto('http://localhost:4173/#/motion'); await p.waitForTimeout(900);
   ok('glass surfaces clip and never scroll themselves (so the light cannot add scrollbars)', offenders.length === 0, offenders.slice(0, 4).join(' | '));
 
   /* sweep the pointer along the docs sidebar's bottom and right edges: its scroll area must not change */
-  const sc = p.locator('.docs__nav .sg-sidebar__scroll');
-  const size = () => sc.evaluate((e) => [e.scrollWidth - e.clientWidth, e.scrollHeight]);
+  /* the frame (which scrolls only in a short window) and the list inside it */
+  const sc = p.locator('.docs__nav .sg-sidebar__frame');
+  const size = () => sc.evaluate((e) => { const n = e.querySelector('.sg-sidebar__scroll'); return [Math.max(e.scrollWidth - e.clientWidth, n.scrollWidth - n.clientWidth), e.scrollHeight, n.scrollHeight]; });
   const before = await size(), box = await p.locator('.docs__nav .sg-sidebar').boundingBox();
   for (let i = 0; i <= 12; i++) { await p.mouse.move(box.x + box.width - 3, box.y + (box.height * i) / 12); await p.waitForTimeout(16); }
   for (let i = 0; i <= 12; i++) { await p.mouse.move(box.x + (box.width * i) / 12, box.y + box.height - 3); await p.waitForTimeout(16); }
   const after = await size();
-  ok('sidebar: no scrollbar appears when the pointer light reaches its edges', after[0] <= 0 && after[1] === before[1], `before ${before} after ${after}`);
+  ok('sidebar: no scrollbar appears when the pointer light reaches its edges', after[0] <= 0 && after[1] === before[1] && after[2] === before[2], `before ${before} after ${after}`);
 }
 
 /* ---------- display settings are reachable at every width, and from inside the showcase app ---------- */

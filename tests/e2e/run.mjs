@@ -73,6 +73,7 @@ const sharded = (to, label, file, shardsFor) => { for (const b of ENGINES) { con
 for (const b of ENGINES) checks.push([`many items (overflowing segmented / tab bar) · ${b}`, 'overflow.mjs', { BROWSER: b, OVF_PART: 'checks' }]);
 for (const b of ENGINES) motion.push([`strip browsing (wheel, pan, fling) · ${b}`, 'overflow.mjs', { BROWSER: b, OVF_PART: 'browse' }]);
 perEngine(checks, 'edge cases', 'edge.mjs');
+perEngine(checks, 'sidebar: sections, attached, header and footer', 'sidebar.mjs');
 perEngine(checks, 'axe', 'axe.mjs');
 sharded(checks, 'render matrix', 'matrix.mjs', (b) => (b === 'chromium' ? 3 : 2));
 /* English, the default language, whose labels run longer: in the full run (every engine, no suites picked, not

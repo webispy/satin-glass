@@ -33,7 +33,7 @@ body { background: var(--sg-bg); }
 .section { margin: 0 0 40px; }
 .section > h2 { margin: 0 0 4px; }
 .section > p { margin: 0 0 16px; }   /* as wide as the demos under it */
-.section > .demo + .demo, .section > .demo + .rules, .section > .rules + .demo { margin-top: 16px; }   /* panels never touch */
+.section > .demo + .demo, .section > .grid + .demo, .section > .demo + .rules, .section > .rules + .demo { margin-top: 16px; }   /* panels never touch */
 .demo { position: relative; border-radius: var(--sg-radius-xl); background: var(--sg-surface); box-shadow: inset 0 0 0 1px var(--sg-separator); padding: 28px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
 .demo--col { flex-direction: column; align-items: stretch; flex-wrap: nowrap; }   /* wrap would size the column to its widest child */
 .demo--center { justify-content: center; }
@@ -43,6 +43,11 @@ body { background: var(--sg-bg); }
 .demo:has(> .sg-list-section, > .sg-list, > .grid > .sg-stat) { background: var(--sg-bg-grouped); }
 .demo__caption { width: 100%; margin: 0; font-size: 13px; color: var(--sg-label-tertiary); }
 .grid { display: grid; gap: 16px; }
+/* the attached sidebar demo: the sidebar beside its page; on a phone the sidebar takes the width (it would be the
+   whole screen there, the page one tap away) */
+.docs-attached__bar { width: 248px; height: 100%; flex: none; }
+.docs-attached__page { flex: 1; min-width: 0; padding: 20px; background: var(--sg-bg); word-break: keep-all; }
+@media (max-width: 600px) { .docs-attached__bar { width: 100%; } .docs-attached__page { display: none; } }
 .grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -61,7 +66,7 @@ body { background: var(--sg-bg); }
 [data-sg-theme$="-hc"] .codeblock__head { border-bottom-color: var(--sg-separator-strong); }
 /* the language switch under the brand: it holds for every page; flex: none keeps the sidebar's column from
    squeezing it to nothing */
-.docs__lang { flex: none; margin: 2px 12px 8px; }
+.docs__lang { flex: none; margin: 4px 12px 0; }
 
 /* usage under a demo: its own card (the demo cards' radius, 22, so the two stack in one rhythm). Folded it is one
    header row; open, it holds two labelled panes — the preview on the card's surface (the example drawn as the demo

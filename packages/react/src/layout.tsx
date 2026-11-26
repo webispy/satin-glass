@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useRef, useState, type CSSProperties, type ElementType, type HTMLAttributes, type ReactNode } from 'react';
-import { cx, mergeRefs, useIsoLayoutEffect } from './utils';
+import { cx, mergeRefs, useIsoLayoutEffect, useStableId } from './utils';
 import { glassClass, useGlassLight } from './foundation';
 import { ChevronRightIcon } from './icons';
 
@@ -158,36 +158,132 @@ export function ScrollFade({ edge = 'top', className, style }: {
 }
 
 /* ================================================================================================ Sidebar */
-export const Sidebar = forwardRef<HTMLElement, HTMLAttributes<HTMLElement> & {
-  /** a floating glass panel; false puts the items straight on the page's background */
+/** content worth a slot or a line: 0 is content; null, booleans and '' are not (React draws nothing for them) */
+const shown = (n: ReactNode) => n !== undefined && n !== null && typeof n !== 'boolean' && n !== '';
+
+export type SidebarProps = HTMLAttributes<HTMLElement> & {
+  /** a floating glass panel; false puts the items straight on the page's background. Ignored when `attached` is set */
   glass?: boolean;
-}>(function Sidebar({ glass = true, className, children, ...rest }, ref) {
-  const lightRef = useGlassLight(glass);
+  /** flush with the screen's start edge as an opaque surface with a line on its inner edge (no glass, rounded
+      corners or shadow): for dense web screens, as `AppBar attached` is */
+  attached?: boolean;
+  /** pinned above the list, outside the navigation landmark: a brand, a search field */
+  header?: ReactNode;
+  /** pinned below the list under a separator line, outside the navigation landmark: an account, a "new" button or a form */
+  footer?: ReactNode;
+};
+export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({ glass = true, attached, header, footer, className, children, role, 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy, 'aria-describedby': ariaDescribedBy, ...rest }, ref) {
+  const isGlass = glass && !attached;
+  const lightRef = useGlassLight(isGlass);
+  const navRef = useRef<HTMLElement>(null);
+  /* the list fades at an edge with more behind it (CSS): this marks which edges, and the writing direction (which
+     moves the scrollbar's clear strip to the left in right-to-left layouts), read once a frame on scroll and whenever
+     the list or its children are added, removed or resized; never during render or in this effect (the observer's
+     first call runs after layout). A direction changed without a resize is picked up on the next scroll */
+  useEffect(() => {
+    const n = navRef.current;
+    if (!n || typeof ResizeObserver === 'undefined') return;
+    let raf = 0, bar = -1;
+    const read = () => {
+      raf = 0;
+      /* clamped: Safari's rubber band past the top (a negative scrollTop) is not progress */
+      const max = n.scrollHeight - n.clientHeight, y = Math.min(Math.max(n.scrollTop, 0), max);
+      n.toggleAttribute('data-sg-more-start', y > 0.5);
+      n.toggleAttribute('data-sg-more-end', y < max - 0.5);
+      n.toggleAttribute('data-sg-rtl', getComputedStyle(n).direction === 'rtl');
+      /* a scrollbar shown in its own gutter is as wide as the platform draws it: the strip kept clear of the fade takes
+         at least that width (an overlay scrollbar takes none and stays within the padding) */
+      const w = n.offsetWidth - n.clientWidth;
+      if (w !== bar) { bar = w; n.style.setProperty('--_bar', `${w}px`); }
+    };
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(read); };
+    const ro = new ResizeObserver(schedule);
+    const watch = () => { ro.disconnect(); ro.observe(n); for (const c of Array.from(n.children)) ro.observe(c); };
+    const mo = new MutationObserver(() => { watch(); schedule(); });
+    watch();
+    mo.observe(n, { childList: true });
+    n.addEventListener('scroll', schedule, { passive: true });
+    /* a row reached by keyboard keeps clear of the fades: scroll-padding does that where the browser's focus scrolling
+       honours it, and this (a no-op there) where it does not (Firefox) */
+    let focusRaf = 0;
+    const onFocus = (e: FocusEvent) => {
+      const t = e.target as HTMLElement;
+      if (t === n || !t.matches?.(':focus-visible')) return;
+      cancelAnimationFrame(focusRaf);
+      focusRaf = requestAnimationFrame(() => t.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+    };
+    n.addEventListener('focusin', onFocus);
+    return () => {
+      cancelAnimationFrame(raf); cancelAnimationFrame(focusRaf); ro.disconnect(); mo.disconnect();
+      n.removeEventListener('scroll', schedule); n.removeEventListener('focusin', onFocus);
+      for (const a of ['data-sg-more-start', 'data-sg-more-end', 'data-sg-rtl']) n.removeAttribute(a);
+      n.style.removeProperty('--_bar');
+    };
+  }, []);
+  /* the panel holds the slots and the landmark; its frame scrolls as a whole only when the slots leave the list less
+     than its minimum height (a short window, large text), so every row and control stays reachable. What names,
+     describes or gives a role to the landmark goes to the <nav> (a role on the panel would make a second landmark);
+     the ref, id, class, style and the rest stay on the panel */
   return (
-    <nav ref={mergeRefs(ref, lightRef)} className={cx('sg-sidebar', glass && glassClass('regular'), className)} {...rest}>
-      <div className="sg-sidebar__scroll">{children}</div>
-    </nav>
+    <div ref={mergeRefs(ref, lightRef)} className={cx('sg-sidebar', attached && 'sg-sidebar--attached', isGlass && glassClass('regular'), className)} {...rest}>
+      <div className="sg-sidebar__frame">
+        {shown(header) && <div className="sg-sidebar__header">{header}</div>}
+        <nav ref={navRef} className="sg-sidebar__scroll" role={role} aria-label={ariaLabel} aria-labelledby={ariaLabelledBy} aria-describedby={ariaDescribedBy}>{children}</nav>
+        {shown(footer) && <div className="sg-sidebar__footer">{footer}</div>}
+      </div>
+    </div>
   );
 });
-export function SidebarSection({ children }: { children: ReactNode }) {
-  return <div className="sg-sidebar__section">{children}</div>;
+
+export type SidebarSectionProps = HTMLAttributes<HTMLDivElement> & {
+  /** the small heading over the section's items; it names the group for assistive technology. Items that need no
+      heading go straight into the Sidebar */
+  header: ReactNode;
+  /** the section's items */
+  children?: ReactNode;
+};
+/** A group of items under a small heading. */
+export function SidebarSection({ header, children, className, ...rest }: SidebarSectionProps) {
+  const id = useStableId('sg-sidebar-section');
+  const named = shown(header);
+  return (
+    <div role="group" aria-labelledby={named ? id : undefined} className={cx('sg-sidebar__section', className)} {...rest}>
+      {named && <div id={id} className="sg-sidebar__section-header">{header}</div>}
+      {children}
+    </div>
+  );
 }
+
 export type SidebarItemProps = HTMLAttributes<HTMLElement> & {
-  /** an icon before the text */
+  /** an icon before the text. Icon sets hide their glyphs from assistive technology; an icon with a name of its own
+      (an img with alt) adds it to the item's name, as before */
   icon?: ReactNode;
   /** the current page: highlighted, and aria-current="page" */
   selected?: boolean;
-  /** a number at the end of the row, e.g. unread items */
+  /** a second, smaller line under the label; read as the item's description, not as part of its name */
+  subtitle?: ReactNode;
+  /** a number at the end of the row, e.g. unread items; read after the label, as it shows */
   count?: ReactNode;
   /** makes the item a link to this URL instead of a button */
   href?: string;
   onClick?: () => void;
 };
-export function SidebarItem({ icon, selected, count, href, children, className, ...rest }: SidebarItemProps) {
+export function SidebarItem({ icon, selected, subtitle, count, href, children, className, ...rest }: SidebarItemProps) {
   const Comp = (href ? 'a' : 'button') as ElementType;
+  const id = useStableId('sg-sidebar-item');
+  const hasSub = shown(subtitle);
+  /* the name is the visible label and count, from the content (so a voice command naming what shows finds it); the
+     subtitle stays out of it, hidden from the name and read as the description */
+  const a11y = hasSub ? { 'aria-describedby': cx(`${id}-sub`, rest['aria-describedby']) } : {};
   return (
-    <Comp className={cx('sg-sidebar__item', className)} aria-current={selected ? 'page' : undefined} {...(href ? { href } : { type: 'button' })} {...rest}>
-      {icon}<span>{children}</span>{count !== undefined && <span className="sg-sidebar__count">{count}</span>}
+    <Comp className={cx('sg-sidebar__item', className)} aria-current={selected ? 'page' : undefined} {...(href ? { href } : { type: 'button' })} {...rest} {...a11y}>
+      {shown(icon) && <span className="sg-sidebar__icon">{icon}</span>}
+      <span className="sg-sidebar__text">
+        <span className="sg-sidebar__label">{children}</span>
+        {hasSub && <span id={`${id}-sub`} className="sg-sidebar__subtitle" aria-hidden="true">{subtitle}</span>}
+      </span>
+      {/* the space keeps the label and count apart in the name; between flex items it takes no room */}
+      {shown(count) && <>{' '}<span className="sg-sidebar__count">{count}</span></>}
     </Comp>
   );
 }

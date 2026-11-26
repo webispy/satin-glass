@@ -2341,7 +2341,28 @@
     "type": "boolean",
     "required": false,
     "default": "true",
-    "description": "A floating glass panel; false puts the items straight on the page's background."
+    "description": "A floating glass panel; false puts the items straight on the page's background. Ignored when `attached` is set."
+   },
+   {
+    "name": "attached",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "Flush with the screen's start edge as an opaque surface with a line on its inner edge (no glass, rounded corners or shadow): for dense web screens, as `AppBar attached` is."
+   },
+   {
+    "name": "header",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Pinned above the list, outside the navigation landmark: a brand, a search field."
+   },
+   {
+    "name": "footer",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "Pinned below the list under a separator line, outside the navigation landmark: an account, a \"new\" button or a form."
    }
   ],
   "inherits": [
@@ -2355,18 +2376,21 @@
  "SidebarSection": {
   "kind": "component",
   "category": "navigation",
-  "description": "",
+  "description": "A group of items under a small heading.",
   "props": [
    {
-    "name": "children",
+    "name": "header",
     "type": "ReactNode",
     "required": true,
     "default": null,
-    "description": "The content.",
-    "common": true
+    "description": "The small heading over the section's items; it names the group for assistive technology. Items that need no heading go straight into the Sidebar."
    }
   ],
-  "inherits": []
+  "inherits": [
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes"
+  ]
  },
  "SidebarItem": {
   "kind": "component",
@@ -2378,7 +2402,7 @@
     "type": "ReactNode",
     "required": false,
     "default": null,
-    "description": "An icon before the text."
+    "description": "An icon before the text. Icon sets hide their glyphs from assistive technology; an icon with a name of its own (an img with alt) adds it to the item's name, as before."
    },
    {
     "name": "selected",
@@ -2388,11 +2412,18 @@
     "description": "The current page: highlighted, and aria-current=\"page\"."
    },
    {
+    "name": "subtitle",
+    "type": "ReactNode",
+    "required": false,
+    "default": null,
+    "description": "A second, smaller line under the label; read as the item's description, not as part of its name."
+   },
+   {
     "name": "count",
     "type": "ReactNode",
     "required": false,
     "default": null,
-    "description": "A number at the end of the row, e.g. unread items."
+    "description": "A number at the end of the row, e.g. unread items; read after the label, as it shows."
    },
    {
     "name": "href",
