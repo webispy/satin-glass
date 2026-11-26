@@ -259,6 +259,14 @@ describe.each<V>(['1.0', '0.9'])('formatDate in v%s', (v) => {
   });
 });
 
+describe('dateValue', () => {
+  it('gives a date-only value a midnight time, so every engine reads it (WebKit refuses "2025-12-28Z")', async () => {
+    const { dateValue } = await import('../src/functions');
+    expect(dateValue('2025-12-28')).toBe('2025-12-28T00:00:00');
+    for (const v of ['2025-12-28T19:00:00Z', '2025-12-28T19:00:00+09:00', '', 'soon', 42, null]) expect(dateValue(v)).toBe(v);
+  });
+});
+
 describe('keepQuoted', () => {
   it('leaves quoted runs as they are, writes \'\' as one quote, and formats the rest', async () => {
     const { keepQuoted } = await import('../src/functions');
