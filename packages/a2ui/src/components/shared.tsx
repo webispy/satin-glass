@@ -82,7 +82,7 @@ export type Rendered<P> = {
   context: { componentModel: { id: string; properties: Record<string, unknown> }; surfaceComponents?: {
     get(id: string): { type: string; properties?: Record<string, unknown>; onUpdated?: Subscribable<unknown> } | undefined; has(id: string): boolean;
     onCreated?: Subscribable<{ id: string }>; onDeleted?: Subscribable<string>;
-  } };
+  }; dataContext?: { resolvePath(path: string): string } };
   accessibilityRef?: (el: Element | null) => void;
 };
 
@@ -175,6 +175,28 @@ export const ids = (...list: (string | undefined)[]) => list.filter(Boolean).joi
  * focus events, which follow portals: opening a picker's panel is not leaving the field. A message the agent did not
  * write (web_core's own) is shown in the session's language.
  */
+/* the data paths a value or a check reads (`@path` in v1.0, `path` in v0.9.1), resolved in the component's data context
+   (a template's row) */
+export function pathsIn(v: unknown, out: string[] = []): string[] {
+  if (Array.isArray(v)) v.forEach((x) => pathsIn(x, out));
+  else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { if ((k === '@path' || k === 'path') && typeof x === 'string') out.push(x); else pathsIn(x, out); }
+  return out;
+}
+export const resolvePaths = (r: Rendered<unknown>, paths: string[]) => paths.map((p) => { try { return r.context.dataContext?.resolvePath(p) ?? p; } catch { return p; } });
+/* the fields of each drawn surface, so that a blocked button can show the errors of the fields its checks read. Per
+   drawing, not per surface ID: one surface may be drawn twice (a preview and its full view) */
+type FieldEntry = { paths: () => string[]; reveal: () => void; invalid: () => boolean; el: () => HTMLElement | null };
+const everywhere = new Set<FieldEntry>();
+export const FieldScopeContext = createContext<Set<FieldEntry>>(everywhere);
+export const newFieldScope = () => new Set<FieldEntry>();
+/** show the errors of the fields bound to these paths in this drawing; the invalid ones that take focus, in document
+    order */
+export function revealFields(scope: Set<FieldEntry>, paths: string[]): HTMLElement[] {
+  const hits = [...scope].filter((f) => f.paths().some((p) => paths.includes(p)));
+  hits.forEach((f) => f.reveal());
+  return hits.filter((f) => f.invalid()).map((f) => f.el()).filter((e): e is HTMLElement => !!e?.isConnected && !e.closest('[inert]'))
+    .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+}
 export function useFieldErrors(r: Rendered<unknown>, own: string[] = []) {
   const env = useEnv();
   const [left, setLeft] = useState(false);
@@ -184,7 +206,21 @@ export function useFieldErrors(r: Rendered<unknown>, own: string[] = []) {
   useEffect(() => () => clearTimeout(timer.current), []);
   const errors = [...(r.props.validationErrors ?? []).map((m) => checkText(String(m), env.words)), ...own].filter(Boolean);
   const shown = left && errors.length ? [...new Set(errors)].join(' ') : undefined;
+  /* registered in its surface: a press on a blocked button whose checks read this field's value shows its errors */
+  const scope = useContext(FieldScopeContext);
+  const host = useRef<HTMLElement | null>(null), latest = useRef({ r, errors });
+  latest.current = { r, errors };
+  useEffect(() => {
+    const entry: FieldEntry = {
+      paths: () => resolvePaths(latest.current.r, pathsIn(latest.current.r.context.componentModel.properties.value)),
+      reveal: () => setLeft(true), invalid: () => latest.current.errors.length > 0, el: () => host.current,
+    };
+    scope.add(entry);
+    return () => { scope.delete(entry); };
+  }, [scope]);
   return {
+    /** on the field's outermost element: where a blocked button's press moves the focus to */
+    host: (el: HTMLElement | null) => { host.current = el; },
     error: shown,
     /** on the field's outermost element (or the control itself): focus coming in */
     onFocus: () => { inside.current = true; },

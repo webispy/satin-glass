@@ -1,10 +1,10 @@
 /* Where an A2UI session's surfaces are drawn. Each sits in the app's tree, under the nearest ThemeProvider, so its
    controls and the dialogs they open follow the app's theme, language and settings. */
-import { useContext, useEffect, useMemo, useRef, useSyncExternalStore, type CSSProperties, type FocusEvent, type ReactNode, type RefObject } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type FocusEvent, type ReactNode, type RefObject } from 'react';
 import { A2uiSurface as Surface } from '@a2ui/react';
 import type { SurfaceModel } from '@a2ui/web_core';
 import { useLocale } from '@satin-glass/react';
-import { CardDepthContext, EnvContext, GroundContext, SurfaceIdContext, type Diagnostic, type Env, type Ground } from './components/shared';
+import { CardDepthContext, EnvContext, FieldScopeContext, GroundContext, newFieldScope, SurfaceIdContext, type Diagnostic, type Env, type Ground } from './components/shared';
 import { defaultAllowUrl, type AllowUrl } from './urls';
 import { wordsFor, type A2uiWords } from './words';
 import type { A2uiSession } from './session';
@@ -58,9 +58,10 @@ const useEnvOf = (a2ui: A2uiSession) => useSyncExternalStore(a2ui.subscribe, () 
 const wrapperStyle: CSSProperties = { minWidth: 0 };
 
 function Drawn({ s, focus }: { s: SurfaceModel; focus: ReturnType<typeof useFocusOwner> }) {
+  const [fields] = useState(newFieldScope);
   return (
     <div data-a2ui-surface={s.id} style={wrapperStyle} onFocus={focus.take(s)} onBlur={focus.give(s)}>
-      <SurfaceIdContext.Provider value={s.id}><Surface surface={s as never} /></SurfaceIdContext.Provider>
+      <SurfaceIdContext.Provider value={s.id}><FieldScopeContext.Provider value={fields}><Surface surface={s as never} /></FieldScopeContext.Provider></SurfaceIdContext.Provider>
     </div>
   );
 }

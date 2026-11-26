@@ -11,6 +11,8 @@ export type A2uiWords = {
   filter: string;
   /** under a button its checks disable, when the check gave no message */
   fix: string;
+  /** said after a press on a button its checks disable, with how many of the fields its checks read still need attention */
+  fieldsToFix: (n: number) => string;
   /** a choice list that the filter emptied */
   noMatches: string;
   /** a date and time field's two halves */
@@ -39,6 +41,7 @@ export type A2uiWords = {
 
 const en: A2uiWords = {
   surface: 'Agent content', close: 'Close', dialog: 'Details', filter: 'Filter options', fix: 'Check the fields above.',
+  fieldsToFix: (n) => (n === 1 ? '1 field needs attention.' : `${n} fields need attention.`),
   noMatches: 'No matching options', date: 'Date', time: 'Time', format: 'Check the format.', range: 'Choose a value within the allowed range.', wholeImage: 'View the whole image', scrollTable: 'Table, scrolls sideways',
   invalid: 'Check this value.', required: 'Fill this in.', number: 'Enter a number.', email: 'Enter an email address, such as user@example.com.',
   tooLong: 'This is too long to check.', unchecked: 'This value cannot be checked.',
@@ -47,6 +50,7 @@ const en: A2uiWords = {
 };
 const ko: A2uiWords = {
   surface: '에이전트 콘텐츠', close: '닫기', dialog: '상세 정보', filter: '항목 필터', fix: '위 항목을 확인하세요.',
+  fieldsToFix: (n) => `확인할 항목이 ${n}개 있습니다.`,
   noMatches: '일치하는 항목 없음', date: '날짜', time: '시간', format: '형식을 확인하세요.', range: '허용 범위 안의 값을 선택하세요.', wholeImage: '사진 전체 보기', scrollTable: '가로로 스크롤되는 표',
   invalid: '값을 확인하세요.', required: '입력하세요.', number: '숫자를 입력하세요.', email: '이메일 주소를 입력하세요(예: user@example.com).',
   tooLong: '확인하기에는 너무 깁니다.', unchecked: '이 값은 확인할 수 없습니다.',
