@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.6.0 — unreleased
+## 0.6.0 — 2026-11-26
 
-Parts for comparing many things on many measures — choosing a table's columns, filtering by several values, a filter bar whose controls line up, tabs that wrap, a scatter chart — shown together in a new model evaluation example; one language setting for the whole app, defaulting to `en-US`; and fixes to the data table's keyboard and selection, and to wheel scrolling over overflowing strips.
+New components and options for comparing items across several measures — a column chooser, a combobox that takes several values, a filter bar whose controls line up, tabs that wrap and a scatter chart — are shown together in a new model evaluation example. The theme gains a locale setting (`en-US` by default), and the sidebar gains named sections, a header and footer that stay in place, and an attached style for dense screens. Anchored panels and tooltips, tables and strips of tabs or segments follow a right-to-left layout, and reduced motion and reduced transparency are decided at the nearest boundary that sets them. Fixes run across overlays, charts, the data table and server rendering. Four changes break existing code: `SidebarSection`, `Sidebar`'s outer element, three internal helpers no longer exported, and the default locale (see below).
 
 ### Breaking changes
 - **`SidebarSection` wraps its items and takes its heading as `header`.** It was a heading line put between items, and an app that wrapped a list in it got the heading's type on every item (weight 650 against the current item's 620, so the selection read backwards, and a 16 px line height). It is now a group named by its header for assistive technology: `<SidebarSection header="Library"><SidebarItem …/>…</SidebarSection>`; `header` is required, so the type checker finds every section still written the old way. Migration: move the heading text to `header` and the items after it inside the section; items with no heading go straight into the `Sidebar`.

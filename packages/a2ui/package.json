@@ -1,6 +1,6 @@
 {
   "name": "@satin-glass/a2ui",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Renders A2UI agent surfaces (protocol v1.0 and v0.9.1, the basic catalog) with Satin Glass controls.",
   "keywords": [
