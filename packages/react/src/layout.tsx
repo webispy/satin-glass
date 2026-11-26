@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useRef, useState, type CSSProperties, type ElementType, type HTMLAttributes, type ReactNode } from 'react';
 import { cx, mergeRefs, useIsoLayoutEffect, useStableId } from './utils';
-import { glassClass, useGlassLight } from './foundation';
+import { useGlassLight } from './foundation';
+import { glassClass } from './glass-class';
 import { ChevronRightIcon } from './icons';
 
 /* ================================================================================================ List */

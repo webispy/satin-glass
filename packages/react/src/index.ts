@@ -4,7 +4,7 @@ export * from './layout';
 export * from './overlays';
 export * from './drawer';
 export * from './icons';
-export { useControllable, useImageTint, cx, type Tone } from './utils';
+export { useControllable, useImageTint, type Tone } from './utils';
 export * from './selection';
 export * from './select';
 export * from './combobox';

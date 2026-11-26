@@ -17,7 +17,8 @@
 import { useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { animate, drag, fade, prefersReducedMotion, pushLayer, trapFocus, timing, easing, motionFor } from '@satin-glass/core';
 import { cx, mergeRefs, useStableId } from './utils';
-import { Portal, glassClass, useGlassLight } from './foundation';
+import { Portal, useGlassLight } from './foundation';
+import { glassClass } from './glass-class';
 import { IconButton } from './controls';
 import { CloseIcon } from './icons';
 import { useOverlayLifecycle, useRelease, type CloseReason } from './overlay-hooks';

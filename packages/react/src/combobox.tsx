@@ -12,7 +12,8 @@
 import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import type { Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useStableId } from './utils';
-import { Portal, glassClass, useGlassLight } from './foundation';
+import { Portal, useGlassLight } from './foundation';
+import { glassClass } from './glass-class';
 import { useAnchored } from './overlay-hooks';
 import { CheckIcon, ChevronDownIcon, ClearIcon, CloseIcon } from './icons';
 import type { SelectGroup, SelectOption } from './select';

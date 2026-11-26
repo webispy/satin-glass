@@ -4,7 +4,8 @@ import {
 } from 'react';
 import { animate, bloomIn, bloomOut, drag, fade, focusables, longPress, place, prefersReducedMotion, pushLayer, tabFrom, trapFocus, type Placement, timing, easing } from '@satin-glass/core';
 import { cx, mergeRefs, useIsoLayoutEffect, usePresence, useStableId } from './utils';
-import { Portal, glassClass, useGlassLight } from './foundation';
+import { Portal, useGlassLight } from './foundation';
+import { glassClass } from './glass-class';
 import { Button } from './controls';
 import { CheckIcon, InfoIcon, SuccessIcon, AlertIcon } from './icons';
 

@@ -5,6 +5,7 @@ import {
 import { createPortal } from 'react-dom';
 import { attachLight, type MotionName } from '@satin-glass/core';
 import type { TextStyle } from '@satin-glass/tokens';
+import { glassClass } from './glass-class';
 import { cx, mergeRefs, useClient } from './utils';
 
 /* ================================================================================================ Theme */
@@ -203,9 +204,6 @@ export function useGlassLight(enabled = true, own?: boolean) {
   return setEl;
 }
 
-export function glassClass(variant: GlassVariant = 'regular', pressable?: boolean, level: GlassLevel = 'float') {
-  return cx('sg-glass', variant !== 'regular' && `sg-glass--${variant}`, level === 'overlay' && 'sg-glass--overlay', pressable && 'sg-pressable');
-}
 
 export const Glass = forwardRef(function Glass<E extends ElementType = 'div'>(
   { as, variant = 'regular', level = 'float', light, tint, radius, pressable, className, style, ...rest }: PolyProps<E, GlassOwnProps>,

@@ -11,7 +11,8 @@
 import { createContext, forwardRef, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { Spring, drag, loop, motionFor, motionOf, prefersReducedMotion, type Placement } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
-import { Portal, glassClass, useGlassLight } from './foundation';
+import { Portal, useGlassLight } from './foundation';
+import { glassClass } from './glass-class';
 import { Button } from './controls';
 import { useAnchored } from './overlay-hooks';
 import { messagesFor, useLocaleOf } from './messages';
