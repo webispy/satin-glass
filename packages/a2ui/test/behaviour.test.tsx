@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useEffect } from 'react';
 import { ThemeProvider } from '@satin-glass/react';
 import { A2uiProvider, A2uiSurfaces, useA2ui } from '../src';
@@ -458,5 +458,157 @@ describe.each<V>(['1.0', '0.9'])('edge images in v%s', (v) => {
     ]));
     expect((screen.getByAltText('No fit') as HTMLImageElement).style.objectFit).toBe('cover');
     expect((screen.getByAltText('Contain') as HTMLImageElement).style.objectFit).toBe('contain');
+  });
+});
+
+describe('isCropped', () => {
+  it('is true only when a covered box differs from the photo by more than 3 %', async () => {
+    const { isCropped } = await import('../src/components/media');
+    expect(isCropped({ w: 300, h: 300 }, { w: 300, h: 309 }, 'cover')).toBe(false);
+    expect(isCropped({ w: 300, h: 300 }, { w: 300, h: 310 }, 'cover')).toBe(true);
+    expect(isCropped({ w: 300, h: 300 }, { w: 300, h: 600 }, 'contain')).toBe(false);
+    expect(isCropped({ w: 0, h: 300 }, { w: 300, h: 600 }, 'cover')).toBe(false);
+    expect(isCropped({ w: 300, h: 300 }, { w: 0, h: 0 }, 'cover')).toBe(false);
+  });
+});
+
+describe.each<V>(['1.0', '0.9'])('the whole image in v%s', (v) => {
+  const poster = { id: 'pic', component: 'Image', url: 'https://example.com/p.jpg', description: 'Poster' };
+  const inCard = (first: Record<string, unknown>, ...more: Record<string, unknown>[]) => components(v, [
+    { id: 'root', component: 'Card', child: 'col' }, { id: 'col', component: 'Column', children: [first.id as string, 'txt'] },
+    first, { id: 'txt', component: 'Text', text: 'Title' }, ...more,
+  ]);
+  /* a 2:3 photo in a 4:5 box: jsdom has no layout, so the sizes are given */
+  const crop = (img: HTMLImageElement, natural = { w: 200, h: 300 }, box = { w: 320, h: 400 }) => {
+    Object.defineProperty(img, 'naturalWidth', { configurable: true, value: natural.w });
+    Object.defineProperty(img, 'naturalHeight', { configurable: true, value: natural.h });
+    Object.defineProperty(img, 'clientWidth', { configurable: true, value: box.w });
+    Object.defineProperty(img, 'clientHeight', { configurable: true, value: box.h });
+    fireEvent.load(img);
+  };
+  it('turns a cropped edge image into a button that opens the viewer', async () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), inCard(poster));
+    crop(screen.getByAltText('Poster') as HTMLImageElement);
+    const open = screen.getByRole('button', { name: 'View the whole image: Poster' });
+    expect(open.getAttribute('aria-haspopup')).toBe('dialog');
+    fireEvent.click(open);
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+  });
+  it('leaves an image that is not cropped as an image', () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), inCard(poster));
+    crop(screen.getByAltText('Poster') as HTMLImageElement, { w: 320, h: 400 });
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+  it('does not take the focus when an image becomes a button', () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), inCard(poster));
+    const before = document.activeElement;
+    crop(screen.getByAltText('Poster') as HTMLImageElement);
+    expect(document.activeElement).toBe(before);
+  });
+  it('leaves alone an image in a button', () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Card', child: 'b' }, { id: 'b', component: 'Button', child: 'col', action: { event: { name: 'go' } } },
+      { id: 'col', component: 'Column', children: ['pic', 'txt'] }, poster, { id: 'txt', component: 'Text', text: 'Title' },
+    ]));
+    const img = screen.queryByAltText('Poster') as HTMLImageElement | null;
+    if (img) crop(img);
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+  });
+  it('names the button in the session\'s language', () => {
+    const { feed } = mount({ allowUrl: () => true, locale: 'ko' });
+    feed(create(v), inCard(poster));
+    crop(screen.getByAltText('Poster') as HTMLImageElement);
+    expect(screen.getByRole('button', { name: '사진 전체 보기: Poster' })).toBeTruthy();
+  });
+  it('shows the library\'s focus ring: no inline reset, the focusable class', () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), inCard(poster));
+    crop(screen.getByAltText('Poster') as HTMLImageElement);
+    const open = screen.getByRole('button', { name: 'View the whole image: Poster' });
+    expect(open.classList.contains('sg-focusable')).toBe(true);
+    expect(open.getAttribute('style') ?? '').not.toMatch(/(^|;)\s*all\s*:/);
+  });
+  it('keeps the same picture when it becomes a button, so its size is still followed', () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), inCard(poster));
+    const before = screen.getByAltText('Poster');
+    crop(before as HTMLImageElement);
+    expect(screen.getByRole('button', { name: 'View the whole image: Poster' })).toBeTruthy();
+    expect(screen.getByAltText('Poster')).toBe(before);
+  });
+  it('caps the height from the measured width, without size containment', () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), inCard(poster));
+    const img = screen.getByAltText('Poster') as HTMLImageElement;
+    expect(img.style.maxHeight).toBe('400px');
+    crop(img, { w: 200, h: 300 }, { w: 200, h: 250 });
+    expect(img.style.maxHeight).toBe('250px');
+    crop(img, { w: 200, h: 300 }, { w: 360, h: 400 });
+    expect(img.style.maxHeight).toBe('400px');
+    expect((img.closest('[data-a2ui-edge]') as HTMLElement).style.containerType).toBe('');
+  });
+  it('is not a button inside the agent\'s button, even through a card', () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Button', child: 'card', action: { event: { name: 'go' } } },
+      { id: 'card', component: 'Card', child: 'col' }, { id: 'col', component: 'Column', children: ['pic', 'txt'] },
+      poster, { id: 'txt', component: 'Text', text: 'Title' },
+    ]));
+    crop(screen.getByAltText('Poster') as HTMLImageElement);
+    expect(screen.queryByRole('button', { name: /View the whole image/ })).toBeNull();
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+  });
+  it('is not a button inside a dialog\'s trigger, which stays the press target', () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Modal', trigger: 'card', content: 'more' },
+      { id: 'card', component: 'Card', child: 'col' }, { id: 'col', component: 'Column', children: ['pic', 'txt'] },
+      poster, { id: 'txt', component: 'Text', text: 'Title' }, { id: 'more', component: 'Text', text: 'More' },
+    ]));
+    crop(screen.getByAltText('Poster') as HTMLImageElement);
+    expect(screen.queryByRole('button', { name: /View the whole image/ })).toBeNull();
+  });
+  it('names the viewer by the picture and its close button in the session\'s language', async () => {
+    const { feed } = mount({ allowUrl: () => true, locale: 'ko' });
+    feed(create(v), inCard(poster));
+    crop(screen.getByAltText('Poster') as HTMLImageElement);
+    fireEvent.click(screen.getByRole('button', { name: '사진 전체 보기: Poster' }));
+    const viewer = await screen.findByRole('dialog', { name: 'Poster' });
+    expect(within(viewer).getByRole('button', { name: '닫기' })).toBeTruthy();
+  });
+  /* the window widened while the viewer was open, so the photo is no longer cropped: closing it still gives the focus
+     back to the button that opened it (the viewer returns it as it closes), which stays while it has the focus */
+  it('gives the focus back to its button when the photo stopped being cropped while the viewer was open', async () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), inCard(poster));
+    const img = screen.getByAltText('Poster') as HTMLImageElement;
+    crop(img);
+    const open = screen.getByRole('button', { name: 'View the whole image: Poster' });
+    open.focus();
+    fireEvent.click(open);
+    await screen.findByRole('dialog');
+    crop(img, { w: 320, h: 400 });
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'View the whole image: Poster' }));
+    fireEvent.blur(document.activeElement!);
+    expect(screen.queryByRole('button', { name: /View the whole image/ })).toBeNull();
+  });
+  /* the agent changes only the fit: cover crops, contain does not; the box keeps its size, so it is measured again */
+  it('measures again when the agent changes the fit', () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), inCard(poster));
+    const img = screen.getByAltText('Poster') as HTMLImageElement;
+    crop(img);
+    expect(screen.queryByRole('button', { name: /View the whole image/ })).not.toBeNull();
+    feed(inCard({ ...poster, fit: 'contain' }));
+    expect(screen.queryByRole('button', { name: /View the whole image/ })).toBeNull();
+    expect(img.getAttribute('aria-hidden')).toBeNull();
+    feed(inCard({ ...poster, fit: 'cover' }));
+    expect(screen.queryByRole('button', { name: /View the whole image/ })).not.toBeNull();
   });
 });

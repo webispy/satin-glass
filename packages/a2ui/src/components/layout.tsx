@@ -1,7 +1,7 @@
 /* Text, Row, Column, List, Card, Divider, Tabs and Modal of the A2UI basic catalog, drawn with Satin controls. */
 import { Fragment, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Button, Card, CardBody, Dialog, Divider, Stack, Tabs, Text } from '@satin-glass/react';
-import { agentA11y, CardDepthContext, EdgeContext, grow, InButtonContext, useEnv, useHostSink, type Child, type Edge, type Rendered } from './shared';
+import { agentA11y, CardDepthContext, EdgeContext, grow, InButtonContext, InTriggerContext, useEnv, useHostSink, type Child, type Edge, type Rendered } from './shared';
 
 /* ---- Text: the catalog's basic Markdown — headings, bold, italics, inline code, lists and paragraphs. No HTML, and
    links and images are their text only, as the catalog allows. v0.9.1 names headings with `variant` h1–h5. */
@@ -222,7 +222,7 @@ export function A2uiModal(r: Rendered<{ trigger?: string; content?: string }>) {
       <span ref={slot} onClick={() => setOpen(true)} {...(inert
         ? { role: 'button', tabIndex: 0, onKeyDown: openKey, className: 'sg-a2ui-trigger', style: { display: 'inline-flex', cursor: 'pointer', borderRadius: 'var(--sg-radius-sm)', maxWidth: '100%' } }
         : { style: { display: 'contents' } })}>
-        {props.trigger ? buildChild(props.trigger) : null}
+        <InTriggerContext.Provider value={true}>{props.trigger ? buildChild(props.trigger) : null}</InTriggerContext.Provider>
       </span>
       <Dialog open={open} onClose={() => setOpen(false)} title={label ?? env.words.dialog} role="dialog" dismissible
         actions={<Button variant="tinted" onClick={() => setOpen(false)}>{env.words.close}</Button>}>
