@@ -119,25 +119,77 @@
 .sg-tabbar--icons .sg-tabbar__divider { margin-block: 10px; }
 
 /* ============================================================================================
-   Sidebar (tablet / desktop): a glass column inset from the window edge
+   Sidebar (tablet / desktop): a glass column inset from the window edge (the app places it 12 px in,
+   --sg-size-bar-inset), or attached: an opaque surface flush with the start edge, for dense screens (8.4)
    ============================================================================================ */
 /* the glass clips; an inner element scrolls (a scrolling glass would let its pointer highlight grow the scroll area) */
 .sg-sidebar { display: flex; flex-direction: column; width: 260px; --_radius: var(--sg-radius-xl); }
-.sg-sidebar__scroll { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px; overflow: auto; overscroll-behavior: contain; border-radius: inherit; }
-.sg-sidebar__section { margin: 14px 10px 4px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--sg-label-tertiary); letter-spacing: 0.02em; }
+/* the frame scrolls only when the header and footer leave the list less than its minimum (a short window, large
+   text): the list keeps at least 120 px (or the whole frame when shorter), then everything scrolls together and every
+   row and control stays reachable */
+.sg-sidebar__frame { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; overscroll-behavior: contain; border-radius: inherit; }
+.sg-sidebar__scroll { --_pad: 10px; scroll-padding-block: 24px; flex: 1 1 auto; min-height: min(120px, 100%); display: flex; flex-direction: column; gap: 2px; padding: var(--_pad); overflow: auto; overscroll-behavior: contain; border-radius: inherit; }
+/* alone, the list fills the panel and keeps its scrolling to itself; beside a header or footer it hands a scroll that
+   reaches its end on to the frame (so a wheel or a finger over the list brings the footer into view in a short window),
+   and its corners meet the slots square: the frame rounds the panel's */
+.sg-sidebar__frame > .sg-sidebar__scroll:only-child { min-height: 0; }
+.sg-sidebar__frame > .sg-sidebar__scroll:not(:only-child) { overscroll-behavior: auto; border-radius: 0; }
+/* a list with more above or below fades 24 px at that edge, as the tab strip does sideways (scroll edges are a gradient
+   only, design language 1). A second, solid layer keeps the strip at the inline end clear: the list's own padding,
+   which no item reaches and where it draws its scrollbar, so the scrollbar does not fade with the rows (as wide as the
+   scrollbar's own gutter where it has one, --_bar). The list marks the edges, its direction and that width itself
+   (Sidebar). scroll-padding keeps a row that Tab or scrollIntoView brings in clear of the 24 px fade */
+.sg-sidebar__scroll[data-sg-more-start], .sg-sidebar__scroll[data-sg-more-end] {
+  --_fade-s: 0px; --_fade-e: 0px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent), linear-gradient(#000, #000);
+          mask-image: linear-gradient(to bottom, transparent, #000 var(--_fade-s), #000 calc(100% - var(--_fade-e)), transparent), linear-gradient(#000, #000);
+  -webkit-mask-size: 100% 100%, max(var(--_pad), var(--_bar, 0px)) 100%; mask-size: 100% 100%, max(var(--_pad), var(--_bar, 0px)) 100%;
+  -webkit-mask-position: 0 0, 100% 0; mask-position: 0 0, 100% 0;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+.sg-sidebar__scroll[data-sg-rtl] { -webkit-mask-position: 0 0, 0 0; mask-position: 0 0, 0 0; }
+.sg-sidebar__scroll[data-sg-more-start] { --_fade-s: 24px; }
+.sg-sidebar__scroll[data-sg-more-end] { --_fade-e: 24px; }
+.sg-sidebar__header, .sg-sidebar__footer { flex: none; display: flex; flex-direction: column; gap: 8px; }
+.sg-sidebar__header { padding: 10px 10px 8px; }   /* 8 px below its last control, so the list's top fade does not start against it */
+.sg-sidebar__footer { padding: 10px; border-top: 1px solid var(--sg-separator); }
+.sg-sidebar--attached { --_radius: 0px; border-radius: 0; background: var(--sg-surface); color: var(--sg-label); border-inline-end: 1px solid var(--sg-separator); }
+[data-sg-theme$="-hc"] :is(.sg-sidebar--attached, .sg-sidebar__footer) { border-color: var(--sg-separator-strong); }
+.sg-sidebar__section { flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; }
+.sg-sidebar__section-header { margin: 14px 10px 4px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--sg-label-tertiary); letter-spacing: 0.02em; }
+/* the item sets its own type (the item text role): nothing around it changes its weight or line height */
 .sg-sidebar__item {
-  appearance: none; border: 0; margin: 0; font: inherit; width: 100%; text-align: left;
+  appearance: none; border: 0; margin: 0; font: inherit; width: 100%; flex-shrink: 0; text-align: start;
   display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 8px 10px; border-radius: var(--sg-radius-md);
-  background: none; color: var(--sg-label); font-size: 15px; cursor: pointer; text-decoration: none;
+  background: none; color: var(--sg-label); cursor: pointer; text-decoration: none;
+  font-size: var(--sg-text-item-size); line-height: var(--sg-text-item-line); font-weight: var(--sg-text-item-weight); letter-spacing: var(--sg-text-item-tracking);
   transition: background-color var(--sg-duration-instant) ease;
 }
+.sg-sidebar__icon { display: flex; flex: none; }
+.sg-sidebar__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sg-sidebar__label, .sg-sidebar__subtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-sidebar__subtitle { font-size: var(--sg-text-footnote-size); line-height: var(--sg-text-footnote-line); font-weight: var(--sg-text-footnote-weight); letter-spacing: var(--sg-text-footnote-tracking); color: var(--sg-label-secondary); }
 @media (hover: hover) { .sg-sidebar__item:hover { background: var(--sg-fill); } }
 /* the press is a light fill, and none on the current item: a tap went grey, then blue, then the old item went out */
 .sg-sidebar__item:active:not([aria-current="page"]) { background: var(--sg-fill); }
 .sg-sidebar__item[aria-current="page"] { background: var(--sg-glass-selection); color: var(--sg-accent-text); font-weight: 620; box-shadow: var(--sg-selection-outline); }
+/* on the opaque attached surface the glass tint is too faint for the accent text (4.2 : 1): the surface's own tint pair,
+   checked for contrast; high contrast keeps its outline on no tint, as on glass */
+:where(.sg-sidebar--attached) .sg-sidebar__item[aria-current="page"] { background: var(--sg-accent-soft); color: var(--sg-accent-on-soft); }
+:where([data-sg-theme$="-hc"] .sg-sidebar--attached) .sg-sidebar__item[aria-current="page"] { background: var(--sg-glass-selection); }
+/* (both by :where, at the base rule's weight, so the forced-colours rule below still wins) */
 .sg-sidebar__item:focus-visible { outline: var(--sg-focus-outline); outline-offset: calc(-1 * var(--sg-focus-width)); }
 .sg-sidebar__item svg { width: 18px; height: 18px; flex: none; }
-.sg-sidebar__count { margin-left: auto; font-size: 13px; color: var(--sg-label-tertiary); font-variant-numeric: tabular-nums; }
+.sg-sidebar__count { flex: none; margin-inline-start: auto; font-size: 13px; color: var(--sg-label-tertiary); font-variant-numeric: tabular-nums; }
+/* forced colours drop the tint and the box-shadow outline: the current item takes the system's selection colours,
+   and its focus outline is drawn in their text colour so it shows on the fill */
+@media (forced-colors: active) {
+  .sg-sidebar__item[aria-current="page"] { background: Highlight; color: HighlightText; box-shadow: none; forced-color-adjust: none; }
+  .sg-sidebar__item[aria-current="page"]:focus-visible { outline-color: HighlightText; }
+  /* no fade in forced colours: the system colours stay whole, outlines included */
+  .sg-sidebar__scroll[data-sg-more-start], .sg-sidebar__scroll[data-sg-more-end] { -webkit-mask-image: none; mask-image: none; }
+  .sg-sidebar__item[aria-current="page"] :is(.sg-sidebar__subtitle, .sg-sidebar__count) { color: HighlightText; }
+}
 
 /* ============================================================================================
    Breadcrumbs: a quiet trail; the current page ends it in full-strength text. Levels truncate rather than wrap.

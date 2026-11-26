@@ -8,7 +8,7 @@
 This document records the values the design language settles on and why; it is written in Korean. In brief:
 
 - **Principles (§0)**, in priority order: *satin glass* (a grained translucency that scatters light, never a refracting lens); *two lights* (a fixed light from above gives form and a soft sheen follows the pointer); *surface tension* (a selection stretches towards where it is going and sticks when it arrives, never leaving its rail); *touch* (what is pressed sinks and gathers light; what you hold or have chosen is raised, and the track it moves along is a groove); *small, rare delight* (one visible movement per action, nothing added to repeated actions); *smooth for everyone* (high contrast, reduced transparency and reduced motion are first-class, focus is always visible, 60 fps holds). The last one is a floor that is never traded away.
-- **Decisions (§1)**: blur plus grain on glass, no refraction; fixed radii by role; bars float 12 px from the screen edge; an OKLCH palette of 11 hues × 11 steps with an iris accent; Pretendard as the recommended font; a minimal built-in icon set; selections that move like a drop; popups that bloom from their anchor; five named springs.
+- **Decisions (§1)**: blur plus grain on glass, no refraction; fixed radii by role; floating bars sit 12 px from the screen edge (dense screens may attach the top bar and the sidebar as opaque panels instead); an OKLCH palette of 11 hues × 11 steps with an iris accent; Pretendard as the recommended font; a minimal built-in icon set; selections that move like a drop; popups that bloom from their anchor; five named springs.
 - **Tokens (§2)**: colours are checked for WCAG contrast at build time (7:1 body text, 4.5:1 secondary and accent text; 7:1 for all three in high contrast); spacing on a 4 px scale; text roles for controls; springs as CSS `linear()` easings with matching JS springs.
 - **Performance (§3)**: `transform` and `opacity` animate freely, paint-only properties only in short state changes, anything else only from one checked allowlist; values come from tokens. A blur budget: no blurred glass nested in blurred glass, at most three layers of blur at any point and six large glass surfaces on a screen. Finished animations release their compositing layers.
 - **Accessibility (§4)**: everything works from the keyboard; overlays trap and return focus; the language is set once in the theme and marked with `lang`, portals included; system settings are followed, and all but forced colours can also be set in the app (useful over remote desktops).
@@ -37,7 +37,7 @@ This document records the values the design language settles on and why; it is w
 |---|---|---|
 | 재질 | **새틴 유리**: 블러 + 채움 위의 미세한 결(`--sg-glass-grain`, 고대비에서는 없음) + 빛 쪽만 밝은 그라디언트 테두리 + 안쪽 깊이 그라디언트 + 포인터를 따르는 **새틴 광택**(점이나 띠가 아니라 유리 위로 넓고 옅게 번지는 빛 — 반짝이지 않고 은은하게) + 배경색이 스며드는 틴트(선택). 굴절·렌즈 효과는 쓰지 않는다 | 이름 그대로의 재질(빛을 흩뜨리는 산 부식 유리), 모든 브라우저에서 같은 모습, 요소별 이미지 불필요. 결은 정적인 배경이라 성능 비용이 없다(CPU 4배 감속에서 프레임 드롭 0) |
 | 모양 | **고정 반경**: 컨트롤 12 · 카드 16 · 바/패널 22 · 시트 28. 캡슐은 칩, 토글, 배지만 | 정보 밀도, 크기마다 일정한 모서리 |
-| 바 | 화면 끝에서 12px 띄운 떠 있는 바, 반경 22 | 바와 내용이 겹쳐도 화면 끝과 구분됨 |
+| 바 | 화면 끝에서 12px 띄운 떠 있는 바, 반경 22. 정보가 많은 화면에서는 앱 바와 사이드바를 화면에 붙은 불투명 바(반경 0)로 둔다(8.4) | 바와 내용이 겹쳐도 화면 끝과 구분됨 |
 | 색 | **OKLCH 자체 팔레트** 11색 × 11단계. 강조색 iris(보라 쪽 파랑) | 대비를 예측할 수 있는 단계 |
 | 글꼴 | **Pretendard** → 시스템. 본문 16px | 재배포 가능, 한글 품질 |
 | 아이콘 | 라이브러리는 자체로 그린 최소 글리프만 포함. 앱은 Lucide 등을 쓴다 | 라이브러리를 가볍게. 아이콘 세트는 앱이 고른다 |
@@ -95,7 +95,7 @@ This document records the values the design language settles on and why; it is w
 3. **포인터 광택:** 포인터 이벤트는 창 하나에서만 받고 rAF로 묶는다. 요소 위치는 스크롤·크기 변화가 있을 때만 다시 잰다. 하이라이트는 합성 레이어의 transform으로만 움직인다.
 4. **제스처 상태:** 끌기·눌림 상태는 React 상태나 data 속성에 둔다. 클래스에 두면 다시 그릴 때 지워진다.
 5. **유리 표면은 스스로 스크롤하지 않는다.**
-   - **규칙:** 유리는 항상 바깥에서 잘라내고(`overflow: hidden`), 스크롤은 안쪽 요소가 맡는다. 사이드바는 `.sg-sidebar__scroll`, 대화상자는 `.sg-dialog__scroll`, 메뉴는 `[data-sg-content]`가 스크롤한다.
+   - **규칙:** 유리는 항상 바깥에서 잘라내고(`overflow: hidden`), 스크롤은 안쪽 요소가 맡는다. 사이드바는 `.sg-sidebar__scroll`(헤더·푸터가 목록을 120px보다 작게 남기면 그 바깥의 `.sg-sidebar__frame`), 대화상자는 `.sg-dialog__scroll`, 메뉴는 `[data-sg-content]`가 스크롤한다.
    - **이유:** 포인터 하이라이트는 유리 안에 절대 위치로 놓인 요소다. 유리가 스스로 스크롤하면, 하이라이트가 가장자리로 갈 때 스크롤 영역이 커져서 스크롤바가 생긴다.
    - **검사:** e2e가 모든 문서 페이지에서 스크롤하는 유리 표면이 없는지 확인한다.
 6. **앵커형 패널은 앵커에 붙는다.**
@@ -198,7 +198,7 @@ This document records the values the design language settles on and why; it is w
 | 드로어 (0.5) | 열기 / 끌기 / 닫기 | 가장자리에서 smooth의 속도에 gentle의 감쇠로 들어옴(덮개 4층; 넓은 패널이 시트의 gentle로는 느려 답답했고, 가장자리에 붙는 패널이 넘치면 그쪽에 틈이 보인다). 위·아래 서랍(`side="top" | "bottom"`, 콘솔·로그 같은 도구 패널)은 그 가장자리에서 들어옴 / 가장자리 쪽으로 1:1로 따라가고 반대쪽은 버팀(위·아래 서랍은 머리 부분을 가장자리 쪽으로 끎 — 본문은 스크롤), 끄는 축 길이의 30%나 900px/s를 넘으면 닫히고 아니면 smooth로 제자리 / 시트처럼 짧은 ease-in으로 나감(끌다 놓은 자리에서). 동작 줄이기: 페이드, 끌기 없음 |
 | 내비게이션 스택 | 넣기 / 빼기 / 밀어서 뒤로 | 새 페이지가 끝 쪽에서 smooth로 들어오고 아래 페이지는 0.3만큼 밀리며 그늘이 짐 / 거꾸로 / 시작 쪽 가장자리 28px에서 손가락을 1:1로 따라가고, 40%나 빠른 튕김(16px 이상)이면 빠지고 아니면 smooth로 제자리. 오른쪽에서 왼쪽으로 쓰는 화면에서는 방향이 거울처럼 바뀜. 동작 줄이기: 페이드(180·160ms) |
 | 툴팁 | 나타남 / 사라짐 | 앵커 쪽으로 4px 다가오며 나타남(snappy, 500ms 기다림, 이어서 열면 바로) / 짧게 흐려짐(110ms). 다음 툴팁이 이어받으면 바로 사라짐 |
-| 사이드바 | 현재 항목 | 틴트가 제자리에서 바뀜(8.2). 누르면 채움만, 현재 항목은 그대로 |
+| 사이드바 | 현재 항목 | 틴트가 제자리에서 바뀜(8.2). 누르면 채움만, 현재 항목은 그대로. 떠 있는 사이드바와 붙은 사이드바가 같다 |
 | 페이지 이동 | 현재 페이지 / 누름 | 강조색 구슬이 색과 그림자째 짧게 옮겨 감(140ms) — 페이지가 바뀌면 내용이 통째로 바뀌므로 구슬이 미끄러지지 않음 / 0.965배. 좁은 화면의 '3 / 20'은 글자만 바뀜 |
 | 선택 목록 | 고름 | 체크가 0.5배에서 커지며 나타남(snappy). 동작 줄이기: 페이드만 |
 | 칩 | 켜기·끄기 / 누름 | 옅은 강조 틴트로 색만 바뀜(140ms) / 0.965배 |
@@ -301,7 +301,7 @@ This document records the values the design language settles on and why; it is w
 | 4 | 덮개 | 화면 전체(떠 있는 유리까지)를 어둡게 덮은 위에 올라오는 유리, `--sg-shadow-lg` | `.sg-glass--overlay` (`level="overlay"`) | 시트, 대화상자, 액션 시트. 미디어 뷰어는 화면 역할이라 자체 배경 |
 
 - **부위를 정하는 규칙:** 입력하거나 고른 값이 들어가는 자리와 값이 움직이는 길은 홈(−1), 누르면 일을 하는 버튼(메뉴를 여는 버튼, 강조색 버튼 포함 — 강조는 색이 말한다)은 평평한 채움, 볼록(2)은 손잡이와 지금 고른 것을 표시하는 것에만 쓴다. 표의 행에 붙는 인라인 셀렉트(바탕 없음)와 필터 셀렉트(윤곽선 필)는 폼의 칸이 아니라 행·막대 안의 작은 선택기라 예외다.
-- **표에 없는 부위:** 드로어는 덮개(4층, 진한 유리). 아래에서 올라와 내용을 읽거나 채우는 것(내용 높이, 손잡이)은 시트, 행동 목록은 액션 시트다. 드로어의 위·아래는 화면 폭 전체에 높이를 정한 도구 패널(콘솔, 로그)이다. 내비게이션 스택의 페이지는 화면 역할이라 불투명한 묶음 바탕이고, 위에 쌓인 페이지는 들어오는 쪽 가장자리에 선과 그림자(`--sg-shadow-edge`, 오른쪽에서 왼쪽으로 쓰는 화면은 `--sg-shadow-edge-end`), 아래 페이지에는 그늘. 툴팁은 떠 있지만 작고 잠깐이라 블러 없는 불투명 카드(`--sg-bg-elevated` + `--sg-shadow-md`). 컨텍스트 메뉴의 미리보기는 들어 올린 표면(`--sg-shadow-lg`). 유리 버튼 묶음과 페이지 점은 떠 있는 유리(3층). 아코디언은 표면 없이 바탕(0층) 위의 구분선 — 제목 줄은 두 구분선 사이를 끝까지 네모로 칠한다(목록·표의 줄처럼, 글자는 12 안쪽; 곧은 선 사이에 둥근 칠을 끼우면 모서리마다 틈이 생긴다). 시트 손잡이, 목록·대화상자의 아이콘 타일, 칩, 아바타는 평평하다.
+- **표에 없는 부위:** 붙은 바(`AppBar attached`, `Sidebar attached`)는 유리가 아니라 불투명 면(`--sg-surface`)이고, 내용과 만나는 가장자리에 구분선 하나만 있다(붙은 사이드바는 고대비에서 진한 선). 그림자와 포인터 광택은 없다. 드로어는 덮개(4층, 진한 유리). 아래에서 올라와 내용을 읽거나 채우는 것(내용 높이, 손잡이)은 시트, 행동 목록은 액션 시트다. 드로어의 위·아래는 화면 폭 전체에 높이를 정한 도구 패널(콘솔, 로그)이다. 내비게이션 스택의 페이지는 화면 역할이라 불투명한 묶음 바탕이고, 위에 쌓인 페이지는 들어오는 쪽 가장자리에 선과 그림자(`--sg-shadow-edge`, 오른쪽에서 왼쪽으로 쓰는 화면은 `--sg-shadow-edge-end`), 아래 페이지에는 그늘. 툴팁은 떠 있지만 작고 잠깐이라 블러 없는 불투명 카드(`--sg-bg-elevated` + `--sg-shadow-md`). 컨텍스트 메뉴의 미리보기는 들어 올린 표면(`--sg-shadow-lg`). 유리 버튼 묶음과 페이지 점은 떠 있는 유리(3층). 아코디언은 표면 없이 바탕(0층) 위의 구분선 — 제목 줄은 두 구분선 사이를 끝까지 네모로 칠한다(목록·표의 줄처럼, 글자는 12 안쪽; 곧은 선 사이에 둥근 칠을 끼우면 모서리마다 틈이 생긴다). 시트 손잡이, 목록·대화상자의 아이콘 타일, 칩, 아바타는 평평하다.
 - **홈 모양은 고를 수 있다:** `createTheme({ grooves: 'flat' })`이면 홈(−1)이 같은 자리에서 안쪽 그늘 없는 평평한 틴트(각 테마의 채움)가 된다. 바뀌는 것은 홈뿐이고 손잡이·유리·그림자는 그대로다. 안쪽 테마는 따로 정하지 않으면 바깥 설정을 물려받고, 고대비에서는 어느 쪽이든 홈의 1px 윤곽선을 유지한다(가는 레일의 3 : 1 경계).
 - **표면은 마우스를 올려도 표면이다:** 누를 수 있는 카드는 마우스를 올리면 살짝 밝아질 뿐 떠오르지 않는다(층이 바뀌는 것은 덮개가 열릴 때뿐). 배너·테두리 카드도 표면이라 다크의 윗변 빛과 고대비의 윤곽선을 받는다.
 - **다크에서는 빛으로 높이를 말한다:** 어두운 바탕에서는 그림자가 거의 보이지 않으므로, 높이 있는 것일수록 밝고(바탕 → 표면 → 볼록 → 유리), 올라온 것(1·3·4층, 그림자 토큰)은 윗변에 고정된 빛을 받은 가는 선(`--sg-lit-edge`)이 있다. 홈은 반대로 주변보다 어둡다. 라이트에서는 `--sg-lit-edge`가 없고 그림자가 높이를 말한다.
@@ -315,7 +315,7 @@ This document records the values the design language settles on and why; it is w
 | 역할 | 표시 | 예 | 고대비 |
 |---|---|---|---|
 | 길 위를 움직이는 선택 | 홈 위의 볼록 칸(물방울로 이동) | 세그먼트, 휠 렌즈 | 1.5px 윤곽선(`--sg-depth-raised`가 바뀜) |
-| 유리 바 안의 선택 | 평평한 틴트. 하나로 이어진 레일(탭 바)에서는 물방울로 이동하고, 머리글과 스크롤로 끊기는 목록(사이드바)에서는 제자리에서 바뀜 | 탭 바, 사이드바 | 틴트 대신 윤곽선 |
+| 유리 바 안의 선택 | 평평한 틴트. 하나로 이어진 레일(탭 바)에서는 물방울로 이동하고, 머리글과 스크롤로 끊기는 목록(사이드바)에서는 제자리에서 바뀜 | 탭 바, 사이드바(붙은 사이드바는 불투명 면이라 표면용 강조 틴트 `--sg-accent-soft`) | 틴트 대신 윤곽선 |
 | 고른 값 | 강조색 구슬 | 날짜, 월·연도 칸, 요일, 기간의 양 끝, 페이지 이동의 현재 페이지 | 강조색 채움 그대로(대비 검사 통과 색) |
 | 범위 | 홈 안의 옅은 강조 틴트 | 기간의 사이 날짜 | 홈 윤곽선 |
 | 줄을 넘는 구역 선택 | 볼록한 면(제자리에서 바뀜 — 물방울이 줄을 넘어 다닐 수 없다) | 필 탭 | 1.5px 윤곽선 |
@@ -347,7 +347,7 @@ This document records the values the design language settles on and why; it is w
 떠 있는 유리는 이 라이브러리의 재질을 보여 주는 가장 강한 수단이라, 한 화면에 몰아 두면 재질보다 특정 플랫폼의 구성이 먼저 읽힌다. 그래서 기본 구성은 아래와 같다.
 
 - **떠 있는 바는 한 화면에 하나:** 아래 탭 바가 떠 있으면 위 바는 화면에 붙은 불투명 바(`AppBar attached`), 위 바가 떠 있으면 아래에는 떠 있는 바를 두지 않는다.
-- **데스크톱·정보가 많은 화면:** 위 바는 붙은 불투명 바, 내용은 불투명 카드(표면 1층), 유리는 떠오르는 것(메뉴·팝오버·셀렉트·날짜 패널·토스트)과 덮개(시트·대화상자)에만 쓴다. 문서의 '대시보드' 예제가 이 구성이다.
+- **데스크톱·정보가 많은 화면:** 위 바는 붙은 불투명 바, 내용은 불투명 카드(표면 1층), 유리는 떠오르는 것(메뉴·팝오버·셀렉트·날짜 패널·토스트)과 덮개(시트·대화상자)에만 쓴다. 문서의 '대시보드' 예제가 이 구성이다. 사이드바가 있으면 사이드바도 화면 가장자리에 붙은 불투명 면(`Sidebar attached`)으로 둔다(문서의 내비게이션 페이지 예시).
 - **화면 외곽에 맞추지 않음:** 떠 있는 바는 화면 모서리와 같은 중심을 맞추지 않는다(9장 6번).
 - **큰 제목과 물방울 선택 이동은 쓸 수 있는 패턴이지 기본 화면의 조합이 아니다:** 대표 예제(쇼케이스)는 떠 있는 탭 바 하나에 붙은 위 바를 쓴다.
 
@@ -360,6 +360,7 @@ This document records the values the design language settles on and why; it is w
 - **휠:** 열 뒤에는 바탕을 두지 않고(놓인 표면 그대로), 렌즈만 볼록(2) — 세그먼트의 고른 칸과 같은 표면(`--sg-depth-raised-bg`: 라이트는 표면색, 다크는 한 단계 밝은 채움)이다. 줄이 렌즈 아래로 지나가고, 렌즈 안의 줄은 제 색에 조금 크게(1.14배), 멀어지는 줄은 작아지고 옅어진다. 멈출 때는 스크롤 스냅 대신 성격의 스프링이 가까운 줄을 렌즈로 끌어당긴다.
 - **휠 렌즈의 모션(스위치와 같은 언어):** 손으로 돌리는 동안 줄이 가는 쪽 반대 가장자리가 들어와 렌즈가 그쪽으로 오므라들고(폭은 살짝 넓어짐), 줄이 렌즈를 지날 때마다 그 가장자리가 조금 더 눌린다(틱). 줄이 렌즈에 도착하면(도착 40ms 뒤, 손을 떼고 줄이 멈추지 않으면 늦어도 400ms 뒤) 그 가장자리가 pop 스프링으로 튀어나왔다가 제자리로. 한 칸만 돌려도 같은 동작(최소 110ms 유지). 입력이 아니라 줄의 실제 움직임에 답한다 — 끝에서 더 밀어 줄이 안 움직이면 렌즈도 가만히 있고, 마지막 줄을 끌어당기는 스프링은 오므라듦을 이어 줄 뿐 새로 시작하지 않는다. 차분(squash 0)·동작 줄이기에서는 없음.
 
+- **사이드바(0.6):** 항목은 섹션(`SidebarSection`)으로 묶고, 섹션의 작은 머리글이 그 묶음의 이름이 된다(스크린 리더는 묶음 이름으로 읽음). 항목의 글자는 항목 글자 역할(15/20)을 스스로 정해서, 감싼 요소가 굵기나 줄 높이를 바꾸지 못한다. 라벨과 둘째 줄(부제)은 각각 한 줄이고 넘치면 말줄임표다 — 접근성 이름은 보이는 대로 라벨과 개수이고, 부제는 이름이 아니라 설명으로 읽힌다. 사이드바의 헤더(header)와 푸터(footer)는 목록을 스크롤해도 제자리에 있고, 내비게이션 랜드마크 밖에 둔다(검색란·새 항목 폼이 내비게이션으로 읽히지 않게). 푸터는 구분선 아래에 있다. 목록은 위나 아래에 가려진 내용이 있으면 그쪽 가장자리 24px을 페이드한다(탭이 넘칠 때의 가로 페이드와 같은 방식, 1장 '스크롤 가장자리'). 헤더 바로 아래에서 항목이 뚝 잘리지 않게 하려는 것이고, 헤더는 마지막 컨트롤 아래 8px을 비운다. 스크롤바가 그려지는 끝 쪽 10px 띠(목록의 패딩이라 항목이 닿지 않는 자리, 오른쪽에서 왼쪽으로 쓰는 화면에서는 왼쪽)는 페이드에서 빼서, 스크롤바 끝이 같이 옅어지지 않게 한다. 스크롤바가 자기 자리를 따로 차지해(늘 보이는 스크롤바) 10px보다 넓으면 띠도 그 폭에 맞춘다. 키보드로 포커스를 옮긴 항목은 페이드 바깥에 멈추고(`scroll-padding`), 강제 색상 모드에서는 페이드하지 않는다(시스템 색과 윤곽선을 그대로 둔다). 창이 낮거나 글자가 커서 목록 높이가 120px보다 작아지면 패널 전체가 스크롤되어, 스크롤해서 모든 항목과 컨트롤까지 갈 수 있다. 강제 색상 모드에서는 틴트와 그림자 윤곽선이 사라지므로 현재 항목을 시스템 선택 색(`Highlight`)으로 칠한다.
 - **컨트롤 높이(0.6):** 나란히 놓이는 컨트롤은 크기 토큰 하나를 쓴다 — `--sg-size-control-sm` 32 · `-md` 40 · `-lg` 48. 버튼·칩·필터 셀렉트·세그먼트(`sm` 32, 기본 40)·스테퍼(40)·검색란(40)이 여기에 맞아, 같은 크기끼리 한 줄에 두면 높이가 같다. 폼의 입력란(44)은 이름표와 함께 세로로 쌓이는 칸이라 터치 높이를 따로 쓰고, 스위치는 토글이라 제 크기를 쓴다(가운데 정렬).
 - **표 세로줄(0.6):** 기본은 행 구분선만 있다(고정 열의 끝만 세로줄). 열이 많아 따라 읽기 어려우면 `columnLines`로 그룹이 바뀌는 곳(`'groups'`)이나 모든 열 사이(`'all'`)에 긋는다. 행 구분선과 같은 색·굵기(고대비는 진한 선)로 머리글부터 본문까지 이어지고, 그룹 안의 줄은 그룹 이름을 가르지 않게 아래 머리글부터 시작한다. 보이는 열 사이에서 찾으므로 열을 숨기면 줄이 그룹을 따라 옮겨진다.
 - **막대 차트의 모양(0.6):** 막대는 바닥선에 직각으로 서고 윗면만 둥글다. 누적 막대는 하나의 막대라 쌓인 전체의 윗면만 둥글고, 조각 사이에는 2px 틈(뒤의 바탕이 보임)이 있어 도넛의 조각처럼 색에 기대지 않고도 나뉜다. 막대 폭은 칸보다 좁게 상한을 둔다(누적 40px, 묶음은 막대 하나 22px).
@@ -388,7 +389,7 @@ This document records the values the design language settles on and why; it is w
 1. **꽉 차면 바깥이 자른다(g = 0):** 간격 없이 붙는 것(카드의 사진)은 반경을 주지 않고 바깥이 잘라낸다(`overflow: hidden`이나 `clip`).
 2. **같은 중심(0 < g < R, gx = gy):** 안쪽 반경은 **R − g**다. 두 테두리 사이의 띠가 모서리에서도 같은 두께로 이어진다. 예: 탭 바 22 − 5 = 17, 메뉴·셀렉트 목록 16 − 6 = 10, 액션 시트 22 − 6 = 16, 세그먼트 12 − 3 = 9, 스테퍼 12 − 2 = 10, 시간 패널 22 − 6 = 16(휠).
    - **최소 4px:** R − g가 4보다 작으면 4px을 쓴다(곡선이 바늘처럼 날카로워지지 않게). 이때만 2px을 넘는 어긋남(최대 4px)을 허용한다.
-3. **멀리 있으면 자기 역할대로(g ≥ R):** 곡선이 서로 보이지 않으므로 안쪽은 자기 역할의 반경을 쓴다. g가 R을 넘는 순간 반경이 바뀌므로, 같은 중심을 노린 부품은 g를 R보다 충분히 작게 둔다.
+3. **멀리 있으면 자기 역할대로(g ≥ R):** 곡선이 서로 보이지 않으므로 안쪽은 자기 역할의 반경을 쓴다. 모서리가 없는 붙은 바(R = 0) 안의 항목이 그렇다: 붙은 사이드바의 항목은 컨트롤 반경 12(떠 있는 사이드바에서는 22 − 10 = 12로 같은 값). g가 R을 넘는 순간 반경이 바뀌므로, 같은 중심을 노린 부품은 g를 R보다 충분히 작게 둔다.
 4. **간격이 축마다 다르면(gx ≠ gy) 같은 중심이 아니다:** 한쪽 변에만 붙거나 가운데 놓인 것은 자기 역할의 반경을 쓴다. 휠 렌즈는 좌우만 4px 들어가 있고 위아래로는 가운데 있으므로 같은 중심 대상이 아니며, 컨트롤 반경 12를 쓴다(16 − 4와 같은 값이라 CSS는 부모에서 계산한다).
 5. **안쪽이 정해진 모양이면 바깥을 맞춘다:** 안쪽 치수가 고정된 경우(캡슐 스위치)에만 바깥 = r + g로 역산하고, 이때는 바깥의 역할 반경보다 이것이 우선한다. 캡슐 스위치(높이 24) 옆에 간격 8을 두는 막대는 12 + 8 = 20.
 6. **화면에는 맞추지 않는다:** 화면 역할을 하는 영역(내비게이션 스택, 미디어 뷰어, 앱의 창)의 모서리에 떠 있는 바를 맞추지 않는다. 기기마다 화면 모서리가 다르고, 화면과 같은 중심을 맞추는 것은 특정 플랫폼의 문법이다. 떠 있는 바는 자기 역할의 반경(22)을 쓴다.

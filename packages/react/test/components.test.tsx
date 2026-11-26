@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { useRef, useState } from 'react';
 import { Button, IconButton, Switch, Slider, SegmentedControl, TextField, Dialog, Menu, MenuItem, TabBar, Tab, Stepper, ThemeProvider, createTheme, Chip, Portal, Tabs,
-  Sheet, ActionSheet, Avatar, Badge, Card, useLocale, Toaster, Banner, Meter, Stat, Pagination, WeekdayPicker, DataTable, describeWeekdays } from '../src';
+  Sheet, ActionSheet, Avatar, Badge, Card, useLocale, Toaster, Banner, Meter, Stat, Pagination, WeekdayPicker, DataTable, describeWeekdays,
+  Sidebar, SidebarSection, SidebarItem } from '../src';
 
 describe('Button', () => {
   it('renders variants, forwards clicks, and blocks clicks while loading', () => {
@@ -408,5 +409,85 @@ describe('Portal', () => {
     expect(host.dataset.sgReduceMotion).toBe('true');
     expect(host.dataset.sgTheme).toBe('dark');
     expect(host.dataset.sgGrooves).toBe('flat');
+  });
+});
+
+describe('Sidebar', () => {
+  it('floats as glass by default; attached is an opaque panel with no glass, whatever `glass` says', () => {
+    const { container, rerender } = render(<Sidebar aria-label="Docs"><SidebarItem>Home</SidebarItem></Sidebar>);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toContain('sg-glass');
+    expect(root.className).not.toContain('sg-sidebar--attached');
+    rerender(<Sidebar aria-label="Docs" attached glass><SidebarItem>Home</SidebarItem></Sidebar>);
+    expect(root.className).toContain('sg-sidebar--attached');
+    expect(root.className).not.toContain('sg-glass');
+    rerender(<Sidebar aria-label="Docs" glass={false}><SidebarItem>Home</SidebarItem></Sidebar>);
+    expect(root.className).not.toContain('sg-glass');
+  });
+  it('names the navigation landmark; header and footer sit outside it, in order, and only when given', () => {
+    const { container, rerender } = render(
+      <Sidebar aria-label="Sessions" header={<span>Brand</span>} footer={<button type="button">New session</button>}>
+        <SidebarItem>One</SidebarItem>
+      </Sidebar>,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Sessions' });
+    expect(nav.contains(screen.getByText('One'))).toBe(true);
+    expect(nav.contains(screen.getByText('Brand'))).toBe(false);
+    expect(nav.contains(screen.getByRole('button', { name: 'New session' }))).toBe(false);
+    const frame = container.querySelector('.sg-sidebar__frame')!;
+    expect([...frame.children].map((e) => e.className)).toEqual(['sg-sidebar__header', 'sg-sidebar__scroll', 'sg-sidebar__footer']);
+    expect(container.firstElementChild!.hasAttribute('aria-label')).toBe(false);
+    rerender(<Sidebar aria-label="Sessions" header={null} footer={false}><SidebarItem>One</SidebarItem></Sidebar>);
+    expect(container.querySelector('.sg-sidebar__header, .sg-sidebar__footer')).toBeNull();
+    rerender(<Sidebar aria-label="Sessions" header={true} footer={0}><SidebarItem>One</SidebarItem></Sidebar>);
+    expect(container.querySelector('.sg-sidebar__header')).toBeNull();
+    expect(container.querySelector('.sg-sidebar__footer')?.textContent).toBe('0');
+  });
+  it('forwards its ref to the panel; role and the landmark name and description go to the one <nav>', () => {
+    let el: HTMLElement | null = null;
+    render(<><Sidebar ref={(e) => { el = e; }} id="side" role="navigation" aria-label="Docs" aria-describedby="hint"><SidebarItem>Home</SidebarItem></Sidebar><p id="hint">All pages</p></>);
+    expect(el!.classList.contains('sg-sidebar')).toBe(true);
+    expect(el!.id).toBe('side');
+    expect(el!.hasAttribute('role')).toBe(false);
+    expect(screen.getAllByRole('navigation')).toHaveLength(1);
+    expect(screen.getByRole('navigation', { name: 'Docs' }).getAttribute('aria-describedby')).toBe('hint');
+  });
+  it('a section is a group named by its header; without one (untyped callers) it is an unnamed group', () => {
+    render(
+      <Sidebar aria-label="Docs">
+        <SidebarSection header="Library"><SidebarItem>All</SidebarItem><SidebarItem>Starred</SidebarItem></SidebarSection>
+        <SidebarSection header={undefined as unknown as string}><SidebarItem>Loose</SidebarItem></SidebarSection>
+        <SidebarSection header={0}><SidebarItem>Zero</SidebarItem></SidebarSection>
+        <SidebarSection header={true}><SidebarItem>Flag</SidebarItem></SidebarSection>
+      </Sidebar>,
+    );
+    const lib = screen.getByRole('group', { name: 'Library' });
+    expect(lib.contains(screen.getByRole('button', { name: 'Starred' }))).toBe(true);
+    expect(screen.getByRole('group', { name: '0' }).contains(screen.getByRole('button', { name: 'Zero' }))).toBe(true);
+    const loose = screen.getByRole('button', { name: 'Loose' }).closest('[role="group"]')!;
+    expect(loose.hasAttribute('aria-labelledby')).toBe(false);
+    const flag = screen.getByRole('button', { name: 'Flag' }).closest('[role="group"]')!;
+    expect(flag.hasAttribute('aria-labelledby')).toBe(false);
+    expect(flag.querySelector('.sg-sidebar__section-header')).toBeNull();
+  });
+  it('the label and count name an item, as they show; the subtitle describes it', () => {
+    const { rerender } = render(
+      <Sidebar aria-label="Docs"><SidebarItem icon={<svg />} subtitle="direct · haiku" count={3} selected>Quarterly report</SidebarItem></Sidebar>,
+    );
+    const item = screen.getByRole('button', { name: 'Quarterly report 3' });
+    expect(item.getAttribute('aria-current')).toBe('page');
+    const sub = document.getElementById(item.getAttribute('aria-describedby')!)!;
+    expect(sub.textContent).toBe('direct · haiku');
+    expect(sub.getAttribute('aria-hidden')).toBe('true');
+    /* an icon with a name of its own still names an icon-only item, as in 0.5 */
+    /* an app's own description is kept beside the subtitle; its own name wins */
+    rerender(<Sidebar aria-label="Docs"><SidebarItem subtitle="sub" aria-label="Report, 3 turns" aria-describedby="ext">Report</SidebarItem><span id="ext">extra</span></Sidebar>);
+    const own = screen.getByRole('button', { name: 'Report, 3 turns' });
+    expect(own.getAttribute('aria-describedby')!.split(' ').map((id) => document.getElementById(id)!.textContent)).toEqual(['sub', 'extra']);
+    rerender(<Sidebar aria-label="Docs"><SidebarItem icon={<img alt="Settings" />} /></Sidebar>);
+    screen.getByRole('button', { name: 'Settings' });
+    rerender(<Sidebar aria-label="Docs"><SidebarItem href="/x">Plain</SidebarItem></Sidebar>);
+    const link = screen.getByRole('link', { name: 'Plain' });
+    expect(link.hasAttribute('aria-describedby')).toBe(false);
   });
 });

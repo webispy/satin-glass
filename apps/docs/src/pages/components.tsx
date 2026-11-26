@@ -191,17 +191,21 @@ export function Navigation() {
           </div>
         </Demo>
       </Section>
-      <Section title={t({ en: 'Sidebar · page control', ko: '사이드바 · 페이지 컨트롤' })}>
+      <Section title={t({ en: 'Sidebar · page control', ko: '사이드바 · 페이지 컨트롤' })} intro={<L
+        en="A sidebar floats as glass, 12 px in from the screen edge (the app places it). On a dense screen it can be attached instead: an opaque panel flush with the edge, as the attached app bar is. Items go in sections, each named by a small heading. The sidebar's header and footer stay in place while the list scrolls; they sit outside the navigation landmark, so a search field or a form there is not read as part of the navigation."
+        ko="사이드바는 화면 가장자리에서 12px 안쪽에 떠 있는 유리 패널입니다(위치는 앱이 정합니다). 정보가 많은 화면에서는 대신 붙은 사이드바를 쓸 수 있습니다. 붙은 앱 바처럼 가장자리에 붙는 불투명한 패널입니다. 항목은 섹션으로 묶고, 섹션마다 작은 머리글로 이름을 붙입니다. 사이드바의 헤더(header)와 푸터(footer)는 목록을 스크롤해도 제자리에 있습니다. 둘 다 내비게이션 랜드마크 밖에 있어서, 거기 둔 검색란이나 폼이 내비게이션의 일부로 읽히지 않습니다." />}>
         <div className="grid grid--2">
           <Demo media style={{ padding: 12, minHeight: 300 }}>
             <Photo scene={2} style={{ position: 'absolute', inset: 0 }} />
-            <Sidebar style={{ position: 'relative', height: 276, width: 240, color: 'var(--sg-label)' }}>
-              <SidebarSection>{t({ en: 'Library', ko: '라이브러리' })}</SidebarSection>
-              <SidebarItem icon={<Compass />} selected={side === 'all'} count={24} onClick={() => setSide('all')}>{t({ en: 'All places', ko: '모든 장소' })}</SidebarItem>
-              <SidebarItem icon={<Star />} selected={side === 'fav'} count={7} onClick={() => setSide('fav')}>{t({ en: 'Favourites', ko: '즐겨찾기' })}</SidebarItem>
-              <SidebarItem icon={<Plane />} selected={side === 'trip'} count={3} onClick={() => setSide('trip')}>{t({ en: 'Trips', ko: '여행' })}</SidebarItem>
-              <SidebarSection>{t({ en: 'Settings', ko: '설정' })}</SidebarSection>
-              <SidebarItem icon={<Settings />} selected={side === 'set'} onClick={() => setSide('set')}>{t({ en: 'Preferences', ko: '환경설정' })}</SidebarItem>
+            <Sidebar aria-label={t({ en: 'Places', ko: '장소' })} style={{ position: 'relative', height: 276, width: 240, color: 'var(--sg-label)' }}>
+              <SidebarSection header={t({ en: 'Library', ko: '라이브러리' })}>
+                <SidebarItem icon={<Compass />} selected={side === 'all'} count={24} onClick={() => setSide('all')}>{t({ en: 'All places', ko: '모든 장소' })}</SidebarItem>
+                <SidebarItem icon={<Star />} selected={side === 'fav'} count={7} onClick={() => setSide('fav')}>{t({ en: 'Favourites', ko: '즐겨찾기' })}</SidebarItem>
+                <SidebarItem icon={<Plane />} selected={side === 'trip'} count={3} onClick={() => setSide('trip')}>{t({ en: 'Trips', ko: '여행' })}</SidebarItem>
+              </SidebarSection>
+              <SidebarSection header={t({ en: 'Settings', ko: '설정' })}>
+                <SidebarItem icon={<Settings />} selected={side === 'set'} onClick={() => setSide('set')}>{t({ en: 'Preferences', ko: '환경설정' })}</SidebarItem>
+              </SidebarSection>
             </Sidebar>
           </Demo>
           <Demo col center>
@@ -212,6 +216,7 @@ export function Navigation() {
             </Stack>
           </Demo>
         </div>
+        <AttachedSidebarDemo />
         <Usage example={NavigationSidebar} code={navigationSidebarSrc} />
       </Section>
       <Section title={t({ en: 'Tabs', ko: '탭' })} intro={<L
@@ -704,5 +709,44 @@ function LogBody() {
       <SegmentedControl size="sm" aria-label={t({ en: 'Log level', ko: '로그 레벨' })} value={lv} onChange={setLv} options={[{ value: 'all', label: t({ en: 'All', ko: '전체' }) }, { value: 'warn', label: t({ en: 'Warnings and up', ko: '경고 이상' }) }, { value: 'error', label: t({ en: 'Errors', ko: '오류' }) }]} style={{ alignSelf: 'flex-start' }} />
       <div className="console__log" role="log">{shown.map((l) => <div key={l.t + l.m} className={`log--${l.lv}`}><span className="log__t">{l.t}</span> {l.m}</div>)}</div>
     </div>
+  );
+}
+
+/* an attached sidebar beside its page: sections, items with a second line, a search in the header and an action in
+   the footer that stay put while the list scrolls */
+function AttachedSidebarDemo() {
+  const t = useT();
+  const [current, setCurrent] = useState('inbox');
+  const [query, setQuery] = useState('');
+  const projects = [
+    { id: 'site', label: t({ en: 'Website redesign', ko: '웹사이트 개편' }), sub: t({ en: '12 open tasks', ko: '남은 할 일 12개' }) },
+    { id: 'app', label: t({ en: 'Mobile app', ko: '모바일 앱' }), sub: t({ en: '4 open tasks', ko: '남은 할 일 4개' }) },
+    { id: 'billing', label: t({ en: 'Billing migration to the new payment provider', ko: '결제 시스템을 새 대행사로 이전' }), sub: t({ en: 'Due Friday', ko: '금요일 마감' }) },
+    { id: 'help', label: t({ en: 'Help centre', ko: '고객센터' }), sub: t({ en: 'No open tasks', ko: '남은 할 일 없음' }) },
+    { id: 'brand', label: t({ en: 'Brand refresh', ko: '브랜드 리뉴얼' }), sub: t({ en: 'Paused', ko: '보류' }) },
+  ];
+  const shown = projects.filter((p) => p.label.toLowerCase().includes(query.trim().toLowerCase()));
+  const views = [
+    { id: 'inbox', label: t({ en: 'Inbox', ko: '받은 편지함' }), icon: <Mail />, count: 12 },
+    { id: 'mine', label: t({ en: 'Assigned to me', ko: '내게 할당됨' }), icon: <User />, count: 3 },
+  ];
+  const all = [...views.map((v) => ({ id: v.id, label: v.label, sub: undefined as string | undefined })), ...projects];
+  const open = all.find((x) => x.id === current)!;
+  return (
+    <Demo style={{ padding: 0, height: 360, gap: 0, flexWrap: 'nowrap', alignItems: 'stretch', overflow: 'hidden' }} data-demo="sidebar-attached">
+      <Sidebar attached className="docs-attached__bar" aria-label={t({ en: 'Workspace', ko: '작업 공간' })}
+        header={<SearchField value={query} onChange={(e) => setQuery(e.target.value)} onClear={() => setQuery('')} placeholder={t({ en: 'Find a project', ko: '프로젝트 찾기' })} label={t({ en: 'Find a project', ko: '프로젝트 찾기' })} />}
+        footer={<Button variant="tinted" size="sm" block startIcon={<Plus />}>{t({ en: 'New project', ko: '새 프로젝트' })}</Button>}>
+        {views.map((v) => <SidebarItem key={v.id} icon={v.icon} count={v.count} selected={current === v.id} onClick={() => setCurrent(v.id)}>{v.label}</SidebarItem>)}
+        <SidebarSection header={t({ en: 'Projects', ko: '프로젝트' })}>
+          {shown.map((p) => <SidebarItem key={p.id} subtitle={p.sub} selected={current === p.id} onClick={() => setCurrent(p.id)}>{p.label}</SidebarItem>)}
+          {!shown.length && <Text variant="footnote" tone="tertiary" style={{ padding: '8px 10px' }}>{t({ en: 'No project matches.', ko: '일치하는 프로젝트가 없습니다.' })}</Text>}
+        </SidebarSection>
+      </Sidebar>
+      <div className="docs-attached__page">
+        <Text variant="title-3" as="h3">{open.label}</Text>
+        {open.sub && <Text variant="subhead" tone="secondary">{open.sub}</Text>}
+      </div>
+    </Demo>
   );
 }
