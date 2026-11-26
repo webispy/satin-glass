@@ -219,13 +219,13 @@ export function useA2ui(options: A2uiOptions = {}): A2uiSession {
   const icons = options.icons;
   const allowUrl = options.allowUrl;
   const env = useMemo<Env>(() => ({
-    words, icons: icons ?? {}, allowUrl: allowUrl ?? defaultAllowUrl,
+    locale, words, icons: icons ?? {}, allowUrl: allowUrl ?? defaultAllowUrl,
     warn: (d) => {
       /* a missing icon is reported once per name for the whole session */
       if (d.code === 'missing-icon') { if (api.state.icons.has(d.message)) return; api.state.icons.add(d.message); }
       api.report({ kind: 'diagnostic', ...d });
     },
-  }), [words, icons, allowUrl, api]);
+  }), [locale, words, icons, allowUrl, api]);
   /* the first render's environment is the session's until a render commits; a render that never commits (an abandoned
      transition) leaves the committed one in place */
   if (!api.state.env) api.state.env = env;

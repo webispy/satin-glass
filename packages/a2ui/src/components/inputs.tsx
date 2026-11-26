@@ -235,9 +235,9 @@ export function A2uiDateTimeInput(r: Rendered<{ value?: unknown; setValue?: (v: 
     <Stack gap={1} style={grow(props.weight)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
       <Stack direction="row" gap={2} wrap role={both ? 'group' : undefined} aria-label={both ? aria['aria-label'] ?? label : undefined}
         aria-describedby={both ? ids(described, fe.describedBy) : undefined} aria-invalid={both ? fe.invalid : undefined}>
-        {date && <DatePicker label={dateLabel} value={asDate(d) ?? null} min={boundDay(min)} max={boundDay(max)}
+        {date && <DatePicker label={dateLabel} locale={env.locale} value={asDate(d) ?? null} min={boundDay(min)} max={boundDay(max)}
           onChange={(x) => write({ date: isoDate(x) })} {...(both ? {} : single)} />}
-        {time && <TimePicker label={timeLabel} value={t || null} onChange={(x) => write({ time: x })} {...(date ? {} : single)} />}
+        {time && <TimePicker label={timeLabel} locale={env.locale} value={t || null} onChange={(x) => write({ time: x })} {...(date ? {} : single)} />}
       </Stack>
       {both && fe.message}{describe}
     </Stack>

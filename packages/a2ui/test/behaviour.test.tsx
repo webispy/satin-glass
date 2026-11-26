@@ -187,6 +187,14 @@ describe.each<V>(['1.0', '0.9'])('protocol v%s', (v) => {
       expect(screen.getAllByText('Day').length).toBeGreaterThan(0);
       expect(container.textContent).not.toMatch(/Time/);
     });
+    it('formats the pickers in the session language, not the page\'s', () => {
+      const { feed, container } = mount({ locale: 'en' }, 'ko');
+      feed(create(v), data(v, { when: '2025-07-15T19:00:00' }), components(v, [{ id: 'root', component: 'DateTimeInput', label: 'When', enableDate: true, enableTime: true, value: path(v, '/when') }]));
+      const fields = [...container.querySelectorAll('.sg-select__value')].map((e) => e.textContent ?? '');
+      expect(fields.length).toBe(2);
+      expect(fields.join(' ')).not.toMatch(/[가-힣]/);
+      expect(fields[1]).toMatch(/PM/);
+    });
   });
 
   it('gives the focus to the surfaces\' region when the agent deletes the surface that held it', async () => {

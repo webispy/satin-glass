@@ -102,7 +102,7 @@ export function A2uiProvider({ locale, words, icons, allowUrl, onReport, childre
   const env = useMemo<Env>(() => {
     const iconsTold = new Set<string>();
     return {
-      words: wordsFor(locale ?? themeLocale, words), icons: icons ?? {}, allowUrl: allowUrl ?? defaultAllowUrl,
+      locale: locale ?? themeLocale, words: wordsFor(locale ?? themeLocale, words), icons: icons ?? {}, allowUrl: allowUrl ?? defaultAllowUrl,
       warn: (d) => {
         if (d.code === 'missing-icon') { if (iconsTold.has(d.message)) return; iconsTold.add(d.message); }
         if (report.current) report.current(d); else console.warn('[@satin-glass/a2ui]', d.message);
