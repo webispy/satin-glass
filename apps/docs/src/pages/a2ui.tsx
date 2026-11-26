@@ -7,6 +7,7 @@ import { Button, SegmentedControl, Stack, Text } from '@satin-glass/react';
 import { Demo, Page, Section } from '../shared';
 import { L, useT } from '../i18n';
 import { alertTurn, deleteSurface, type Copy, type Version } from '../a2ui/fixtures';
+import { Gallery } from '../a2ui/gallery';
 
 type T = ReturnType<typeof useT>;
 const copy = (t: T): Copy => ({
@@ -100,6 +101,13 @@ export function A2ui() {
             <Button size="sm" tone="danger" onClick={() => setDel((n) => n + 1)}>{t({ en: 'Delete surface in 3 s', ko: '3초 뒤 서피스 삭제' })}</Button>
           </Stack>
           <Replay version={version} copy={c} run={run} del={del} />
+        </Demo>
+      </Section>
+      <Section title={t({ en: 'Examples from the A2UI project', ko: 'A2UI 프로젝트의 예제' })} intro={<L
+        en={<>The basic catalog examples that the A2UI project publishes, for both protocol versions, are drawn by this package. The same files are replayed by its tests. Their text is the project's own, in English. Source: <a href="https://github.com/a2ui-project/a2ui/tree/a23b19c4f2102695c506adb7d1ded1f5f81a7688/catalogs/basic" target="_blank" rel="noreferrer">a2ui-project/a2ui</a>, Apache License 2.0.</>}
+        ko={<>A2UI 프로젝트가 공개한 두 프로토콜 버전의 기본 카탈로그 예제를 이 패키지로 그립니다. 패키지 테스트도 같은 파일을 재생합니다. 예제의 문구는 프로젝트의 원문(영어) 그대로입니다. 출처: <a href="https://github.com/a2ui-project/a2ui/tree/a23b19c4f2102695c506adb7d1ded1f5f81a7688/catalogs/basic" target="_blank" rel="noreferrer">a2ui-project/a2ui</a>, Apache License 2.0.</>} />}>
+        <Demo col data-demo="a2ui-gallery">
+          <Gallery />
         </Demo>
       </Section>
     </Page>

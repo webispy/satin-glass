@@ -5,7 +5,8 @@
 //   3. a gap at or over R, or unequal gaps (one side only, centred): its own role radius — not checked here
 // Radii are read as the browser draws them: % and elliptical values resolved, and scaled down when adjacent radii
 // overlap (CSS Backgrounds 3, corner overlap). Not checked: table cells (content, edge to edge), the docs'
-// deliberately wrong examples ([data-corners-skip]), and nothing is measured against the docs' stages (demo frames,
+// deliberately wrong examples and the A2UI gallery's scaled-down pictures ([data-corners-skip]: at 0.58 the gaps and
+// radii round apart), and nothing is measured against the docs' stages (demo frames,
 // the phone mock, navigation stack, media viewer: they stand for a screen, whose corners the library cannot know).
 // Runs on every docs page the router knows (read from apps/docs/src/routes.ts), in light and dark, at desktop and
 // phone width; then with a menu, a select list, a time panel and an action sheet open. Fixtures first:
