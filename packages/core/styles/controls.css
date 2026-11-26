@@ -44,14 +44,22 @@
 /* glass buttons keep the glass's own fill (.sg-button's transparent background must not win): the fill the glass
    shows, solid where backdrop filters are missing (clear glass's dark plate under its white ink, #92) */
 .sg-button--glass, .sg-search--glass .sg-field__control { background-color: var(--_glass-bg); background-image: linear-gradient(180deg, var(--sg-glass-depth), rgba(255, 255, 255, 0) 52%); }
-/* hover: where the fill is solid (no backdrop filters, or reduced transparency) it shades the fill toward the button's
-   own ink (6%), so it stays opaque and still shows, on clear glass's dark plate too (#90, #92); over working glass it
-   lifts the fill toward the highlight */
-.sg-button--glass { --_glass-hover: color-mix(in oklab, var(--_glass-bg), currentColor 6%); }
+/* hover, for glass buttons and the glass search field alike: where the fill is solid (no backdrop filters, or reduced
+   transparency) it shades the fill toward the control's own ink (6%), so it stays opaque and still shows, on clear
+   glass's dark plate too (#90, #92); over working glass it mixes the fill with a tint: the control's own highlight (a
+   clear glass's, or an app's override), or in high contrast, which has none, the control's ink (mixing in the
+   transparent highlight made the hovered fill 70% opaque, #95). How much of the ink, and how much tint, are theme
+   tokens, so the nearest theme decides, system high contrast included */
+.sg-button--glass, .sg-search--glass .sg-field__control { --_glass-hover: color-mix(in oklab, var(--_glass-bg), currentColor 6%); }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .sg-button--glass { --_glass-hover: var(--_rt-hover, color-mix(in oklab, var(--_fill), var(--sg-glass-highlight) 30%)); --_rt-hover: var(--_rt) color-mix(in oklab, var(--_fill), currentColor 6%); }
+  .sg-button--glass, .sg-search--glass .sg-field__control { --_glass-hover: var(--_rt-hover, color-mix(in oklab, var(--_fill), color-mix(in oklab, var(--sg-glass-highlight), currentColor var(--sg-glass-hover-ink)) var(--sg-glass-hover-amount))); --_rt-hover: var(--_rt) color-mix(in oklab, var(--_fill), currentColor 6%); }
 }
-@media (hover: hover) { .sg-button--glass:hover:not(:disabled):not([aria-disabled="true"]) { background-color: var(--_glass-hover); } }
+@media (hover: hover) {
+  .sg-button--glass:hover:not(:disabled):not([aria-disabled="true"]) { background-color: var(--_glass-hover); }
+  /* the glass search field keeps its glass on hover (the field's own hover, a groove tint, would replace it, #96); a
+     focused field keeps its focus surface, and a disabled one does not answer, as a disabled glass button does not */
+  .sg-search--glass :where(.sg-field:not([data-disabled="true"])) .sg-field__control:hover:not(:focus-within) { background-color: var(--_glass-hover); }
+}
 .sg-button--glass { color: var(--sg-glass-ink); --_radius: var(--sg-radius-md); --_shadow: var(--sg-shadow-sm); }
 .sg-glass--clear.sg-button--glass, .sg-glass--clear .sg-button--glass { color: #fff; }
 .sg-button--glass.sg-button--sm { --_radius: var(--sg-radius-sm); }
@@ -246,7 +254,9 @@
   background: var(--sg-groove-soft); box-shadow: var(--sg-depth-inset);   /* a field is a groove a value goes into */
   transition: background-color var(--sg-duration-fast) ease, box-shadow var(--sg-duration-fast) ease;
 }
-@media (hover: hover) { .sg-field__control:hover { background: var(--sg-groove-hover); } }
+/* the colour only, so a control drawn with a background image (the glass search field's depth) keeps it; a disabled
+   field does not answer the pointer (in :where, so the focus surface still wins over the hover) */
+@media (hover: hover) { :where(.sg-field:not([data-disabled="true"])) .sg-field__control:hover { background-color: var(--sg-groove-hover); } }
 .sg-field__control:focus-within { outline: var(--sg-focus-width) solid transparent; outline-offset: 0; background: var(--sg-surface); box-shadow: inset 0 0 0 1.5px var(--sg-accent), 0 0 0 4px var(--sg-accent-soft); }
 .sg-field[data-invalid="true"] .sg-field__control { box-shadow: inset 0 0 0 1.5px var(--sg-danger); }
 .sg-field[data-invalid="true"] .sg-field__control:focus-within { box-shadow: inset 0 0 0 1.5px var(--sg-danger), 0 0 0 4px var(--sg-danger-soft); }

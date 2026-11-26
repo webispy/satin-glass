@@ -58,6 +58,9 @@ const light = {
   'glass-rim-shade': rgba(p.slate[900], 0.12),
   'glass-depth': 'rgba(255, 255, 255, 0.45)',
   'glass-highlight': 'rgba(255, 255, 255, 0.7)',
+  /* a hovered glass control mixes its fill with a tint: its own highlight (the share of its ink in the tint: none), by
+     this much. Shares, not colours, so the control's own highlight and ink are used where it is */
+  'glass-hover-ink': '0%', 'glass-hover-amount': '30%',
   'glass-ink': p.slate[950],
   'glass-rim-width': '1px',
   'glass-rim-mid': 'rgba(255, 255, 255, 0)',   /* the rim fades out along the sides; high contrast keeps it solid */
@@ -116,6 +119,7 @@ const dark: Semantic = {
   'glass-rim-shade': 'rgba(0, 0, 0, 0.36)',
   'glass-depth': 'rgba(255, 255, 255, 0.07)',
   'glass-highlight': 'rgba(255, 255, 255, 0.13)',
+  'glass-hover-ink': '0%', 'glass-hover-amount': '30%',
   'glass-ink': p.slate[50],
   'glass-rim-width': '1px',
   'glass-rim-mid': 'rgba(255, 255, 255, 0)',
@@ -145,6 +149,8 @@ const lightHc: Semantic = {
   'glass-fill': '#ffffff', 'glass-fill-strong': '#ffffff', 'glass-fill-subtle': '#ffffff', 'glass-fill-clear': 'rgba(0, 0, 0, 0.72)',
   'glass-rim-lit': '#000000', 'glass-rim-shade': '#000000', 'glass-rim-mid': '#000000', 'glass-rim-width': '1.5px', 'glass-grain': 'none', 'glass-depth': 'rgba(255, 255, 255, 0)', 'glass-highlight': 'rgba(255, 255, 255, 0)',
   'glass-selection': 'transparent',   /* high contrast: the selection outline replaces the tint (8.2) */
+  /* no highlight here (it is transparent): hover shades the solid fill toward the control's ink, so it stays opaque */
+  'glass-hover-ink': '100%', 'glass-hover-amount': '6%',
   'chart-1': p.iris[800], 'chart-2': p.teal[800], 'chart-3': p.coral[800], 'chart-4': p.azure[900], 'chart-5': p.orchid[800], 'chart-6': p.jade[900],
   'chart-grid': rgba(p.slate[900], 0.22),
 };
@@ -165,6 +171,8 @@ const darkHc: Semantic = {
   'glass-fill': '#000000', 'glass-fill-strong': '#000000', 'glass-fill-subtle': '#000000', 'glass-fill-clear': 'rgba(0, 0, 0, 0.78)',
   'glass-rim-lit': '#ffffff', 'glass-rim-shade': '#ffffff', 'glass-rim-mid': '#ffffff', 'glass-rim-width': '1.5px', 'glass-grain': 'none', 'glass-depth': 'rgba(255, 255, 255, 0)', 'glass-highlight': 'rgba(255, 255, 255, 0)',
   'glass-selection': 'transparent',   /* high contrast: the selection outline replaces the tint (8.2) */
+  /* no highlight here (it is transparent): hover shades the solid fill toward the control's ink, so it stays opaque */
+  'glass-hover-ink': '100%', 'glass-hover-amount': '6%',
   'chart-1': p.iris[300], 'chart-2': p.teal[200], 'chart-3': p.coral[300], 'chart-4': p.azure[200], 'chart-5': p.orchid[300], 'chart-6': p.jade[200],
   'chart-grid': 'rgba(255, 255, 255, 0.24)',
 };
