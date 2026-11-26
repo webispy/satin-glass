@@ -34,8 +34,30 @@ export const BODY_PAD = { top: 14, inline: 16, bottom: 16 } as const;
     minimum width so that a narrow Row stacks its panels instead of squeezing them (WCAG 1.4.10 reflow). Matched by
     ID, so only the Row's own children read it. */
 export const RowContext = createContext<string[] | null>(null);
+/** a Row's or Column's children as the agent wrote their IDs (a template's instances share its ID), and its `align`:
+    in a Column, a direct child that has no width of its own (a nested Column, a Row that spreads its children, a
+    field) takes the Column's width whatever its alignment; an image keeps its own size and is not stretched. Matched
+    by ID, as RowContext, so only the flow's own children read it. */
+export const FlowContext = createContext<{ direction: 'row' | 'column'; ids: string[]; align: string; aligned: boolean; media: boolean } | null>(null);
+/** where a component sits: a direct child of a Column or of a Row, and that flow's alignment */
+export function useSlot(r: Rendered<unknown>) {
+  const flow = useContext(FlowContext), row = useContext(RowContext), id = r.context.componentModel.id;
+  const mine = !!flow?.ids.includes(id);
+  return {
+    inColumn: mine && flow?.direction === 'column', inRow: !!row?.includes(id), align: mine ? flow?.align : undefined,
+    /* the Row's agent gave no `align` (texts of different sizes then share a baseline), and the Row holds a feature
+       image beside its content (the content wraps below it when there is no room) */
+    unaligned: mine && flow?.direction === 'row' && !flow.aligned, mediaRow: mine && flow?.direction === 'row' && flow.media,
+  };
+}
+/** a field's outer box: its weight, and in a Column the Column's whole width (a field has no width of its own) */
+export function fieldBox(r: Rendered<unknown>, slot: ReturnType<typeof useSlot>): CSSProperties {
+  return { ...grow(r.props.weight), ...(slot.inColumn ? { alignSelf: 'stretch' } : {}), ...(slot.inRow && !r.props.weight ? { minWidth: 0 } : {}) };
+}
 /** a panel's minimum width in a Row */
 export const PANEL_MIN = 'min(15rem, 100%)';
+/** the narrowest the text beside a feature image in a Row may get before it goes below the image */
+export const MEDIA_TEXT_MIN = 'min(9rem, 100%)';
 /** inside an agent Button: a plain Text there is the button's label, in the button's own type */
 export const InButtonContext = createContext(false);
 /** inside a Modal's trigger: the trigger is the press target, so nothing inside it becomes a button of its own */
@@ -53,10 +75,14 @@ export type Child = string | { id: string; basePath: string };
 export type Build = (id: string, basePath?: string) => ReactNode;
 type A11y = { label?: string; description?: string };
 /** what web_core's binder hands a render function: resolved values, setters, actions and check results */
+type Subscribable<T> = { subscribe(listener: (data: T) => void): { unsubscribe(): void } };
 export type Rendered<P> = {
   props: P & { weight?: number; isValid?: boolean; validationErrors?: string[]; accessibility?: A11y; '@accessibility'?: A11y };
   buildChild: Build;
-  context: { componentModel: { id: string; properties: Record<string, unknown> }; surfaceComponents?: { get(id: string): { type: string } | undefined; has(id: string): boolean } };
+  context: { componentModel: { id: string; properties: Record<string, unknown> }; surfaceComponents?: {
+    get(id: string): { type: string; properties?: Record<string, unknown>; onUpdated?: Subscribable<unknown> } | undefined; has(id: string): boolean;
+    onCreated?: Subscribable<{ id: string }>; onDeleted?: Subscribable<string>;
+  } };
   accessibilityRef?: (el: Element | null) => void;
 };
 

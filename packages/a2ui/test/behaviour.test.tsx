@@ -737,6 +737,186 @@ describe.each<V>(['1.0', '0.9'])('a short exclusive choice in v%s', (v) => {
   });
 });
 
+describe.each<V>(['1.0', '0.9'])('layout as the catalog means it, in v%s', (v) => {
+  const t = (id: string, text: string, extra: Record<string, unknown> = {}) => ({ id, component: 'Text', text, ...extra });
+  const stackOf = (text: string) => screen.getByText(text).closest('.sg-stack') as HTMLElement;
+  const flowOf = (text: string) => (screen.getByText(text).closest('.sg-stack')!.parentElement!.closest('.sg-stack') ?? stackOf(text)) as HTMLElement;
+  it('aligns by the catalog\'s stretch, and a plain Row with no align by its baselines; an agent\'s align wins', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['plain', 'centred', 'panels'] },
+      { id: 'plain', component: 'Row', children: ['a', 'b'] }, t('a', 'Sold by:', { variant: 'caption' }), t('b', 'TechStore'),
+      { id: 'centred', component: 'Row', align: 'center', children: ['c', 'd'] }, t('c', 'Left'), t('d', 'Right'),
+      { id: 'panels', component: 'Row', children: ['p1', 'e'] }, { id: 'p1', component: 'Column', children: ['f'] }, t('f', 'In a column'), t('e', 'Beside'),
+    ]));
+    expect(screen.getByText('Sold by:').parentElement!.closest('.sg-stack--row')!.getAttribute('style')).toMatch(/align-items: baseline/);
+    expect(screen.getByText('Left').closest('.sg-stack--row')!.getAttribute('style')).toMatch(/align-items: center/);
+    expect(screen.getByText('Beside').closest('.sg-stack--row')!.getAttribute('style')).toMatch(/align-items: stretch/);
+  });
+  it('keeps a Row on one line, wrapping only panels, a Row of Buttons, or the content beside a feature image', () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['plain', 'buttons', 'media'] },
+      { id: 'plain', component: 'Row', children: ['i', 'x'] }, { id: 'i', component: 'Icon', name: 'send' }, t('x', 'Plain row'),
+      { id: 'buttons', component: 'Row', children: ['b1', 'b2'] },
+      { id: 'b1', component: 'Button', child: 'b1t', action: { event: { name: 'a' } } }, t('b1t', 'First'),
+      { id: 'b2', component: 'Button', child: 'b2t', action: { event: { name: 'b' } } }, t('b2t', 'Second'),
+      { id: 'media', component: 'Row', children: ['art', 'about'] }, { id: 'art', component: 'Image', url: 'https://example.com/a.png', description: 'Art' },
+      { id: 'about', component: 'Column', children: ['y'] }, t('y', 'About it'),
+    ]));
+    const wraps = (el: Element | null) => /flex-wrap: wrap/.test(el?.getAttribute('style') ?? '');
+    expect(wraps(screen.getByText('Plain row').closest('.sg-stack--row'))).toBe(false);
+    expect(wraps(screen.getByRole('button', { name: 'First' }).closest('.sg-stack--row'))).toBe(true);
+    expect(wraps(screen.getByAltText('Art').closest('.sg-stack--row'))).toBe(true);
+    expect(stackOf('About it').style.flex).toBe('1 1 min(9rem, 100%)');
+  });
+  it('decides again when a Row\'s children arrive after it', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [{ id: 'root', component: 'Row', children: ['b1', 'b2'] }]));
+    feed(components(v, [
+      { id: 'b1', component: 'Button', child: 'b1t', action: { event: { name: 'a' } } }, t('b1t', 'First'),
+      { id: 'b2', component: 'Button', child: 'b2t', action: { event: { name: 'b' } } }, t('b2t', 'Second'),
+    ]));
+    expect(screen.getByRole('button', { name: 'First' }).closest('.sg-stack--row')!.getAttribute('style')).toMatch(/flex-wrap: wrap/);
+  });
+  /* the wrap beside a feature image is for its text Column: an image beside plain Texts keeps the Row on one line */
+  it('wraps beside a feature image only for an unweighted Column of text', () => {
+    const { feed } = mount({ allowUrl: () => true });
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['flat'] },
+      { id: 'flat', component: 'Row', children: ['art', 'cap'] }, { id: 'art', component: 'Image', url: 'https://example.com/a.png', description: 'Cover' }, t('cap', 'Caption'),
+    ]));
+    expect(screen.getByAltText('Cover').closest('.sg-stack--row')!.getAttribute('style')).not.toMatch(/flex-wrap: wrap/);
+  });
+  /* children that arrive after their Row are followed afterwards too: here they gain weights, and the Row becomes a
+     table row (#98 review) */
+  it('follows the later updates of children that arrived after their Row', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['line'] }, { id: 'line', component: 'Row', children: ['c1', 'c2'] },
+    ]));
+    feed(components(v, [t('c1', 'Bitcoin'), t('c2', '$43,500.25')]));
+    const row = () => screen.getByText('Bitcoin').closest('.sg-stack--row') as HTMLElement;
+    expect(row().style.minWidth).not.toBe('var(--a2ui-table-min, 0px)');
+    feed(components(v, [t('c1', 'Bitcoin', { weight: 2 }), t('c2', '$43,500.25', { weight: 1 })]));
+    expect(row().style.minWidth).toBe('var(--a2ui-table-min, 0px)');
+  });
+  /* a template's instances count one by one: six Buttons from one template are a Row of Buttons, which wraps
+     (#98 review) */
+  it('counts each instance of a template among a Row\'s children', () => {
+    const { feed } = mount();
+    feed(create(v), data(v, { tags: ['a', 'b', 'c', 'd', 'e', 'f'].map((n) => ({ n })) }), components(v, [
+      { id: 'root', component: 'Row', children: { path: '/tags', componentId: 'tag' } },
+      { id: 'tag', component: 'Button', child: 'tagt', action: { event: { name: 'pick' } } }, t('tagt', path(v, 'n') as unknown as string),
+    ]));
+    expect(screen.getAllByRole('button')).toHaveLength(6);
+    expect(screen.getAllByRole('button')[0].closest('.sg-stack--row')!.getAttribute('style')).toMatch(/flex-wrap: wrap/);
+  });
+  it('sizes spread Rows, fields and buttons in a centred Column, and keeps a Column of texts tight', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', align: 'center', children: ['ends', 'around', 'field', 'go', 'pair'] },
+      { id: 'ends', component: 'Row', justify: 'spaceBetween', children: ['e1', 'e2'] }, t('e1', '1:48'), t('e2', '4:22'),
+      { id: 'around', component: 'Row', justify: 'spaceAround', children: ['a1', 'a2', 'a3'] }, t('a1', '14'), t('a2', '08'), t('a3', '32'),
+      { id: 'field', component: 'TextField', label: 'Name', value: path(v, '/n') },
+      { id: 'go', component: 'Button', child: 'gt', action: { event: { name: 'go' } } }, t('gt', 'Go'),
+      { id: 'pair', component: 'Column', children: ['n', 's'] }, t('n', 'Bitcoin'), t('s', 'BTC', { variant: 'caption' }),
+    ]));
+    expect(screen.getByText('1:48').closest('.sg-stack--row')!.getAttribute('style')).toMatch(/align-self: stretch/);
+    expect((screen.getByText('14').closest('.sg-stack--row') as HTMLElement).style.width).toBe('min(100%, 18rem)');
+    expect((screen.getByRole('textbox', { name: 'Name' }).closest('.sg-field')!.parentElement as HTMLElement).style.alignSelf).toBe('stretch');
+    expect((screen.getByRole('button', { name: 'Go' }).parentElement as HTMLElement).style.width).toBe('fit-content');
+    expect(stackOf('BTC').getAttribute('style')).toMatch(/gap: var\(--sg-space-1/);
+  });
+  it('gives a weighted TextField\'s whole field its share of a Row', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Row', children: ['first', 'last'] },
+      { id: 'first', component: 'TextField', label: 'First', value: path(v, '/f'), weight: 1 },
+      { id: 'last', component: 'TextField', label: 'Last', value: path(v, '/l'), weight: 1 },
+    ]));
+    const box = (name: string) => screen.getByRole('textbox', { name }).closest('.sg-field')!.parentElement as HTMLElement;
+    expect(box('First').style.flex).toBe('1 1 0px');
+    expect((screen.getByRole('textbox', { name: 'First' }) as HTMLElement).style.flex).toBe('');
+  });
+  it('keeps an inset image at its own size, unstretched, and centres an icon (in a button, at the button\'s size)', () => {
+    const { feed } = mount({ allowUrl: () => true, icons: { send: <svg data-testid="glyph" /> } });
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['art', 'i', 'b'] },
+      { id: 'art', component: 'Image', url: 'https://example.com/a.png', description: 'Thumb' },
+      { id: 'i', component: 'Icon', name: 'send' },
+      { id: 'b', component: 'Button', child: 'bi', action: { event: { name: 'go' } } }, { id: 'bi', component: 'Icon', name: 'send' },
+    ]));
+    const img = screen.getByAltText('Thumb') as HTMLImageElement;
+    expect([img.style.width, img.style.maxWidth, img.style.alignSelf]).toEqual(['auto', 'min(100%, 300px)', 'flex-start']);
+    const [alone, inButton] = screen.getAllByTestId('glyph').map((g) => g.parentElement as HTMLElement);
+    expect([alone.style.width, alone.style.alignItems, alone.style.justifyContent]).toEqual(['24px', 'center', 'center']);
+    expect(inButton.style.width).toBe('');
+  });
+  it('writes numbers with group separators as one word, and weighted cells of a Row with tabular figures', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Row', children: ['k', 'val'] }, t('k', 'Market cap', { weight: 1 }), t('val', 'Cap $850,000,000,000.00 today', { weight: 1 }),
+    ]));
+    expect(screen.getByText('$850,000,000,000.00').style.whiteSpace).toBe('nowrap');
+    expect(screen.getByText('Market cap').style.fontVariantNumeric).toBe('tabular-nums');
+  });
+  it('makes Rows of two or more weighted cells rows of one table in their Column', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['head', 'line'] },
+      { id: 'head', component: 'Row', children: ['h1', 'h2'] }, t('h1', 'Asset', { weight: 2 }), t('h2', 'Price', { weight: 1 }),
+      { id: 'line', component: 'Row', children: ['c1', 'c2'] }, t('c1', 'Bitcoin', { weight: 2 }), t('c2', '$43,500.25', { weight: 1 }),
+    ]));
+    for (const text of ['Asset', 'Bitcoin']) expect((screen.getByText(text).closest('.sg-stack--row') as HTMLElement).style.minWidth).toBe('var(--a2ui-table-min, 0px)');
+  });
+  /* the fonts finishing after a row has left its table do not bring the table back (#98 review) */
+  it('does not measure a row again for a table it has left, when the fonts finish later', async () => {
+    let ready!: () => void;
+    const fonts = { ready: new Promise<void>((r) => { ready = r; }), addEventListener() {}, removeEventListener() {} };
+    Object.defineProperty(document, 'fonts', { configurable: true, value: fonts });
+    try {
+      const { feed } = mount();
+      const rows = (w: number) => components(v, [
+        { id: 'root', component: 'Column', children: ['line'] },
+        { id: 'line', component: 'Row', children: ['c1', 'c2'] }, t('c1', 'Bitcoin', { weight: w }), t('c2', '$43,500.25', { weight: w }),
+      ]);
+      feed(create(v), rows(1));
+      expect(document.querySelector('[data-a2ui-table]')).not.toBeNull();
+      feed(rows(0));
+      expect(document.querySelector('[data-a2ui-table]')).toBeNull();
+      await act(async () => { ready(); await fonts.ready; });
+      expect(document.querySelector('[data-a2ui-table]')).toBeNull();
+    } finally {
+      delete (document as { fonts?: unknown }).fonts;
+    }
+  });
+  /* a table that fits is not a scrolling region: no name, no Tab stop, no keys to take; it becomes one when it is
+     narrower than its rows, and stops being one when it fits again (#98 review) */
+  it('is a named, focusable scrolling region only while it overflows', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['head', 'line'] },
+      { id: 'head', component: 'Row', children: ['h1', 'h2'] }, t('h1', 'Asset', { weight: 2 }), t('h2', 'Price', { weight: 1 }),
+      { id: 'line', component: 'Row', children: ['c1', 'c2'] }, t('c1', 'Bitcoin', { weight: 2 }), t('c2', '$43,500.25', { weight: 1 }),
+    ]));
+    const table = document.querySelector<HTMLElement>('[data-a2ui-table]')!;
+    expect(table.style.getPropertyValue('--a2ui-table-min')).not.toBe('');
+    expect(table.getAttribute('role')).toBeNull();
+    expect(table.getAttribute('tabindex')).toBeNull();
+    let over = true;
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) { return this === table && over ? 600 : 0; });
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) { return this === table ? 400 : 0; });
+    fireEvent.scroll(table);
+    expect(table.getAttribute('role')).toBe('region');
+    expect(table.tabIndex).toBe(0);
+    over = false;
+    fireEvent.scroll(table);
+    expect(table.getAttribute('role')).toBeNull();
+    vi.restoreAllMocks();
+  });
+});
+
 describe.each<V>(['1.0', '0.9'])('row reflow in v%s', (v) => {
   const panel = (text: string) => screen.getByText(text).closest('[data-a2ui-panel]');
   it('marks weighted columns and cards in a row as panels that stack when the row is narrow', () => {

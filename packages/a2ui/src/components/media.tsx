@@ -4,7 +4,7 @@
    neutral glyph, so an icon-only button stays visible, and is reported once. */
 import { useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { MediaViewer } from '@satin-glass/react';
-import { agentA11y, BODY_PAD, EdgeContext, grow, InButtonContext, InTriggerContext, useEnv, useHostSink, type Rendered } from './shared';
+import { agentA11y, BODY_PAD, EdgeContext, grow, InButtonContext, InTriggerContext, useEnv, useHostSink, useSlot, type Rendered } from './shared';
 import { mediaUrl, type UrlUse } from '../urls';
 
 function useUrl(r: Rendered<unknown>, raw: unknown, use: Exclude<UrlUse, 'open'>) {
@@ -24,8 +24,10 @@ const SIZE: Record<string, CSSProperties> = {
   icon: { width: 24, height: 24 },
   avatar: { width: 40, height: 40, borderRadius: '50%' },
   smallFeature: { width: 100, height: 100 },
-  mediumFeature: { width: '100%', maxWidth: 300 },
-  largeFeature: { width: '100%', maxHeight: 400 },
+  /* a feature image inside a card keeps its own size, no larger than the room (and 300 px, or 400 px high): a 50 px
+     thumbnail stays 50 px. It does not stretch with its Column (placed by the Column's alignment instead) */
+  mediumFeature: { width: 'auto', height: 'auto', maxWidth: 'min(100%, 300px)' },
+  largeFeature: { width: 'auto', height: 'auto', maxWidth: '100%', maxHeight: 400 },
   header: { width: '100%', height: 200 },
 };
 const FIT: Record<string, CSSProperties['objectFit']> = { contain: 'contain', cover: 'cover', fill: 'fill', none: 'none', scaleDown: 'scale-down' };
@@ -105,6 +107,7 @@ export function A2uiImage(r: Rendered<{ url?: unknown; description?: unknown; fi
   useHostSink(r);
   const url = useUrl(r, props.url, 'image');
   const at = useContext(EdgeContext), inButton = useContext(InButtonContext), inTrigger = useContext(InTriggerContext);
+  const slot = useSlot(r);
   /* an image that fails to load is taken away, as a refused one is: no broken-image band. What it would still have
      said stays for a screen reader. A URL is tried again when it comes back after another */
   const [failed, setFailed] = useState<string | null>(null);
@@ -124,7 +127,9 @@ export function A2uiImage(r: Rendered<{ url?: unknown; description?: unknown; fi
   }
   return (
     <img src={url} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(url)}
-      style={{ display: 'block', objectFit: FIT[props.fit ?? 'fill'] ?? 'fill', borderRadius: variant === 'avatar' ? '50%' : variant === 'icon' ? 0 : 'var(--sg-radius-md)', ...SIZE[variant], ...grow(props.weight) }} />
+      style={{ display: 'block', objectFit: FIT[props.fit ?? 'fill'] ?? 'fill', borderRadius: variant === 'avatar' ? '50%' : variant === 'icon' ? 0 : 'var(--sg-radius-md)', ...SIZE[variant], ...grow(props.weight),
+        /* a stretching Row or Column would stretch a feature image out of shape: it keeps its own size at the start */
+        ...((variant === 'mediumFeature' || variant === 'largeFeature') && !props.weight && slot.align === 'stretch' ? { alignSelf: 'flex-start' } : {}) }} />
   );
 }
 
@@ -151,9 +156,12 @@ export function A2uiIcon(r: Rendered<{ name?: unknown }>) {
   const glyph = path !== undefined
     ? <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true" focusable="false"><path d={path} /></svg>
     : given ?? GLYPH;
+  /* the glyph sits in the middle of its 24 px box; in a Button it takes the button's own icon size (Satin sizes a
+     button's svg), in a box of its own size off the label's line (no baseline to push it down) */
+  const inButton = useContext(InButtonContext);
   return (
     <span role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true}
-      style={{ display: 'inline-flex', width: 24, height: 24, flex: 'none', color: 'inherit', ...grow(props.weight) }}>{glyph}</span>
+      style={{ display: inButton ? 'flex' : 'inline-flex', alignItems: 'center', justifyContent: 'center', ...(inButton ? {} : { width: 24, height: 24 }), flex: 'none', color: 'inherit', ...grow(props.weight) }}>{glyph}</span>
   );
 }
 

@@ -3,7 +3,7 @@
    left it; a button its checks disable says why at once. */
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Button, Checkbox, Chip, ChoiceList, DatePicker, SegmentedControl, Radio, RadioGroup, SearchField, Slider, Stack, Text, TextField, TimePicker } from '@satin-glass/react';
-import { grow, ids, InButtonContext, useAgentName, useEnv, useFieldErrors, type Rendered } from './shared';
+import { fieldBox, grow, ids, InButtonContext, useAgentName, useEnv, useFieldErrors, useSlot, type Rendered } from './shared';
 import { checkText } from '../words';
 import { markTrustedGesture } from '../urls';
 import { MAX_TEXT, safePattern } from '../patterns';
@@ -16,8 +16,13 @@ export function A2uiButton(r: Rendered<{ child?: string; variant?: keyof typeof 
   const { ref, aria, described, describe } = useAgentName<HTMLButtonElement>(r);
   const blocked = props.isValid === false;
   const reason = blocked ? ([...new Set((props.validationErrors ?? []).filter(Boolean).map((m) => checkText(String(m), env.words)))].join(' ') || env.words.fix) : undefined;
+  /* a button is as wide as its label (the catalog's own renderer does the same), placed by its Column's alignment
+     (at the start when the Column stretches); weighted in a Row, it takes its share. It is made prominent by its
+     variant's fill, not by its width (design language §8) */
+  const slot = useSlot(r);
+  const share = slot.inRow && !!props.weight;
   return (
-    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'stretch', gap: 4, maxWidth: '100%', ...grow(props.weight) }}>
+    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: share ? 'stretch' : 'flex-start', gap: 4, maxWidth: '100%', ...(share ? grow(props.weight) : { width: 'fit-content' }) }}>
       <Button ref={ref} variant={BUTTON[props.variant ?? 'default'] ?? 'tinted'} disabled={blocked} aria-describedby={ids(described, reason ? why : undefined)} {...aria}
         onClick={(e) => { if (e.nativeEvent.isTrusted) markTrustedGesture(); void props.action?.(); }}>
         <InButtonContext.Provider value={true}>{props.child ? buildChild(props.child) : null}</InButtonContext.Provider>
@@ -49,15 +54,19 @@ export function A2uiTextField(r: Rendered<{ label?: unknown; value?: unknown; se
   const fe = useFieldErrors(r, mismatch);
   const common = {
     label, value, error: fe.error, placeholder: props.placeholder == null ? undefined : String(props.placeholder), ...aria,
-    onFocus: fe.onFocus, onBlur: fe.onBlur, style: grow(props.weight), 'aria-describedby': described,
+    onFocus: fe.onFocus, onBlur: fe.onBlur, 'aria-describedby': described,
   };
-  if (props.variant === 'longText') return <>{<TextField {...common} multiline ref={ref} onChange={(e) => props.setValue?.(e.target.value)} />}{describe}</>;
+  /* the field's weight and width go on one box around it and its description (Satin's TextField puts `style` on the
+     input itself, inside the field's own box) */
+  const box = fieldBox(r, useSlot(r));
   return (
-    <>
-      <TextField {...common} ref={ref} type={props.variant === 'obscured' ? 'password' : 'text'}
-        inputMode={props.variant === 'number' ? 'decimal' : undefined} onChange={(e) => props.setValue?.(e.target.value)} />
+    <div style={{ display: 'flex', flexDirection: 'column', ...box }}>
+      {props.variant === 'longText'
+        ? <TextField {...common} multiline ref={ref} onChange={(e) => props.setValue?.(e.target.value)} />
+        : <TextField {...common} ref={ref} type={props.variant === 'obscured' ? 'password' : 'text'}
+          inputMode={props.variant === 'number' ? 'decimal' : undefined} onChange={(e) => props.setValue?.(e.target.value)} />}
       {describe}
-    </>
+    </div>
   );
 }
 
@@ -90,8 +99,9 @@ export function A2uiSlider(r: Rendered<{ label?: unknown; min?: number; max?: nu
   const toValue = (p: number) => (p >= n ? max : min + (width * p) / n);
   const value = Number(props.value ?? min);
   const pos = width > 0 ? Math.round(((Math.min(max, Math.max(min, value)) - min) / width) * n) : 0;
+  const slot = useSlot(r);
   return (
-    <Stack gap={1} style={grow(props.weight)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
+    <Stack gap={1} style={fieldBox(r, slot)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
       {label && <Text id={id} variant="subhead">{label}</Text>}
       <Slider ref={ref} aria-labelledby={label && !aria['aria-label'] ? id : undefined} {...aria} min={0} max={n} step={1} disabled={!(width > 0)}
         aria-invalid={fe.invalid} aria-describedby={ids(described, fe.describedBy)}
@@ -135,9 +145,10 @@ export function A2uiChoicePicker(r: Rendered<{ label?: unknown; variant?: string
   const host = useRef<HTMLDivElement>(null), probe = useRef<HTMLDivElement>(null), refocus = useRef(false), agentMatch = useRef(false);
   const [segment, setSegment] = useState(false);
   const valKey = JSON.stringify(chosen), optKey = JSON.stringify(all);
-  /* the room the rail has: a weighted picker's own share of its Row (which it does not have to share again with its
-     siblings), otherwise its nearest box */
-  const room = () => { if (props.weight) return host.current; let b = host.current?.parentElement ?? null; while (b && getComputedStyle(b).display === 'contents') b = b.parentElement; return b; };
+  /* the room the rail has: in a Column the picker takes the Column's width, and weighted in a Row it has its own
+     share (which it does not share again with its siblings), so its own box; elsewhere its nearest box */
+  const slot = useSlot(r);
+  const room = () => { if (slot.inColumn || props.weight) return host.current; let b = host.current?.parentElement ?? null; while (b && getComputedStyle(b).display === 'contents') b = b.parentElement; return b; };
   const decide = () => {
     const p = probe.current;
     const cut = !!p && [...p.querySelectorAll<HTMLElement>('.sg-segmented__label')].some((e) => e.scrollWidth > e.clientWidth + 1);
@@ -195,7 +206,7 @@ export function A2uiChoicePicker(r: Rendered<{ label?: unknown; variant?: string
      around them, which takes no name of its own (one name, announced once) */
   if (props.displayStyle !== 'chips' && !segment) body = <div role="group" aria-invalid={fe.invalid} aria-describedby={ids(described, fe.describedBy)}>{body}</div>;
   return (
-    <Stack ref={host} gap={2} style={{ position: 'relative', ...grow(props.weight) }} onFocus={fe.onFocus} onBlur={fe.onBlur}>
+    <Stack ref={host} gap={2} style={{ position: 'relative', ...fieldBox(r, slot) }} onFocus={fe.onFocus} onBlur={fe.onBlur}>
       {label && <Text id={labelId} variant="subhead">{label}</Text>}
       {filter}{shown.length ? body : empty}
       {candidate && (
@@ -263,6 +274,7 @@ export function against(value: string, bound: string, below: boolean): boolean {
 }
 export function A2uiDateTimeInput(r: Rendered<{ value?: unknown; setValue?: (v: string) => void; enableDate?: boolean; enableTime?: boolean; min?: unknown; max?: unknown; label?: unknown }>) {
   const { props } = r;
+  const slot = useSlot(r);
   const env = useEnv();
   const label = props.label == null ? undefined : String(props.label);
   const { aria, described, describe } = useAgentName<HTMLElement>(r, label ?? '');
@@ -289,7 +301,7 @@ export function A2uiDateTimeInput(r: Rendered<{ value?: unknown; setValue?: (v: 
   /* a single picker carries the name, description and error itself (Satin's `error` links the message) */
   const single = { ...aria, error: fe.error, 'aria-describedby': described };
   return (
-    <Stack gap={1} style={grow(props.weight)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
+    <Stack gap={1} style={fieldBox(r, slot)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
       <Stack direction="row" gap={2} wrap role={both ? 'group' : undefined} aria-label={both ? aria['aria-label'] ?? label : undefined}
         aria-describedby={both ? ids(described, fe.describedBy) : undefined} aria-invalid={both ? fe.invalid : undefined}>
         {date && <DatePicker label={dateLabel} locale={env.locale} value={asDate(d) ?? null} min={boundDay(min)} max={boundDay(max)}

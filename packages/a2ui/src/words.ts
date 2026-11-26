@@ -22,6 +22,8 @@ export type A2uiWords = {
   range: string;
   /** a cropped image's button, which opens it whole (followed by the image's description) */
   wholeImage: string;
+  /** the name of a table that scrolls sideways (Rows of weighted cells wider than their Column) */
+  scrollTable: string;
   /** check messages, for a check the agent gave no message of its own: web_core's English words, in the session's language */
   invalid: string;
   required: string;
@@ -37,7 +39,7 @@ export type A2uiWords = {
 
 const en: A2uiWords = {
   surface: 'Agent content', close: 'Close', dialog: 'Details', filter: 'Filter options', fix: 'Check the fields above.',
-  noMatches: 'No matching options', date: 'Date', time: 'Time', format: 'Check the format.', range: 'Choose a value within the allowed range.', wholeImage: 'View the whole image',
+  noMatches: 'No matching options', date: 'Date', time: 'Time', format: 'Check the format.', range: 'Choose a value within the allowed range.', wholeImage: 'View the whole image', scrollTable: 'Table, scrolls sideways',
   invalid: 'Check this value.', required: 'Fill this in.', number: 'Enter a number.', email: 'Enter an email address, such as user@example.com.',
   tooLong: 'This is too long to check.', unchecked: 'This value cannot be checked.',
   minLength: (n) => `Use at least ${n} characters.`, maxLength: (n) => `Use at most ${n} characters.`,
@@ -45,7 +47,7 @@ const en: A2uiWords = {
 };
 const ko: A2uiWords = {
   surface: '에이전트 콘텐츠', close: '닫기', dialog: '상세 정보', filter: '항목 필터', fix: '위 항목을 확인하세요.',
-  noMatches: '일치하는 항목 없음', date: '날짜', time: '시간', format: '형식을 확인하세요.', range: '허용 범위 안의 값을 선택하세요.', wholeImage: '사진 전체 보기',
+  noMatches: '일치하는 항목 없음', date: '날짜', time: '시간', format: '형식을 확인하세요.', range: '허용 범위 안의 값을 선택하세요.', wholeImage: '사진 전체 보기', scrollTable: '가로로 스크롤되는 표',
   invalid: '값을 확인하세요.', required: '입력하세요.', number: '숫자를 입력하세요.', email: '이메일 주소를 입력하세요(예: user@example.com).',
   tooLong: '확인하기에는 너무 깁니다.', unchecked: '이 값은 확인할 수 없습니다.',
   minLength: (n) => `${n}자 이상 입력하세요.`, maxLength: (n) => `${n}자 이하로 입력하세요.`,
