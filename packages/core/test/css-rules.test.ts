@@ -77,3 +77,16 @@ describe('stylesheets follow the foundation rules', () => {
     expect(stale).toEqual([]);
   });
 });
+
+/* No `:dir()`: Chrome and Edge before 120 (the README's floor is 113) drop a rule that has it, and bundlers' CSS
+   minifiers (lightningcss, in Vite) rewrite it into a list of right-to-left languages, so `dir="rtl"` alone would not
+   match. Directional rules use logical properties, or the --_sg-start / --_sg-end keywords that the nearest `[dir]` sets
+   (foundation.css), or a mark a component sets from its computed direction (data-sg-rtl). */
+describe('right to left does not depend on :dir()', () => {
+  const offenders: string[] = [];
+  for (const file of readdirSync(DIR).filter((f) => f.endsWith('.css'))) {
+    const css = readFileSync(new URL(file, DIR), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const [, sel] of css.matchAll(/([^{}]+)\{[^{}]*\}/g)) if (sel.includes(':dir(')) offenders.push(`${file}: ${sel.trim().replace(/\s+/g, ' ')}`);
+  }
+  it('no selector uses :dir()', () => expect(offenders).toEqual([]));
+});

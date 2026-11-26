@@ -222,7 +222,7 @@ a.sg-crumb__item:active, button.sg-crumb__item:active { background: var(--sg-fil
 .sg-nav__page[data-hidden] { visibility: hidden; }
 /* the page coming in casts a soft edge on the one it covers (clipped away when it rests at 0) */
 .sg-nav__page:not([data-depth="0"]) { box-shadow: var(--sg-shadow-edge); }
-.sg-nav:dir(rtl) .sg-nav__page:not([data-depth="0"]), [dir="rtl"] .sg-nav .sg-nav__page:not([data-depth="0"]) { box-shadow: var(--sg-shadow-edge-end); }   /* right to left the page comes from the left: its edge is on the right */
+.sg-nav[data-sg-rtl] > .sg-nav__page:not([data-depth="0"]) { box-shadow: var(--sg-shadow-edge-end); }   /* right to left the page comes from the left: its edge is on the right (marked from the computed direction the motion uses: navstack.tsx) */
 .sg-nav[data-moving] .sg-nav__page { will-change: transform; }
 .sg-nav__scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }   /* a sideways finger is the stack's (swipe back), not the browser's */
 .sg-nav__shade { position: absolute; inset: 0; z-index: calc(var(--sg-z-bar) + 1); background: var(--sg-scrim); opacity: 0; pointer-events: none; }

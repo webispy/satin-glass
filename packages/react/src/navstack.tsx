@@ -55,8 +55,13 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
   const [move, setMove] = useState<Move>(null);
   const [titles, setTitles] = useState<ReactNode[]>([]);
   const box = useRef<HTMLDivElement>(null);
-  /* right to left the stack mirrors: pages come in from the left and the swipe starts at the right edge */
-  const side = () => (box.current && getComputedStyle(box.current).direction === 'rtl' ? -1 : 1);
+  /* right to left the stack mirrors: pages come in from the left and the swipe starts at the right edge. Each read also
+     marks the stack (data-sg-rtl) for the CSS, so the edge shadow follows the same direction as the motion */
+  const side = () => {
+    const el = box.current, rtl = !!el && getComputedStyle(el).direction === 'rtl';
+    el?.toggleAttribute('data-sg-rtl', rtl);
+    return rtl ? -1 : 1;
+  };
   const tx = (v: number) => `translateX(${(v * side()).toFixed(2)}px)`;
   const pages = useRef<(HTMLDivElement | null)[]>([]);
   const keySeq = useRef(0);
@@ -84,6 +89,7 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
 
   /* pop: slide the top page off (from where a swipe left it, if any) over page `to`, then drop everything above it */
   const popFrom = useCallback((dx = 0, vx = 0, toIndex?: number) => {
+    side();   /* the shadow's side, read again (reduced motion pops without reading it) */
     const top = st.current.entries.length;
     if (top === 0) return;
     const to = Math.max(0, Math.min(top - 1, toIndex ?? top - 1));
@@ -126,8 +132,11 @@ export function NavigationStack({ children, labels, onDepthChange, className, st
   }, [entries.length]);
 
   /* push: run the slide once the new page is in the DOM */
+  /* the shadow's side is read once mounted, and again with every push (reduced motion fades without reading it) */
+  useIsoLayoutEffect(() => { side(); }, []);
   useIsoLayoutEffect(() => {
     if (move?.dir !== 'push') return;
+    side();
     const top = move.top, a = layer(top), b = layer(top - 1), sh = shade(top - 1), W = width();
     const done = () => {
       clear(a, b, sh);

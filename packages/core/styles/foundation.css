@@ -218,6 +218,15 @@
   .sg-glass { background: Canvas; color: CanvasText; border: 1px solid CanvasText; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .sg-glass::before, .sg-glass::after { display: none; }
 }
+/* ---------------------------------------------------------------- writing direction
+   The inline start and end as keywords for properties with no logical form (transform-origin, background-position),
+   set by the nearest explicit dir="ltr" or dir="rtl" on or above the element (left to right when there is none).
+   Custom properties inherit, so a dir="ltr" section inside a dir="rtl" page is left to right again. CSS `direction`
+   alone does not set them, and dir="auto" keeps what it inherits. Not :dir(): Chrome and Edge before 120 lack it (a
+   rule with it is dropped), and lightningcss (Vite's CSS minifier, for its default browser targets) rewrites :dir(rtl)
+   into a list of right-to-left languages, so dir="rtl" alone would not match. */
+[dir="rtl"], :host([dir="rtl"]) { --_sg-start: right; --_sg-end: left; }
+[dir="ltr"], :host([dir="ltr"]) { --_sg-start: left; --_sg-end: right; }   /* :host: when the styles are loaded inside a shadow root */
 /* reduced motion: see base.css */
 
 /* ---------------------------------------------------------------- scrollbars inside panels
