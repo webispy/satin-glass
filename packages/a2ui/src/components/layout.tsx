@@ -1,7 +1,7 @@
 /* Text, Row, Column, List, Card, Divider, Tabs and Modal of the A2UI basic catalog, drawn with Satin controls. */
-import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Button, Card, CardBody, Dialog, Divider, Stack, Tabs, Text } from '@satin-glass/react';
-import { agentA11y, grow, kids, useEnv, useHostSink, type Child, type Rendered } from './shared';
+import { agentA11y, CardDepthContext, grow, kids, useEnv, useHostSink, type Child, type Rendered } from './shared';
 
 /* ---- Text: the catalog's basic Markdown — headings, bold, italics, inline code, lists and paragraphs. No HTML, and
    links and images are their text only, as the catalog allows. v0.9.1 names headings with `variant` h1–h5. */
@@ -128,8 +128,14 @@ function Item({ across, children }: { across: boolean; children: ReactNode }) {
   return <li ref={el} hidden={empty} style={across ? { flex: '0 0 auto', maxWidth: '85%' } : undefined}>{children}</li>;
 }
 
+/* the outermost Card is Satin's surface card; one inside it keeps to the same level with a hairline */
 export function A2uiCard({ props, buildChild }: Rendered<{ child?: string }>) {
-  return <Card variant="outlined" style={grow(props.weight)}><CardBody>{props.child ? buildChild(props.child) : null}</CardBody></Card>;
+  const depth = useContext(CardDepthContext);
+  return (
+    <Card variant={depth ? 'outlined' : undefined} style={grow(props.weight)}>
+      <CardBody><CardDepthContext.Provider value={depth + 1}>{props.child ? buildChild(props.child) : null}</CardDepthContext.Provider></CardBody>
+    </Card>
+  );
 }
 
 export function A2uiDivider({ props }: Rendered<{ axis?: string }>) {
@@ -194,7 +200,8 @@ export function A2uiModal(r: Rendered<{ trigger?: string; content?: string }>) {
       </span>
       <Dialog open={open} onClose={() => setOpen(false)} title={label ?? env.words.dialog} role="dialog" dismissible
         actions={<Button variant="tinted" onClick={() => setOpen(false)}>{env.words.close}</Button>}>
-        {props.content ? buildChild(props.content) : null}
+        {/* an overlay: its first Card is the outermost again */}
+        <CardDepthContext.Provider value={0}>{props.content ? buildChild(props.content) : null}</CardDepthContext.Provider>
       </Dialog>
     </Fragment>
   );

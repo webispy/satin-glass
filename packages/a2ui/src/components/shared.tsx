@@ -15,6 +15,14 @@ export type Env = {
   warn: (d: Diagnostic) => void;
 };
 export const EnvContext = createContext<Env | null>(null);
+/** how many agent Cards enclose this point: the outermost is drawn as a surface card, any inside it with a hairline
+    (design language §8: a surface on a surface does not lift again). A Modal's dialog starts again at 0. */
+export const CardDepthContext = createContext(0);
+/** where the app draws the surfaces: on the page (the outermost agent Card lifts as a surface card) or already on a
+    surface of the app's own (every agent Card keeps to it, with a hairline). Set by A2uiProvider, read by the
+    surfaces; undefined: not said */
+export type Ground = 'page' | 'surface';
+export const GroundContext = createContext<Ground | undefined>(undefined);
 /** the ID of the surface a component is drawn in; carried by React context, so it reaches into portals (dialogs) */
 export const SurfaceIdContext = createContext<string | undefined>(undefined);
 export const useEnv = () => {
