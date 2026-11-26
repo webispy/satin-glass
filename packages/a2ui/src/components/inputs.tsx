@@ -1,8 +1,8 @@
 /* Button, TextField, CheckBox, Slider, ChoicePicker and DateTimeInput of the A2UI basic catalog, drawn with Satin
    controls. Values are two-way bound through the binder's setters. A field's check messages show once the user has
    left it; a button its checks disable says why at once. */
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { Button, Checkbox, Chip, ChoiceList, DatePicker, Radio, RadioGroup, SearchField, Slider, Stack, Text, TextField, TimePicker } from '@satin-glass/react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Button, Checkbox, Chip, ChoiceList, DatePicker, SegmentedControl, Radio, RadioGroup, SearchField, Slider, Stack, Text, TextField, TimePicker } from '@satin-glass/react';
 import { grow, ids, InButtonContext, useAgentName, useEnv, useFieldErrors, type Rendered } from './shared';
 import { checkText } from '../words';
 import { markTrustedGesture } from '../urls';
@@ -106,6 +106,10 @@ export function A2uiSlider(r: Rendered<{ label?: unknown; min?: number; max?: nu
    may be chosen (one tab stop, arrow keys choose). `filterable` adds a field that filters by label, case-insensitive;
    a chosen option the filter hides stays chosen. */
 type Option = { label?: unknown; value: string };
+/** whether a segment rail fits: measured (without layout it is 0), no wider than the room, and no name cut short */
+export function fitsRail({ rail, available, cut }: { rail: number; available: number; cut: boolean }): boolean {
+  return rail > 0 && available > 0 && !cut && rail <= available;
+}
 export function A2uiChoicePicker(r: Rendered<{ label?: unknown; variant?: string; options?: Option[]; value?: unknown; setValue?: (v: string[]) => void; displayStyle?: string; filterable?: boolean }>) {
   const { props } = r;
   const env = useEnv(), labelId = useId();
@@ -120,14 +124,57 @@ export function A2uiChoicePicker(r: Rendered<{ label?: unknown; variant?: string
   const shown = q ? all.filter((o) => o.label.toLocaleLowerCase().includes(q)) : all;
   const visible = new Set(shown.map((o) => o.value));
   const hidden = chosen.filter((c) => !visible.has(c));
-  const set = (v: string[]) => props.setValue?.(v);
+  /* the value this picker wrote itself, until the binder hands it back */
+  const mine = useRef<string | null>(null);
+  const set = (v: string[]) => { mine.current = JSON.stringify(v); props.setValue?.(v); };
+  /* a short choice of one (2–4 options, no filter) is drawn as Satin's segmented control when its rail fits the
+     room and the agent's value is one of the options (a segment rail always shows one chosen). Decided when the agent
+     sends the options or a value, and when the room changes; never by the user's own pick, so the controls do not
+     change under the hand. Measured with a hidden rail in the real styles; unmeasured (the server, no layout), chips. */
+  const candidate = one && props.displayStyle === 'chips' && !props.filterable && all.length >= 2 && all.length <= 4;
+  const host = useRef<HTMLDivElement>(null), probe = useRef<HTMLDivElement>(null), refocus = useRef(false), agentMatch = useRef(false);
+  const [segment, setSegment] = useState(false);
+  const valKey = JSON.stringify(chosen), optKey = JSON.stringify(all);
+  /* the room the rail has: a weighted picker's own share of its Row (which it does not have to share again with its
+     siblings), otherwise its nearest box */
+  const room = () => { if (props.weight) return host.current; let b = host.current?.parentElement ?? null; while (b && getComputedStyle(b).display === 'contents') b = b.parentElement; return b; };
+  const decide = () => {
+    const p = probe.current;
+    const cut = !!p && [...p.querySelectorAll<HTMLElement>('.sg-segmented__label')].some((e) => e.scrollWidth > e.clientWidth + 1);
+    const next = candidate && agentMatch.current && !!p && fitsRail({ rail: p.offsetWidth, available: room()?.clientWidth ?? 0, cut });
+    setSegment((was) => { if (was !== next && host.current?.contains(document.activeElement)) refocus.current = true; return next; });
+  };
+  /* the agent's match is read again when the value is not the one this picker wrote, and whenever the options change
+     (a press on the chosen option writes the same value, so nothing comes back to clear `mine`) */
+  const seenOpt = useRef(optKey);
+  useLayoutEffect(() => {
+    if (mine.current !== valKey || seenOpt.current !== optKey) agentMatch.current = all.some((o) => o.value === chosen[0]);
+    seenOpt.current = optKey;
+    mine.current = null;
+    decide();
+  }, [valKey, optKey, candidate]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    const b = room();
+    if (!candidate || !b || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => decide());
+    ro.observe(b);
+    return () => ro.disconnect();
+  }, [candidate]);   // eslint-disable-line react-hooks/exhaustive-deps
+  /* switched while the focus was in it: the focus goes to the chosen one in the new controls */
+  useLayoutEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    (host.current?.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]') ?? host.current?.querySelector<HTMLElement>('[role="radio"]'))?.focus();
+  }, [segment]);
   const filter = props.filterable && (
     <SearchField label={env.words.filter} value={query} onChange={(e) => setQuery(e.target.value)} clearable onClear={() => setQuery('')} />
   );
   const empty = shown.length === 0 && <Text variant="footnote" tone="secondary">{env.words.noMatches}</Text>;
   const named = { 'aria-labelledby': label && !aria['aria-label'] ? labelId : undefined, ...aria, 'aria-invalid': fe.invalid, 'aria-describedby': ids(described, fe.describedBy) };
   let body;
-  if (props.displayStyle === 'chips') {
+  if (segment) {
+    body = <SegmentedControl {...named} options={all.map((o) => ({ value: o.value, label: o.label }))} value={chosen[0]} onChange={(x) => set([x])} />;
+  } else if (props.displayStyle === 'chips') {
     body = one ? <RadioChips options={shown} value={chosen[0]} onChange={(v) => set([v])} {...named} /> : (
       <div role="group" {...named} style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {shown.map((o) => <Chip key={o.value} selected={chosen.includes(o.value)} onSelectedChange={(on) => set(on ? [...chosen, o.value] : chosen.filter((v) => v !== o.value))}>{o.label}</Chip>)}
@@ -146,11 +193,21 @@ export function A2uiChoicePicker(r: Rendered<{ label?: unknown; variant?: string
   }
   /* radio buttons and the choice list name themselves; the error and the description reach them through a group
      around them, which takes no name of its own (one name, announced once) */
-  if (props.displayStyle !== 'chips') body = <div role="group" aria-invalid={fe.invalid} aria-describedby={ids(described, fe.describedBy)}>{body}</div>;
+  if (props.displayStyle !== 'chips' && !segment) body = <div role="group" aria-invalid={fe.invalid} aria-describedby={ids(described, fe.describedBy)}>{body}</div>;
   return (
-    <Stack gap={2} style={grow(props.weight)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
+    <Stack ref={host} gap={2} style={{ position: 'relative', ...grow(props.weight) }} onFocus={fe.onFocus} onBlur={fe.onBlur}>
       {label && <Text id={labelId} variant="subhead">{label}</Text>}
       {filter}{shown.length ? body : empty}
+      {candidate && (
+        /* the rail is drawn at its own width inside an empty box, so a rail wider than the picker adds nothing to the
+           scrolling area around it */
+        <div data-a2ui-probe="" aria-hidden="true" inert
+          style={{ position: 'absolute', insetInlineStart: 0, top: 0, width: 0, height: 0, overflow: 'hidden', visibility: 'hidden', pointerEvents: 'none' }}>
+          <div ref={probe} className="sg-segmented" style={{ width: 'max-content' }}>
+            {all.map((o) => <span key={o.value} className="sg-segmented__item"><span className="sg-segmented__label" data-label={o.label}>{o.label}</span></span>)}
+          </div>
+        </div>
+      )}
       {fe.message}{describe}
     </Stack>
   );

@@ -612,3 +612,119 @@ describe.each<V>(['1.0', '0.9'])('the whole image in v%s', (v) => {
     expect(screen.queryByRole('button', { name: /View the whole image/ })).not.toBeNull();
   });
 });
+
+describe('fitsRail', () => {
+  it('fits when the rail is measured, no wider than the room, and no name is cut', async () => {
+    const { fitsRail } = await import('../src/components/inputs');
+    expect(fitsRail({ rail: 180, available: 300, cut: false })).toBe(true);
+    expect(fitsRail({ rail: 320, available: 300, cut: false })).toBe(false);
+    expect(fitsRail({ rail: 180, available: 300, cut: true })).toBe(false);
+    expect(fitsRail({ rail: 0, available: 0, cut: false })).toBe(false);   /* not measured (no layout): chips */
+  });
+});
+
+describe.each<V>(['1.0', '0.9'])('a short exclusive choice in v%s', (v) => {
+  /* jsdom has no layout: the hidden rail measures `rail` px, every other box `room` px */
+  const layout = (rail: number, room: number) => {
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.classList.contains('sg-segmented') ? rail : room; });
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.classList.contains('sg-segmented__item') ? 50 : room; });
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.classList.contains('sg-segmented__item') ? 50 : room; });
+  };
+  afterEach(() => vi.restoreAllMocks());
+  const picker = (value: string[], extra: Record<string, unknown> = {}, options = [{ label: 'Annual', value: 'annual' }, { label: 'Monthly', value: 'monthly' }]) => [
+    create(v), data(v, { billing: value }),
+    components(v, [{ id: 'root', component: 'ChoicePicker', label: 'Billing', variant: 'mutuallyExclusive', displayStyle: 'chips', options, value: path(v, '/billing'), ...extra }]),
+  ];
+  const billing = (s: () => { dataModel: (v: V) => unknown }) => (s().dataModel(v) as { surfaces: Record<string, { billing: string[] }> }).surfaces.s.billing;
+  it('draws it as a segmented control, and a press writes [value]', () => {
+    layout(160, 400);
+    const { feed, session, container } = mount();
+    feed(...picker(['annual']));
+    expect(container.querySelector('[role="radiogroup"].sg-segmented')).not.toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: 'Monthly' }));
+    expect(billing(session)).toEqual(['monthly']);
+  });
+  it('keeps chips when the rail does not fit, a name is cut, or it is filterable, has five options or no matching value', () => {
+    const cases: [number, number, unknown[]][] = [
+      [500, 400, picker(['annual'])],
+      [160, 400, picker(['annual'], { filterable: true })],
+      [160, 400, picker(['a'], {}, ['a', 'b', 'c', 'd', 'e'].map((x) => ({ label: x, value: x })))],
+      [160, 400, picker([])],
+    ];
+    for (const [rail, room, msgs] of cases) {
+      layout(rail, room);
+      const { feed, container, unmount } = mount();
+      feed(...msgs);
+      expect(container.querySelector('.sg-segmented[role="radiogroup"]')).toBeNull();
+      unmount(); vi.restoreAllMocks();
+    }
+    /* a name cut by the label's 12em cap (the real control's markup) */
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.classList.contains('sg-segmented__label') ? 90 : 400; });
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.classList.contains('sg-segmented__label') ? 50 : 400; });
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.classList.contains('sg-segmented') ? 160 : 400; });
+    const { feed, container } = mount();
+    feed(...picker(['annual']));
+    expect(container.querySelector('.sg-segmented[role="radiogroup"]')).toBeNull();
+  });
+  it('does not turn chips into segments when the user picks', () => {
+    layout(160, 400);
+    const { feed, container } = mount();
+    feed(...picker([]));
+    fireEvent.click(screen.getByRole('radio', { name: 'Annual' }));
+    expect(container.querySelector('.sg-segmented[role="radiogroup"]')).toBeNull();
+  });
+  it('measures a rail drawn like the real one: each label in its capped span', () => {
+    layout(160, 400);
+    const { feed, container } = mount();
+    feed(...picker(['annual']));
+    const probe = container.querySelector('[data-a2ui-probe] .sg-segmented');
+    expect([...(probe?.querySelectorAll('.sg-segmented__item > .sg-segmented__label[data-label]') ?? [])].map((e) => e.getAttribute('data-label'))).toEqual(['Annual', 'Monthly']);
+  });
+  it('moves the focus to the chosen option when it switches while focused', () => {
+    layout(500, 400);
+    const { feed, container } = mount();
+    feed(...picker(['annual']));
+    expect(container.querySelector('.sg-segmented[role="radiogroup"]')).toBeNull();
+    screen.getByRole('radio', { name: 'Annual' }).focus();
+    vi.restoreAllMocks(); layout(160, 400);
+    feed(data(v, { billing: ['monthly'] }));
+    expect(container.querySelector('.sg-segmented[role="radiogroup"]')).not.toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'Monthly' }));
+  });
+  /* a press on the chosen segment writes the same value, so the binder hands nothing back; the agent then replaces
+     the options and keeps the value: the value is no longer an option, so the rail (which always shows one chosen)
+     goes back to chips (#97 review) */
+  it('goes back to chips when the agent replaces the options after a press on the chosen one', () => {
+    layout(160, 400);
+    const { feed, container } = mount();
+    feed(...picker(['annual']));
+    fireEvent.click(screen.getByRole('radio', { name: 'Annual' }));
+    feed(components(v, [{ id: 'root', component: 'ChoicePicker', label: 'Billing', variant: 'mutuallyExclusive', displayStyle: 'chips',
+      options: [{ label: 'Monthly', value: 'monthly' }, { label: 'Weekly', value: 'weekly' }], value: path(v, '/billing') }]));
+    expect(container.querySelector('.sg-segmented[role="radiogroup"]')).toBeNull();
+    expect(screen.queryByRole('radio', { checked: true })).toBeNull();
+  });
+  /* weighted in a Row, the picker has its share, not the Row: a 250 px rail does not fit a 150 px share of 400 px */
+  it('measures a weighted picker\'s own share of its Row', () => {
+    const own = (e: HTMLElement) => !!e.querySelector(':scope > [data-a2ui-probe]');
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.classList.contains('sg-segmented') ? 250 : 400; });
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.classList.contains('sg-segmented__item') ? 50 : own(this) ? 150 : 400; });
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.classList.contains('sg-segmented__item') ? 50 : 400; });
+    const { feed, container } = mount();
+    feed(create(v), data(v, { billing: ['annual'] }), components(v, [
+      { id: 'root', component: 'Row', children: ['p', 't'] },
+      { id: 'p', component: 'ChoicePicker', label: 'Billing', variant: 'mutuallyExclusive', displayStyle: 'chips', weight: 1,
+        options: [{ label: 'Annual', value: 'annual' }, { label: 'Monthly', value: 'monthly' }], value: path(v, '/billing') },
+      { id: 't', component: 'Text', text: 'Total', weight: 1 },
+    ]));
+    expect(container.querySelector('.sg-segmented[role="radiogroup"]')).toBeNull();
+  });
+  it('goes back to chips when the agent clears the value', () => {
+    layout(160, 400);
+    const { feed, container } = mount();
+    feed(...picker(['annual']));
+    expect(container.querySelector('.sg-segmented[role="radiogroup"]')).not.toBeNull();
+    feed(data(v, { billing: [] }));
+    expect(container.querySelector('.sg-segmented[role="radiogroup"]')).toBeNull();
+  });
+});
