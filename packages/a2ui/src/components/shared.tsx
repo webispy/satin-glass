@@ -32,6 +32,8 @@ export const EdgeContext = createContext<{ id: string; edge: Edge } | null>(null
 export const BODY_PAD = { top: 14, inline: 16, bottom: 16 } as const;
 /** inside an agent Button: a plain Text there is the button's label, in the button's own type */
 export const InButtonContext = createContext(false);
+/** inside a Modal's trigger: the trigger is the press target, so nothing inside it becomes a button of its own */
+export const InTriggerContext = createContext(false);
 export const GroundContext = createContext<Ground | undefined>(undefined);
 /** the ID of the surface a component is drawn in; carried by React context, so it reaches into portals (dialogs) */
 export const SurfaceIdContext = createContext<string | undefined>(undefined);
