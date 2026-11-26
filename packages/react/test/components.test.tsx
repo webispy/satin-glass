@@ -1,3 +1,4 @@
+import { renderToString } from 'react-dom/server';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { useRef, useState } from 'react';
@@ -409,6 +410,33 @@ describe('Portal', () => {
     expect(host.dataset.sgReduceMotion).toBe('true');
     expect(host.dataset.sgTheme).toBe('dark');
     expect(host.dataset.sgGrooves).toBe('flat');
+  });
+  /* the class on a provider reduces transparency inside it in CSS; a panel in a portal leaves its DOM, so the provider
+     resolves the class too and the portal carries it (#91) */
+  it('carries reduced transparency given as the class on the provider', () => {
+    render(<ThemeProvider theme={createTheme({ reduceTransparency: false })} className="app sg-reduce-transparency"><Portal><span data-testid="cls" /></Portal></ThemeProvider>);
+    const host = screen.getByTestId('cls').parentElement!;
+    expect(host.dataset.sgReduceTransparency).toBe('true');
+    expect(host.classList.contains('sg-reduce-transparency')).toBe(true);
+    /* the provider's own element says so too, so its attribute and its class agree */
+    expect(host.ownerDocument.querySelector('.app')!.getAttribute('data-sg-reduce-transparency')).toBe('true');
+  });
+  it('takes the class as HTML does: whole tokens split on ASCII whitespace', () => {
+    render(<>
+      <ThemeProvider theme={createTheme({ reduceTransparency: false })} className="no-sg-reduce-transparency-here"><Portal><span data-testid="near" /></Portal></ThemeProvider>
+      {/* a non-breaking space is part of a class token in HTML: "app\u00a0sg-reduce-transparency" is one unrelated class */}
+      <ThemeProvider theme={createTheme({ reduceTransparency: false })} className={'app\u00a0sg-reduce-transparency'}><Portal><span data-testid="nbsp" /></Portal></ThemeProvider>
+      <ThemeProvider theme={createTheme({ reduceTransparency: false })} className={'app\tsg-reduce-transparency'}><Portal><span data-testid="tab" /></Portal></ThemeProvider>
+    </>);
+    expect(screen.getByTestId('near').parentElement!.dataset.sgReduceTransparency).toBe('false');
+    expect(screen.getByTestId('nbsp').parentElement!.dataset.sgReduceTransparency).toBe('false');
+    expect(screen.getByTestId('tab').parentElement!.dataset.sgReduceTransparency).toBe('true');
+  });
+  /* the reported call: the class alone, the setting left at 'system'. Written "true" from the server on, so the CSS,
+     the portals after hydration and useTheme agree from the first paint */
+  it('with the class alone (setting left to the system), the provider is reduced from the server render on', () => {
+    const html = renderToString(<ThemeProvider className="sg-reduce-transparency"><span>x</span></ThemeProvider>);
+    expect(html).toMatch(/data-sg-reduce-transparency="true"/);
   });
 });
 
