@@ -1,4 +1,7 @@
-import { act, fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { useEffect } from 'react';
+import { ThemeProvider } from '@satin-glass/react';
+import { A2uiProvider, A2uiSurfaces, useA2ui } from '../src';
 import type { A2uiReport } from '../src';
 import { a11y, call, checks, components, create, data, frame, mount, path, remove, tick, wire, type V } from './helpers';
 
@@ -262,5 +265,60 @@ describe('keepQuoted', () => {
     expect(keepQuoted("h 'o''clock' a", (p) => p.toUpperCase())).toBe("H o'clock A");
     expect(keepQuoted("'at'", (p) => p.toUpperCase())).toBe('at');
     expect(keepQuoted("d '' M", (p) => p.toUpperCase())).toBe("D ' M");
+  });
+});
+
+describe.each<V>(['1.0', '0.9'])('cards in v%s', (v) => {
+  const nested = [
+    { id: 'root', component: 'Card', child: 'col' },
+    { id: 'col', component: 'Column', children: ['title', 'inner'] },
+    { id: 'title', component: 'Text', text: 'Outer' },
+    { id: 'inner', component: 'Card', child: 'innerText' },
+    { id: 'innerText', component: 'Text', text: 'Inner' },
+  ];
+  const cardOf = (text: string) => screen.getByText(text).closest('.sg-card')!;
+  it('draws the outermost card as a surface and a card inside it with a hairline', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, nested));
+    expect(cardOf('Outer').classList.contains('sg-card--outlined')).toBe(false);
+    expect(cardOf('Inner').classList.contains('sg-card--outlined')).toBe(true);
+  });
+  it('starts again inside a modal\'s dialog', async () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Card', child: 'm' },
+      { id: 'm', component: 'Modal', trigger: 'open', content: 'dc', ...a11y(v, 'More') },
+      { id: 'open', component: 'Button', child: 'ot', action: { event: { name: 'opened' } } }, { id: 'ot', component: 'Text', text: 'Open' },
+      { id: 'dc', component: 'Card', child: 'dt' }, { id: 'dt', component: 'Text', text: 'In the dialog' },
+    ]));
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+    await screen.findByRole('dialog', { name: 'More' });
+    expect(cardOf('In the dialog').classList.contains('sg-card--outlined')).toBe(false);
+  });
+});
+
+describe('where the surfaces sit (ground)', () => {
+  const msgs = [create('1.0'), components('1.0', [{ id: 'root', component: 'Card', child: 't' }, { id: 't', component: 'Text', text: 'Agent card' }])];
+  function Draw({ ground, provider }: { ground?: 'page' | 'surface'; provider?: 'page' | 'surface' }) {
+    const a2ui = useA2ui();
+    useEffect(() => { a2ui.process(msgs); }, [a2ui]);
+    const s = <A2uiSurfaces a2ui={a2ui} ground={ground} />;
+    return provider ? <A2uiProvider ground={provider}>{s}</A2uiProvider> : s;
+  }
+  const outlined = () => screen.getByText('Agent card').closest('.sg-card')!.classList.contains('sg-card--outlined');
+  it('draws the outermost card as a surface by default (on the page)', () => {
+    render(<ThemeProvider><Draw /></ThemeProvider>);
+    expect(outlined()).toBe(false);
+  });
+  it('draws every card with a hairline when the surfaces already sit on a surface', () => {
+    render(<ThemeProvider><Draw ground="surface" /></ThemeProvider>);
+    expect(outlined()).toBe(true);
+  });
+  it('takes the nearest A2uiProvider\'s ground, and its own option first', () => {
+    const { unmount } = render(<ThemeProvider><Draw provider="surface" /></ThemeProvider>);
+    expect(outlined()).toBe(true);
+    unmount();
+    render(<ThemeProvider><Draw provider="surface" ground="page" /></ThemeProvider>);
+    expect(outlined()).toBe(false);
   });
 });

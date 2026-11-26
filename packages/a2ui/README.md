@@ -31,6 +31,7 @@ function AgentReply({ send }: { send: (envelope: unknown) => void }) {
   - `allowUrl(url, use)`: the URL policy.
   - `versions`: which protocol versions to accept.
 - `<A2uiSurfaces a2ui>` draws every surface in one region. `<A2uiSurface a2ui surfaceId>` draws one surface. Both take `lang`, the language of the agent's content when it differs from the page's.
+- Both also take `ground`, which says where the app draws them. With `'page'` (the default) the agent's outermost Card is a Satin surface card, and a Card inside it has a hairline. When the surfaces already sit inside a card, sheet or bubble of the app's own, pass `ground="surface"`: every agent Card is then drawn with a hairline, so nothing lifts twice. A dialog the agent opens starts again. `<A2uiProvider ground>` sets it for the surfaces inside, and a surface's own option comes first.
 - `satinCatalogs()` returns the catalogs, for an app that manages its own processor. Such an app draws its surfaces with `@a2ui/react`'s `A2uiSurface` inside `<A2uiProvider>`, which gives the components their words, icons, media URL policy and report handler.
 - The session object and its methods keep their identity. `subscribe` and `getSnapshot` follow the surfaces.
 

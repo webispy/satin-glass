@@ -6,5 +6,5 @@ export { A2uiSurfaces, A2uiSurface, A2uiProvider } from './surfaces';
 export { satinCatalogs, BASIC_CATALOG_IDS, type SatinCatalogOptions } from './catalogs';
 export { defaultAllowUrl, type AllowUrl, type UrlUse } from './urls';
 export type { A2uiWords } from './words';
-export type { Diagnostic } from './components/shared';
+export type { Diagnostic, Ground } from './components/shared';
 export type { Version } from './functions';
