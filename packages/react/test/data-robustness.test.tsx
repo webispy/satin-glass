@@ -2,7 +2,7 @@
    selections, dates, and the viewer's index and items changing under it. */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
-import { Activity, Suspense, useState, type ReactElement } from 'react';
+import { Activity, Suspense, startTransition, useState, type ReactElement } from 'react';
 import { niceTicks, LineChart, BarChart, DonutChart, ScatterChart, Sparkline, DataTable, MediaViewer, ThemeProvider, createTheme, type Column, type MediaItem } from '../src';
 
 /* a ResizeObserver that reports a 400 px wide box at once (charts draw only once they know their width) and
@@ -142,6 +142,85 @@ describe('charts: the active point', () => {
     expect(container.querySelector('.sg-chart__tip')).toBeNull();
     rerender(<ScatterChart aria-label="s" data={[data[0], { n: 'q', a: null, b: 2 }]} x="a" y="b" pointLabel="n" />);
     expect(container.querySelector('.sg-chart__tip')).toBeNull();
+  });
+});
+
+describe('charts: a scatter chart keeps the scale history of what it showed (#83)', () => {
+  /* a render React starts and throws away (here a transition to a log axis that suspends) must not count as shown: the
+     next real change, linear to linear, moves each point from where it was, not as if the axis had switched */
+  it('a change after a discarded switch to log starts every point where it was drawn', async () => {
+    const frames: FrameRequestCallback[] = [];
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { frames.push(cb); return frames.length; });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    {
+      const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 2 }, { n: 'r', a: 100, b: 3 }];
+      const B = [{ n: 'p', a: 2, b: 1 }, { n: 'q', a: 20, b: 2 }, { n: 'r', a: 200, b: 3 }];
+      const never = new Promise<void>(() => {});
+      let tried = 0;
+      function Gate({ on }: { on: boolean }) { if (on) { tried++; throw never; } return null; }
+      let setS: (v: { scale: 'linear' | 'log'; data: typeof A }) => void = () => {};
+      function Host() {
+        const [st, set] = useState<{ scale: 'linear' | 'log'; data: typeof A }>({ scale: 'linear', data: A }); setS = set;
+        return <Suspense fallback={null}><ScatterChart aria-label="s" data={st.data} x="a" y="b" pointLabel="n" xScale={st.scale} /><Gate on={st.scale === 'log'} /></Suspense>;
+      }
+      const { container } = render(<Host />);
+      await act(async () => {});
+      const cx = () => [...container.querySelectorAll('circle.sg-scatter__point')].map((c) => Number(c.getAttribute('cx')));
+      const before = cx();
+      expect(before.length).toBe(3);
+      /* the switch to log suspends and is thrown away: the chart stays linear */
+      await act(async () => { startTransition(() => setS({ scale: 'log', data: A })); });
+      expect(tried).toBeGreaterThan(0);   /* the log render did happen, and was thrown away */
+      expect(cx()).toEqual(before);
+      /* a real change, linear to linear: at its first frame (none has run) every point is where it was */
+      await act(async () => { setS({ scale: 'linear', data: B }); });
+      /* B is committed (its values are in the chart's table) and every point is still drawn */
+      expect(container.textContent).toContain('200');
+      const now = cx();
+      expect(now.length).toBe(3);
+      now.forEach((x, i) => expect(x).toBeCloseTo(before[i], 3));
+    }
+    void raf;
+  });
+  const cxOf = (c: HTMLElement) => [...c.querySelectorAll('circle.sg-scatter__point')].map((e) => Number(e.getAttribute('cx')));
+  const holdFrames = () => { const frames: FrameRequestCallback[] = []; vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { frames.push(cb); return frames.length; }); vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {}); return frames; };
+  const settle = async (frames: FrameRequestCallback[]) => { let t = performance.now(); for (let k = 0; k < 400 && frames.length; k++) { t += 50; const f = frames.splice(0); await act(async () => { f.forEach((cb) => cb(t)); }); } };
+  /* switched to log and given new data while hidden (Activity): shown again, every point starts where it was drawn, not
+     at its new value read on the old axis (the third point started some 2,900 px off a 400 px plot) */
+  it('a switch with new data while hidden starts every point where it was drawn', async () => {
+    const frames = holdFrames();
+    const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 2 }, { n: 'r', a: 100, b: 3 }];
+    const B = [{ n: 'p', a: 2, b: 1 }, { n: 'q', a: 30, b: 2 }, { n: 'r', a: 900, b: 3 }];
+    const view = (mode: 'visible' | 'hidden', scale: 'linear' | 'log', data: typeof A) => <Activity mode={mode}><ScatterChart aria-label="s" data={data} x="a" y="b" pointLabel="n" xScale={scale} /></Activity>;
+    const { container, rerender } = render(view('visible', 'linear', A));
+    await settle(frames);
+    const before = cxOf(container);
+    expect(before.length).toBe(3);
+    await act(async () => { rerender(view('hidden', 'linear', A)); });
+    await act(async () => { rerender(view('hidden', 'log', B)); });
+    await act(async () => { rerender(view('visible', 'log', B)); });
+    const first = cxOf(container);
+    expect(first.length).toBe(3);
+    first.forEach((x, i) => expect(x).toBeCloseTo(before[i], 2));
+    /* and it ends on the log layout, inside the plot */
+    await settle(frames);
+    cxOf(container).forEach((x) => { expect(x).toBeGreaterThanOrEqual(0); expect(x).toBeLessThanOrEqual(400); });
+  });
+  /* a switch that has settled is history: a later change within the same log bounds moves from the log layout (the
+     points flew some 15,000 px off when the history still said the axis had switched) */
+  it('a change after a settled switch, within the same bounds, starts every point where it was drawn', async () => {
+    const frames = holdFrames();
+    const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 2 }, { n: 'r', a: 100, b: 3 }];
+    const view = (scale: 'linear' | 'log', data: typeof A) => <ScatterChart aria-label="s" data={data} x="a" y="b" pointLabel="n" xScale={scale} />;
+    const { container, rerender } = render(view('linear', A));
+    await settle(frames);
+    await act(async () => { rerender(view('log', A)); });
+    await settle(frames);
+    const before = cxOf(container);
+    await act(async () => { rerender(view('log', [A[0], { ...A[1], a: 20 }, A[2]])); });
+    const first = cxOf(container);
+    expect(first.length).toBe(3);
+    first.forEach((x, i) => expect(x).toBeCloseTo(before[i], 2));
   });
 });
 
