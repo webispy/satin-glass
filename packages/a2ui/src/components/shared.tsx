@@ -7,6 +7,8 @@ import type { AllowUrl } from '../urls';
 
 export type Diagnostic = { code: 'label-conflict' | 'missing-icon' | 'untitled-modal' | 'refused-url' | 'refused-pattern'; surfaceId?: string; componentId: string; message: string };
 export type Env = {
+  /** the session's language: the built-in words, and the pickers' formats */
+  locale: string;
   words: A2uiWords;
   icons: Record<string, ReactNode>;
   allowUrl: AllowUrl;
