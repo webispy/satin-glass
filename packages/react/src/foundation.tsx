@@ -16,7 +16,10 @@ export type GrooveStyle = 'inset' | 'flat';
 export type Theme = {
   mode: ThemeMode;
   contrast: ThemeContrast;
-  /** solid surfaces instead of glass ('system' follows prefers-reduced-transparency) */
+  /** solid surfaces instead of glass ('system' follows prefers-reduced-transparency). The `sg-reduce-transparency`
+      class on a ThemeProvider counts as true, panels in portals included. On any other element it reaches its
+      descendants up to the next ThemeProvider, which decides for itself; panels in portals take their provider's
+      setting, so they follow such a class only where no ThemeProvider is above them (from html or body) */
   reduceTransparency: boolean | 'system';
   /** pointer-following highlight on glass */
   light: boolean;
@@ -109,17 +112,20 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
   const outerGrooves = useContext(ThemeCtx).grooves;
   const outerLang = useContext(LangCtx);
   const lang = theme.locale ?? outerLang;
+  /* the class on the provider counts as reduced transparency, as it does in CSS (where it wins over the attribute the
+     provider writes): resolved here too, so panels in portals, which leave the provider's DOM, follow it (#91) */
+  const classRT = typeof className === 'string' && className.split(/[ \t\n\f\r]+/).includes('sg-reduce-transparency');   /* HTML's class tokens: split on ASCII whitespace only */
   const resolved = useMemo<ResolvedTheme>(() => {
     const scheme = theme.mode === 'system' ? (sysDark ? 'dark' : 'light') : theme.mode;
     const more = theme.contrast === 'system' ? sysMore : theme.contrast === 'more';
     return {
       ...theme, scheme, name: `${scheme}${more ? '-hc' : ''}` as ResolvedTheme['name'],
-      reducedTransparency: theme.reduceTransparency === 'system' ? sysRT : theme.reduceTransparency,
+      reducedTransparency: classRT || (theme.reduceTransparency === 'system' ? sysRT : theme.reduceTransparency),
       reducedMotion: theme.reduceMotion === 'system' ? sysRM : theme.reduceMotion,
       grooves: theme.grooves ?? outerGrooves,
       locale: lang ?? 'en-US',
     };
-  }, [theme, sysDark, sysMore, sysRT, sysRM, outerGrooves, lang]);
+  }, [theme, sysDark, sysMore, sysRT, sysRM, outerGrooves, lang, classRT]);
   /* every setting is written resolved on the element, so the nearest provider decides for CSS, JS and portals alike.
      Reduced motion that follows the system is not known on the server, nor while hydrating: it is written "system"
      then, which neither forces motion on nor off, so the CSS follows the media query and prefersReducedMotion() asks
@@ -128,7 +134,7 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
      outer "true" (the class stays for stylesheets that look for it) */
   const known = useClient();
   const reduceMotion = theme.reduceMotion === 'system' && !known ? 'system' : String(resolved.reducedMotion);
-  const reduceTransparency = theme.reduceTransparency === 'system' && !known ? 'system' : String(resolved.reducedTransparency);
+  const reduceTransparency = theme.reduceTransparency === 'system' && !known && !classRT ? 'system' : String(resolved.reducedTransparency);
   const motion = theme.motion ?? outerMotion;
   return (
     <ThemeCtx.Provider value={resolved}>

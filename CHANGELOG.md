@@ -21,6 +21,7 @@
 - `Calendar` (and the pickers built on it): picking a shorter month from the month grid with the 31st focused put the focus back on the 31st of the month before, still shown in the new month's first row; it stays on the new month's last day, the day the grid marks as focused.
 - Glass with reduced transparency: a hovered glass button (`Button` or `IconButton` with `variant="glass"`) stays solid; it shades its fill instead of mixing in the translucent highlight, which made it see-through again (alpha about 0.74 in dark themes, 0.91 in light).
 - Glass where the browser has no backdrop filters: clear glass, standalone or as a glass button, sits on the same dark plate it takes with reduced transparency, so its white ink stays readable (it fell back to the white elevated fill in light themes); glass buttons are solid there too, at rest and hovered, and the glass search field at rest, rather than translucent without a blur behind them; glass inside glass stays flat over its parent's fill.
+- The `sg-reduce-transparency` class on a `ThemeProvider` now reaches panels in portals: a menu or popover opened inside it is solid too, as inline glass was. The provider counts its own class as `reduceTransparency: true`, as the CSS already did. On an element that is not a provider, the class reaches its descendants up to the next `ThemeProvider`, which decides for itself; panels in portals take their provider's setting, so they follow such a class only where no `ThemeProvider` is above them (from `html` or `body`).
 
 ## 0.6.0 — 2026-11-26
 
