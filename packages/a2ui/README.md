@@ -35,6 +35,17 @@ function AgentReply({ send }: { send: (envelope: unknown) => void }) {
 - `satinCatalogs()` returns the catalogs, for an app that manages its own processor. Such an app draws its surfaces with `@a2ui/react`'s `A2uiSurface` inside `<A2uiProvider>`, which gives the components their words, icons, media URL policy and report handler.
 - The session object and its methods keep their identity. `subscribe` and `getSnapshot` follow the surfaces.
 
+## Satin Glass's look
+Where the catalog leaves the look open, the surfaces take Satin Glass's, so an agent's screen reads as part of the app.
+- **Cards.** The outermost Card is a surface card, and a Card inside it has a hairline. See `ground` above.
+- **Buttons.** A Button's label uses the control text role (`--sg-text-control-*`). A Text of one plain paragraph inside a Button is drawn as the button's label, not as a paragraph; a heading, caption, list or several paragraphs keep their own type.
+- **Images at a Card's top or bottom.** An Image with the `mediumFeature`, `largeFeature` or `header` variant and no `weight` runs to the Card's sides and edge when it is the Card's child, or the first or last child of a Column that is the Card's child (stretched, without a `weight`, with its children listed by ID rather than from a template).
+  - It keeps the image's proportions, up to a 4:5 portrait (5/4 of the Card's width) and 400 px. A header is 200 px high.
+  - It fills that box (`cover`) unless the agent sets `fit`.
+- **The whole image.** When such an image fills its box (`cover`) and the box's proportions differ from the image's by more than 3%, the box crops it. The image is then a button named "View the whole image", followed by the image's label or description when it has one. The button opens the image in full in the media viewer. The words can be changed with `words.wholeImage`.
+- **Short choices.** A ChoicePicker for a single choice, shown as chips, without a filter and with two to four options, is drawn as a segmented control when the agent's value is one of the options (a segmented control always shows one chosen) and the labels fit on one line. Otherwise, and before the page is laid out (server rendering), it is drawn as chips. The fit is checked again when the picker's width changes; a choice the user makes does not switch the control while they use it.
+- **Dates.** The date and time pickers write dates and times in the session's language. `formatDate` treats single-quoted text in its pattern as literal text, as Unicode date patterns do: `'at'` is written as "at", and `''` as an apostrophe.
+
 ## Policies
 - **Accessible names.** An agent's accessibility label (`@accessibility.label` in v1.0, `accessibility.label` in v0.9.1) names a control only when the control has no visible text, or the label contains that text as whole words. Otherwise the visible text stays the control's name (WCAG 2.5.3), the label names the component's group, and a report is raised. This departs on purpose from the protocol, where the label always wins.
 - **Validation.**

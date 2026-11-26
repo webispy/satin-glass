@@ -104,8 +104,8 @@ export function A2ui() {
         </Demo>
       </Section>
       <Section title={t({ en: 'Examples from the A2UI project', ko: 'A2UI 프로젝트의 예제' })} intro={<L
-        en={<>The basic catalog examples that the A2UI project publishes, for both protocol versions, are drawn by this package. The same files are replayed by its tests. Their text is the project's own, in English. Source: <a href="https://github.com/a2ui-project/a2ui/tree/a23b19c4f2102695c506adb7d1ded1f5f81a7688/catalogs/basic" target="_blank" rel="noreferrer">a2ui-project/a2ui</a>, Apache License 2.0.</>}
-        ko={<>A2UI 프로젝트가 공개한 두 프로토콜 버전의 기본 카탈로그 예제를 이 패키지로 그립니다. 패키지 테스트도 같은 파일을 재생합니다. 예제의 문구는 프로젝트의 원문(영어) 그대로입니다. 출처: <a href="https://github.com/a2ui-project/a2ui/tree/a23b19c4f2102695c506adb7d1ded1f5f81a7688/catalogs/basic" target="_blank" rel="noreferrer">a2ui-project/a2ui</a>, Apache License 2.0.</>} />}>
+        en={<>The basic catalog examples that the A2UI project publishes, for both protocol versions, are drawn by this package. The same files are replayed by its tests. Where the catalog leaves the look open, they take Satin Glass's: the outermost card is a surface card, an image at the top or bottom of a card fills it from side to side (press a cropped one to see it in full), and a short single choice is a segmented control. Their text is the project's own, in English. Source: <a href="https://github.com/a2ui-project/a2ui/tree/a23b19c4f2102695c506adb7d1ded1f5f81a7688/catalogs/basic" target="_blank" rel="noreferrer">a2ui-project/a2ui</a>, Apache License 2.0.</>}
+        ko={<>A2UI 프로젝트가 공개한 두 프로토콜 버전의 기본 카탈로그 예제를 이 패키지로 그립니다. 패키지 테스트도 같은 파일을 재생합니다. 카탈로그가 모양을 정하지 않은 부분은 Satin Glass를 따릅니다. 가장 바깥 카드는 그림자가 있는 표면 카드로 그리고, 카드 위나 아래에 놓인 이미지는 여백 없이 양옆까지 채웁니다(잘린 이미지를 누르면 전체를 볼 수 있습니다). 선택지가 적은 단일 선택은 세그먼트 컨트롤로 그립니다. 예제의 문구는 프로젝트의 원문(영어) 그대로입니다. 출처: <a href="https://github.com/a2ui-project/a2ui/tree/a23b19c4f2102695c506adb7d1ded1f5f81a7688/catalogs/basic" target="_blank" rel="noreferrer">a2ui-project/a2ui</a>, Apache License 2.0.</>} />}>
         <Demo col data-demo="a2ui-gallery">
           <Gallery />
         </Demo>
