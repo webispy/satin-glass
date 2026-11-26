@@ -19,7 +19,7 @@
 //    once, in Chromium, when anything in the library changed; `css` (the split-stylesheet check) when a stylesheet
 //    did. The timing phase (performance) is left to the full run.
 // Before a release the full `pnpm e2e` still runs: this is for checking work in progress quickly.
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { changedFiles } from '../../scripts/changed-files.mjs';
 
@@ -131,7 +131,10 @@ for (const f of files) {
     const pg = docsCssPages(base), c = [...new Set(pg.flatMap((x) => pageCats(x)))];
     c.forEach((x) => cats.add(x)); why.push(`${f}: the classes changed are used on ${pg.join(', ') || 'no page'} -> ${c.join(', ') || '(nothing)'}`);
   } else if ((m = f.match(/^tests\/e2e\/([\w-]+\.mjs)$/)) && !['run.mjs', 'changed.mjs', 'pw.mjs', 'pages.mjs'].includes(m[1])) {
-    suites.add(m[1]); why.push(`${f}: that suite`);
+    /* a shared helper (no `covers:` line) runs the suites that import it */
+    const helper = existsSync(new URL(`tests/e2e/${m[1]}`, ROOT)) && !/^\/\/ covers: /m.test(read(`tests/e2e/${m[1]}`));
+    const users = helper ? readdirSync(new URL('tests/e2e/', ROOT)).filter((s) => s.endsWith('.mjs') && read(`tests/e2e/${s}`).includes(`from './${m[1]}'`)) : [m[1]];
+    users.forEach((s) => suites.add(s)); why.push(`${f}: ${helper ? `imported by ${users.join(', ') || 'no suite'}` : 'that suite'}`);
   } else if (/^packages\/tokens\//.test(f)) { css = true; everything(f, 'design tokens'); }
   else everything(f, /^packages\/core\/src\//.test(f) ? 'core behaviour shared by every category' : /^apps\/docs\//.test(f) ? 'the docs app frame' : 'not mapped to a category');
 }

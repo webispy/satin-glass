@@ -3,10 +3,15 @@
 // the media switch allows it, an example opens in a sheet beside its JSON, its messages can be stepped through (the
 // keyboard stays in the sheet at either end), a press on the drawn screen shows what it sends back, and the sheet
 // closes back to the card it opened from. Requests to other sites are refused in this suite; it counts every one
-// that was tried, except the docs' own web font.
+// that was tried, except the docs' own web font. Then what the package makes of the examples in Satin Glass terms, at
+// full size in the sheet: surface and outlined cards, button labels in the control text role, an image at a card's top
+// running to its sides (photos fulfilled here with a local picture), a cropped one opening whole in the media viewer,
+// a short single choice as a segmented control, weighted panels in a narrow row stacking, in the themes and settings
+// that change cards, and the nested corners (corners-scan.mjs) of what an example draws.
 // usage: node tests/e2e/a2ui.mjs   (BROWSER=webkit|firefox optional; vite preview on :4173)
 // covers: controls, layout, navigation, overlays, selection   (the components the gallery and the A2UI renderer draw with; a change to packages/a2ui or the docs frame runs everything)
 import * as pw from './pw.mjs';
+import { scan, TOL, MIN } from './corners-scan.mjs';
 const engine = process.env.BROWSER || 'chromium';
 const b = await pw[engine].launch();
 let failed = 0;
@@ -15,14 +20,21 @@ const errors = [];
 const outside = [];
 const FONT = /^https:\/\/cdn\.jsdelivr\.net\/gh\/orioncactus\/pretendard@/;
 
-async function open(width = 1440) {
+/* a 600 × 900 picture (2:3, taller than 4:5), served for every photo an example asks for when `photos` is set */
+const PHOTO = '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900"><rect width="600" height="900" fill="#7a8fa6"/><circle cx="300" cy="450" r="200" fill="#e8d9b5"/></svg>';
+async function open(width = 1440, { query = '', photos = false } = {}) {
   const ctx = await b.newContext({ viewport: { width, height: 900 } });
   const p = await ctx.newPage();
   p.on('pageerror', (e) => errors.push(e.message));
   /* every request to another site is refused here and counted, whatever its kind; only the docs' web font (Pretendard,
      from jsDelivr, loaded by the docs shell on every page) is let through uncounted */
-  await p.route(/^https?:\/\/(?!localhost)/, (r) => { if (!FONT.test(r.request().url())) outside.push(r.request().url()); return r.abort(); });
-  await p.goto('http://localhost:4173/#/a2ui');
+  await p.route(/^https?:\/\/(?!localhost)/, (r) => {
+    const url = r.request().url();
+    if (FONT.test(url)) return r.abort();
+    outside.push(url);
+    return photos && r.request().resourceType() === 'image' ? r.fulfill({ status: 200, contentType: 'image/svg+xml', body: PHOTO }) : r.abort();
+  });
+  await p.goto(`http://localhost:4173/${query}#/a2ui`);
   await p.waitForSelector('[data-demo="a2ui-gallery"] .a2ui-thumb');
   await p.locator('[data-demo="a2ui-gallery"]').scrollIntoViewIfNeeded();
   await p.waitForTimeout(400);
@@ -43,6 +55,9 @@ async function openExample(p, q) {
   await opener.click();
   await p.getByRole('dialog').waitFor();
   await p.waitForTimeout(700);
+  /* and until the sheet has stopped growing in: its spring can still run after 700 ms, more so on a busy machine, and
+     a table's rows were once read 2 px apart in WebKit while it ran, as if at two of its scales */
+  await p.waitForFunction(() => { const s = document.querySelector('.sg-sheet'); return !!s && s.getAnimations().every((a) => a.playState !== 'running'); }, null, { timeout: 5000 });
   return opener;
 }
 
@@ -209,7 +224,8 @@ async function openExample(p, q) {
 /* ---------------------------------------------------------------- media in the sheet: off, on, off */
 {
   outside.length = 0;
-  const p = await open();
+  /* the photos are served (a refused one is taken out of the screen), and still counted */
+  const p = await open(1440, { photos: true });
   await openExample(p, 'movie');
   const sheet = p.getByRole('dialog');
   const media = p.locator('.a2ui-inspector__surface').locator('img[src^="http"], video[src^="http"]');
@@ -244,6 +260,166 @@ async function openExample(p, q) {
   const off = await tabs.getByRole('tab', { name: 'Ingredients' }).getAttribute('aria-selected');
   ok('turning the switch on and off keeps the screen\'s state (Recipe Card\'s chosen tab)', on === 'true' && off === 'true', `${on} · ${off}`);
   await p.context().close();
+}
+
+/* ---------------------------------------------------------------- Satin Glass's look, at full size in the sheet */
+const screen = (p) => p.locator('.a2ui-inspector__surface');
+const style = (loc, ...keys) => loc.evaluate((e, keys) => { const cs = getComputedStyle(e); return Object.fromEntries(keys.map((k) => [k, cs[k]])); }, keys);
+const closeSheet = async (p) => { await p.keyboard.press('Escape'); await p.waitForTimeout(600); };
+/* the outermost card of the screen and its inner cards: lifted (a shadow, or in high contrast an outline) and outlined */
+const cards = (p) => screen(p).evaluate((s) => [...s.querySelectorAll('.sg-card')].map((c) => {
+  const cs = getComputedStyle(c);
+  return { outer: !c.parentElement.closest('.sg-card'), outlined: c.classList.contains('sg-card--outlined'), shadow: cs.boxShadow !== 'none', border: parseFloat(cs.borderTopWidth) > 0 };
+}));
+/* the element that draws a button's words */
+const words = (button) => button.evaluate((bt) => { let e = bt; for (;;) { const k = [...e.children].find((c) => c.textContent.trim() === bt.textContent.trim()); if (!k) break; e = k; }
+  const cs = getComputedStyle(e); return { weight: cs.fontWeight, size: cs.fontSize, tag: e.tagName.toLowerCase() }; });
+/* the screen's corners: compared at full size by the corners suite's rules */
+let compared = 0;
+const corners = async (p) => { const c = await p.evaluate(scan, { TOL, MIN, root: '.a2ui-inspector__surface' }); compared += c.pairs; return c; };
+/* the segmented controls a reader sees (the picker also draws a hidden one, to measure) */
+const segments = (p) => screen(p).locator('.sg-segmented:not([data-a2ui-probe] *)');
+
+for (const query of ['', '?mode=dark', '?mode=dark&hc=1', '?mode=light&hc=1&rt=1']) {
+  const where = query || 'light';
+  const p = await open(1440, { query });
+  await openExample(p, 'coffee');
+  const cc = await cards(p);
+  const outer = cc.find((c) => c.outer);
+  ok(`${where}: Coffee Order's outermost card is a surface card, lifted`, !!outer && !outer.outlined && (outer.shadow || outer.border), JSON.stringify(cc));
+  const buy = screen(p).getByRole('button', { name: 'Purchase' });
+  const w = await words(buy);
+  ok(`${where}: a button's label is in the control text role (Purchase: 620, 15 px), not a paragraph`, w.weight === '620' && w.size === '15px' && w.tag !== 'p', JSON.stringify(w));
+  let c = await corners(p);
+  ok(`${where}: Coffee Order's corners nest (${c.pairs} compared)`, c.bad.length === 0, c.bad.slice(0, 4).join(' ;; '));
+  await closeSheet(p);
+  await openExample(p, 'incremental dashboard');
+  /* no example nests a Card in a Card (the outline of an inner card is in the unit tests): a card in a weighted
+     column of a row is still the outermost, and lifted */
+  const ic = await cards(p);
+  ok(`${where}: Incremental Dashboard's card, in a panel of a row, is a surface card too`, ic.length > 0 && ic.every((x) => x.outer && !x.outlined && (x.shadow || x.border)), JSON.stringify(ic));
+  c = await corners(p);
+  ok(`${where}: Incremental Dashboard's corners nest (${c.pairs} compared)`, c.bad.length === 0, c.bad.slice(0, 4).join(' ;; '));
+  await p.context().close();
+}
+
+/* an image at a card's top, and the whole image */
+for (const query of ['', '?rm=1']) {
+  outside.length = 0;
+  const where = query ? 'reduced motion' : 'default';
+  const p = await open(1440, { query, photos: true });
+  await openExample(p, 'movie');
+  await p.getByRole('dialog').getByRole('switch', { name: '다른 사이트의 미디어 불러오기' }).click();
+  const img = screen(p).locator('[data-a2ui-edge] img');
+  await img.waitFor();
+  await p.waitForFunction(() => document.querySelector('.a2ui-inspector__surface [data-a2ui-edge] img')?.naturalWidth > 0, null, { timeout: 5000 }).catch(() => {});
+  await p.waitForTimeout(300);
+  const m = await img.evaluate((i) => { const r = i.getBoundingClientRect(), c = i.closest('.sg-card').getBoundingClientRect(); return { left: r.left - c.left, right: c.right - r.right, top: r.top - c.top, w: r.width, h: r.height }; });
+  ok(`${where}: Movie Card's poster runs to the card's sides and top`, Math.abs(m.left) <= 0.5 && Math.abs(m.right) <= 0.5 && Math.abs(m.top) <= 0.5, JSON.stringify(m));
+  ok(`${where}: a 2:3 poster is cut to a 4:5 portrait of the card's width, at most 400 px`, m.h <= Math.min(1.25 * m.w, 400) + 0.5 && m.h >= Math.min(1.25 * m.w, 400) - 0.5, JSON.stringify(m));
+  const whole = screen(p).getByRole('button', { name: /^(사진 전체 보기|View the whole image)/ });
+  ok(`${where}: the cropped poster is a button that opens a dialog`, (await whole.count()) === 1 && (await whole.getAttribute('aria-haspopup')) === 'dialog');
+  if (await whole.count()) {
+    await whole.click();
+    const viewer = p.locator('.sg-media[role="dialog"]');
+    await viewer.waitFor({ timeout: 3000 }).catch(() => {});
+    await p.waitForTimeout(700);
+    const shown = await viewer.locator('img').first().evaluate((i) => ({ w: i.naturalWidth, h: i.naturalHeight, ratio: i.getBoundingClientRect().width / i.getBoundingClientRect().height })).catch(() => null);
+    /* the viewer's own picture loaded (not just its frame, which takes the thumbnail's size) and is the whole 2:3 photo */
+    ok(`${where}: the media viewer shows the whole poster (2:3)`, await viewer.isVisible() && !!shown && shown.w > 0 && shown.h > 0 && Math.abs(shown.w / shown.h - 2 / 3) < 0.02 && Math.abs(shown.ratio - 2 / 3) < 0.02, JSON.stringify(shown));
+    await p.keyboard.press('Escape');
+    await p.waitForTimeout(800);
+    ok(`${where}: Escape closes the viewer, the sheet stays open, and the focus goes back to the poster`, !(await viewer.isVisible()) && await p.getByRole('dialog', { name: 'Movie Card' }).isVisible()
+      && await whole.evaluate((e) => e === document.activeElement));
+    /* reached with the keyboard, it shows the library's focus ring, inside the card's clip */
+    await p.keyboard.press('Shift+Tab'); await p.keyboard.press('Tab');
+    await p.waitForTimeout(200);
+    const ring = await whole.evaluate((e) => { const cs = getComputedStyle(e); return { focused: e === document.activeElement, style: cs.outlineStyle, width: cs.outlineWidth, offset: cs.outlineOffset }; });
+    ok(`${where}: Tab onto the poster shows a focus ring drawn inside it`, ring.focused && ring.style !== 'none' && parseFloat(ring.width) > 0 && parseFloat(ring.offset) < 0, JSON.stringify(ring));
+  }
+  if (!query) {
+    const c = await corners(p);
+    ok(`Movie Card's corners nest, the poster clipped by the card (${c.pairs} compared)`, c.bad.length === 0 && c.pairs > 0, c.bad.slice(0, 4).join(' ;; '));
+  }
+  await p.context().close();
+}
+
+/* a short single choice */
+{
+  outside.length = 0;
+  const p = await open();
+  await openExample(p, 'software');
+  const seg = segments(p);
+  ok('Software Purchase: Annual / Monthly is a segmented control, Annual chosen', (await seg.count()) === 1 && (await seg.getByRole('radio', { name: 'Annual' }).getAttribute('aria-checked')) === 'true');
+  /* the control shows the bound value (/billingPeriod), so a choice that stays shown was written to the data model
+     and read back (the gallery sends no data model with an action, so it cannot be read from what is sent) */
+  await seg.getByRole('radio', { name: 'Monthly' }).click();
+  await p.waitForTimeout(400);
+  ok('choosing Monthly writes it to the data model: it stays chosen, still a segmented control', (await segments(p).count()) === 1
+    && (await seg.getByRole('radio', { name: 'Monthly' }).getAttribute('aria-checked')) === 'true' && (await seg.getByRole('radio', { name: 'Annual' }).getAttribute('aria-checked')) === 'false');
+  await closeSheet(p);
+
+  /* Live Invitation Builder: weighted panels in a row, its location as a segmented control while it fits */
+  await openExample(p, 'invitation');
+  /* the row of weighted panels: its inner width (as drawn, not rounded) and whether they stand on one line or two */
+  const row = () => screen(p).evaluate((s) => {
+    const panels = [...s.querySelectorAll('[data-a2ui-panel]')];
+    let r = panels[0]?.parentElement ?? null;
+    while (r && getComputedStyle(r).display === 'contents') r = r.parentElement;
+    const cs = r && getComputedStyle(r);
+    const inner = r ? r.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth) : 0;
+    return { n: panels.length, inner: Math.round(inner * 100) / 100, gap: r ? parseFloat(cs.columnGap) || 0 : 0, spare: s.getBoundingClientRect().width - inner,
+      min: panels.map((x) => getComputedStyle(x).minWidth), lines: panels.length === 2 && Math.abs(panels[0].getBoundingClientRect().top - panels[1].getBoundingClientRect().top) > 1 ? 2 : 1 };
+  });
+  /* the screen given the width that makes the row's inner width the one asked for */
+  const widthTo = async (target) => {
+    const { spare } = await row();
+    await screen(p).evaluate((s, w) => { s.style.flex = 'none'; s.style.maxWidth = 'none'; s.style.width = `${w}px`; }, target + spare);
+    await p.waitForTimeout(300);
+    return row();
+  };
+  const r0 = await row();
+  const edge = 2 * 240 + r0.gap;
+  ok('Live Invitation Builder: two weighted panels, each at least 15rem or the row', r0.n === 2 && r0.min.every((x) => /^min\(240px, 100%\)$/.test(x)), JSON.stringify(r0));
+  const seq = [];
+  for (const t of [edge - 1, edge, edge - 1, edge]) { const r = await widthTo(t); seq.push(`${r.inner}:${r.lines}`); }
+  ok(`the row stacks the panels below ${edge} px and puts them side by side from it, both ways`, seq.join(' ') === `${edge - 1}:2 ${edge}:1 ${edge - 1}:2 ${edge}:1`, seq.join(' '));
+  await screen(p).evaluate((s) => { s.style.width = ''; s.style.flex = ''; s.style.maxWidth = ''; });
+  await p.waitForTimeout(400);
+  const loc = () => screen(p).evaluate((s) => [...s.querySelectorAll('.sg-segmented')].some((x) => !x.closest('[data-a2ui-probe]') && /Grand Ballroom/.test(x.textContent)));
+  ok('at the sheet\'s width the location is a segmented control', await loc());
+  await p.context().close();
+
+  for (const width of [390, 320]) {
+    const q = await open(width);
+    await openExample(q, 'invitation');
+    const o = await q.evaluate(() => { const s = document.querySelector('.a2ui-inspector__surface'); const i = document.querySelector('.a2ui-inspector');
+      return { page: document.documentElement.scrollWidth - innerWidth, inspector: i.scrollWidth - i.clientWidth, screen: s.scrollWidth - s.clientWidth,
+        seg: [...s.querySelectorAll('.sg-segmented')].some((x) => !x.closest('[data-a2ui-probe]') && /Grand Ballroom/.test(x.textContent)), chips: ([...s.querySelectorAll('[role="radiogroup"]')].find((g) => !g.closest('[data-a2ui-probe]') && /Grand Ballroom/.test(g.textContent))?.querySelectorAll('.sg-chip').length ?? 0) >= 3 }; });
+    ok(`at ${width} px Live Invitation Builder does not scroll sideways, and the location is chips`, o.page <= 0 && o.inspector <= 1 && o.screen <= 1 && !o.seg && o.chips, JSON.stringify(o));
+    await q.context().close();
+  }
+}
+
+/* the nested corners of the examples with images, tabs and panels */
+{
+  const p = await open(1440, { photos: true });
+  for (const name of ['recipe', 'invitation']) {
+    await openExample(p, name);
+    if (name === 'recipe') { await p.getByRole('dialog').getByRole('switch', { name: '다른 사이트의 미디어 불러오기' }).click(); await p.waitForTimeout(1000); }
+    const c = await corners(p);
+    /* neither example draws a painted box in a card's corner (Recipe Card's photo sits in its tabs, inside the card's
+       padding), so each compares no pairs today: this catches a box that comes to sit there. That corners are compared
+       at all is held by Movie Card's poster (above, more than none) and the total below */
+    ok(`${name === 'recipe' ? 'Recipe Card' : 'Live Invitation Builder'}: corners nest at full size (${c.pairs} compared)`, c.bad.length === 0, c.bad.slice(0, 4).join(' ;; '));
+    if (name === 'recipe') await p.getByRole('dialog').getByRole('switch', { name: '다른 사이트의 미디어 불러오기' }).click();
+    await closeSheet(p);
+  }
+  await p.context().close();
+  /* a check that compares nothing proves nothing. Few boxes in these examples sit in a card's corner: most of what a
+     card holds is text, and the card's padding (14 / 16 px) is under its radius only where something painted starts
+     there; the edge photo, flush in the card's top corners, is compared each time */
+  ok('corners were compared in the examples at full size', compared >= 2, `${compared} pairs`);
 }
 
 /* ---------------------------------------------------------------- phone width */
