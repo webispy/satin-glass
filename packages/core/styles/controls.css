@@ -41,9 +41,17 @@
 .sg-button--plain:active:not(:disabled):not([aria-disabled="true"]) { background: var(--sg-fill-strong); }
 .sg-button--neutral { background: var(--sg-fill); color: var(--sg-label); }
 @media (hover: hover) { .sg-button--neutral:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--sg-fill-hover); } }
-/* glass buttons keep the glass fill (.sg-button's own transparent background must not win) */
-.sg-button--glass, .sg-search--glass .sg-field__control { background-color: var(--_fill); background-image: linear-gradient(180deg, var(--sg-glass-depth), rgba(255, 255, 255, 0) 52%); }
-@media (hover: hover) { .sg-button--glass:hover:not(:disabled):not([aria-disabled="true"]) { background-color: color-mix(in oklab, var(--_fill), var(--sg-glass-highlight) 30%); } }
+/* glass buttons keep the glass's own fill (.sg-button's transparent background must not win): the fill the glass
+   shows, solid where backdrop filters are missing (clear glass's dark plate under its white ink, #92) */
+.sg-button--glass, .sg-search--glass .sg-field__control { background-color: var(--_glass-bg); background-image: linear-gradient(180deg, var(--sg-glass-depth), rgba(255, 255, 255, 0) 52%); }
+/* hover: where the fill is solid (no backdrop filters, or reduced transparency) it shades the fill toward the button's
+   own ink (6%), so it stays opaque and still shows, on clear glass's dark plate too (#90, #92); over working glass it
+   lifts the fill toward the highlight */
+.sg-button--glass { --_glass-hover: color-mix(in oklab, var(--_glass-bg), currentColor 6%); }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .sg-button--glass { --_glass-hover: var(--_rt-hover, color-mix(in oklab, var(--_fill), var(--sg-glass-highlight) 30%)); --_rt-hover: var(--_rt) color-mix(in oklab, var(--_fill), currentColor 6%); }
+}
+@media (hover: hover) { .sg-button--glass:hover:not(:disabled):not([aria-disabled="true"]) { background-color: var(--_glass-hover); } }
 .sg-button--glass { color: var(--sg-glass-ink); --_radius: var(--sg-radius-md); --_shadow: var(--sg-shadow-sm); }
 .sg-glass--clear.sg-button--glass, .sg-glass--clear .sg-button--glass { color: #fff; }
 .sg-button--glass.sg-button--sm { --_radius: var(--sg-radius-sm); }

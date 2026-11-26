@@ -102,9 +102,11 @@
 .sg-glass {
   /* reduced transparency: a solid elevated fill (a dark plate for clear glass), no blur */
   --_rt-fill: var(--_rt) var(--sg-bg-elevated);
-  --_rt-clear: var(--_rt) rgb(20, 20, 24);
+  --_plate: rgb(20, 20, 24);   /* clear glass's dark plate, for its white ink wherever the glass is solid */
+  --_rt-clear: var(--_rt) var(--_plate);
   --_rt-none: var(--_rt) none;
   --_rt-bg: var(--_rt) var(--_fill);   /* where backdrop filters are missing too: the reduced fill (clear glass's plate) */
+  --_solid: var(--sg-bg-elevated);   /* without backdrop filters (and transparency not reduced): a solid fill */
   --_fill: var(--_rt-fill, var(--sg-glass-fill));
   --_blur: var(--sg-blur);
   --_shadow: var(--sg-shadow-md);
@@ -114,13 +116,15 @@
   overflow: hidden;
   color: var(--sg-glass-ink);
   border-radius: var(--_radius);
-  background-color: var(--_rt-bg, var(--sg-bg-elevated));
+  --_glass-bg: var(--_rt-bg, var(--_solid));   /* the fill the glass shows: solid here, its glass fill where backdrop filters work */
+  background-color: var(--_glass-bg);
   background-image: var(--sg-glass-grain), linear-gradient(180deg, var(--sg-glass-depth), rgba(255, 255, 255, 0) 52%);
   box-shadow: var(--_shadow);
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .sg-glass {
-    background-color: var(--_fill);
+    --_glass-bg: var(--_fill);
+    background-color: var(--_glass-bg);
     -webkit-backdrop-filter: var(--_rt-none, blur(var(--_blur)) saturate(var(--sg-saturate)));
     backdrop-filter: var(--_rt-none, blur(var(--_blur)) saturate(var(--sg-saturate)));
   }
@@ -175,7 +179,7 @@
    glass yet (an app bar still clear at the top of the page), and not for what floats out of it for a moment (a
    slider's value bubble). design-language.md 3. 성능 규칙; e2e blur-budget checks it */
 .sg-glass:not(:where(.sg-appbar[data-transparent-top][data-at-top]) > *) .sg-glass:not(.sg-slider__bubble) {
-  --_fill: transparent; --_shadow: none; background-image: none;
+  --_fill: transparent; --_solid: transparent; --_shadow: none; background-image: none;   /* flat without backdrop filters too */
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }
 .sg-glass:not(:where(.sg-appbar[data-transparent-top][data-at-top]) > *) .sg-glass:not(.sg-slider__bubble)::before,
@@ -189,7 +193,7 @@
 .sg-glass--overlay { --_shadow: var(--sg-shadow-lg); }
 /* over photos and video: clear fill, white ink, a darker shaded rim; pair with .sg-dimming when the media is bright.
    Density only: the level (float / overlay) still sets the shadow, and high contrast keeps its solid rims */
-.sg-glass--clear { --_fill: var(--_rt-clear, var(--sg-glass-fill-clear)); --_blur: var(--sg-blur-subtle); color: #fff; }
+.sg-glass--clear { --_fill: var(--_rt-clear, var(--sg-glass-fill-clear)); --_solid: var(--_plate); --_blur: var(--sg-blur-subtle); color: #fff; }   /* solid without backdrop filters too: the plate, not the white elevated fill under white ink (#92) */
 .sg-root:not([data-sg-theme$="-hc"]) .sg-glass--clear, .sg-root.sg-glass--clear:not([data-sg-theme$="-hc"]) {
   --sg-glass-rim-lit: rgba(255, 255, 255, 0.55); --sg-glass-rim-shade: rgba(0, 0, 0, 0.25); --sg-glass-depth: rgba(255, 255, 255, 0.12); --sg-glass-highlight: rgba(255, 255, 255, 0.35);
 }
@@ -205,8 +209,9 @@
 .sg-pressable.sg-glass:active::after, .sg-pressable.sg-glass.is-pressed::after { opacity: 1; transition-duration: var(--sg-duration-instant); }
 
 /* accessibility: reduce transparency → solid surfaces; increased contrast → solid 1.5px rim */
-/* the fill is decided once, through --_fill, so everything drawn from it (glass buttons, the glass search field, hover
-   mixes) turns solid too; glass over media becomes a solid dark plate */
+/* the fill is decided once, through --_fill, and what the glass shows through --_glass-bg (the solid fallback where
+   backdrop filters are missing), so glass buttons and the glass search field turn solid with it, and their hover shades
+   it (controls.css); glass over media becomes a solid dark plate */
 /* The nearest boundary decides, as for reduced motion: data-sg-reduce-transparency ("true", "false", "system") or the
    .sg-reduce-transparency class (a "true"), else the page, which follows the system setting. The flag --_rt is
    empty when transparency is reduced, `initial` when not; the solid values are built on the glass itself, so they

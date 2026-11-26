@@ -86,6 +86,74 @@ const deep = async () => p.evaluate(() => {
   ok('reduced transparency at any depth: solid where reduced, see-through elsewhere', v.solid.join() === 'true,false,true,false,false', v.solid.join());
   ok('reduced transparency: tinted clear glass keeps its dark plate under white ink (light theme)', v.clearTint.l < 60 && v.clearTint.a === 255, `luma ${v.clearTint.l}, alpha ${v.clearTint.a}`);
   ok('reduced transparency: an app bar see-through at the top is solid, with no blur', v.bar.join() === 'true,false', v.bar.join());
+
+  /* a glass button hovered with reduced transparency stays solid: hover shades its solid fill, it does not mix in the
+     translucent highlight (#90); without it, hover still lifts toward the highlight */
+  for (const theme of ['light', 'dark', 'light-hc', 'dark-hc']) {
+    const ids = await p.evaluate((theme) => {
+      const d = document.createElement('div'); d.id = 'hov'; d.style.cssText = 'position: fixed; left: 20px; top: 20px; z-index: 99999; display: flex; gap: 20px';
+      d.innerHTML = `<div data-sg-theme="${theme}" data-sg-reduce-transparency="true"><button class="sg-button sg-button--glass sg-glass" id="gbr">A</button></div>
+        <div data-sg-theme="${theme}" data-sg-reduce-transparency="false"><button class="sg-button sg-button--glass sg-glass" id="gbn">B</button></div>`;
+      document.body.appendChild(d); return ['gbr', 'gbn'];
+    }, theme);
+    const look = {};
+    for (const id of ids) {
+      const el = p.locator(`#${id}`);
+      const before = await el.evaluate((e) => getComputedStyle(e).backgroundColor);
+      await el.hover(); await p.waitForTimeout(250);
+      look[id] = await el.evaluate((e, before) => {
+        const c = document.createElement('canvas').getContext('2d'); c.fillStyle = '#0000'; c.fillStyle = getComputedStyle(e).backgroundColor; c.fillRect(0, 0, 1, 1);
+        return { alpha: c.getImageData(0, 0, 1, 1).data[3], changed: getComputedStyle(e).backgroundColor !== before };
+      }, before);
+    }
+    await p.mouse.move(0, 0); await p.evaluate(() => document.getElementById('hov').remove());
+    ok(`reduced transparency: a hovered glass button stays solid and still shows the hover (${theme})`, look.gbr.alpha === 255 && look.gbr.changed && look.gbn.changed, JSON.stringify(look));
+  }
+  /* without backdrop filters (#92): the page's styles again in a frame, the @supports (backdrop-filter) rules left out, as a
+     browser without them reads the stylesheet. Glass is solid there; clear glass, standalone or as a button, takes its dark
+     plate under its white ink, and a hovered glass button stays solid */
+  {
+    const nb = await p.evaluate(async () => {
+      const keep = (r) => !(r instanceof CSSSupportsRule && /backdrop-filter/.test(r.conditionText));
+      const css = [...document.styleSheets].map((sh) => { try { return [...sh.cssRules].filter(keep).map((r) => r.cssText).join('\n'); } catch { return ''; } }).join('\n');
+      const f = document.createElement('iframe'); f.id = 'nbf'; f.style.cssText = 'position: fixed; left: 0; top: 0; width: 600px; height: 200px; border: 0; z-index: 99999';
+      document.body.appendChild(f);
+      const d = f.contentDocument; d.open(); d.write(`<!doctype html><style>${css}</style><body>
+        ${['light', 'dark'].map((t) => `<div data-sg-theme="${t}" data-sg-reduce-transparency="false" style="display: flex; gap: 12px; padding: 8px">
+          <div class="sg-glass sg-glass--clear" id="c-${t}" style="width: 40px; height: 30px">x</div>
+          <button class="sg-button sg-button--glass sg-glass sg-glass--clear" id="cb-${t}">Clear</button>
+          <button class="sg-button sg-button--glass sg-glass" id="gb-${t}">Glass</button>
+          <div class="sg-glass sg-glass--clear" id="cp-${t}" style="padding: 6px"><button class="sg-button sg-button--glass sg-glass" id="nb-${t}">In</button></div>
+          <div class="sg-search sg-search--glass"><div class="sg-field sg-glass"><div class="sg-field__control" id="sf-${t}">Find</div></div></div></div>`).join('')}</body>`); d.close();
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return true;
+    });
+    const read = (id) => p.evaluate((id) => {
+      const d = document.getElementById('nbf').contentDocument, e = d.getElementById(id), cs = getComputedStyle(e);
+      const px = (c) => { const x = document.createElement('canvas').getContext('2d'); x.fillStyle = '#0000'; x.fillStyle = c; x.fillRect(0, 0, 1, 1); const [r, g, b, a] = x.getImageData(0, 0, 1, 1).data; return { l: Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b), a }; };
+      const r = e.getBoundingClientRect(), fr = document.getElementById('nbf').getBoundingClientRect();
+      return { bg: px(cs.backgroundColor), ink: px(cs.color), filter: cs.backdropFilter || cs.webkitBackdropFilter || 'none', x: fr.left + r.left + r.width / 2, y: fr.top + r.top + r.height / 2 };
+    }, id);
+    const out = {};
+    for (const t of ['light', 'dark']) {
+      const c = await read(`c-${t}`), cb = await read(`cb-${t}`), gb = await read(`gb-${t}`), cp = await read(`cp-${t}`), nbt = await read(`nb-${t}`), sf = await read(`sf-${t}`);
+      await p.mouse.move(gb.x, gb.y); await p.waitForTimeout(250);
+      const gh = await read(`gb-${t}`);
+      await p.mouse.move(cb.x, cb.y); await p.waitForTimeout(250);
+      const ch = await read(`cb-${t}`);
+      out[t] = { c, cb, gb, gh, ch, cp, nbt, sf };
+    }
+    await p.mouse.move(0, 400); await p.evaluate(() => document.getElementById('nbf').remove());
+    const plate = (x) => x.bg.a === 255 && x.bg.l < 60 && x.ink.l > 200;
+    for (const t of ['light', 'dark']) {
+      const o = out[t];
+      ok(`without backdrop filters, clear glass and a clear glass button sit on the dark plate under white ink (${t}, #92)`, nb && o.c.filter === 'none' && plate(o.c) && plate(o.cb), JSON.stringify({ c: o.c, cb: o.cb }));
+      ok(`without backdrop filters, glass buttons are solid at rest and hovered, and the hover shows on the plate too (${t}, #92)`,
+        o.gb.bg.a === 255 && o.gh.bg.a === 255 && o.ch.bg.a === 255 && o.gh.bg.l !== o.gb.bg.l && Math.abs(o.ch.bg.l - o.cb.bg.l) >= 5, JSON.stringify({ gb: o.gb.bg, gh: o.gh.bg, cb: o.cb.bg, ch: o.ch.bg }));
+      ok(`without backdrop filters, a glass button inside clear glass stays flat over the plate, under white ink (${t}, #92)`, plate(o.cp) && o.nbt.bg.a === 0 && o.nbt.ink.l > 200, JSON.stringify({ cp: o.cp.bg, nb: o.nbt }));
+      ok(`without backdrop filters, the glass search field is solid at rest (${t}, #92)`, o.sf.bg.a === 255, JSON.stringify(o.sf.bg));
+    }
+  }
   /* the system's reduced transparency (Chromium can emulate it): "system" and the page follow it, an explicit "false" does not */
   if (engine === 'chromium') {
     const cdp = await p.context().newCDPSession(p);
