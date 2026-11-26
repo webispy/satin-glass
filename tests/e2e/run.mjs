@@ -15,6 +15,7 @@
 //   concentric corners: boxes nested near a corner follow inner = outer − gap (Chromium)
 //   focus visible: Tab through each page; the focused area must change, in all themes and forced colours (Chromium)
 //   the A2UI gallery: every example of both versions, search, the media switch, an example stepped through
+//   the 0.6 parts: column chooser, multiple combobox, filter bar, pill tabs, scatter chart
 //   settings at the nearest boundary: nested themes, high contrast, reduced motion, reduce transparency in portals
 //   performance (CPU ×4), momentum across updates, arrival timing (informational)
 // Everything runs in all three engines (Chromium, WebKit, Firefox); the variants (motion personalities, dark / high
@@ -111,6 +112,8 @@ perEngine(motion, 'wheel lens motion (squeeze, knocks, pop)', 'wheel-motion.mjs'
 perEngine(motion, 'date ranges', 'range.mjs');
 variants(motion, 'date ranges', 'range.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 perEngine(motion, '0.5 components', 'v05.mjs');
+/* the 0.6 parts: their reads wait until things settle, but scatter springs and popover exits are motion, so 8 at once */
+perEngine(motion, '0.6 parts', 'v06.mjs');
 variants(motion, '0.5 components', 'v05.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 variants(motion, 'wheels, time & weekdays, navigation stack', 'pickers.mjs', ['?motion=playful', '?mode=dark&hc=1&rt=1', '?rm=1']);
 perEngine(motion, 'reduced motion', 'reduce-motion.mjs');
@@ -134,7 +137,7 @@ const only = (l) => l.filter(([label, file, env]) => {
    engines a third longer); every runner computes the same split */
 const EST = { 'css-split.mjs': 126, 'focus.mjs': 40, 'edge.mjs': 75, 'axe.mjs': 30, 'overflow.mjs': 95, 'overflow.mjs#browse': 15, 'matrix.mjs': 52, 'interact.mjs': 59, 'data.mjs': 57,
   'corners.mjs': 51, 'reduce-motion.mjs': 49, 'pickers.mjs': 37, 'wheel-motion.mjs': 33, 'display.mjs': 32, 'selection.mjs': 28,
-  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'sweep.mjs': 48, 'settings.mjs': 4, 'a2ui.mjs': 20 };
+  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'sweep.mjs': 48, 'settings.mjs': 4, 'a2ui.mjs': 20, 'v06.mjs': 20 };
 const SHARD = /^(\d+)\/(\d+)$/.exec(process.env.E2E_SHARD || '');
 const est = ([, file, env]) => (EST[env.OVF_PART === 'browse' ? 'overflow.mjs#browse' : file] ?? 60) * ((env.BROWSER ?? 'chromium') === 'chromium' ? 1 : 1.3);
 let mine = null;

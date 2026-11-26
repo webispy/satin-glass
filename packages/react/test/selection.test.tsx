@@ -254,4 +254,23 @@ describe('ColumnChooser', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
     expect(document.querySelector('output')!.textContent).toBe('');
   });
+  /* without a sticky column nothing else keeps one shown: the guard itself */
+  it('the last shown column cannot be hidden, one by one or with its group', async () => {
+    const free: Column<R>[] = [{ key: 'mmlu', header: 'MMLU', group: '지식' }, { key: 'gpqa', header: 'GPQA', group: '지식' }, { key: 'cost', header: '비용' }];
+    function F() { const [h, setH] = useState<string[]>(['cost']); return <><ColumnChooser columns={free} hidden={h} onHiddenChange={setH} label="열" /><output>{h.join(',')}</output></>; }
+    render(<F />);
+    fireEvent.click(screen.getByRole('button', { name: /^열/ }));
+    const box = (n: string) => screen.getByRole('checkbox', { name: n }) as HTMLInputElement;
+    await waitFor(() => expect(box('지식')).toBeTruthy());
+    /* the group is all that shows: hiding it keeps its first column */
+    fireEvent.click(box('지식'));
+    expect(document.querySelector('output')!.textContent).toBe('gpqa,cost');
+    expect(box('MMLU').checked).toBe(true);
+    expect(box('MMLU').disabled).toBe(true);
+    fireEvent.click(box('MMLU'));
+    expect(document.querySelector('output')!.textContent).toBe('gpqa,cost');
+    /* once another shows, it can go again */
+    fireEvent.click(box('비용'));
+    expect(box('MMLU').disabled).toBe(false);
+  });
 });
