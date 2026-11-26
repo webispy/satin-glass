@@ -92,12 +92,105 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   await p.evaluate(() => { location.hash = '#/buttons'; }); await settle(p, 800);
   ok('sheet: navigating away while it opens → no sheet left, page unlocked', (await p.locator('.sg-sheet').count()) === 0 && !(await bodyLocked(p)));
 
-  await p.goto(U('inputs')); await settle(p, 600);
-  const sw = p.locator('.docs__page .sg-switch').first(); await sw.scrollIntoViewIfNeeded(); const r = await sw.boundingBox();
-  await p.mouse.move(r.x + 8, r.y + r.height / 2); await p.mouse.down(); await p.mouse.move(r.x + 30, r.y + r.height / 2, { steps: 4 });
-  await p.evaluate(() => { location.hash = '#/lists'; }); await p.waitForTimeout(300);
-  await p.mouse.move(r.x + 60, r.y + 40, { steps: 3 }); await p.mouse.up(); await settle(p, 400);
-  ok('switch: navigating away mid-drag, then releasing → no errors', errors.length === 0, errors.slice(-1).join(''));
+  /* a drag still held when the page changes, and the pointer moves on while the next page loads: the next page's
+     module is held back until the hand has let go, so the moves fall while the docs show the loading page and the
+     old page is hidden (its layout effects cleaned up, not yet its passive ones). A drag torn down in a passive
+     effect read its component's state after the layout cleanup had cleared it (a page error every run). Each case
+     takes a page module this run has not loaded yet, so the loading page shows */
+  /* hold a page module back; `open()` lets it through and says whether it was asked for (the case proves nothing if
+     the loading page came from anything else). Idempotent, so a case can call it again in `finally` */
+  const holdModule = async (chunk) => {
+    let release, passed, asked = false, opened = false; const held = new Promise((res) => { release = res; }), through = new Promise((res) => { passed = res; });
+    await p.route(chunk, async (route) => { asked = true; await held; await route.continue().catch(() => {}); passed(); });
+    /* a module that was never asked for must not hang the suite */
+    return async () => { if (!opened) { opened = true; release(); if (asked) await Promise.race([through, p.waitForTimeout(5000)]); await p.unroute(chunk); } return asked; };
+  };
+  const toLoading = async (hash) => {
+    await p.evaluate((h) => { location.hash = h; }, hash);
+    return p.waitForFunction(() => !!document.querySelector('main .docs__page:empty'), null, { timeout: 3000 }).then(() => true, () => false);
+  };
+  /* the drag must have taken hold before the page changes, or the case proves nothing */
+  const grab = async (locate, fx, holdClass) => {
+    const el = p.locator(locate).first(); await el.scrollIntoViewIfNeeded(); const r = await el.boundingBox();
+    const [x0, x1, x2] = fx.map((f) => r.x + r.width * f), y = r.y + r.height / 2;
+    await p.mouse.move(x0, y); await p.mouse.down(); await p.mouse.move(x1, y, { steps: 4 });
+    const held = await el.evaluate((e, c) => e.classList.contains(c), holdClass);
+    return { el, x2, y, held };
+  };
+  const midDrag = async (name, locate, fx, holdClass, hash, chunk) => {
+    await p.goto(U('inputs')); await settle(p, 600);
+    const e0 = errors.length, open = await holdModule(chunk);
+    let held, loading, asked;
+    try {
+      const g = await grab(locate, fx, holdClass); held = g.held;
+      loading = await toLoading(hash);
+      await p.mouse.move(g.x2, g.y, { steps: 3 }); await p.mouse.move(g.x2, g.y + 40, { steps: 2 }); await p.mouse.up(); await settle(p, 200);
+    } finally { asked = await open(); }
+    await settle(p, 400);
+    ok(`${name}: navigating away mid-drag, moving and releasing while the next page loads → no errors`, held && loading && asked && errors.length === e0,
+      !held ? 'the drag never took hold' : !(loading && asked) ? `the page module was not held back (loading page ${loading}, asked ${asked})` : errors.slice(e0).join(' | '));
+  };
+  await midDrag('switch', '.docs__page .sg-switch', [0.25, 0.7, 1.4], 'is-dragging', '#/charts', /\/assets\/charts-[\w-]+\.js/);
+  await midDrag('slider', '.docs__page .sg-slider', [0.3, 0.5, 0.7], 'is-active', '#/table', /\/assets\/table-[\w-]+\.js/);
+
+  /* hidden mid-drag and shown again (the hand comes back before the next page has loaded): the drag ended with the
+     hiding, so nothing of it is left on the control, and the next key works */
+  const hiddenMidDrag = async (name, route, locate, fx, holdClass, hash, chunk, after) => {
+    await p.goto(U(route)); await settle(p, 600);
+    const e0 = errors.length, open = await holdModule(chunk);
+    let held, loading, left, asked;
+    try {
+      const before = await after.read();
+      const g = await grab(locate, fx, holdClass); held = g.held;
+      loading = await toLoading(hash);
+      await p.mouse.move(0, 0, { steps: 2 }); await p.mouse.up();
+      await p.evaluate((h) => { location.hash = h; }, `#/${route}`);
+      await g.el.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {}); await settle(p, 300);
+      left = await after.check(g.el, before);
+    } finally { asked = await open(); }
+    await settle(p, 300);
+    ok(`${name}: hidden mid-drag and shown again → nothing of the drag left`, held && loading && asked && left.ok && errors.length === e0,
+      !held ? 'the drag never took hold' : !(loading && asked) ? `the page module was not held back (loading page ${loading}, asked ${asked})` : JSON.stringify(left) + errors.slice(e0).join(' | '));
+  };
+  await hiddenMidDrag('switch', 'inputs', '.docs__page .sg-switch', [0.25, 0.7], 'is-dragging', '#/dashboard', /\/assets\/dashboard-[\w-]+\.js/, {
+    read: () => p.locator('.docs__page .sg-switch').first().getAttribute('aria-checked'),
+    check: async (el, before) => {
+      const look = await el.evaluate((e) => ({ pressed: e.classList.contains('is-pressed'), dragging: e.classList.contains('is-dragging'), drag: e.dataset.drag ?? null, checked: e.getAttribute('aria-checked') }));
+      await el.focus(); await p.keyboard.press('Space'); await settle(p, 300);
+      const toggled = await el.getAttribute('aria-checked');
+      await p.keyboard.press('Space'); await settle(p, 300);
+      return { ...look, toggled, ok: !look.pressed && !look.dragging && look.drag === null && look.checked === before && toggled !== before };
+    },
+  });
+  await hiddenMidDrag('slider', 'inputs', '.docs__page .sg-slider', [0.3, 0.5], 'is-active', '#/evaluation', /\/assets\/evaluation-[\w-]+\.js/, {
+    read: async () => null,
+    check: async (el) => { const active = await el.evaluate((e) => e.classList.contains('is-active')); return { active, ok: !active }; },
+  });
+  /* PageControl's scrub picks the dot nearest the pointer: hidden, every dot measured at 0 and the page went to the
+     first */
+  {
+    await p.goto(U('navigation')); await settle(p, 600);
+    const pc = p.locator('.docs__page .sg-pagecontrol').first(); await pc.scrollIntoViewIfNeeded();
+    const dots = pc.locator('.sg-pagecontrol__dot');
+    const current = () => dots.evaluateAll((l) => l.findIndex((d) => d.getAttribute('aria-current') === 'true'));
+    await dots.nth(3).click(); await settle(p, 300);
+    const e0 = errors.length, open = await holdModule(/\/assets\/a2ui-[\w-]+\.js/);
+    let scrubbed, loading, after, asked;
+    try {
+      const d3 = await dots.nth(3).boundingBox(), d2 = await dots.nth(2).boundingBox();
+      await p.mouse.move(d3.x + d3.width / 2, d3.y + d3.height / 2); await p.mouse.down();
+      await p.mouse.move(d2.x + d2.width / 2, d2.y + d2.height / 2, { steps: 6 }); await settle(p, 100);
+      scrubbed = await current();
+      loading = await toLoading('#/a2ui');
+      await p.mouse.move(d2.x + 200, d2.y, { steps: 4 }); await p.mouse.up();
+      await p.evaluate(() => { location.hash = '#/navigation'; });
+      await pc.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {}); await settle(p, 300);
+      after = await current();
+    } finally { asked = await open(); }
+    await settle(p, 300);
+    ok('page control: hidden mid-scrub and shown again → the page stays where the scrub left it', scrubbed === 2 && loading && asked && after === 2 && errors.length === e0,
+      JSON.stringify({ scrubbed, loading, asked, after }));
+  }
   await p.context().close();
 }
 

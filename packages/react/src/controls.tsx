@@ -249,15 +249,18 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
   useIsoLayoutEffect(() => { if (firstOn.current) { firstOn.current = false; return; } go(true); }, [on]);
   useIsoLayoutEffect(() => { go(false); }, [pressed]);
 
-  useEffect(() => {
+  /* the drag is set up and taken down with the engine, in a layout effect: taken down in a passive one, it outlived the
+     engine while the next page loaded (Suspense) or the switch unmounted, and a move in between read the null engine */
+  useIsoLayoutEffect(() => {
     const b = el.current;
     if (!b || disabled) return;
-    let c0 = 0, startOn = false, box: DOMRect | null = null, engaged = false;
+    let c0 = 0, startOn = false, box: DOMRect | null = null, engaged = false, holding = false;
     /* how far the pointer may stray before the switch lets go of it (the thumb then returns to where it was) */
     const SLOP_Y = 48, SLOP_X = 120;
-    return drag(b, {
+    const off = drag(b, {
       axis: 'x',
       start: () => {
+        holding = true;
         dragged.current = false; engaged = false; startOn = onRef.current;
         const e = eng.current!;
         Object.assign(e, geom());
@@ -285,6 +288,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
         b.dataset.drag = c > e.W / 2 ? 'on' : 'off';
       },
       end: (_i, cancelled) => {
+        holding = false;
         const next = b.dataset.drag === 'on';
         const commit = dragged.current && engaged && !cancelled && b.dataset.drag !== undefined;
         setDraggingSw(false);
@@ -296,6 +300,17 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
         requestAnimationFrame(() => requestAnimationFrame(() => setPressed(false)));
       },
     });
+    /* taken down mid-drag (hidden while the next page loads, then shown again; or disabled): no release will come here,
+       so end the drag as a cancel would; the switch kept its pressed, accent look. `dragged` stays: WebKit still sends
+       the hidden switch the release's click, which must not toggle it (a key's click is never swallowed, below). The
+       engine is gone by now; it is made again where the state says */
+    return () => {
+      off();
+      if (!holding) return;
+      holding = false; engaged = false;
+      delete b.dataset.drag;
+      setDraggingSw(false); setPressed(false);
+    };
   }, [disabled, setOn]);
 
   return (
@@ -309,7 +324,9 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
       onClick={(e) => {
         onClick?.(e);
         if (e.defaultPrevented) return;
-        if (dragged.current) { dragged.current = false; return; }
+        /* the click a drag ends in is the drag's, not a toggle; a click from Space or Enter (detail 0) always toggles,
+           so one never waits behind a drag that was cut short */
+        if (dragged.current) { dragged.current = false; if (e.detail !== 0) return; }
         setOn(!on);
       }}
       {...rest}
@@ -402,16 +419,18 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
     if (m && !m.tracking) travelTo(ratio(v) * m.W, 'spring');
   }, [v, min, max]);
 
-  useEffect(() => {
+  /* with the motor, in a layout effect (as Switch's drag) */
+  useIsoLayoutEffect(() => {
     const s = el.current;
     if (!s || disabled) return;
     const at = (clientX: number) => {
       const r = s.getBoundingClientRect();
       return Math.min(1, Math.max(0, (clientX - r.left) / r.width));
     };
-    let x0 = 0;
-    return drag(s, {
+    let x0 = 0, holding = false;
+    const off = drag(s, {
       start: ({ x, event }) => {
+        holding = true;
         x0 = x;
         setActive(true);
         s.focus({ preventScroll: true });
@@ -434,6 +453,7 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
         const nv = snap(min + p * (max - min)); if (nv !== vRef.current) setV(nv);
       },
       end: () => {
+        holding = false;
         const m = motor.current!;
         const was = m.tracking;
         m.tracking = false;
@@ -443,6 +463,19 @@ export const Slider = forwardRef<HTMLDivElement, SliderProps>(function Slider(
         endRef.current?.(vRef.current);
       },
     });
+    /* taken down mid-drag (as Switch): no release will come, so the value bubble goes and the thumb stops following the
+       finger. Hidden by Suspense, the motor is gone already and is made again at the value; set up again for a new
+       disabled, min, max or step, the motor stays, so it lets go of the finger and travels to the value (left tracking,
+       the thumb stayed where the finger was and missed every later change). onChangeEnd is not called: the hand did not
+       let go here */
+    return () => {
+      off();
+      if (!holding) return;
+      holding = false;
+      setActive(false);
+      const m = motor.current;
+      if (m?.tracking) { m.tracking = false; travelTo(ratioRef.current(vRef.current) * m.W, 'spring'); }
+    };
   }, [disabled, min, max, step]);
 
   const onKey = (e: KeyboardEvent) => {
@@ -1064,8 +1097,9 @@ export const PageControl = forwardRef<HTMLDivElement, PageControlProps>(function
   const el = useRef<HTMLDivElement>(null);
   const lightRef = useGlassLight(Boolean(glass));
   const pr = useRef(p); pr.current = p;
-  /* scrub: slide along the dots to jump pages */
-  useEffect(() => {
+  /* scrub: slide along the dots to jump pages. Taken down in a layout effect (as Switch's drag), so a page hidden while
+     the next one loads does not measure its hidden dots and change page */
+  useIsoLayoutEffect(() => {
     const c = el.current;
     if (!c) return;
     return drag(c, {

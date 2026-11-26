@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Spring, place, springEasing, springDuration, springs, springAt, motions, motionOf, prefersReducedMotion } from '../src';
+import { Spring, place, springEasing, springDuration, springs, springAt, motions, motionOf, prefersReducedMotion, drag } from '../src';
 
 describe('springs', () => {
   it('every named spring reaches its target and the CSS easing ends at exactly 1', () => {
@@ -135,5 +135,30 @@ describe('overflow strip wheel latching', () => {
     expect(wheel(strip, 11_050)).toBe(false);           /* … reaching the strip mid-way stays the page's */
     expect(wheel(strip, 12_000)).toBe(true);            /* a pause, a fresh turn on the strip: the strip's again */
     s.destroy(); strip.remove();
+  });
+});
+
+describe('drag', () => {
+  /* taken down mid-gesture (a component hidden by Suspense, or set up again): the pointer is let go, and nothing that
+     comes after reaches the handlers, `end` included: the caller decides what a cut-short drag leaves */
+  it('a disposer called mid-gesture releases the capture and ends nothing', () => {
+    const el = document.createElement('div'); document.body.append(el);
+    let held: number | null = null;
+    el.setPointerCapture = vi.fn((id: number) => { held = id; });
+    el.releasePointerCapture = vi.fn(() => { held = null; });
+    el.hasPointerCapture = vi.fn((id: number) => held === id);
+    const ev = (type: string, x: number, target: EventTarget) => { const e = new MouseEvent(type, { bubbles: true, clientX: x, clientY: 0 }); Object.defineProperty(e, 'pointerId', { value: 7 }); target.dispatchEvent(e); };
+    const move = vi.fn(), end = vi.fn();
+    const off = drag(el, { move, end });
+    ev('pointerdown', 0, el); ev('pointermove', 20, window);
+    expect(held).toBe(7);
+    expect(move).toHaveBeenCalledTimes(1);
+    off();
+    expect(el.releasePointerCapture).toHaveBeenCalledWith(7);
+    expect(held).toBeNull();
+    ev('pointermove', 40, window); ev('lostpointercapture', 40, el); ev('pointerup', 40, window);
+    expect(move).toHaveBeenCalledTimes(1);
+    expect(end).not.toHaveBeenCalled();
+    el.remove();
   });
 });
