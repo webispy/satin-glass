@@ -279,13 +279,17 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
      accent face (not the day, not its number) from the centre on the pop spring. Reduced motion: the final
      geometry, no springs. */
   const bands = useRef<HTMLDivElement>(null);
-  type BandEng = { H: Spring; stop: (() => void) | null; month: number; key: string };
+  /* draw: this render's painting (its runs, kind and geometry), set again by every render, so a loop started by an
+     earlier one paints what is shown now: an end picked mid-spring is a committed range, not the preview (#94) */
+  type BandEng = { H: Spring; stop: (() => void) | null; month: number; key: string; draw: (head: number) => void };
   const bandEng = useRef<BandEng | null>(null);
   const candidate = range && range.start && !range.end && hover && range.reach(hover) && ymd(hover) !== ymd(range.start) ? hover : null;
   const hoverKey = candidate ? ymd(candidate) : 0;
   useIsoLayoutEffect(() => {
     const layer = bands.current, tb = body.current, table = tb?.parentElement as HTMLElement | undefined;
-    if (!range || !layer || !tb || !table || view !== 'day' || pending) return;
+    /* no day grid (the months or years shown, or not known yet): a loop still running would paint segments no longer
+       in the page, and draw would hold them; both stop, and the head moves on from where it was when days come back */
+    if (!range || !layer || !tb || !table || view !== 'day' || pending) { const g = bandEng.current; if (g) { g.stop?.(); g.stop = null; g.draw = () => {}; } return; }
     const cell = tb.rows[0]?.cells[0]?.offsetWidth || 40, W = cell * 7, pool = layer.children as HTMLCollectionOf<HTMLElement>;
     /* a row's top within the table, from where the engine draws it: offsetTop of a row means different things here
        (the body is positioned, as it slides between months: Blink measures rows from the body, WebKit from the table,
@@ -325,7 +329,8 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     const tintKind: Run[2] = eI !== null ? 'soft' : 'faint';
     const runsAt = (head: number): Run[] => (head > Lx(sI) + 1 ? [[Lx(sI), head, tintKind]] : []);
     const key = `${ymd(startD)}-${range.end ? ymd(range.end) : ''}`;
-    if (!st) st = bandEng.current = { H: new Spring(tintTo, 'snappy', layer), stop: null, month: 0, key: '' };
+    if (!st) st = bandEng.current = { H: new Spring(tintTo, 'snappy', layer), stop: null, month: 0, key: '', draw: () => {} };
+    st.draw = (head) => paint(runsAt(head));
     const was = st.key, newStart = !was || was.split('-')[0] !== String(ymd(startD)), committed = eI !== null && was !== key && !newStart;
     const fresh = st.month !== ymd(month) || !was || reduced;
     const monthMoved = Boolean(st.month) && st.month !== ymd(month);
@@ -334,9 +339,9 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     const animateHead = (onTick?: () => void) => {
       if (e.stop) return;
       e.stop = loop((dt) => {
-        e.H.step(dt); paint(runsAt(e.H.value)); onTick?.();
+        e.H.step(dt); e.draw(e.H.value); onTick?.();
         if (!e.H.settled) return;
-        e.H.jump(e.H.target); paint(runsAt(e.H.value)); e.stop = null;
+        e.H.jump(e.H.target); e.draw(e.H.value); e.stop = null;
         return false;
       });
     };
@@ -349,7 +354,8 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     e.H.target = tintTo; animateHead();
     if (committed) seat(range.end!);
   }, [range?.start ? ymd(range.start) : 0, range?.end ? ymd(range.end) : 0, hoverKey, ymd(month), view, pending]);
-  useEffect(() => () => bandEng.current?.stop?.(), []);
+  /* unmounted, or hidden by Activity: the loop stops and says so, so shown again a new spring can start */
+  useEffect(() => () => { const e = bandEng.current; if (e) { e.stop?.(); e.stop = null; } }, []);
 
   return (
     <div ref={mergeRefs(ref, root)} className={cx('sg-calendar', className)} style={style} lang={localeProp}>

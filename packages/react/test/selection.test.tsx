@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { useState } from 'react';
-import { Checkbox, RadioGroup, Radio, ChoiceList, Select, Calendar, DatePicker, Combobox, ColumnChooser, type Column } from '../src';
+import { Activity, useState } from 'react';
+import { Checkbox, RadioGroup, Radio, ChoiceList, Select, Calendar, DatePicker, Combobox, ColumnChooser, RangeCalendar, ThemeProvider, createTheme, type Column } from '../src';
 
 describe('Checkbox', () => {
   it('is a real checkbox with a label; toggles and reports', () => {
@@ -186,6 +186,77 @@ describe('Calendar', () => {
     const cur = document.querySelector('[aria-current="date"]')!;
     expect(cur.getAttribute('aria-pressed')).toBe('true');
     expect(cur.closest('td')!.getAttribute('aria-selected')).toBe('true');
+  });
+});
+
+/* the range band's tint follows the preview on a spring; an end picked while that spring still runs is a committed
+   range, and the band is painted as one (soft), not left with the preview's faint tint once the spring settles (#94) */
+describe('RangeCalendar band', () => {
+  it('an end picked while the preview tint is still moving is painted as a committed range', () => {
+    const frames: FrameRequestCallback[] = [];
+    let t = performance.now();
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { frames.push(cb); return frames.length; });
+    const caf = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    const step = (n = 1) => { for (let i = 0; i < n; i++) { t += 16; for (const cb of frames.splice(0)) cb(t); } };
+    try {
+      const { container } = render(<ThemeProvider theme={createTheme({ reduceMotion: false })}>
+        <RangeCalendar aria-label="stay" defaultMonth={new Date(2026, 0, 1, 12)} locale="en-US" /></ThemeProvider>);
+      const day = (iso: string) => container.querySelector<HTMLElement>(`[data-date="${iso}"]`)!;
+      const kinds = () => [...container.querySelectorAll<HTMLElement>('.sg-calendar__seg')].filter((e) => e.style.display === 'block').map((e) => e.dataset.kind);
+      act(() => { fireEvent.click(day('2026-01-05')); });
+      act(() => { fireEvent.mouseEnter(day('2026-01-20')); });
+      act(() => { step(2); });   /* the preview's head is on its way */
+      expect(kinds()).toContain('faint');
+      act(() => { fireEvent.click(day('2026-01-20')); });
+      act(() => { for (let i = 0; i < 200 && frames.length; i++) step(); });
+      expect(kinds().length).toBeGreaterThan(0);
+      expect(new Set(kinds())).toEqual(new Set(['soft']));
+    } finally { raf.mockRestore(); caf.mockRestore(); }
+  });
+  it('a preview left for the month grid mid-spring stops painting the grid it left', () => {
+    const frames: FrameRequestCallback[] = [];
+    let t = performance.now();
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { frames.push(cb); return frames.length; });
+    const caf = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    const step = (n = 1) => { for (let i = 0; i < n; i++) { t += 16; for (const cb of frames.splice(0)) cb(t); } };
+    try {
+      const { container } = render(<ThemeProvider theme={createTheme({ reduceMotion: false })}>
+        <RangeCalendar aria-label="stay" defaultMonth={new Date(2026, 0, 1, 12)} locale="en-US" /></ThemeProvider>);
+      const day = (iso: string) => container.querySelector<HTMLElement>(`[data-date="${iso}"]`)!;
+      act(() => { fireEvent.click(day('2026-01-05')); });
+      act(() => { fireEvent.mouseEnter(day('2026-01-20')); });
+      act(() => { step(2); });
+      const segs = [...container.querySelectorAll<HTMLElement>('.sg-calendar__seg')];
+      act(() => { fireEvent.click(screen.getByRole('button', { name: /Choose a month/ })); });
+      expect(container.querySelector('.sg-calendar__seg')).toBeNull();
+      const before = segs.map((e) => e.getAttribute('style'));
+      act(() => { for (let i = 0; i < 50; i++) step(); });
+      expect(segs.map((e) => e.getAttribute('style'))).toEqual(before);   /* the detached ones are not painted */
+    } finally { raf.mockRestore(); caf.mockRestore(); }
+  });
+  it('hidden by Activity mid-spring and shown again, an end picked then is painted as committed', () => {
+    const frames: FrameRequestCallback[] = [];
+    let t = performance.now();
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { frames.push(cb); return frames.length; });
+    const caf = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    const step = (n = 1) => { for (let i = 0; i < n; i++) { t += 16; for (const cb of frames.splice(0)) cb(t); } };
+    try {
+      const view = (mode: 'visible' | 'hidden') => <ThemeProvider theme={createTheme({ reduceMotion: false })}><Activity mode={mode}>
+        <RangeCalendar aria-label="stay" defaultMonth={new Date(2026, 0, 1, 12)} locale="en-US" /></Activity></ThemeProvider>;
+      const { container, rerender } = render(view('visible'));
+      const day = (iso: string) => container.querySelector<HTMLElement>(`[data-date="${iso}"]`)!;
+      const kinds = () => [...container.querySelectorAll<HTMLElement>('.sg-calendar__seg')].filter((e) => e.style.display === 'block').map((e) => e.dataset.kind);
+      act(() => { fireEvent.click(day('2026-01-05')); });
+      act(() => { fireEvent.mouseEnter(day('2026-01-20')); });
+      act(() => { step(2); });
+      act(() => { rerender(view('hidden')); });
+      frames.length = 0;   /* the hide cancelled the frame loop */
+      act(() => { rerender(view('visible')); });
+      act(() => { fireEvent.click(day('2026-01-20')); });
+      act(() => { for (let i = 0; i < 200 && frames.length; i++) step(); });
+      expect(kinds().length).toBeGreaterThan(0);
+      expect(new Set(kinds())).toEqual(new Set(['soft']));
+    } finally { raf.mockRestore(); caf.mockRestore(); }
   });
 });
 
