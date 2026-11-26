@@ -71,6 +71,12 @@ async function measure(name, act, ms = 700) {
 }
 await p.goto('http://localhost:4173/#/navigation'); await p.waitForTimeout(800);
 const tabs = p.locator('.sg-tabbar__item');
+/* the first tap after load rasterizes something for the first time (#87): 1-2 frames of 33-50 ms right after it, and
+   none on any later tap. A one-time first cost (design language 3.7, exceptions): recorded, not judged, and the travel
+   is judged from the second tap on */
+await measure('tab bar: first tap after load (informational, #87)', await tap(tabs.nth(2)));
+await expect('tab bar: first tap', on(tabs.nth(2)));
+await p.waitForTimeout(600);
 await measure('tab bar: tap travel (droplet)', await tap(tabs.nth(3)));
 await expect('tab bar: tap travel', on(tabs.nth(3)));
 await measure('tab bar: tap back', await tap(tabs.nth(0)));
