@@ -405,7 +405,7 @@ for (const query of ['', '?rm=1']) {
   }
 }
 
-/* the layout as the catalog means it: rows on one line, images at their own size, a table, spread rows */
+/* the layout as the catalog means it: rows on one line, images at their own size, a table, spread rows, a blocked button */
 {
   outside.length = 0;
   const p = await open(1440, { photos: true });
@@ -500,6 +500,26 @@ for (const query of ['', '?rm=1']) {
   ok('Contact Card: the contact rows stay a centred block', Math.abs(cc.off) < 1 && cc.w < cc.card - 40, JSON.stringify(cc));
   await closeSheet(p);
 
+  /* Login Form: a blocked Sign in says nothing until pressed; a press sends nothing, says why and goes to Email */
+  for (const how of ['pointer', 'keyboard']) {
+    await openExample(p, 'login form');
+    const signIn = screen(p).getByRole('button', { name: 'Sign in', exact: true });
+    const why = screen(p).getByText('Please fix errors before signing in', { exact: true });
+    const quiet = await why.evaluate((e) => !!e.closest('.sg-visually-hidden'));
+    const linked = await signIn.evaluate((b) => (b.getAttribute('aria-describedby') ?? '').split(' ').map((id) => document.getElementById(id)?.textContent).join(' '));
+    if (how === 'pointer') { const r = await rect(signIn); await p.mouse.click(r.l + r.w / 2, r.t + r.h / 2); } else { await signIn.focus(); await p.keyboard.press('Enter'); }
+    await p.waitForTimeout(400);
+    const after = await p.evaluate(() => ({ focus: document.activeElement?.id ? document.querySelector(`label[for="${document.activeElement.id}"]`)?.textContent : document.activeElement?.tagName }));
+    const shown = await why.evaluate((e) => !e.closest('.sg-visually-hidden') && e.getBoundingClientRect().height > 0);
+    const errors = await screen(p).getByText('Email is required', { exact: false }).count();
+    /* and says it, with how many fields need attention, in the live region beside the button */
+    const said = await signIn.evaluate((b) => b.parentElement.querySelector('[aria-live="polite"]')?.textContent ?? '');
+    /* a press that sends shows what it sent at once (the other tab): this one stays on the agent's messages */
+    const sent = await p.getByRole('tab', { name: /화면 → 에이전트/ }).getAttribute('aria-selected');
+    ok(`Login Form (${how}): a blocked Sign in shows no reason until pressed, but says it to a screen reader`, quiet && /Please fix errors/.test(linked) && (await signIn.getAttribute('aria-disabled')) === 'true', linked);
+    ok(`Login Form (${how}): a press sends nothing, shows why and the fields' errors, and moves to Email`, shown && errors > 0 && after.focus === 'Email' && sent !== 'true' && /Please fix errors before signing in \d+ fields? needs? attention\./.test(said), JSON.stringify({ shown, errors, after, sent, said }));
+    await closeSheet(p);
+  }
   await p.context().close();
 
   /* at 390 px: Chat Message's avatar stays beside its name and message */

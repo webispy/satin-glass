@@ -56,7 +56,8 @@ Where the catalog leaves the look open, the surfaces take Satin Glass's, so an a
 - **Accessible names.** An agent's accessibility label (`@accessibility.label` in v1.0, `accessibility.label` in v0.9.1) names a control only when the control has no visible text, or the label contains that text as whole words. Otherwise the visible text stays the control's name (WCAG 2.5.3), the label names the component's group, and a report is raised. This departs on purpose from the protocol, where the label always wins.
 - **Validation.**
   - A field shows its check messages once the user has left it.
-  - A button disabled by its checks says why straight away.
+  - A Button blocked by its checks is unavailable (`aria-disabled`: dimmed, still reached with Tab), and its check message is its accessible description from the start, so a screen reader says why. The message stays hidden until someone presses the Button. A press sends nothing: it shows the message below the Button, shows the messages of the fields its checks read (the fields bound to the data paths in its checks, in the same drawn surface), and moves the focus to the first of those fields that is still invalid and can take the focus, or keeps it on the Button. On each press, a live region also announces the message and, when any of those fields are still invalid, how many need attention (`words.fieldsToFix`). Once its checks pass, the message disappears; if they fail again, it starts hidden.
+  - A field's check message is part of its accessible description, alongside any description the agent gives.
 - **Icons.** The app gives the icons. A name the app did not give draws a neutral glyph and raises a report.
 - **URLs.**
   - Media URLs pass web_core's sanitiser, then `allowUrl`. By default `https:`, same-origin and `data:` media URLs (`image/`, `video/`, `audio/`) are allowed.

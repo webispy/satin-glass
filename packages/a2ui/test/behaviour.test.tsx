@@ -31,13 +31,16 @@ describe.each<V>(['1.0', '0.9'])('protocol v%s', (v) => {
     const { feed } = mount({ onOutbound: (m) => { sent.push(m); } });
     feed(...form(v));
     const save = screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement;
-    /* disabled by its checks, and it says why at once, linked to the button */
-    expect(save.disabled).toBe(true);
+    /* blocked by its checks: unavailable (aria-disabled, still focusable), and why is its description, not yet shown */
+    const blocked = () => save.getAttribute('aria-disabled') === 'true';
+    expect(save.disabled).toBe(false);
+    expect(blocked()).toBe(true);
     const why = document.getElementById(save.getAttribute('aria-describedby')!);
     expect(why?.textContent).toBe('Fix the name first.');
+    expect(why?.closest('.sg-visually-hidden')).not.toBeNull();
     const field = screen.getByRole('textbox', { name: 'Name' });
     fireEvent.change(field, { target: { value: 'ab' } });
-    expect(save.disabled).toBe(true);
+    expect(blocked()).toBe(true);
     /* the field's own message shows only once the field has been left */
     expect(screen.queryByText('Use at least 3 characters.')).toBeNull();
     fireEvent.blur(field);
@@ -45,7 +48,8 @@ describe.each<V>(['1.0', '0.9'])('protocol v%s', (v) => {
     expect(screen.getByText('Use at least 3 characters.')).toBeTruthy();
     expect(field.getAttribute('aria-invalid')).toBe('true');
     fireEvent.change(field, { target: { value: 'abc' } });
-    expect(save.disabled).toBe(false);
+    expect(blocked()).toBe(false);
+    expect(save.getAttribute('aria-describedby')).toBeNull();
     expect(field.getAttribute('aria-invalid')).not.toBe('true');
     await act(async () => { fireEvent.click(save); await Promise.resolve(); });
     const actions = sent.filter((m) => (m as { action?: unknown }).action) as { version: string; action: { name: string; surfaceId: string; sourceComponentId: string; context: Record<string, unknown> } }[];
@@ -54,6 +58,66 @@ describe.each<V>(['1.0', '0.9'])('protocol v%s', (v) => {
     expect(actions[0].action).toMatchObject({ name: 'save', surfaceId: 's', sourceComponentId: 'save', context: { name: 'abc', email: true } });
   });
 
+  it('a press on a blocked button sends nothing, shows why, shows the errors of the fields its checks read and focuses the first', async () => {
+    const sent: unknown[] = [];
+    const { feed } = mount({ onOutbound: (m) => { sent.push(m); } });
+    feed(...form(v));
+    const save = screen.getByRole('button', { name: 'Save' });
+    const field = screen.getByRole('textbox', { name: 'Name' });
+    expect(screen.queryByText('Use at least 3 characters.')).toBeNull();
+    await act(async () => { fireEvent.click(save); await Promise.resolve(); });
+    await tick();
+    expect(sent.filter((m) => (m as { action?: unknown }).action)).toHaveLength(0);
+    const why = screen.getByText('Fix the name first.');
+    expect(why.closest('.sg-visually-hidden')).toBeNull();
+    expect(save.getAttribute('aria-describedby')).toBe(why.id);
+    expect(screen.getByText('Use at least 3 characters.')).toBeTruthy();
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(field);
+    /* fields the checks do not read keep their own state: the checkbox shows nothing */
+    expect(screen.getByRole('checkbox', { name: 'Email me' }).getAttribute('aria-invalid')).not.toBe('true');
+    /* once the checks pass, the reason goes; failing again, it starts hidden */
+    fireEvent.change(field, { target: { value: 'abcd' } });
+    expect(screen.queryByText('Fix the name first.')).toBeNull();
+    fireEvent.change(field, { target: { value: 'a' } });
+    expect(screen.getByText('Fix the name first.').closest('.sg-visually-hidden')).not.toBeNull();
+  });
+
+  /* each refused press is said: the reason was already the button's description, and the focus may not move, so a
+     live region says it again with how many fields need attention, as a new node each time (#98 review) */
+  it('says each refused press in a live region, with the number of fields to fix', async () => {
+    const { feed } = mount();
+    feed(...form(v));
+    const save = screen.getByRole('button', { name: 'Save' });
+    const live = () => save.parentElement!.querySelector<HTMLElement>('[aria-live="polite"]');
+    expect(live()?.textContent).toBe('');
+    await act(async () => { fireEvent.click(save); await Promise.resolve(); });
+    await tick();
+    expect(live()?.textContent).toBe('Fix the name first. 1 field needs attention.');
+    const first = live()!.firstElementChild;
+    await act(async () => { fireEvent.click(save); await Promise.resolve(); });
+    await tick();
+    expect(live()!.firstElementChild).not.toBe(first);
+  });
+  /* the focus goes to the first invalid field that takes it: a disabled one is passed
+     over for the next (#98 review); a Slider whose range has no width is disabled */
+  it('focuses the first invalid field that can take the focus', async () => {
+    const { feed } = mount();
+    feed(create(v), data(v, { volume: 10, name: '' }), components(v, [
+      { id: 'root', component: 'Column', children: ['volume', 'name', 'go'] },
+      { id: 'volume', component: 'Slider', label: 'Volume', min: 50, max: 50, value: path(v, '/volume'),
+        ...checks(v, [{ condition: call(v, 'numeric', { value: path(v, '/volume'), min: 50 }), message: 'Turn it up.' }]) },
+      { id: 'name', component: 'TextField', label: 'Name', value: path(v, '/name'),
+        ...checks(v, [{ condition: call(v, 'length', { value: path(v, '/name'), min: 3 }), message: 'Use at least 3 characters.' }]) },
+      { id: 'go', component: 'Button', child: 'gt', action: { event: { name: 'go' } },
+        ...checks(v, [{ condition: call(v, 'and', { values: [call(v, 'numeric', { value: path(v, '/volume'), min: 50 }), call(v, 'length', { value: path(v, '/name'), min: 3 })] }), message: 'Not yet.' }]) },
+      { id: 'gt', component: 'Text', text: 'Go' },
+    ]));
+    expect(screen.getByRole('slider', { name: 'Volume' }).getAttribute('aria-disabled')).toBe('true');
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Go' })); await Promise.resolve(); });
+    await tick();
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Name' }));
+  });
   it('moves the slider by the version\'s step: v1.0 `steps` divides the range', () => {
     const { feed, session } = mount();
     feed(...form(v));
@@ -734,6 +798,25 @@ describe.each<V>(['1.0', '0.9'])('a short exclusive choice in v%s', (v) => {
     expect(container.querySelector('.sg-segmented[role="radiogroup"]')).not.toBeNull();
     feed(data(v, { billing: [] }));
     expect(container.querySelector('.sg-segmented[role="radiogroup"]')).toBeNull();
+  });
+});
+
+describe.each<V>(['1.0', '0.9'])('a blocked button in a surface drawn twice, in v%s', (v) => {
+  it('focuses the field of the drawing it was pressed in', async () => {
+    let session: ReturnType<typeof useA2ui> | undefined;
+    function App() {
+      const a2ui = useA2ui({});
+      session = a2ui;
+      return <ThemeProvider><div data-testid="one"><A2uiSurfaces a2ui={a2ui} /></div><div data-testid="two"><A2uiSurfaces a2ui={a2ui} /></div></ThemeProvider>;
+    }
+    render(<App />);
+    act(() => { for (const m of form(v)) session!.process(m); });
+    const two = screen.getByTestId('two');
+    await act(async () => { fireEvent.click(within(two).getByRole('button', { name: 'Save' })); await Promise.resolve(); });
+    await tick();
+    expect(document.activeElement).toBe(within(two).getByRole('textbox', { name: 'Name' }));
+    /* the other drawing shows nothing of it */
+    expect(within(screen.getByTestId('one')).queryByText('Use at least 3 characters.')).toBeNull();
   });
 });
 

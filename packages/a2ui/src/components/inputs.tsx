@@ -1,9 +1,9 @@
 /* Button, TextField, CheckBox, Slider, ChoicePicker and DateTimeInput of the A2UI basic catalog, drawn with Satin
    controls. Values are two-way bound through the binder's setters. A field's check messages show once the user has
    left it; a button its checks disable says why at once. */
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { Button, Checkbox, Chip, ChoiceList, DatePicker, SegmentedControl, Radio, RadioGroup, SearchField, Slider, Stack, Text, TextField, TimePicker } from '@satin-glass/react';
-import { fieldBox, grow, ids, InButtonContext, useAgentName, useEnv, useFieldErrors, useSlot, type Rendered } from './shared';
+import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Button, Checkbox, Chip, ChoiceList, DatePicker, SegmentedControl, Radio, RadioGroup, SearchField, Slider, Stack, Text, TextField, TimePicker, VisuallyHidden } from '@satin-glass/react';
+import { fieldBox, grow, ids, InButtonContext, FieldScopeContext, pathsIn, resolvePaths, revealFields, useAgentName, useEnv, useFieldErrors, useSlot, type Rendered } from './shared';
 import { checkText } from '../words';
 import { markTrustedGesture } from '../urls';
 import { MAX_TEXT, safePattern } from '../patterns';
@@ -21,17 +21,50 @@ export function A2uiButton(r: Rendered<{ child?: string; variant?: keyof typeof 
      variant's fill, not by its width (design language §8) */
   const slot = useSlot(r);
   const share = slot.inRow && !!props.weight;
+  /* blocked by its checks, it is unavailable (aria-disabled: dimmed, still reached with Tab) and says why to a screen
+     reader from the start. A press sends nothing: it shows why below it, shows the errors of the fields its checks
+     read and moves the focus to the first of them still wrong (or keeps it). Once its checks pass, the reason goes;
+     failing again, it starts quiet */
+  const scope = useContext(FieldScopeContext);
+  const [tried, setTried] = useState(false), [attempt, setAttempt] = useState(0), [toFix, setToFix] = useState(0);
+  const targets = useRef<HTMLElement[]>([]), self = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => { if (!blocked) setTried(false); }, [blocked]);
+  /* the focus goes to the first field still wrong that takes it (a disabled one does not), or stays on the button */
+  useEffect(() => {
+    if (!attempt) return;
+    const list = targets.current;
+    targets.current = [];
+    for (const t of list) { t.focus(); if (document.activeElement === t) return; }
+    self.current?.focus();
+  }, [attempt]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const refuse = () => {
+    const raw = r.context.componentModel.properties;
+    const hits = revealFields(scope, resolvePaths(r, pathsIn(raw['@checks'] ?? raw.checks)));
+    targets.current = hits.map((h) => (h.matches(FOCUSABLE) ? h : h.querySelector<HTMLElement>(FOCUSABLE))).filter((x): x is HTMLElement => !!x);
+    setToFix(hits.length);
+    setTried(true);
+    setAttempt((n) => n + 1);
+  };
+  /* each refused press is said, as a new node so that it is said again: the reason, which was already the button's
+     description, and how many fields need attention (the focus may move to one of them, or not move at all) */
+  const said = reason && attempt ? [reason, toFix ? env.words.fieldsToFix(toFix) : ''].filter(Boolean).join(' ') : '';
   return (
     <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: share ? 'stretch' : 'flex-start', gap: 4, maxWidth: '100%', ...(share ? grow(props.weight) : { width: 'fit-content' }) }}>
-      <Button ref={ref} variant={BUTTON[props.variant ?? 'default'] ?? 'tinted'} disabled={blocked} aria-describedby={ids(described, reason ? why : undefined)} {...aria}
-        onClick={(e) => { if (e.nativeEvent.isTrusted) markTrustedGesture(); void props.action?.(); }}>
+      <Button ref={(el: HTMLButtonElement | null) => { self.current = el; ref(el); }} variant={BUTTON[props.variant ?? 'default'] ?? 'tinted'} aria-disabled={blocked || undefined} aria-describedby={ids(described, reason ? why : undefined)} {...aria}
+        onClick={(e) => {
+          if (blocked) { e.preventDefault(); e.stopPropagation(); refuse(); return; }
+          if (e.nativeEvent.isTrusted) markTrustedGesture();
+          void props.action?.();
+        }}>
         <InButtonContext.Provider value={true}>{props.child ? buildChild(props.child) : null}</InButtonContext.Provider>
       </Button>
-      {reason && <Text id={why} variant="footnote" tone="secondary">{reason}</Text>}
+      {reason && (tried ? <Text id={why} variant="footnote" tone="secondary">{reason}</Text> : <VisuallyHidden id={why}>{reason}</VisuallyHidden>)}
+      {blocked && <VisuallyHidden aria-live="polite">{said && <span key={attempt}>{said}</span>}</VisuallyHidden>}
       {describe}
     </span>
   );
 }
+const FOCUSABLE = 'input:not([type="hidden"]), textarea, select, button, [tabindex]:not([tabindex="-1"])';
 
 /* ---- TextField: shortText, longText (multi-line), number and obscured. v0.9.1's `validationRegexp` is checked here,
    as the catalog asks of the renderer: only a pattern whose work is bounded (patterns.ts), on text of a bounded
@@ -52,15 +85,17 @@ export function A2uiTextField(r: Rendered<{ label?: unknown; value?: unknown; se
   });
   const mismatch = safe && value && (value.length > MAX_TEXT || !safe.test(value)) ? [env.words.format] : [];
   const fe = useFieldErrors(r, mismatch);
+  /* Satin's field writes its error with the id `<id>-help`; the agent's description is added to it, not put over it */
+  const fieldId = useId();
   const common = {
-    label, value, error: fe.error, placeholder: props.placeholder == null ? undefined : String(props.placeholder), ...aria,
-    onFocus: fe.onFocus, onBlur: fe.onBlur, 'aria-describedby': described,
+    id: fieldId, label, value, error: fe.error, placeholder: props.placeholder == null ? undefined : String(props.placeholder), ...aria,
+    onFocus: fe.onFocus, onBlur: fe.onBlur, 'aria-describedby': ids(described, fe.error ? `${fieldId}-help` : undefined),
   };
   /* the field's weight and width go on one box around it and its description (Satin's TextField puts `style` on the
      input itself, inside the field's own box) */
   const box = fieldBox(r, useSlot(r));
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', ...box }}>
+    <div ref={fe.host} style={{ display: 'flex', flexDirection: 'column', ...box }}>
       {props.variant === 'longText'
         ? <TextField {...common} multiline ref={ref} onChange={(e) => props.setValue?.(e.target.value)} />
         : <TextField {...common} ref={ref} type={props.variant === 'obscured' ? 'password' : 'text'}
@@ -76,7 +111,7 @@ export function A2uiCheckBox(r: Rendered<{ label?: unknown; value?: unknown; set
   const { ref, aria, described, describe } = useAgentName<HTMLInputElement>(r, label);
   const fe = useFieldErrors(r);
   return (
-    <Stack gap={1} style={grow(props.weight)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
+    <Stack ref={fe.host} gap={1} style={grow(props.weight)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
       <Checkbox ref={ref} label={label} checked={!!props.value} onChange={(v) => props.setValue?.(v)} {...aria}
         aria-invalid={fe.invalid} aria-describedby={ids(described, fe.describedBy)} />
       {fe.message}{describe}
@@ -101,7 +136,7 @@ export function A2uiSlider(r: Rendered<{ label?: unknown; min?: number; max?: nu
   const pos = width > 0 ? Math.round(((Math.min(max, Math.max(min, value)) - min) / width) * n) : 0;
   const slot = useSlot(r);
   return (
-    <Stack gap={1} style={fieldBox(r, slot)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
+    <Stack ref={fe.host} gap={1} style={fieldBox(r, slot)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
       {label && <Text id={id} variant="subhead">{label}</Text>}
       <Slider ref={ref} aria-labelledby={label && !aria['aria-label'] ? id : undefined} {...aria} min={0} max={n} step={1} disabled={!(width > 0)}
         aria-invalid={fe.invalid} aria-describedby={ids(described, fe.describedBy)}
@@ -206,7 +241,7 @@ export function A2uiChoicePicker(r: Rendered<{ label?: unknown; variant?: string
      around them, which takes no name of its own (one name, announced once) */
   if (props.displayStyle !== 'chips' && !segment) body = <div role="group" aria-invalid={fe.invalid} aria-describedby={ids(described, fe.describedBy)}>{body}</div>;
   return (
-    <Stack ref={host} gap={2} style={{ position: 'relative', ...fieldBox(r, slot) }} onFocus={fe.onFocus} onBlur={fe.onBlur}>
+    <Stack ref={(el: HTMLDivElement | null) => { host.current = el; fe.host(el); }} gap={2} style={{ position: 'relative', ...fieldBox(r, slot) }} onFocus={fe.onFocus} onBlur={fe.onBlur}>
       {label && <Text id={labelId} variant="subhead">{label}</Text>}
       {filter}{shown.length ? body : empty}
       {candidate && (
@@ -301,7 +336,7 @@ export function A2uiDateTimeInput(r: Rendered<{ value?: unknown; setValue?: (v: 
   /* a single picker carries the name, description and error itself (Satin's `error` links the message) */
   const single = { ...aria, error: fe.error, 'aria-describedby': described };
   return (
-    <Stack gap={1} style={fieldBox(r, slot)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
+    <Stack ref={fe.host} gap={1} style={fieldBox(r, slot)} onFocus={fe.onFocus} onBlur={fe.onBlur}>
       <Stack direction="row" gap={2} wrap role={both ? 'group' : undefined} aria-label={both ? aria['aria-label'] ?? label : undefined}
         aria-describedby={both ? ids(described, fe.describedBy) : undefined} aria-invalid={both ? fe.invalid : undefined}>
         {date && <DatePicker label={dateLabel} locale={env.locale} value={asDate(d) ?? null} min={boundDay(min)} max={boundDay(max)}
