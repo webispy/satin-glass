@@ -1,6 +1,6 @@
 {
   "name": "@satin-glass/core",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Framework-free behaviour and styles for Satin Glass: springs, the pointer sheen, the stretch-and-stick selection, overlay placement, focus and layer stacks, drag and long press.",
   "keywords": ["ui", "css", "spring", "animation", "design-system", "accessibility", "satin-glass"],
   "homepage": "https://webispy.github.io/satin-glass/",

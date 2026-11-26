@@ -11,7 +11,7 @@
 
 빛을 따르는 유리 재질 위에 만든 React UI 라이브러리. 결이 있는 반투명 유리, 위에서 오는 고정된 빛, 포인터 아래 은은한 광택, 늘어났다 달라붙는 모션이 특징이다. 디자인 토큰, 프레임워크 없는 동작 코어, React 컴포넌트, 문서·카탈로그 앱으로 이루어진 pnpm 모노레포다.
 
-> 상태: **0.5.0**. 변경 내역은 [`CHANGELOG.md`](CHANGELOG.md)에 있다.
+> 상태: **0.6.0**. 변경 내역은 [`CHANGELOG.md`](CHANGELOG.md)에 있다.
 
 ## 구성
 
@@ -20,6 +20,7 @@
 | `packages/tokens` | `@satin-glass/tokens` | OKLCH 팔레트, 테마 4종(라이트·다크·고대비 2종), 간격·반경·글자·모션 토큰 → `tokens.css`와 TS 값. 빌드할 때 WCAG 대비를 검사한다 |
 | `packages/core` | `@satin-glass/core` | 프레임워크 없는 동작(스프링, 포인터 광택, 물방울 선택 표시, 오버레이 배치·피어남·포커스·레이어 스택, 드래그·길게 누르기)과 컴포넌트 CSS(`styles.css`, 카테고리별 `css/*.css`, `styles.layer.css`) |
 | `packages/react` | `@satin-glass/react` | React 컴포넌트와 훅. 카테고리별 진입점(`/controls`, `/data` …)과 코어의 CSS를 함께 싣는다 |
+| `packages/a2ui` | `@satin-glass/a2ui` (비공개, 배포하지 않음) | A2UI 에이전트 화면(프로토콜 v1.0·v0.9.1, 기본 카탈로그)을 Satin Glass 컴포넌트로 그린다. 문서의 A2UI 페이지가 이 패키지를 쓴다 |
 | `apps/docs` | — | 문서·카탈로그 앱(Vite). 테마 전환과 실제 앱 형태의 쇼케이스 포함 |
 | `tests/e2e` | — | Playwright: 상호작용(Chromium·WebKit·Firefox), 성능(CPU 4배 감속), 스크린샷 |
 
@@ -82,7 +83,7 @@ import { DataTable, LineChart } from '@satin-glass/react/data';
 - **React** 18.2 이상과 React DOM(peer dependency). 문서 앱과 테스트는 React 19에서 실행한다.
 - **브라우저**: 최신 Chrome, Edge, Safari, Firefox. 스타일에 `linear()` 이징, `color-mix()`, `:has()`, 컨테이너 쿼리를 쓰므로 최소 지원 버전은 대략 Chrome·Edge 113, Safari 17.2, Firefox 121이다. `backdrop-filter`를 지원하지 않는 브라우저에서는 유리 대신 불투명한 배경을 쓴다.
 - **서버 렌더링**: 테스트로 확인한다. 엔트리 포인트(`@satin-glass/react/foundation`, `/controls` …)마다 대표 컴포넌트로 만든 페이지를 `renderToString`으로 렌더링하면 매번 같은 HTML이 나오고, jsdom에서 불일치 없이 하이드레이션된다. 따로 렌더링하는 루트가 여럿이면(한 페이지의 여러 아일랜드 등) 루트마다 다른 `identifierPrefix`를 정해 `renderToString`과 `hydrateRoot`에 똑같이 넘긴다. 생성되는 id는 React의 `useId`로 만들기 때문에, `identifierPrefix`가 같은 두 루트는 id가 겹친다. 시스템 설정을 따르는 옵션(`mode: 'system'` 등)은 서버 기본값(라이트 테마, 기본 대비)으로 먼저 그려지고, 하이드레이션이 끝나면 브라우저 설정으로 바뀐다. 이 전환을 피하려면 쿠키 등에서 읽은 사용자의 선택을 직접 넘긴다. 동작 줄이기와 투명도 줄이기는 예외로, CSS가 처음부터 브라우저 설정을 따른다(투명도 줄이기는 브라우저가 지원할 때만: Chrome·Edge 118 이상. Safari는 아직 지원하지 않고, Firefox는 별도 설정을 켜야 지원한다). 날짜 컴포넌트에 넘기는 날짜는 서버와 브라우저에서 각각 로컬 날짜로 만든다. 예를 들어 `yyyy-mm-dd` 문자열을 나눠 `new Date(2026, 11, 1, 12)`처럼 만들고, JavaScript가 UTC 자정으로 읽는 `new Date('2026-12-01')`은 쓰지 않는다. 특정 시각은 시간대에 따라 날짜가 달라져서, 서버와 브라우저가 서로 다른 날을 보여 주게 된다.
-- **크기**(0.6, esbuild로 minify한 크기, React 제외): `ThemeProvider`와 `Button` gzip 15 kB, `DataTable` 13 kB, 전체 73 kB. `styles.css`는 gzip 41 kB이고, 카테고리 파일은 `foundation.css`(12 kB)에 더해 파일마다 1–7 kB다.
+- **크기**(0.6.0, esbuild로 번들·minify한 뒤 gzip, React 제외): `ThemeProvider`와 `Button` 18.5 kB, `DataTable`만 27 kB(앞의 둘에 더하면 8 kB 추가), 전체 82 kB. `styles.css`는 gzip 43 kB이고, 카테고리 파일은 `foundation.css`(13 kB)에 더해 파일마다 1–7 kB다.
 - **버전**: 1.0 전에는 마이너 릴리스(0.x)에서 API가 바뀌거나 빠질 수 있다. 바뀐 것은 [`CHANGELOG.md`](CHANGELOG.md)의 Changed·Breaking changes에 대신 쓸 것과 함께 적는다. 패치 릴리스는 버그만 고친다.
 
 ## 개발

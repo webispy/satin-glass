@@ -11,7 +11,7 @@
 
 A React UI library built on a glass material that follows the light: frosted, grained translucency, a fixed top light and a soft sheen under the pointer, with motion that stretches and sticks. It is a pnpm monorepo of design tokens, a framework-free behaviour core, React components, and a docs and catalogue app.
 
-> Status: **0.5.0**. Changes are in [`CHANGELOG.md`](CHANGELOG.md).
+> Status: **0.6.0**. Changes are in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Packages
 
@@ -20,6 +20,7 @@ A React UI library built on a glass material that follows the light: frosted, gr
 | `packages/tokens` | `@satin-glass/tokens` | OKLCH palette, four themes (light, dark and two high-contrast), spacing, radius, type and motion tokens, built into `tokens.css` and TS values. The build checks WCAG contrast |
 | `packages/core` | `@satin-glass/core` | Framework-free behaviour (springs, the pointer sheen, the stretch-and-stick selection, overlay placement, bloom, focus and layer stacks, drag and long press) and the component CSS (`styles.css`, per-category `css/*.css`, `styles.layer.css`) |
 | `packages/react` | `@satin-glass/react` | React components and hooks, with per-category entry points (`/controls`, `/data` …) and the core's CSS |
+| `packages/a2ui` | `@satin-glass/a2ui` (private, not published) | Renders A2UI agent surfaces (protocol v1.0 and v0.9.1, the basic catalog) with Satin Glass components; the A2UI page in the docs is built on it |
 | `apps/docs` | — | Docs and catalogue app (Vite), with theme switching and an app-shaped showcase |
 | `tests/e2e` | — | Playwright: interactions (Chromium, WebKit, Firefox), performance (CPU slowed 4×), screenshots |
 
@@ -82,7 +83,7 @@ Pretendard is the recommended font. It is not bundled; load it from a CDN or hos
 - **React** 18.2 or later, with React DOM (peer dependencies). The docs app and the tests run on React 19.
 - **Browsers**: current Chrome, Edge, Safari and Firefox. The styles rely on `linear()` easing, `color-mix()`, `:has()` and container queries, so the floor is about Chrome and Edge 113, Safari 17.2 and Firefox 121. Where `backdrop-filter` is missing, glass falls back to an opaque fill.
 - **Server rendering**: tested: for a page of representative components from each entry point (`@satin-glass/react/foundation`, `/controls` …), `renderToString` writes the same HTML every time, and the page hydrates in jsdom without a mismatch. Give each separately rendered root (several islands on one page, for example) its own `identifierPrefix`, passed to both `renderToString` and `hydrateRoot`: generated ids come from React's `useId`, so two roots without distinct prefixes produce the same ids. Settings that follow the system (`mode: 'system'` and the like) render with the server's defaults (light, standard contrast) and switch to the browser's settings once the page has hydrated; pass the user's choice, from a cookie for example, to avoid that switch. Reduced motion and reduced transparency are the exception: the CSS follows the browser's own setting from the start (reduced transparency where the browser reports it: Chrome and Edge 118 and later; not yet Safari, and Firefox only behind a preference). Build the dates you pass to the date components as local dates on each side, for example `new Date(2026, 11, 1, 12)` from the parts of a `yyyy-mm-dd` string, not `new Date('2026-12-01')`, which JavaScript reads as midnight UTC: an instant falls on different days in different time zones, so the server and the browser would show different days.
-- **Size** (0.6, minified, measured with esbuild; React excluded): `ThemeProvider` and `Button` 15 kB gzipped, `DataTable` 13 kB, everything 73 kB. `styles.css` is 41 kB gzipped; a category file is 1–7 kB on top of `foundation.css` (12 kB).
+- **Size** (0.6.0, bundled and minified with esbuild, then gzipped; React excluded): `ThemeProvider` and `Button` 18.5 kB, `DataTable` 27 kB on its own (8 kB on top of those two), everything 82 kB. `styles.css` is 43 kB gzipped; a category file is 1–7 kB on top of `foundation.css` (13 kB).
 - **Versions**: before 1.0, a minor release (0.x) can change or remove APIs. Each change is listed in [`CHANGELOG.md`](CHANGELOG.md) under Changed or Breaking changes, with what to use instead. Patch releases only fix bugs.
 
 ## Development
