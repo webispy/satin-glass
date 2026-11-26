@@ -1,13 +1,29 @@
 /* Text, Row, Column, List, Card, Divider, Tabs and Modal of the A2UI basic catalog, drawn with Satin controls. */
-import { Fragment, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, Fragment, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { Button, Card, CardBody, Dialog, Divider, Stack, Tabs, Text } from '@satin-glass/react';
-import { agentA11y, CardDepthContext, EdgeContext, grow, InButtonContext, InTriggerContext, PANEL_MIN, RowContext, useEnv, useHostSink, type Child, type Edge, type Rendered } from './shared';
+import { agentA11y, CardDepthContext, EdgeContext, FlowContext, grow, InButtonContext, InTriggerContext, MEDIA_TEXT_MIN, PANEL_MIN, RowContext, useEnv, useHostSink, useSlot, type Child, type Edge, type Rendered } from './shared';
 
 /* ---- Text: the catalog's basic Markdown — headings, bold, italics, inline code, lists and paragraphs. No HTML, and
    links and images are their text only, as the catalog allows. v0.9.1 names headings with `variant` h1–h5. */
 const HEADING = ['body', 'title-1', 'title-2', 'title-3', 'headline', 'headline', 'headline'] as const;
-function inline(s: string): ReactNode[] {
+/* a number with group separators ("$850,000,000,000.00", "-0.5%") is one word: browsers may break after its commas */
+const NUMBER = /[-+−]?[$€£¥₩]?\d{1,3}(?:[,.\u00a0\u202f]\d{3})+(?:[.,]\d+)?%?/g;
+function numbers(s: string, key: string): ReactNode[] {
   const out: ReactNode[] = [];
+  let last = 0, m: RegExpExecArray | null, k = 0;
+  NUMBER.lastIndex = 0;
+  while ((m = NUMBER.exec(s))) {
+    if (m.index > last) out.push(s.slice(last, m.index));
+    out.push(<span key={`${key}-${k++}`} style={{ whiteSpace: 'nowrap' }}>{m[0]}</span>);
+    last = NUMBER.lastIndex;
+  }
+  if (!out.length) return [s];
+  if (last < s.length) out.push(s.slice(last));
+  return out;
+}
+function inline(s: string): ReactNode[] {
+  const raw: ReactNode[] = [];
+  const out = { push: (n: ReactNode) => { if (typeof n === 'string') raw.push(...numbers(n, `n${raw.length}`)); else raw.push(n); } };
   /* ![alt](url) and [text](url) keep their text; **bold**, *italic* / _italic_, `code` */
   const re = /!?\[([^\]]*)\]\([^)]*\)|\*\*([^*]+)\*\*|\*([^*]+)\*|_([^_]+)_|`([^`]+)`/g;
   let last = 0, m: RegExpExecArray | null, k = 0;
@@ -20,7 +36,7 @@ function inline(s: string): ReactNode[] {
     last = re.lastIndex;
   }
   if (last < s.length) out.push(s.slice(last));
-  return out;
+  return raw;
 }
 type Block = { kind: 'h'; level: number; text: string } | { kind: 'p'; text: string } | { kind: 'ul' | 'ol'; items: string[] };
 function blocks(md: string): Block[] {
@@ -37,12 +53,21 @@ function blocks(md: string): Block[] {
   }
   return out;
 }
-export function A2uiText({ props }: Rendered<{ text?: unknown; variant?: string }>) {
+export function A2uiText(r: Rendered<{ text?: unknown; variant?: string }>) {
+  const { props } = r;
   const inButton = useContext(InButtonContext);
+  const slot = useSlot(r);
   const raw = props.text == null ? '' : String(props.text);
   const caption = props.variant === 'caption';
   const vh = /^h([1-5])$/.exec(props.variant ?? '');
-  const style: CSSProperties = { ...grow(props.weight), overflowWrap: 'anywhere' };
+  /* a word longer than its line breaks, others do not: in a Row, text gives way to its siblings down to its longest
+     word, wrapping between words (a table's cells keep theirs whole: see TableContext) */
+  const style: CSSProperties = {
+    ...grow(props.weight), overflowWrap: 'break-word',
+    /* a cell of a Row (the agent's weights keep its columns in line from row to row): figures of one width, so
+       amounts line up digit by digit */
+    ...(slot.inRow && props.weight ? { fontVariantNumeric: 'tabular-nums' } : {}),
+  };
   if (vh) {
     const level = Number(vh[1]);
     return <Text variant={HEADING[level]} as={`h${Math.min(level + 1, 6)}` as 'h2'} style={style}>{inline(raw)}</Text>;
@@ -81,12 +106,104 @@ export const a2uiFlow = (direction: 'row' | 'column') => function A2uiFlow({ pro
   const raw = context.componentModel.properties.children;
   const ids = Array.isArray(raw) && raw.length === list.length ? raw.map(String) : null;
   const edgeOf = (i: number): Edge | null => (i === 0 && i === list.length - 1 ? 'all' : i === 0 ? 'top' : i === list.length - 1 ? 'bottom' : null);
+  /* the children's IDs as the agent wrote them (the binder hands its own node IDs), a template's instances by the
+     template's component ID, for the slots below */
+  const members = ids ?? (raw && typeof raw === 'object' && 'componentId' in raw ? [String((raw as { componentId: unknown }).componentId)] : []);
+  const slot = useSlot({ props, buildChild, context } as Rendered<unknown>);
   /* a weighted Column that is a Row's own child is a panel: it keeps a minimum width, so a narrow Row stacks it */
-  const row = useContext(RowContext);
-  const panel = direction === 'column' && !!props.weight && props.weight > 0 && !!row?.includes(context.componentModel.id);
+  const panel = direction === 'column' && !!props.weight && props.weight > 0 && slot.inRow;
+  const align = props.align ?? 'stretch';   /* the catalog's default, for both */
+  /* a Row stays on one line, its text giving way, as the catalog draws it; it wraps only to stack its panels (which
+     keep their minimum) or to move whole buttons of an action row to another line */
+  /* a template's instances count one by one (six Buttons from one template are a Row of Buttons) */
+  const given = useChildKinds(context, members);
+  const kinds = ids || !given.length ? given : list.map(() => given[0]);
+  /* a feature image beside other content: the content goes below it when there is no room beside it */
+  /* (a missing variant is the catalog's default, mediumFeature; an unweighted Column beside it is its text) */
+  const media = direction === 'row' && kinds.some((k) => k.type === 'Image' && k.feature) && kinds.some((k) => k.type === 'Column' && !k.weight);
+  /* a Row with no `align` and no panels lines its children up by their first baselines: a caption beside a button's
+     label, a small price beside a large one. The catalog's stretch would put them at the top; with panels (or a
+     Column or Card beside them) it stays, so the boxes keep one height */
+  const rowAlign = direction === 'row' && props.align === undefined && !kinds.some((k) => k.type === 'Column' || k.type === 'Card' || k.type === 'List') ? 'baseline' : undefined;
+  /* a Column of texts only (a name and its caption) reads as one block: a tight gap */
+  const textOnly = direction === 'column' && kinds.length >= 2 && kinds.every((k) => k.type === 'Text');
+  const wrap = direction === 'row' && (media || kinds.some((k) => (k.type === 'Column' || k.type === 'Card') && k.weight > 0) || (kinds.length >= 2 && kinds.every((k) => k.type === 'Button')));
+  /* a Row that spreads its children takes its Column's width whatever its alignment (a nested Column keeps its own
+     width, so a centred block of rows stays centred) */
+  const spread = direction === 'row' && ['spaceBetween', 'spaceAround', 'spaceEvenly'].includes(props.justify ?? '');
+  const style: CSSProperties = {
+    ...grow(props.weight), ...(panel ? { minWidth: PANEL_MIN } : {}),
+    ...(slot.inColumn && spread ? { alignSelf: 'stretch' } : {}),
+    /* the text beside a feature image takes the rest of the line, and goes below the image under 9rem: a large picture
+       sends it below on a phone, a thumbnail keeps it beside (#98 review: 15rem sent a 50 px cover's title below) */
+    ...(slot.mediaRow && !props.weight && direction === 'column' ? { flex: `1 1 ${MEDIA_TEXT_MIN}`, minWidth: 0 } : {}),
+    /* unweighted in a Row, it may give way below its content, its text wrapping inside it rather than running over
+       its neighbours when the Row is too narrow for all of them */
+    ...(slot.inRow && !props.weight ? { minWidth: 0 } : {}),
+    /* spread in a centred (or start or end) Column: around or evenly, each item has a slot of up to 6rem, so a few
+       numbers do not drift to the card's edges; between, the ends meet the Column's (a track's) ends */
+    ...(slot.inColumn && (props.justify === 'spaceAround' || props.justify === 'spaceEvenly') && slot.align !== 'stretch'
+      ? { width: `min(100%, ${Math.max(1, list.length) * 6}rem)`, alignSelf: undefined } : {}),
+  };
+  /* a table: a Row of two or more weighted cells (and no panels) is one row of it. It works out the width at which
+     each cell gets its share by weight without breaking its longest word or number, and the nearest Column gives
+     every such row the largest of these, scrolling sideways when that is wider than itself: columns stay in line
+     from row to row and with a header row, and an amount is never split */
+  const gridRow = direction === 'row' && !wrap && kinds.filter((k) => k.weight > 0).length >= 2;
+  const table = useContext(TableContext);
+  const box = useRef<HTMLDivElement>(null);
+  useTableRow(gridRow ? table : null, box);
+  const [need, setNeed] = useState(0);
+  const host = useTableHost(direction === 'column', setNeed);
+  if (gridRow) Object.assign(style, { minWidth: 'var(--a2ui-table-min, 0px)' });
+  /* a Column holding table rows gives them its shared minimum and scrolls when it is narrower. Only while it is (more
+     of the table waits beyond an edge) is it a named region in the Tab order that takes the arrow keys */
+  const scrolls = direction === 'column' && need > 0;
+  const [overflows, setOverflows] = useState(false);
+  /* the edges where more of the table waits fade out (24 px), as Satin's strips of tabs do. Written straight to the
+     table's own style as it scrolls: a render (and the rows' measuring) mid-scroll would stop a trackpad's momentum.
+     Whether it overflows at all changes only with a size, never with the scroll, so that render does not come
+     mid-scroll */
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!scrolls || !el) { setOverflows(false); return; }
+    let s = '', e = '', o: boolean | null = null;
+    const update = () => {
+      const rtl = getComputedStyle(el).direction === 'rtl', max = el.scrollWidth - el.clientWidth, at = Math.abs(el.scrollLeft);
+      const before = at > 1, after = at < max - 1;
+      const ns = (rtl ? after : before) ? '24px' : '0px', ne = (rtl ? before : after) ? '24px' : '0px';
+      if (ns !== s) { s = ns; el.style.setProperty('--a2ui-fade-s', ns); }
+      if (ne !== e) { e = ne; el.style.setProperty('--a2ui-fade-e', ne); }
+      if (max > 1 !== o) { o = max > 1; setOverflows(o); }
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    ro?.observe(el);
+    return () => { el.removeEventListener('scroll', update); ro?.disconnect(); };
+  }, [scrolls, need]);
+  const env = useEnv();
+  if (scrolls) {
+    const mask = 'linear-gradient(to right, transparent, #000 var(--a2ui-fade-s, 0px), #000 calc(100% - var(--a2ui-fade-e, 0px)), transparent)';
+    /* its focus ring inside its box: the mask hides anything painted outside it. A flick past its end stops there
+       (as Satin's DataTable): it does not carry on into the sheet or page around it */
+    Object.assign(style, { '--a2ui-table-min': `${need}px`, overflowX: 'auto', overflowY: 'hidden', overscrollBehaviorX: 'contain', maskImage: mask, WebkitMaskImage: mask, outlineOffset: -2 });
+  }
   const stack = (
-    <Stack direction={direction} gap={direction === 'row' ? 2 : 3} justify={JUSTIFY[props.justify ?? 'start']} data-a2ui-panel={panel ? '' : undefined}
-      align={ALIGN[props.align ?? (direction === 'row' ? 'center' : 'stretch')]} wrap={direction === 'row'} style={panel ? { ...grow(props.weight), minWidth: PANEL_MIN } : grow(props.weight)}>
+    <Stack ref={box} direction={direction} gap={direction === 'row' ? 2 : textOnly ? 1 : 3} justify={JUSTIFY[props.justify ?? 'start']} data-a2ui-panel={panel ? '' : undefined}
+      data-a2ui-table={scrolls ? '' : undefined} align={rowAlign ?? ALIGN[align]} wrap={wrap} style={style}
+      /* a table that scrolls takes the keyboard and says what it is: ← and → move it 40 px, Home and End to its ends
+         (WebKit does not scroll a focused box with the arrow keys itself); only when the table itself has the focus */
+      {...(scrolls && overflows ? { tabIndex: 0, role: 'region', 'aria-label': env.words.scrollTable, onKeyDown: (ev: ReactKeyboardEvent<HTMLDivElement>) => {
+        const el = ev.currentTarget;
+        if (ev.target !== el || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+        const rtl = getComputedStyle(el).direction === 'rtl', max = el.scrollWidth - el.clientWidth;
+        const to = ev.key === 'ArrowRight' ? el.scrollLeft + 40 : ev.key === 'ArrowLeft' ? el.scrollLeft - 40
+          : ev.key === 'Home' ? 0 : ev.key === 'End' ? (rtl ? -max : max) : null;
+        if (to === null) return;
+        ev.preventDefault();
+        el.scrollLeft = to;
+      } } : {})}>
       {/* every child in the same keyed wrapper whether or not the Column is at a card's edge: a change of `align` or
           `weight` moves the edge, and must not remount the children (their focus and own state) */}
       {list.map((c, i) => {
@@ -96,8 +213,105 @@ export const a2uiFlow = (direction: 'row' | 'column') => function A2uiFlow({ pro
       })}
     </Stack>
   );
-  return direction === 'row' ? <RowContext.Provider value={Array.isArray(ids) ? ids : null}>{stack}</RowContext.Provider> : stack;
+  const inner = <FlowContext.Provider value={{ direction, ids: members, align, aligned: props.align !== undefined, media }}>{stack}</FlowContext.Provider>;
+  const flow = host ? <TableContext.Provider value={host}>{inner}</TableContext.Provider> : inner;
+  return direction === 'row' ? <RowContext.Provider value={members}>{flow}</RowContext.Provider> : flow;
 };
+
+/* the component types and weights of a flow's children, read from the surface's model, and read again when a child
+   arrives, changes or goes (they stream in after their parent) */
+function useChildKinds(context: Rendered<unknown>['context'], ids: string[]) {
+  const [, bump] = useState(0);
+  const key = ids.join('\u0000');
+  useEffect(() => {
+    const model = context.surfaceComponents;
+    if (!model) return;
+    const mine = new Set(ids);
+    /* each child's updates, followed from when it exists: also a child that arrives (or comes back) later */
+    const follow = new Map<string, { unsubscribe(): void }>();
+    const watch = (id: string) => {
+      follow.get(id)?.unsubscribe();
+      const sub = model.get(id)?.onUpdated?.subscribe(() => bump((n) => n + 1));
+      if (sub) follow.set(id, sub); else follow.delete(id);
+    };
+    ids.forEach(watch);
+    const subs = [
+      model.onCreated?.subscribe((c) => { if (mine.has(c.id)) { watch(c.id); bump((n) => n + 1); } }),
+      model.onDeleted?.subscribe((id) => { if (mine.has(id)) { follow.get(id)?.unsubscribe(); follow.delete(id); bump((n) => n + 1); } }),
+    ].filter((x): x is { unsubscribe(): void } => !!x);
+    return () => { subs.forEach((x) => x.unsubscribe()); follow.forEach((x) => x.unsubscribe()); };
+  }, [context.surfaceComponents, key]);   // eslint-disable-line react-hooks/exhaustive-deps
+  return ids.map((id) => {
+    const c = context.surfaceComponents?.get(id);
+    const w = Number(c?.properties?.weight);
+    const variant = c?.properties?.variant;
+    return { type: c?.type ?? '', weight: Number.isFinite(w) ? w : 0, feature: variant === undefined || variant === 'mediumFeature' || variant === 'largeFeature' };
+  });
+}
+
+/* a table's rows report the width they need to their Column */
+type TableHost = { report: (key: object, width: number) => void; drop: (key: object) => void };
+const TableContext = createContext<TableHost | null>(null);
+function useTableHost(on: boolean, setNeed: (n: number) => void): TableHost | null {
+  const needs = useRef(new Map<object, number>());
+  return useMemo(() => (on ? {
+    report: (key, width) => { needs.current.set(key, width); setNeed(Math.ceil(Math.max(0, ...needs.current.values()))); },
+    drop: (key) => { needs.current.delete(key); setNeed(Math.ceil(Math.max(0, ...needs.current.values()))); },
+  } : null), [on]);   // eslint-disable-line react-hooks/exhaustive-deps
+}
+/* the cells of a row, through the binder's display: contents wrappers */
+function cells(row: HTMLElement): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  for (const c of Array.from(row.children) as HTMLElement[]) {
+    if (getComputedStyle(c).display === 'contents') out.push(...cells(c)); else out.push(c);
+  }
+  return out;
+}
+function useTableRow(table: TableHost | null, box: { current: HTMLDivElement | null }) {
+  useLayoutEffect(() => {
+    const row = box.current;
+    if (!table || !row || typeof getComputedStyle !== 'function') return;
+    const key = {};
+    const measure = () => {
+      const cs = getComputedStyle(row), gap = parseFloat(cs.columnGap) || 0, list = cells(row);
+      let fixed = gap * Math.max(0, list.length - 1), total = 0;
+      const weighted: { el: HTMLElement; w: number }[] = [];
+      for (const el of list) {
+        const w = parseFloat(getComputedStyle(el).flexGrow) || 0;
+        if (w > 0) { weighted.push({ el, w }); total += w; } else fixed += el.offsetWidth;
+      }
+      let need = 0;
+      for (const { el, w } of weighted) {
+        /* the cell's narrowest width that breaks no word: measured at min-content, then put back; and at least what
+           it shows now when its content runs over it (an unbreakable number wider than its share). All in layout
+           pixels (offsetWidth, scrollWidth), never the screen's: under a scale (a preview drawn smaller) the two
+           differ, and mixing them would resize the table on every measure */
+        const over = el.scrollWidth > el.clientWidth ? el.scrollWidth : 0;
+        const was = el.style.cssText;
+        el.style.flex = 'none'; el.style.width = 'min-content'; el.style.minWidth = '0';
+        const mc = Math.max(el.offsetWidth, over);
+        el.style.cssText = was;
+        need = Math.max(need, (mc * total) / w);
+      }
+      /* + 1: offsetWidth rounds, and a cell a hair too narrow would let its number run over */
+      table.report(key, need + fixed + parseFloat(cs.paddingLeft || '0') + parseFloat(cs.paddingRight || '0') + 1);
+    };
+    measure();
+    /* again when a cell's text changes (data arrives), when a web font finishes loading, and when the row's size
+       changes (a font's glyphs arriving late change it): the measure does not depend on the row's width, so it settles */
+    const mo = typeof MutationObserver === 'undefined' ? null : new MutationObserver(measure);
+    mo?.observe(row, { childList: true, subtree: true, characterData: true });
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => measure());
+    ro?.observe(row);
+    const fonts = typeof document !== 'undefined' ? document.fonts : undefined;
+    fonts?.addEventListener?.('loadingdone', measure);
+    /* only while this row is still in this table: the node outlives its place in a table (its cells lose their
+       weights, or it moves), and a late report would bring a dropped width back */
+    let live = true;
+    void fonts?.ready?.then(() => { if (live && box.current === row) measure(); });
+    return () => { live = false; mo?.disconnect(); ro?.disconnect(); fonts?.removeEventListener?.('loadingdone', measure); table.drop(key); };
+  }, [table]);   // eslint-disable-line react-hooks/exhaustive-deps
+}
 
 /* ---- List: a list (its items are list items), vertical or horizontal; it scrolls along its direction when its
    container constrains it, and a horizontal one that overflows takes the keyboard (arrow keys scroll it) */
@@ -126,7 +340,7 @@ export function A2uiList({ props, buildChild }: Rendered<{ children?: Child[]; d
         /* room for a card's shadow inside the scrolling box, given back outside it, so nothing moves */
         margin: -4, padding: 4, ...(marked && !across ? { paddingInlineStart: 'calc(1.4em + 4px)' } : {}), listStyle: marked && !across ? (ordered ? 'decimal' : 'disc') : 'none',
         display: 'flex', flexDirection: across ? 'row' : 'column', gap: across ? 'var(--sg-space-2, 8px)' : 'var(--sg-space-3, 12px)', alignItems: ALIGN[props.align ?? 'stretch'],
-        overflow: 'auto', minHeight: 0, minWidth: 0, scrollbarWidth: across ? 'none' : undefined, ...grow(props.weight),
+        overflow: 'auto', minHeight: 0, minWidth: across ? 0 : 'calc(var(--a2ui-table-min, 0px) + 8px)', scrollbarWidth: across ? 'none' : undefined, ...grow(props.weight),
       }}>
       {sent.map((c) => {
         const key = typeof c === 'string' ? c : `${c.id}@${c.basePath}`;

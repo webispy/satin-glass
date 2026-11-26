@@ -20,8 +20,12 @@ const errors = [];
 const outside = [];
 const FONT = /^https:\/\/cdn\.jsdelivr\.net\/gh\/orioncactus\/pretendard@/;
 
-/* a 600 × 900 picture (2:3, taller than 4:5), served for every photo an example asks for when `photos` is set */
-const PHOTO = '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900"><rect width="600" height="900" fill="#7a8fa6"/><circle cx="300" cy="450" r="200" fill="#e8d9b5"/></svg>';
+/* a picture of the size a photo's URL asks for (`w`, `h`; 600 × 900, taller than 4:5, when it asks for none), served
+   for every photo an example asks for when `photos` is set */
+const PHOTO = (url) => {
+  const u = new URL(url), w = +u.searchParams.get('w') || 600, h = +u.searchParams.get('h') || 900;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="#7a8fa6"/><circle cx="${w / 2}" cy="${h / 2}" r="${Math.min(w, h) / 3}" fill="#e8d9b5"/></svg>`;
+};
 async function open(width = 1440, { query = '', photos = false } = {}) {
   const ctx = await b.newContext({ viewport: { width, height: 900 } });
   const p = await ctx.newPage();
@@ -32,7 +36,7 @@ async function open(width = 1440, { query = '', photos = false } = {}) {
     const url = r.request().url();
     if (FONT.test(url)) return r.abort();
     outside.push(url);
-    return photos && r.request().resourceType() === 'image' ? r.fulfill({ status: 200, contentType: 'image/svg+xml', body: PHOTO }) : r.abort();
+    return photos && r.request().resourceType() === 'image' ? r.fulfill({ status: 200, contentType: 'image/svg+xml', body: PHOTO(url) }) : r.abort();
   });
   await p.goto(`http://localhost:4173/${query}#/a2ui`);
   await p.waitForSelector('[data-demo="a2ui-gallery"] .a2ui-thumb');
@@ -399,6 +403,126 @@ for (const query of ['', '?rm=1']) {
     ok(`at ${width} px Live Invitation Builder does not scroll sideways, and the location is chips`, o.page <= 0 && o.inspector <= 1 && o.screen <= 1 && !o.seg && o.chips, JSON.stringify(o));
     await q.context().close();
   }
+}
+
+/* the layout as the catalog means it: rows on one line, images at their own size, a table, spread rows */
+{
+  outside.length = 0;
+  const p = await open(1440, { photos: true });
+  const rect = (loc) => loc.evaluate((e) => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width, h: r.height }; });
+  /* the table in the grid's scaled-down card settles: its width and height hold still (it once measured in screen and
+     layout pixels at once, and under the card's 0.58 scale went on resizing) */
+  await search(p).fill('financial');
+  await p.waitForTimeout(800);
+  const thumb = p.locator('.a2ui-thumb__frame [data-a2ui-table]').first();
+  const samples = [];
+  for (let i = 0; i < 10; i++) { samples.push(await thumb.evaluate((t) => `${t.style.getPropertyValue('--a2ui-table-min')}/${Math.round(t.getBoundingClientRect().height * 10) / 10}`)); await p.waitForTimeout(100); }
+  ok('the table in the grid\'s scaled-down card holds still', samples.every((x) => x === samples[0]), samples.join(' '));
+  await search(p).fill('');
+  await p.waitForTimeout(300);
+  /* Financial Data Grid: one table, its columns in line with its header, no amount split, scrolling sideways */
+  await openExample(p, 'financial');
+  const grid = await screen(p).evaluate((s) => {
+    const t = s.querySelector('[data-a2ui-table]');
+    const rows = [...s.querySelectorAll('.sg-stack--row')].filter((r) => r.style.minWidth.includes('table-min'));
+    const lefts = rows.map((r) => [...r.children].map((c) => { const x = getComputedStyle(c).display === 'contents' ? c.firstElementChild : c; return Math.round(x.getBoundingClientRect().left * 2) / 2; }));
+    /* each amount on one line: its text's line boxes */
+    const split = [...s.querySelectorAll('p, span')].filter((e) => /^-?\$?[\d,]+\.\d+%?$/.test(e.textContent.trim()) && e.children.length === 0)
+      .filter((e) => { const r = document.createRange(); r.selectNodeContents(e); return new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size > 1; }).map((e) => e.textContent);
+    return { table: !!t, scrolls: t ? t.scrollWidth > t.clientWidth + 1 : false, mask: t ? getComputedStyle(t).maskImage || getComputedStyle(t).webkitMaskImage : '', rows: rows.length, lefts, split };
+  });
+  ok('Financial Data Grid: four rows of one table, scrolling sideways in a 486 px surface, its far edge faded', grid.table && grid.rows === 4 && grid.scrolls && /gradient/.test(grid.mask), JSON.stringify({ ...grid, lefts: undefined }));
+  ok('its columns stay in line from the header through every row', grid.lefts.every((l) => JSON.stringify(l) === JSON.stringify(grid.lefts[0])), JSON.stringify(grid.lefts));
+  ok('no amount is split across lines', grid.split.length === 0, grid.split.join(', '));
+  /* nothing inside the table scrolls sideways on its own: a gesture would catch on it and stop (its list's padding
+     once left the rows 8 px of room to scroll) */
+  const inner = await screen(p).locator('[data-a2ui-table]').evaluate((t) => [...t.querySelectorAll('*')].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowX) && e.scrollWidth > e.clientWidth + 1).map((e) => `${e.tagName}:${e.scrollWidth - e.clientWidth}`));
+  ok('nothing inside the table scrolls sideways on its own', inner.length === 0, inner.join(', '));
+  /* scrolling it sideways (a trackpad's run of wheel events) writes nothing to the rows: no measuring, no new render
+     (a write mid-scroll stops the trackpad's momentum), and it moves one way, to the end */
+  const table = screen(p).locator('[data-a2ui-table]');
+  await table.evaluate((t) => { window.__writes = 0; window.__mo = new MutationObserver((l) => { window.__writes += l.filter((m) => m.target !== t).length; }); window.__mo.observe(t, { attributes: true, subtree: true, attributeFilter: ['style'] }); t.scrollLeft = 0; });
+  const tr = await rect(table);
+  await p.mouse.move(tr.l + tr.w / 2, tr.t + tr.h / 2);
+  const lefts = [];
+  for (let i = 0; i < 12; i++) { await p.mouse.wheel(30, 0); await p.waitForTimeout(30); lefts.push(Math.round(await table.evaluate((t) => t.scrollLeft))); }
+  const scroll = await table.evaluate((t) => { window.__mo.disconnect(); return { writes: window.__writes, end: t.scrollWidth - t.clientWidth, at: t.scrollLeft }; });
+  /* a table that scrolls is a named region in the Tab order; the arrow keys scroll it; a flick past its end stays in it */
+  const region = await table.evaluate((t) => ({ role: t.getAttribute('role'), name: t.getAttribute('aria-label'), tab: t.tabIndex, contain: getComputedStyle(t).overscrollBehaviorX }));
+  await table.evaluate((t) => { t.scrollLeft = 0; });
+  await table.focus(); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(400);
+  const keyed = await table.evaluate((t) => t.scrollLeft);
+  ok('a table that scrolls is a named region in the Tab order, scrolled by the arrow keys, and holds a flick at its end',
+    region.role === 'region' && /^(가로로 스크롤되는 표|Table, scrolls sideways)$/.test(region.name ?? '') && region.tab === 0 && region.contain === 'contain' && keyed > 0, JSON.stringify({ ...region, keyed }));
+  await table.evaluate((t) => { t.scrollLeft = t.scrollWidth; });
+  ok('scrolling the table sideways writes nothing to its rows, and moves one way to its end', scroll.writes === 0 && lefts.every((x, i) => !i || x >= lefts[i - 1]) && Math.abs(scroll.at - scroll.end) < 1,
+    JSON.stringify({ ...scroll, lefts }));
+  await closeSheet(p);
+
+  /* Music Player: the track and the times span the card; the glyphs sit in the middle of their buttons */
+  await openExample(p, 'music');
+  const music = await screen(p).evaluate((s) => {
+    const card = s.querySelector('.sg-card__body').getBoundingClientRect(), pad = parseFloat(getComputedStyle(s.querySelector('.sg-card__body')).paddingLeft);
+    const slider = s.querySelector('.sg-slider').getBoundingClientRect();
+    const times = [...s.querySelectorAll('.sg-stack--row')].find((r) => /\d:\d\d.*\d:\d\d/.test(r.textContent)).getBoundingClientRect();
+    const glyphs = [...s.querySelectorAll('.sg-button svg')].map((g) => { const b = g.closest('.sg-button').getBoundingClientRect(), r = g.getBoundingClientRect();
+      return Math.max(Math.abs((r.left + r.right) / 2 - (b.left + b.right) / 2), Math.abs((r.top + r.bottom) / 2 - (b.top + b.bottom) / 2)); });
+    return { inner: card.width - 2 * pad, slider: slider.width, times: times.width, glyphs: glyphs.length, off: Math.max(...glyphs) };
+  });
+  ok('Music Player: the track and the times span the card', Math.abs(music.slider - music.inner) < 1 && Math.abs(music.times - music.inner) < 1, JSON.stringify(music));
+  /* a check over no glyphs proves nothing (Math.max of none is -Infinity) */
+  ok('its glyphs sit in the middle of their buttons (within 1 px)', music.glyphs >= 3 && music.off <= 1, JSON.stringify(music));
+  await closeSheet(p);
+
+  /* Track List: a 50 px cover stays 50 px, beside its title */
+  await openExample(p, 'track list');
+  await p.getByRole('dialog').getByRole('switch', { name: '다른 사이트의 미디어 불러오기' }).click();
+  await p.waitForTimeout(800);
+  const covers = await screen(p).locator('img').evaluateAll((l) => l.map((i) => [Math.round(i.getBoundingClientRect().width), Math.round(i.getBoundingClientRect().height)]));
+  ok('Track List: each 50 px cover stays 50 px', covers.length === 3 && covers.every(([w, h]) => w === 50 && h === 50), JSON.stringify(covers));
+  await closeSheet(p);
+
+  /* Calendar Day: the date column starts at the top of its row (the catalog's stretch) */
+  await openExample(p, 'calendar');
+  const day = await screen(p).evaluate((s) => { const d = [...s.querySelectorAll('*')].find((e) => !e.children.length && e.textContent.trim() === '28'); const row = d.closest('.sg-stack--row'); return { col: d.closest('.sg-stack').getBoundingClientRect().top, row: row.getBoundingClientRect().top }; });
+  ok('Calendar Day: the date column starts at the top of its row', Math.abs(day.col - day.row) < 1, JSON.stringify(day));
+  await closeSheet(p);
+
+  /* Countdown: three numbers spread over 3 × 6rem, centred */
+  await openExample(p, 'countdown');
+  const cd = await screen(p).evaluate((s) => { const r = [...s.querySelectorAll('.sg-stack--row')].find((x) => /Days/.test(x.textContent)).getBoundingClientRect(), c = s.querySelector('.sg-card__body').getBoundingClientRect(); return { w: r.width, off: (r.left + r.right) / 2 - (c.left + c.right) / 2 }; });
+  ok('Countdown: the numbers spread over 288 px, centred', Math.abs(cd.w - 288) < 1 && Math.abs(cd.off) < 1, JSON.stringify(cd));
+  await closeSheet(p);
+
+  /* Contact Card: the contact rows stay a centred block */
+  await openExample(p, 'contact');
+  const cc = await screen(p).evaluate((s) => { const phone = [...s.querySelectorAll('.sg-stack--row')].find((x) => /\(555\)/.test(x.textContent)); const block = phone.parentElement.closest('.sg-stack').getBoundingClientRect(), c = s.querySelector('.sg-card__body').getBoundingClientRect(); return { off: (block.left + block.right) / 2 - (c.left + c.right) / 2, w: block.width, card: c.width }; });
+  ok('Contact Card: the contact rows stay a centred block', Math.abs(cc.off) < 1 && cc.w < cc.card - 40, JSON.stringify(cc));
+  await closeSheet(p);
+
+  await p.context().close();
+
+  /* at 390 px: Chat Message's avatar stays beside its name and message */
+  const q = await open(390, { photos: true });
+  await openExample(q, 'chat');
+  await q.getByRole('dialog').getByRole('switch', { name: '다른 사이트의 미디어 불러오기' }).click();
+  await q.waitForTimeout(800);
+  const chat = await screen(q).evaluate((s) => { const a = s.querySelector('img').getBoundingClientRect(), n = [...s.querySelectorAll('p')].find((e) => /Mike Chen/.test(e.textContent)).getBoundingClientRect(); return { beside: a.right <= n.left, sameLine: a.top < n.bottom }; });
+  ok('Chat Message at 390 px: the avatar stays beside its name and message', chat.beside && chat.sameLine, JSON.stringify(chat));
+  await closeSheet(q);
+  /* Track List at 390 px: the 50 px cover is a feature image by default, so the title Column beside it may go below
+     it under 15rem; at a phone's width it still has room, and each title stays beside its cover (#98 review) */
+  await openExample(q, 'track list');
+  const media = q.getByRole('dialog').getByRole('switch', { name: '다른 사이트의 미디어 불러오기' });
+  if ((await media.getAttribute('aria-checked')) !== 'true') await media.click();
+  await q.waitForTimeout(800);
+  const tracks = await screen(q).evaluate((s) => [...s.querySelectorAll('img')].map((i) => {
+    const a = i.getBoundingClientRect(), row = i.closest('.sg-stack--row');
+    const texts = [...row.querySelectorAll('p')].map((e) => e.getBoundingClientRect()).filter((r) => r.left >= a.right - 1);
+    return { beside: texts.length >= 2, sameLine: texts.every((r) => r.top < a.bottom), surface: Math.round(s.getBoundingClientRect().width) };
+  }));
+  ok('Track List at 390 px: each title and duration stay beside the cover', tracks.length === 3 && tracks.every((x) => x.beside && x.sameLine), JSON.stringify(tracks));
+  await q.context().close();
 }
 
 /* the nested corners of the examples with images, tabs and panels */
