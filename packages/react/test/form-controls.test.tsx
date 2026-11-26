@@ -40,6 +40,24 @@ describe('disabled pickers submit nothing', () => {
 });
 
 describe('Slider', () => {
+  /* a drag cut short by a new `disabled` (a save started by onChange): the thumb lets go of the finger, so a later
+     value moves it (it stayed where the finger was, tracking) */
+  it('a drag taken down by a prop change lets go of the finger', async () => {
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(300);
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0, right: 300, bottom: 20, width: 300, height: 20, x: 0, y: 0, toJSON: () => ({}) } as DOMRect);
+    try {
+      const { rerender } = render(<Slider aria-label="x" defaultValue={50} />);
+      const s = screen.getByRole('slider');
+      const ev = (type: string, x: number, el: EventTarget = window) => el.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX: x, clientY: 10 }));
+      act(() => { ev('pointerdown', 150, s); for (let x = 160; x <= 270; x += 10) ev('pointermove', x); });
+      rerender(<Slider aria-label="x" defaultValue={50} disabled />);
+      rerender(<Slider aria-label="x" defaultValue={50} />);
+      fireEvent.keyDown(s, { key: 'Home' });
+      expect(s.getAttribute('aria-valuenow')).toBe('0');
+      await waitFor(() => expect(parseFloat(s.style.getPropertyValue('--_pos'))).toBeLessThan(1), { timeout: 3000 });
+      act(() => { ev('pointerup', 270); });
+    } finally { width.mockRestore(); rect.mockRestore(); }
+  });
   it('starts at min when min > 0, and shows a given value within the range', () => {
     const { rerender } = render(<Slider aria-label="x" min={10} max={20} />);
     expect(screen.getByRole('slider').getAttribute('aria-valuenow')).toBe('10');

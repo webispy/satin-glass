@@ -70,10 +70,13 @@ export function drag(el: HTMLElement, h: DragHandlers): () => void {
   const lost = (e: PointerEvent) => { if (e.target === el && e.pointerId === id && active) finish(e, true); };
   el.addEventListener('pointerdown', down);
   el.addEventListener('lostpointercapture', lost);
+  /* taken down mid-gesture: the listeners go and the pointer is let go; the gesture is not ended (no `end`): the caller
+     decides what a drag cut short leaves behind */
   return () => {
     listen(false);
     el.removeEventListener('pointerdown', down);
     el.removeEventListener('lostpointercapture', lost);
+    if (id !== null) { const pid = id; id = null; active = false; try { if (el.hasPointerCapture(pid)) el.releasePointerCapture(pid); } catch { /* released */ } }
   };
 }
 
