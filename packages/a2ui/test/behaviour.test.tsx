@@ -231,3 +231,36 @@ it('names the region and the built-in words in the nearest ThemeProvider\'s lang
   feed(create('1.0'));
   expect(screen.getByRole('region', { name: '에이전트 콘텐츠' })).toBeTruthy();
 });
+
+describe.each<V>(['1.0', '0.9'])('formatDate in v%s', (v) => {
+  it('keeps quoted text in the pattern', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [{ id: 'root', component: 'Text', text: call(v, 'formatDate', { value: '2025-07-15T19:00:00Z', format: "EEEE, MMMM d, yyyy 'at' h:mm a" }) }]));
+    expect(screen.getByText('Tuesday, July 15, 2025 at 7:00 PM')).toBeTruthy();
+  });
+  it('writes nothing, not the quoted text alone, while there is no date', () => {
+    for (const value of [path(v, '/when'), '', 'soon']) {
+      const { feed, container, unmount } = mount();
+      feed(create(v), components(v, [{ id: 'root', component: 'Text', text: call(v, 'formatDate', { value, format: "EEEE, MMMM d, yyyy 'at' h:mm a" }) }]));
+      expect(`${JSON.stringify(value)} → ${container.textContent}`).not.toMatch(/→ .*\bat\b/);
+      unmount();
+    }
+  });
+  /* web_core writes a whole ISO timestamp only for the pattern "ISO" itself: a run between quotes that reads "ISO" is
+     letters of a longer pattern, as it would be without the quotes (#97 review) */
+  it('does not turn a run that reads ISO into the ISO timestamp', () => {
+    const { feed, container } = mount();
+    feed(create(v), components(v, [{ id: 'root', component: 'Text', text: call(v, 'formatDate', { value: '2025-07-15T19:00:00Z', format: "ISO''" }) }]));
+    expect(container.textContent).not.toContain('2025-07-15T19:00:00');
+    expect(container.textContent?.endsWith("'")).toBe(true);
+  });
+});
+
+describe('keepQuoted', () => {
+  it('leaves quoted runs as they are, writes \'\' as one quote, and formats the rest', async () => {
+    const { keepQuoted } = await import('../src/functions');
+    expect(keepQuoted("h 'o''clock' a", (p) => p.toUpperCase())).toBe("H o'clock A");
+    expect(keepQuoted("'at'", (p) => p.toUpperCase())).toBe('at');
+    expect(keepQuoted("d '' M", (p) => p.toUpperCase())).toBe("D ' M");
+  });
+});
