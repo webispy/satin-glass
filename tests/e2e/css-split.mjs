@@ -64,6 +64,17 @@ async function snapshot(css, page, qs, only, foreign) {
     return '';
   });
   if (timedOut) ok(`settled within 10 s · ${page} ${qs}`, false, timedOut);
+  /* parts drawn only once they come near the screen ([data-lazy]: the A2UI gallery's cards) are each brought into
+     view, then the page goes back to its top: otherwise which of them are drawn follows the layout, which differs
+     between the variants. A drawn part stays drawn */
+  await p.evaluate(async () => {
+    const lazy = [...document.querySelectorAll('[data-lazy]')];
+    if (!lazy.length) return;
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    for (const e of lazy) { e.scrollIntoView({ block: 'center', behavior: 'instant' }); await frame(); }
+    scrollTo({ top: 0, behavior: 'instant' });
+    await frame();
+  });
   await p.waitForTimeout(300);
   const { why, snap } = await p.evaluate(({ only, foreign }) => {
     /* in the same task as the style read, so nothing can commit between the two */

@@ -14,6 +14,7 @@
 //     each category's listed dependencies only, and with the layered build (Chromium)
 //   concentric corners: boxes nested near a corner follow inner = outer − gap (Chromium)
 //   focus visible: Tab through each page; the focused area must change, in all themes and forced colours (Chromium)
+//   the A2UI gallery: every example of both versions, search, the media switch, an example stepped through
 //   settings at the nearest boundary: nested themes, high contrast, reduced motion, reduce transparency in portals
 //   performance (CPU ×4), momentum across updates, arrival timing (informational)
 // Everything runs in all three engines (Chromium, WebKit, Firefox); the variants (motion personalities, dark / high
@@ -81,6 +82,7 @@ if (!QUICK && !PICKED && !ONLY && !process.env.E2E_CHANGED && ENGINES.includes('
 }
 perEngine(checks, 'data components & dashboard', 'data.mjs');
 perEngine(checks, 'settings decide at the nearest boundary', 'settings.mjs');
+perEngine(checks, 'A2UI gallery', 'a2ui.mjs');
 /* every control on every page, there and back: no page error, no hang — by page in shares; phone width once, in Chromium */
 /* six shares at 1280 and four at 390 px, dealt by each page's control count (sweep.mjs), so no share holds the run up */
 for (const b of ENGINES) for (let i = 1; i <= 6; i++) checks.push([`every control, there and back · ${b} ${i}/6`, 'sweep.mjs', { BROWSER: b, SHARD: `${i}/6` }]);
@@ -132,7 +134,7 @@ const only = (l) => l.filter(([label, file, env]) => {
    engines a third longer); every runner computes the same split */
 const EST = { 'css-split.mjs': 126, 'focus.mjs': 40, 'edge.mjs': 75, 'axe.mjs': 30, 'overflow.mjs': 95, 'overflow.mjs#browse': 15, 'matrix.mjs': 52, 'interact.mjs': 59, 'data.mjs': 57,
   'corners.mjs': 51, 'reduce-motion.mjs': 49, 'pickers.mjs': 37, 'wheel-motion.mjs': 33, 'display.mjs': 32, 'selection.mjs': 28,
-  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'sweep.mjs': 48, 'settings.mjs': 4 };
+  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'sweep.mjs': 48, 'settings.mjs': 4, 'a2ui.mjs': 20 };
 const SHARD = /^(\d+)\/(\d+)$/.exec(process.env.E2E_SHARD || '');
 const est = ([, file, env]) => (EST[env.OVF_PART === 'browse' ? 'overflow.mjs#browse' : file] ?? 60) * ((env.BROWSER ?? 'chromium') === 'chromium' ? 1 : 1.3);
 let mine = null;
