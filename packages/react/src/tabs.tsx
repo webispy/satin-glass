@@ -9,7 +9,8 @@
 import { useDeferredValue, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { animate, fade, prefersReducedMotion, timing } from '@satin-glass/core';
 import { cx, tabStop, useControllable, useIsoLayoutEffect, useStableId } from './utils';
-import { Badge, useBridge } from './controls';
+import { Badge } from './controls';
+import { useBridge } from './use-bridge';
 
 export type TabItem<T extends string = string> = { value: T; label: ReactNode; icon?: ReactNode; badge?: ReactNode; disabled?: boolean; content?: ReactNode };
 export type TabsProps<T extends string = string> = {

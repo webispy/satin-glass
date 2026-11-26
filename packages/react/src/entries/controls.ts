@@ -2,7 +2,7 @@
 export {
   Spinner, type ButtonVariant, type ButtonProps, Button, type IconButtonProps, IconButton, ButtonGroup,
   type SwitchProps, Switch, type SliderProps, Slider, type StepperProps, Stepper,
-  type SegmentOption, type SegmentedControlProps, SegmentedControl, useBridge,
+  type SegmentOption, type SegmentedControlProps, SegmentedControl,
   type TextFieldProps, type TextAreaFieldProps, TextField, type SearchFieldProps, SearchField,
   type ChipProps, Chip, Badge, BadgeAnchor, type AvatarProps, Avatar, type AvatarGroupProps, AvatarGroup, Progress, type PageControlProps, PageControl,
 } from '../controls';

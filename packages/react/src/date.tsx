@@ -11,7 +11,8 @@
 import { createContext, forwardRef, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { Spring, animate, fade, loop, motionFor, prefersReducedMotion, type Placement, timing } from '@satin-glass/core';
 import { cx, mergeRefs, useControllable, useIsoLayoutEffect, useStableId } from './utils';
-import { Portal, glassClass, useGlassLight } from './foundation';
+import { Portal, useGlassLight } from './foundation';
+import { glassClass } from './glass-class';
 import { IconButton } from './controls';
 import { Wheel, WheelGroup } from './wheel';
 import { messagesFor, useLocaleOf } from './messages';
