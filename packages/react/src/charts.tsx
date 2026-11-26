@@ -617,16 +617,24 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
   const top = M.top + (yLabel ? 16 : 0), bottom = M.bottom + (xLabel ? 18 : 0);
   const leftTo = yAxisWidth(ay.ticks.map(tfy)), ih = height - top - bottom;
   /* the two scales and every point (in axis units) move as one */
-  const morph = useMorph([ax.lo, ax.hi, ay.lo, ay.hi, ...data.flatMap((d) => [u(num(d, x, xl) ?? (xl ? 1 : 0), xl), u(num(d, y, yl) ?? (yl ? 1 : 0), yl)]), leftTo], box);
+  const mt = [ax.lo, ax.hi, ay.lo, ay.hi, ...data.flatMap((d) => [u(num(d, x, xl) ?? (xl ? 1 : 0), xl), u(num(d, y, yl) ?? (yl ? 1 : 0), yl)]), leftTo];
+  const morph = useMorph(mt, box);
   /* the gutter moves with the scales */
   const left = morph.now[morph.now.length - 1], iw = Math.max(10, width - left - M.right);
   const [sx0, sx1, sy0, sy1] = morph.now, [px0, px1, py0, py1] = morph.from;
   /* the scale the move started from: after a switch between linear and log the old range is in the other scale's units, so its
      ticks are not drawn again (they would be read in the new units); the new ticks fade in as the axis moves */
-  const target = `${ax.lo},${ax.hi},${ay.lo},${ay.hi}`;
-  const scales = useRef({ target, xl, yl, fromX: xl, fromY: yl });
-  if (scales.current.target !== target) scales.current = { target, xl, yl, fromX: scales.current.xl, fromY: scales.current.yl };
-  const xSwitched = scales.current.fromX !== xl, ySwitched = scales.current.fromY !== yl;
+  /* the whole move's target with its scales: any new target (new bounds, a switch with the same bounds, new values within the
+     same bounds) is a new entry, so a settled switch is not taken for one still running */
+  const target = `${xl},${yl},${mt.join(',')}`;
+  /* the scales as last committed, and the ones the move to them started from: written in a layout effect, so a render
+     React starts and then discards (a transition that suspends, an interrupted one) leaves them as shown (#83). A new
+     target, not committed yet, moves from the scales on screen */
+  const shown = useRef({ target, xl, yl, fromX: xl, fromY: yl });
+  const fromX = shown.current.target === target ? shown.current.fromX : shown.current.xl;
+  const fromY = shown.current.target === target ? shown.current.fromY : shown.current.yl;
+  useIsoLayoutEffect(() => { const s = shown.current; if (s.target !== target) shown.current = { target, xl, yl, fromX: s.xl, fromY: s.yl }; });
+  const xSwitched = fromX !== xl, ySwitched = fromY !== yl;
   /* across a switch the two ranges are in different units (log10 4–5 against 0–100,000), and a move in units would be all one or
      the other; so a switched axis moves on the screen instead: each point and tick from its place on the old axis to its place on
      the new one, on the move's progress */
@@ -634,11 +642,20 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
     const b = (u(v, now) - lo1) / (hi1 - lo1 || 1), a = (u(v, from) - lo0) / (hi0 - lo0 || 1);
     return isFinite(a) ? a + (b - a) * morph.p : b;
   };
-  const xAt = (v: number) => left + along(v, scales.current.fromX, px0, px1, xl, ax.lo, ax.hi) * iw;
-  const yAt = (v: number) => top + ih - along(v, scales.current.fromY, py0, py1, yl, ay.lo, ay.hi) * ih;
+  const xAt = (v: number) => left + along(v, fromX, px0, px1, xl, ax.lo, ax.hi) * iw;
+  const yAt = (v: number) => top + ih - along(v, fromY, py0, py1, yl, ay.lo, ay.hi) * ih;
+  /* a point across a switch starts from where it was drawn: its value at the move's start (morph.from, in the old axis's
+     units), not its new value read on the old axis, a place it never had (new data with the switch, or while hidden) */
+  const fromAlong = (f: number, v: number, lo0: number, hi0: number, now: boolean, lo1: number, hi1: number) => {
+    const b = (u(v, now) - lo1) / (hi1 - lo1 || 1), a = (f - lo0) / (hi0 - lo0 || 1);
+    return isFinite(a) ? a + (b - a) * morph.p : b;
+  };
   const tx = (t: number) => (xSwitched ? xAt(t) : X(u(t, xl)));
   const ty = (t: number) => (ySwitched ? yAt(t) : Y(u(t, yl)));
-  const pos = (i: number): [number, number] => [xSwitched ? xAt(num(data[i], x, xl)!) : X(morph.now[4 + i * 2]), ySwitched ? yAt(num(data[i], y, yl)!) : Y(morph.now[5 + i * 2])];
+  const pos = (i: number): [number, number] => [
+    xSwitched ? left + fromAlong(morph.from[4 + i * 2], num(data[i], x, xl)!, px0, px1, xl, ax.lo, ax.hi) * iw : X(morph.now[4 + i * 2]),
+    ySwitched ? top + ih - fromAlong(morph.from[5 + i * 2], num(data[i], y, yl)!, py0, py1, yl, ay.lo, ay.hi) * ih : Y(morph.now[5 + i * 2]),
+  ];
   /* while a switch moves them, ticks outside the plot are not drawn */
   const inX = (t: number) => { const v = tx(t); return isFinite(v) && v >= left - 1 && v <= left + iw + 1; };
   const inY = (t: number) => { const v = ty(t); return isFinite(v) && v >= top - 1 && v <= top + ih + 1; };
