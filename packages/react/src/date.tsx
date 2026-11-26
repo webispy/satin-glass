@@ -196,7 +196,9 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
       animate(b, [{ transform: 'scale(0.6, 0.3)', opacity: 0 }, { transform: 'none', opacity: 1 }], 'pop');
     } else animate(b, [{ transform: 'translateY(6px) scale(0.98)', opacity: 0 }, { transform: 'none', opacity: 1 }], 'smooth');
   }, [view]);
-  const backToDays = () => { opener.current = null; setView('day'); keyboard.current = true; requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>(`[data-date="${toISODate(focused)}"]`)?.focus({ preventScroll: true })); };
+  /* back to the days, focus on the day grid's tab stop as committed when the frame runs: a closure's own `focused` is
+     the render it was made in, before a month picked with it has clamped the day (#89) */
+  const backToDays = () => { opener.current = null; setView('day'); keyboard.current = true; requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>('.sg-day[tabindex="0"]')?.focus({ preventScroll: true })); };
   const focusSoon = (sel: string) => requestAnimationFrame(() => root.current?.querySelector<HTMLElement>(sel)?.focus({ preventScroll: true }));
   const yearPage = useRef<(dir: number) => void>(() => {});
   const [yearEdge, setYearEdge] = useState({ top: false, bottom: false });
