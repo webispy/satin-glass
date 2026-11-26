@@ -179,7 +179,12 @@ function useTween(target: number[], el: React.RefObject<Element | null>, key: st
       setShown(b);
       return;
     }
-    if (cur.every((sp, i) => sp.target === b[i])) return;
+    if (cur.every((sp, i) => sp.target === b[i])) {
+      /* set up again with the same target (shown after Activity or Suspense hid it): a move its hiding stopped half-way
+         settles there rather than staying frozen (#82) */
+      if (!stop.current && cur.some((sp) => sp.value !== sp.target)) { cur.forEach((sp) => sp.jump(sp.target)); setShown(b); }
+      return;
+    }
     cur.forEach((sp, i) => { sp.set('smooth', el.current); sp.target = b[i]; });
     if (stop.current) return;   /* already running: it simply heads for the new targets */
     stop.current = loop((dt) => {
@@ -190,7 +195,9 @@ function useTween(target: number[], el: React.RefObject<Element | null>, key: st
       return moving;
     });
   }, [key]);
-  useEffect(() => () => { stop.current?.(); }, []);
+  /* taken down (unmounted, or hidden by Activity or Suspense): the loop stops and is marked stopped, so a later change
+     starts a new one. A layout effect: Suspense hiding a shown tree disconnects layout effects but keeps passive ones */
+  useIsoLayoutEffect(() => () => { stop.current?.(); stop.current = null; }, []);
   return shown;
 }
 
@@ -207,7 +214,12 @@ function useMorph(target: number[], el: React.RefObject<Element | null>): { now:
   const p = st.current.P ? Math.min(1, Math.max(0, st.current.P.value)) : 1;
   useIsoLayoutEffect(() => {
     const m = st.current, shownNow = lerp(m.from, m.to, m.P ? Math.min(1, Math.max(0, m.P.value)) : 1);
-    if (m.to.join(',') === key) return;
+    if (m.to.join(',') === key) {
+      /* set up again with the same target (shown after Activity or Suspense hid it): a change its hiding stopped
+         half-way settles there rather than staying frozen (#82) */
+      if (m.P && !m.stop) { m.P = null; m.from = m.to; paint((n) => n + 1); }
+      return;
+    }
     if (m.to.length !== target.length || prefersReducedMotion(el.current) || !el.current) {
       m.stop?.(); m.stop = null; m.P = null; m.from = m.to = target; paint((n) => n + 1);
       return;
@@ -224,7 +236,9 @@ function useMorph(target: number[], el: React.RefObject<Element | null>): { now:
       paint((n) => n + 1);
     });
   }, [key]);
-  useEffect(() => () => { st.current.stop?.(); }, []);
+  /* taken down (unmounted, or hidden by Activity or Suspense): the loop stops and is marked stopped, so a later change
+     starts a new one. A layout effect: Suspense hiding a shown tree disconnects layout effects but keeps passive ones */
+  useIsoLayoutEffect(() => () => { const m = st.current; m.stop?.(); m.stop = null; }, []);
   const m = st.current;
   return { now: m.P ? lerp(m.from, m.to, p) : m.to, from: m.from, p: m.P ? p : 1 };
 }

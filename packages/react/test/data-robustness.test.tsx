@@ -2,7 +2,7 @@
    selections, dates, and the viewer's index and items changing under it. */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
-import { useState } from 'react';
+import { Activity, Suspense, useState, type ReactElement } from 'react';
 import { niceTicks, LineChart, BarChart, DonutChart, ScatterChart, Sparkline, DataTable, MediaViewer, ThemeProvider, createTheme, type Column, type MediaItem } from '../src';
 
 /* a ResizeObserver that reports a 400 px wide box at once (charts draw only once they know their width) and
@@ -683,4 +683,58 @@ describe('MediaViewer', () => {
     act(() => { for (let y = 120; y <= 200; y += 20) at('pointermove', y); });
     expect(spy.mock.calls.length).toBeLessThanOrEqual(2);
   });
+});
+
+describe('charts: hidden mid-change and shown again (#82)', () => {
+  /* Activity, and Suspense hiding a shown tree, take a chart's layout effects down and set them up again: a change
+     caught mid-way settles at its target the moment it is shown (it does not stay frozen, nor replay), and a later
+     change still moves over several frames */
+  const frames: FrameRequestCallback[] = [];
+  let t = 0;
+  const step = (n = 1) => { for (let i = 0; i < n; i++) { t += 16; for (const cb of frames.splice(0)) cb(t); } };
+  const settle = () => { for (let i = 0; i < 300 && frames.length; i++) step(); };
+  beforeEach(() => {
+    frames.length = 0; t = performance.now();
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { frames.push(cb); return frames.length; });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+  });
+  afterEach(() => { vi.restoreAllMocks(); });
+  /* a child that suspends while `hold` is set: a plain (not transition) update makes Suspense hide what it showed */
+  const gate = { hold: false, wake: () => {} };
+  function Gate() { if (gate.hold) throw new Promise<void>((r) => { gate.wake = r; }); return null; }
+  const wrap = (how: 'activity' | 'suspense', shown: boolean, chart: ReactElement) => how === 'activity'
+    ? <Activity mode={shown ? 'visible' : 'hidden'}>{chart}</Activity>
+    : <Suspense fallback={<p>loading</p>}>{chart}<Gate /></Suspense>;
+  const charts: [string, (v: number[]) => ReactElement, string][] = [
+    ['a bar chart (useMorph)', (v) => <BarChart aria-label="b" x="x" series={[{ key: 'v', label: 'V' }]} data={v.map((n, i) => ({ x: `c${i}`, v: n }))} />, '.sg-chart__bar'],
+    ['a sparkline (useTween)', (v) => <Sparkline aria-label="s" values={v} />, 'svg path'],
+  ];
+  for (const how of ['activity', 'suspense'] as const) for (const [name, chart, sel] of charts) {
+    it(`${name} hidden by ${how}: at its target when shown, and the next change moves`, () => {
+      /* the shapes as drawn; generated ids (a gradient's) differ between renders and are left out */
+      const drawn = (c: HTMLElement) => [...c.querySelectorAll(sel)].map((e) => e.outerHTML.replace(/url\(#[^)]*\)/g, 'url(#)')).join('');
+      const ref = (v: number[]) => { const r = render(chart(v)); act(() => {}); const d = drawn(r.container); r.unmount(); return d; };
+      const A = [1, 4, 2, 5], B = [5, 1, 4, 2], C = [2, 2, 5, 1];
+      const atA = ref(A), atB = ref(B), atC = ref(C);
+      frames.length = 0; gate.hold = false;
+      const view = (v: number[], shown: boolean) => wrap(how, shown, chart(v));
+      const { container, rerender } = render(view(A, true));
+      act(() => { rerender(view(B, true)); });
+      act(() => { step(3); });
+      const mid = drawn(container);
+      expect(mid).not.toBe(atA); expect(mid).not.toBe(atB);                 /* moving */
+      if (how === 'activity') act(() => { rerender(view(B, false)); });
+      else { gate.hold = true; act(() => { rerender(view(B, true)); }); }    /* the fallback shows; the chart is hidden */
+      act(() => { step(2); });                                              /* frames while hidden move nothing */
+      if (how === 'activity') act(() => { rerender(view(B, true)); });
+      else { gate.hold = false; act(() => { gate.wake(); }); act(() => { rerender(view(B, true)); }); }
+      expect(drawn(container)).toBe(atB);                                   /* at once, before any frame */
+      act(() => { rerender(view(C, true)); });
+      act(() => { step(3); });
+      const next = drawn(container);
+      expect(next).not.toBe(atB); expect(next).not.toBe(atC);               /* moves, not snaps */
+      act(() => { settle(); });
+      expect(drawn(container)).toBe(atC);
+    });
+  }
 });
