@@ -43,6 +43,7 @@
 //   E2E_VERBOSE=1                     print every suite's full output
 //   E2E_TIMING=0                      skip the timing phase (performance, momentum, arrival timing): CI
 //   E2E_SHARD=2/4                     run only the 2nd of 4 shares of the suites (CI: one share per runner)
+//   E2E_FULL=1                        E2E_ENGINES names one engine's part of the full run, not a quick run (CI on main)
 //   E2E_LIST=1                        print the suites that would run, with their estimated time, and stop
 //   E2E_PORT=4180                     serve the docs on this port (unset: 4173, or the next free one up to 4189)
 import { spawn } from 'node:child_process';
@@ -55,7 +56,9 @@ import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ENGINES = (process.env.E2E_ENGINES || 'chromium,webkit,firefox').split(',').map((s) => s.trim()).filter(Boolean);
-const QUICK = !ENGINES.includes('webkit') || !ENGINES.includes('firefox');
+/* E2E_FULL=1: one engine's part of the full run, as CI runs each engine in jobs of its own on main: Chromium's part
+   then also holds what the full run does in Chromium only (the setting variants, English) */
+const QUICK = !process.env.E2E_FULL && (!ENGINES.includes('webkit') || !ENGINES.includes('firefox'));
 const ONLY = process.env.E2E_ONLY || '';
 const list = (v) => (v ? v.split(',').map((x) => x.trim()).filter(Boolean) : null);
 const FILES = list(process.env.E2E_FILES), BROAD = list(process.env.E2E_BROAD), PICKED = !!(FILES || BROAD);
@@ -66,7 +69,7 @@ const VERBOSE = !!process.env.E2E_VERBOSE;
 /* [label, script, env]; within a phase the longest suites first, so the pool never waits on one late starter */
 const checks = [], motion = [];
 const perEngine = (to, label, file) => { for (const b of ENGINES) to.push([`${label} · ${b}`, file, { BROWSER: b }]); };
-const variants = (to, label, file, qs) => { if (!QUICK) for (const q of qs) to.push([`${label} · chromium ${q}`, file, { Q: q }]); };
+const variants = (to, label, file, qs) => { if (!QUICK && ENGINES.includes('chromium')) for (const q of qs) to.push([`${label} · chromium ${q}`, file, { Q: q }]); };
 /* the render matrix: the 8 visual setting combos (and two with reduce motion in Chromium) — ~3 combos per shard */
 const sharded = (to, label, file, shardsFor) => { for (const b of ENGINES) { const n = shardsFor(b); for (let i = 1; i <= n; i++) to.push([`${label} · ${b}${n > 1 ? ` ${i}/${n}` : ''}`, file, { BROWSER: b, SHARD: `${i}/${n}` }]); } };
 
@@ -123,8 +126,9 @@ perEngine(motion, 'reduced motion', 'reduce-motion.mjs');
 /* finger drags with real touch input (CDP: Chromium only), in the motion phase — they follow the finger frame by frame */
 if (ENGINES.includes('chromium')) motion.push(['finger drags (touch) · chromium', 'touch.mjs', {}]);
 
-/* E2E_TIMING=0: skip the timing phase (CI runners are shared machines; their timings say little) */
-const timing = ONLY || PICKED || process.env.E2E_TIMING === '0' ? [] : [
+/* E2E_TIMING=0: skip the timing phase (CI runners are shared machines; their timings say little). The timing suites
+   run in Chromium: a run without it (one engine's part, E2E_ENGINES=webkit) has none */
+const timing = ONLY || PICKED || process.env.E2E_TIMING === '0' || !ENGINES.includes('chromium') ? [] : [
   ['performance (Chromium, CPU ×4)', 'perf.mjs', {}],
   ['progress keeps momentum across updates', 'progress-tick.mjs', {}],
   ['arrival timing per personality (informational)', 'timing.mjs', {}],

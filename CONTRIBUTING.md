@@ -87,6 +87,12 @@ A new e2e suite needs two things to run at all: an entry in the phase lists of `
 `EST`), and a `// covers: <categories>` line near its top (category names, `*` for any, `css` for any stylesheet)
 so that `e2e:changed` picks it.
 
+CI runs the e2e suites without the timing phase. On a pull request it runs Chromium's quick part (no setting
+variants) in four jobs. On `main` it runs the full run, split by engine into jobs that run side by side: Chromium
+with the setting variants and English in six, WebKit and Firefox in five each, one suite at a time (they draw
+slower on a shared runner). So a pull request is still checked in three engines locally (`pnpm e2e:changed`), and
+an engine-only failure shows on `main` after the merge.
+
 ## Releases
 
 The three packages are versioned together. A release is one commit, `release: X.Y.Z`: the version in every
