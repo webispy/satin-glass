@@ -1,6 +1,10 @@
 /* Edge cases in one place: long text, many items, disabled and refused (controlled) states, empty states.
    The e2e edge suite drives this page; it is also a quick way to eyeball the awkward cases. */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { A2uiSurfaces, useA2ui } from '@satin-glass/a2ui';
+import chatMessage from '../../../../packages/a2ui/test/fixtures/v1/chat-message.json';
+import contactCard from '../../../../packages/a2ui/test/fixtures/v1/contact-card.json';
+import { A2UI_ICONS } from '../a2ui/icons';
 import {
   Button, ButtonGroup, Checkbox, Chip, DatePicker, Dialog, Divider, Select, IconButton, List, ListItem, ListSection, Menu, MenuItem, PageControl, Progress, SearchField,
   SegmentedControl, Slider, Stack, Stepper, Switch, Tab, TabBar, TabBarAction, Text, TextField, Badge,
@@ -32,6 +36,45 @@ const manyTabs = (t: T) => [
   <Tab key="me" value="me" label={t({ en: 'My profile and account', ko: '내 정보와 계정 관리' })} icon={<User />} />,
   <Tab key="trash" value="trash" label={t({ en: 'Trash', ko: '휴지통' })} icon={<Trash2 />} />,
 ];
+
+/* A2UI tokens too long for a word (#100): the gallery's Chat Message and Contact Card given a long URL, ID and email
+   address, and a short label beside a long sentence, in a surface of `width` px. The e2e a2ui suite measures them */
+type Msg = { version: string; [k: string]: unknown };
+const LONG_TOKENS = {
+  email: 'alexandra.konstantinopoulou@engineering-department.example.com',
+  text: 'Build is green: https://ci.example.com/acme/satin-glass/actions/runs/46002908302/attempts/2 — ticket ORD-2026-11-27-ABCDEFGHIJKLMNOP',
+};
+function a2uiLongMessages(width: number): Msg[] {
+  const rename = (m: Msg, id: string): Msg => JSON.parse(JSON.stringify(m).replaceAll('"gallery-chat-message"', `"${id}"`).replaceAll('"gallery-contact-card"', `"${id}"`));
+  const chat = (chatMessage as { messages: Msg[] }).messages.map((m) => rename(m, `long-chat-${width}`));
+  const contact = (contactCard as { messages: Msg[] }).messages.map((m) => rename(m, `long-contact-${width}`));
+  for (const m of chat) {
+    const v = (m.updateDataModel as { value?: { messages?: { username: string; text: string }[] } } | undefined)?.value;
+    if (v?.messages?.[0]) { v.messages[0].text = LONG_TOKENS.text; v.messages[0].username = 'mike.chen.engineering.lead.2026'; }
+  }
+  for (const m of contact) {
+    const v = (m.updateDataModel as { value?: { email?: string } } | undefined)?.value;
+    if (v?.email) v.email = LONG_TOKENS.email;
+  }
+  /* a short label beside a long sentence: the label stays one word on one line, the sentence wraps */
+  const id = `long-label-${width}`, cat = 'https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json';
+  const label: Msg[] = [
+    { version: '1.0', createSurface: { surfaceId: id, catalogId: cat } },
+    { version: '1.0', updateComponents: { surfaceId: id, components: [
+      { id: 'root', component: 'Card', child: 'row' }, { id: 'row', component: 'Row', children: ['k', 'v'] },
+      { id: 'k', component: 'Text', text: 'Status:' },
+      { id: 'v', component: 'Text', text: 'Waiting for the warehouse to confirm that every item in the order has been packed and labelled' },
+    ] } },
+  ];
+  return [...chat, ...contact, ...label];
+}
+function A2uiLong({ width }: { width: number }) {
+  const a2ui = useA2ui({ icons: A2UI_ICONS });
+  /* once: the session keeps its surfaces through StrictMode's second run of the effect */
+  const fed = useRef(false);
+  useEffect(() => { if (fed.current) return; fed.current = true; for (const m of a2uiLongMessages(width)) a2ui.process(m as never); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  return <div data-lab={`a2ui-long-${width}`} style={{ width, maxWidth: '100%', display: 'grid', gap: 12 }}><A2uiSurfaces a2ui={a2ui} /></div>;
+}
 
 export function Lab() {
   const t = useT(), locale = useLocale(), MANY_SEG = manySeg(t), LONG = t(LONG_TEXT);
@@ -175,6 +218,13 @@ export function Lab() {
         </Demo>
       </Section>
 
+      <Section title={t({ en: 'A2UI: tokens too long for a word', ko: 'A2UI: 단어로 보기엔 긴 토큰' })} intro={<L
+        en="A long username, URL, ID and email address in Chat Message and Contact Card wrap within their cards; a short label beside a long sentence stays on one line."
+        ko="Chat Message와 Contact Card 안의 긴 사용자 이름, URL, ID, 이메일 주소는 카드 안에서 줄바꿈됩니다. 긴 문장 옆의 짧은 라벨은 중간에 끊기지 않고 한 줄을 유지합니다." />}>
+        <Demo>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}><A2uiLong width={320} /><A2uiLong width={390} /></div>
+        </Demo>
+      </Section>
       <Section title={t({ en: 'Rapid presses', ko: '빠르게 여러 번 누르기' })}>
         <Demo data-lab="spam">
           <Button ref={menuBtn} variant="tinted" onClick={() => setMenu((v) => !v)} aria-haspopup="menu" aria-expanded={menu}>{t({ en: 'Toggle menu', ko: '메뉴 토글' })}</Button>
