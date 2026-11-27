@@ -260,6 +260,101 @@ describe('RangeCalendar band', () => {
   });
 });
 
+/* the band is drawn in pixels measured from the grid: when the grid's geometry changes (the week's first day, or the
+   cells' width), the band is drawn in the new geometry at once; reduced motion switched on mid-spring ends the
+   spring (#108) */
+describe('RangeCalendar band geometry (#108)', () => {
+  const RANGE = { start: new Date(2026, 0, 6, 12), end: new Date(2026, 0, 22, 12) };
+  const painted = (root: ParentNode) => [...root.querySelectorAll<HTMLElement>('.sg-calendar__seg')].filter((e) => e.style.display === 'block')
+    .map((e) => [e.dataset.kind, e.style.transform, e.style.width].join(' '));
+  const frameLoop = () => {
+    const frames: FrameRequestCallback[] = [];
+    let t = performance.now();
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { frames.push(cb); return frames.length; });
+    const caf = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    const step = (n = 1) => { for (let i = 0; i < n; i++) { t += 16; for (const cb of frames.splice(0)) cb(t); } };
+    return { frames, step, restore: () => { raf.mockRestore(); caf.mockRestore(); } };
+  };
+  const view = (week: 0 | 1) => <ThemeProvider theme={createTheme({ reduceMotion: false })}>
+    <RangeCalendar aria-label="stay" value={RANGE} weekStartsOn={week} defaultMonth={new Date(2026, 0, 1, 12)} locale="en-US" /></ThemeProvider>;
+  it('a committed range follows a change of the first day of the week', () => {
+    const f = frameLoop();
+    try {
+      const fresh = render(view(1)); const want = painted(fresh.container); fresh.unmount();
+      const { container, rerender } = render(view(0));
+      const before = painted(container);
+      expect(before).not.toEqual(want);
+      act(() => { rerender(view(1)); });
+      expect(painted(container)).toEqual(want);   /* at once, not after a spring from the old columns */
+      act(() => { for (let i = 0; i < 200 && f.frames.length; i++) f.step(); });
+      expect(painted(container)).toEqual(want);
+    } finally { f.restore(); }
+  });
+  it('a resize that changes the cells\' width draws the band in the new width, also mid-spring', () => {
+    const f = frameLoop();
+    let cw = 40;
+    const width = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.tagName === 'TD' ? cw : 0; });
+    /* observers of the table or its body, as long as they are connected */
+    const seen = new Set<{ cb: ResizeObserverCallback; on: Element[] }>();
+    const RO = globalThis.ResizeObserver;
+    (globalThis as any).ResizeObserver = class { o: { cb: ResizeObserverCallback; on: Element[] }; constructor(cb: ResizeObserverCallback) { this.o = { cb, on: [] }; seen.add(this.o); } observe(el: Element) { this.o.on.push(el); } unobserve() {} disconnect() { seen.delete(this.o); } };
+    const resize = (grid: Element) => { for (const o of seen) if (o.on.some((el) => el === grid || el.parentElement === grid)) o.cb([], {} as ResizeObserver); };
+    try {
+      cw = 36; const fresh = render(view(0)); const want = painted(fresh.container); fresh.unmount();
+      cw = 40; seen.clear();
+      const { container } = render(<ThemeProvider theme={createTheme({ reduceMotion: false })}>
+        <RangeCalendar aria-label="stay" defaultMonth={new Date(2026, 0, 1, 12)} locale="en-US" /></ThemeProvider>);
+      const day = (iso: string) => container.querySelector<HTMLElement>(`[data-date="${iso}"]`)!;
+      act(() => { fireEvent.click(day('2026-01-06')); });
+      act(() => { fireEvent.mouseEnter(day('2026-01-22')); });
+      act(() => { f.step(2); });   /* the preview's head is on its way, in 40 px cells */
+      act(() => { fireEvent.click(day('2026-01-22')); });
+      act(() => { f.step(1); });
+      expect(painted(container)).not.toEqual(want);
+      cw = 36;
+      act(() => { resize(container.querySelector('.sg-calendar__grid')!); });
+      expect(painted(container)).toEqual(want);
+      act(() => { for (let i = 0; i < 200 && f.frames.length; i++) f.step(); });
+      expect(painted(container)).toEqual(want);
+    } finally { f.restore(); width.mockRestore(); (globalThis as any).ResizeObserver = RO; }
+  });
+  it('an end picked as the grid changes still opens its face', () => {
+    const f = frameLoop();
+    let cw = 40;
+    const width = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.tagName === 'TD' ? cw : 0; });
+    const anim = vi.spyOn(Element.prototype, 'animate');
+    try {
+      const { container } = render(<ThemeProvider theme={createTheme({ reduceMotion: false })}>
+        <RangeCalendar aria-label="stay" defaultMonth={new Date(2026, 0, 1, 12)} locale="en-US" /></ThemeProvider>);
+      const day = (iso: string) => container.querySelector<HTMLElement>(`[data-date="${iso}"]`)!;
+      act(() => { fireEvent.click(day('2026-01-06')); });
+      anim.mockClear();
+      cw = 36;   /* resized, and the end picked before the observer's render */
+      act(() => { fireEvent.click(day('2026-01-22')); });
+      expect(anim.mock.contexts).toContain(container.querySelector('[data-date="2026-01-22"] .sg-day__face'));
+    } finally { f.restore(); width.mockRestore(); anim.mockRestore(); }
+  });
+  it('reduced motion switched on mid-spring puts the head where it is going in the next frame', () => {
+    const f = frameLoop();
+    try {
+      const fresh = render(view(0)); const want = painted(fresh.container); fresh.unmount();
+      const { container } = render(<ThemeProvider theme={createTheme({ reduceMotion: false })}>
+        <RangeCalendar aria-label="stay" defaultMonth={new Date(2026, 0, 1, 12)} locale="en-US" /></ThemeProvider>);
+      const day = (iso: string) => container.querySelector<HTMLElement>(`[data-date="${iso}"]`)!;
+      act(() => { fireEvent.click(day('2026-01-06')); });
+      act(() => { fireEvent.mouseEnter(day('2026-01-22')); });
+      act(() => { fireEvent.click(day('2026-01-22')); });
+      act(() => { f.step(2); });
+      expect(painted(container)).not.toEqual(want);
+      /* a scope (or the system) turns it on, with no render of the calendar */
+      container.querySelector('[data-sg-reduce-motion]')!.setAttribute('data-sg-reduce-motion', 'true');
+      act(() => { f.step(1); });
+      expect(painted(container)).toEqual(want);
+      expect(f.frames.length).toBe(0);
+    } finally { f.restore(); }
+  });
+});
+
 describe('DatePicker', () => {
   it('opens a calendar dialog; choosing a day closes it and writes the date', async () => {
     function T() { const [v, setV] = useState<Date | null>(null); return <DatePicker label="방문일" value={v} onChange={setV} locale="en-US" format={(x) => `${x.getMonth() + 1}/${x.getDate()}`} name="visit" />; }

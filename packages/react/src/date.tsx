@@ -281,8 +281,12 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   const bands = useRef<HTMLDivElement>(null);
   /* draw: this render's painting (its runs, kind and geometry), set again by every render, so a loop started by an
      earlier one paints what is shown now: an end picked mid-spring is a committed range, not the preview (#94) */
-  type BandEng = { H: Spring; stop: (() => void) | null; month: number; key: string; draw: (head: number) => void };
+  /* geo: the grid the head's pixels were measured in (bandGeometry's sig, and the grid's first day); when it changes
+     (a resize across the calendar's cap, a row or header growing, weekStartsOn) the head snaps to the new geometry
+     instead of springing on from a place, and with a velocity, that no longer means anything (#108) */
+  type BandEng = { H: Spring; stop: (() => void) | null; month: number; key: string; geo: string; sig: string; draw: (head: number) => void };
   const bandEng = useRef<BandEng | null>(null);
+  const [resized, setResized] = useState(0);
   const candidate = range && range.start && !range.end && hover && range.reach(hover) && ymd(hover) !== ymd(range.start) ? hover : null;
   const hoverKey = candidate ? ymd(candidate) : 0;
   useIsoLayoutEffect(() => {
@@ -290,13 +294,7 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     /* no day grid (the months or years shown, or not known yet): a loop still running would paint segments no longer
        in the page, and draw would hold them; both stop, and the head moves on from where it was when days come back */
     if (!range || !layer || !tb || !table || view !== 'day' || pending) { const g = bandEng.current; if (g) { g.stop?.(); g.stop = null; g.draw = () => {}; } return; }
-    const cell = tb.rows[0]?.cells[0]?.offsetWidth || 40, W = cell * 7, pool = layer.children as HTMLCollectionOf<HTMLElement>;
-    /* a row's top within the table, from where the engine draws it: offsetTop of a row means different things here
-       (the body is positioned, as it slides between months: Blink measures rows from the body, WebKit from the table,
-       and Gecko skips the table in the chain), and adding the body's offset by hand drew every strip a row low in
-       Safari. The table may be scaled (a picker's panel blooming), so the drawn distance is divided by its scale. */
-    const tr = table.getBoundingClientRect(), k = tr.height / (table.offsetHeight || 1) || 1;
-    const rowY = Array.from(tb.rows, (r) => table.offsetTop + (r.getBoundingClientRect().top - tr.top) / k + (r.offsetHeight - 36) / 2);
+    const g = bandGeometry(tb, table), cell = g.cell || 40, W = cell * 7, rowY = g.rowY, pool = layer.children as HTMLCollectionOf<HTMLElement>;
     const idx = (d: Date) => Math.round((d.getTime() - start.getTime()) / 864e5);
     const Lx = (i: number) => i * cell + 2, Rx = (i: number) => (i + 1) * cell - 2;
     type Run = [number, number, 'soft' | 'faint'];
@@ -329,17 +327,20 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     const tintKind: Run[2] = eI !== null ? 'soft' : 'faint';
     const runsAt = (head: number): Run[] => (head > Lx(sI) + 1 ? [[Lx(sI), head, tintKind]] : []);
     const key = `${ymd(startD)}-${range.end ? ymd(range.end) : ''}`;
-    if (!st) st = bandEng.current = { H: new Spring(tintTo, 'snappy', layer), stop: null, month: 0, key: '', draw: () => {} };
+    if (!st) st = bandEng.current = { H: new Spring(tintTo, 'snappy', layer), stop: null, month: 0, key: '', geo: '', sig: '', draw: () => {} };
     st.draw = (head) => paint(runsAt(head));
     const was = st.key, newStart = !was || was.split('-')[0] !== String(ymd(startD)), committed = eI !== null && was !== key && !newStart;
-    const fresh = st.month !== ymd(month) || !was || reduced;
+    const geo = `${g.sig}|${ymd(start)}`;
+    const fresh = st.month !== ymd(month) || !was || reduced || st.geo !== geo;
     const monthMoved = Boolean(st.month) && st.month !== ymd(month);
-    st.key = key; st.month = ymd(month);
+    st.key = key; st.month = ymd(month); st.geo = geo; st.sig = g.sig;
     const e = st;
     const animateHead = (onTick?: () => void) => {
       if (e.stop) return;
       e.stop = loop((dt) => {
-        e.H.step(dt); e.draw(e.H.value); onTick?.();
+        /* reduced motion switched on mid-spring (by the theme, a scope or the system): the head is where it goes */
+        if (prefersReducedMotion(layer)) e.H.jump(e.H.target); else e.H.step(dt);
+        e.draw(e.H.value); onTick?.();
         if (!e.H.settled) return;
         e.H.jump(e.H.target); e.draw(e.H.value); e.stop = null;
         return false;
@@ -349,11 +350,26 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
       e.stop?.(); e.stop = null; e.H.jump(tintTo); paint(runsAt(tintTo));
       if (monthMoved) layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: timing.bandIn, delay: timing.bandInDelay, fill: 'backwards' });   /* after the month's slide */
       if (newStart && was && !reduced) seat(startD);
+      else if (committed && !monthMoved && !reduced) seat(range.end!);   /* an end chosen as the grid changed */
       return;
     }
     e.H.target = tintTo; animateHead();
     if (committed) seat(range.end!);
-  }, [range?.start ? ymd(range.start) : 0, range?.end ? ymd(range.end) : 0, hoverKey, ymd(month), view, pending]);
+  }, [range?.start ? ymd(range.start) : 0, range?.end ? ymd(range.end) : 0, hoverKey, ymd(month), ymd(start), view, pending, resized]);
+  /* the cells' width follows the calendar's (up to its cap), and a row or the weekday header can grow: a resize of
+     the table, its body or a row that changes what the band was drawn in paints it again (no range drawn: nothing to do) */
+  const banded = Boolean(range) && view === 'day' && !pending;
+  useEffect(() => {
+    const tb = body.current, table = tb?.parentElement;
+    if (!banded || !tb || !table || typeof ResizeObserver !== 'function') return;
+    const ro = new ResizeObserver(() => {
+      const e = bandEng.current;
+      if (e?.key && bandGeometry(tb, table).sig !== e.sig) setResized((n) => n + 1);
+    });
+    ro.observe(tb); ro.observe(table);
+    for (const r of Array.from(tb.rows)) ro.observe(r);   /* one row growing as another shrinks leaves both boxes as they were */
+    return () => ro.disconnect();
+  }, [banded]);
   /* unmounted, or hidden by Activity: the loop stops and says so, so shown again a new spring can start */
   useEffect(() => () => { const e = bandEng.current; if (e) { e.stop?.(); e.stop = null; } }, []);
 
@@ -663,6 +679,23 @@ export const DatePicker = forwardRef<HTMLButtonElement, DatePickerProps>(functio
 });
 
 /* ================================================================================================ ranges (0.4) */
+/* the day grid's geometry in the table's own pixels, for the range band. The cells' width is the table's laid-out
+   width over seven (fixed layout, no spacing): fractional below the calendar's cap, where offsetWidth rounds and the
+   error adds up along a week, and untouched by a scale. A row's top is taken from where the engine draws it:
+   offsetTop of a row means different things here (the body is positioned, as it slides between months: Blink
+   measures rows from the body, WebKit from the table, and Gecko skips the table in the chain), and adding the body's
+   offset by hand drew every strip a row low in Safari. The table may be scaled (a picker's panel blooming), so the
+   drawn distance is divided by its scale. sig names the layout from laid-out values only, which no transform
+   changes, so a pick mid-bloom does not read as a new geometry and a resize can tell whether to draw again. */
+function bandGeometry(tb: HTMLTableSectionElement, table: HTMLElement) {
+  const laid = parseFloat(getComputedStyle(table).width);
+  const cell = laid > 0 ? laid / 7 : tb.rows[0]?.cells[0]?.offsetWidth || 0;
+  const tr = table.getBoundingClientRect(), k = tr.height / (table.offsetHeight || 1) || 1;
+  const rowY = Array.from(tb.rows, (r) => table.offsetTop + (r.getBoundingClientRect().top - tr.top) / k + (r.offsetHeight - 36) / 2);
+  const sig = `${cell.toFixed(2)}:${table.offsetLeft},${table.offsetTop},${tb.offsetTop}:${Array.from(tb.rows, (r) => `${r.offsetTop}/${r.offsetHeight}`).join(',')}`;
+  return { cell, rowY, sig };
+}
+
 export type DateRange = { start: Date; end: Date };
 /* days between two dates as days on the calendar, whatever their time of day */
 const utcDay = (d: Date) => { const t = new Date(0); t.setUTCFullYear(d.getFullYear(), d.getMonth(), d.getDate()); return t.getTime(); };
