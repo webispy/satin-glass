@@ -3,7 +3,7 @@ import {
   type CSSProperties, type ElementType, type HTMLAttributes, type ReactNode, type ComponentPropsWithoutRef,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { attachLight, type MotionName } from '@satin-glass/core';
+import { attachLight, createLayerOrder, setLayerOrder, type LayerOrder, type MotionName } from '@satin-glass/core';
 import type { TextStyle } from '@satin-glass/tokens';
 import { glassClass } from './glass-class';
 import { cx, mergeRefs, useClient } from './utils';
@@ -152,7 +152,16 @@ export const ThemeProvider = forwardRef<HTMLDivElement, ThemeProviderProps>(func
 });
 
 /** Renders into document.body but keeps the surrounding theme. */
+/* the opening a portal belongs to, for the order of layers (#104): a portal rendered inside another's content is an
+   overlay opened inside that one */
+const PortalOrder = createContext<LayerOrder | null>(null);
 export function Portal({ children, className }: { children: ReactNode; className?: string }) {
+  /* one per opening: an overlay renders its portal while it is shown (and through its exit), so the next opening is a
+     new portal; Activity hiding it keeps it, so the opening keeps its place */
+  const parent = useContext(PortalOrder);
+  const [order] = useState(() => createLayerOrder(parent));
+  /* the portal's place among the layers, and in <body>, follows its opening (core places it as its layers come) */
+  const own = useCallback((el: HTMLDivElement | null) => { if (el) setLayerOrder(el, order); }, [order]);
   const t = useTheme();
   const motion = useMotion();
   const provided = useContext(ProvidedCtx);
@@ -164,10 +173,10 @@ export function Portal({ children, className }: { children: ReactNode; className
   const host = document.body;
   return createPortal(
     provided
-      ? <div className={cx('sg-root sg-portal', t.reducedTransparency && 'sg-reduce-transparency', className)} data-sg-theme={t.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(t.reducedMotion)} data-sg-reduce-transparency={String(t.reducedTransparency)} data-sg-grooves={t.grooves} lang={lang} style={tokenStyle(t.tokens)}>{children}</div>
+      ? <div ref={own} className={cx('sg-root sg-portal', t.reducedTransparency && 'sg-reduce-transparency', className)} data-sg-theme={t.name} data-sg-motion={motion ?? 'lively'} data-sg-reduce-motion={String(t.reducedMotion)} data-sg-reduce-transparency={String(t.reducedTransparency)} data-sg-grooves={t.grooves} lang={lang} style={tokenStyle(t.tokens)}><PortalOrder.Provider value={order}>{children}</PortalOrder.Provider></div>
       /* no theme above: the page's own settings and the system's apply (a default light, motion-on value would
          override prefers-color-scheme and prefers-reduced-motion) */
-      : <div className={cx('sg-root sg-portal', className)} data-sg-motion={motion}>{children}</div>,
+      : <div ref={own} className={cx('sg-root sg-portal', className)} data-sg-motion={motion}><PortalOrder.Provider value={order}>{children}</PortalOrder.Provider></div>,
     host,
   );
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
-import { focusables, trapFocus, pushLayer, inLayerAbove, tabFrom } from '../src';
+import { focusables, trapFocus, pushLayer, inLayerAbove, tabFrom, createLayerOrder, setLayerOrder, asNewOpening } from '../src';
 
 /* jsdom lays nothing out: offsetParent is always null. Stand in for layout: an element in the document and not under
    display: none has its parent as offsetParent. */
@@ -290,5 +290,130 @@ describe('layer stack', () => {
     expect(dialog.hasAttribute('aria-hidden')).toBe(false);
     pop();
     expect(app.hasAttribute('aria-hidden')).toBe(false);
+  });
+});
+
+/* the order of layers by their openings (#104): an overlay opened inside another is above it whatever the order its
+   layers register in, unrelated ones keep the order they were opened in, and a layer set aside and pushed again
+   comes back to its place */
+describe('layer order', () => {
+  const esc = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  it('puts a child above its parent when the child registers first, and keeps unrelated openings in order', () => {
+    const got: string[] = [];
+    const a = createLayerOrder(), a1 = createLayerOrder(a), a2 = createLayerOrder(a1), b = createLayerOrder();
+    const host = (o: ReturnType<typeof createLayerOrder>) => { const h = document.createElement('div'); document.body.appendChild(h); setLayerOrder(h, o); const el = document.createElement('div'); h.appendChild(el); return el; };
+    /* the grandchild, then its parent, then the root register (React connects children first) */
+    const pa2 = pushLayer(() => got.push('a2'), false, host(a2));
+    const pa1 = pushLayer(() => got.push('a1'), false, host(a1));
+    const pa = pushLayer(() => got.push('a'), true, host(a));
+    const pb = pushLayer(() => got.push('b'), true, null, { order: b });   /* opened after: on top */
+    esc(); pb();
+    esc(); pa2();
+    esc(); pa1();
+    esc(); pa();
+    expect(got).toEqual(['b', 'a2', 'a1', 'a']);
+  });
+  it('brings a layer pushed again for the same opening back to its place, under one opened since', () => {
+    const got: string[] = [];
+    const a = createLayerOrder(), a1 = createLayerOrder(a);
+    let pa = pushLayer(() => got.push('a'), true, null, { order: a });
+    let pa1 = pushLayer(() => got.push('a1'), true, null, { order: a1 });
+    pa1(); pa();   /* both taken down (an Activity hiding them) */
+    const pc = pushLayer(() => got.push('c'), true);   /* an unrelated one opened meanwhile, without an order */
+    pa1 = pushLayer(() => got.push('a1'), true, null, { order: a1 });   /* shown again, child first */
+    pa = pushLayer(() => got.push('a'), true, null, { order: a });
+    esc(); pc(); esc(); pa1(); esc(); pa();
+    expect(got).toEqual(['c', 'a1', 'a']);
+  });
+  it('keeps the order layers are pushed in when none is given', () => {
+    const got: string[] = [];
+    const p1 = pushLayer(() => got.push('1'), false), p2 = pushLayer(() => got.push('2'), false);
+    esc(); p2(); esc(); p1();
+    expect(got).toEqual(['2', '1']);
+  });
+  it('keeps <body> in stack order, moving the lower portal, when a portal learns its order late', () => {
+    document.body.innerHTML = '';
+    const mk = () => { const h = document.createElement('div'); h.className = 'p'; document.body.appendChild(h); const el = document.createElement('div'); h.appendChild(el); return { h, el }; };
+    const c = mk(), a = mk(), b = mk();   /* <body>: C A B */
+    const oa = createLayerOrder(), ob = createLayerOrder(), oc = createLayerOrder();
+    setLayerOrder(a.h, oa); const pa = pushLayer(() => {}, false, a.el);
+    setLayerOrder(b.h, ob); const pb = pushLayer(() => {}, false, b.el);
+    const pc = pushLayer(() => {}, false, c.el);   /* pushed before its portal has its order */
+    setLayerOrder(c.h, oc);
+    expect([...document.body.children]).toEqual([a.h, b.h, c.h]);
+    pc(); pb(); pa();
+  });
+  it('keeps the focus inside a portal it moves', () => {
+    document.body.innerHTML = '';
+    const top = document.createElement('div'), under = document.createElement('div');
+    document.body.append(top, under);   /* in the wrong order: the upper one first */
+    const input = document.createElement('input'); under.appendChild(input);   /* in the one that moves */
+    const oUnder = createLayerOrder(), oTop = createLayerOrder(oUnder);
+    setLayerOrder(top, oTop); setLayerOrder(under, oUnder);
+    const pTop = pushLayer(() => {}, false, top);
+    input.focus();
+    const pUnder = pushLayer(() => {}, false, input);   /* the lower one moves in front */
+    expect([...document.body.children]).toEqual([under, top]);
+    expect(document.activeElement).toBe(input);
+    pUnder(); pTop();
+  });
+  /* traps set up inner first (both open at once): closing them in either order ends on the page's opener, through each
+     one still open */
+  const nest = (n: number) => {
+    document.body.innerHTML = '';
+    const page = document.createElement('button'); page.textContent = 'page'; document.body.appendChild(page); page.focus();
+    const orders: ReturnType<typeof createLayerOrder>[] = [];
+    for (let i = 0; i < n; i++) orders.push(createLayerOrder(orders[i - 1] ?? null));
+    const els = orders.map((o, i) => { const h = document.createElement('div'); document.body.appendChild(h); setLayerOrder(h, o); const el = document.createElement('div'); el.innerHTML = `<button>b${i}</button>`; h.appendChild(el); return el; });
+    const layers: { pop: () => void; rel: () => void }[] = [];
+    for (let i = n - 1; i >= 0; i--) { const pop = pushLayer(() => {}, true, els[i]); const rel = trapFocus(els[i]); layers[i] = { pop, rel }; }
+    return { page, els, layers };
+  };
+  const close = (l: { pop: () => void; rel: () => void }, el: HTMLElement) => { l.pop(); l.rel(); el.parentElement!.remove(); };
+  it('inner first, closed inner first: the focus goes to the outer one, then to the page', () => {
+    const { page, els, layers } = nest(2);
+    expect(document.activeElement?.textContent).toBe('b1');
+    close(layers[1], els[1]); expect(document.activeElement?.textContent).toBe('b0');
+    close(layers[0], els[0]); expect(document.activeElement).toBe(page);
+  });
+  it('inner first, closed outer first: the inner one gives the focus to the page', () => {
+    const { page, els, layers } = nest(2);
+    close(layers[0], els[0]);
+    close(layers[1], els[1]); expect(document.activeElement).toBe(page);
+  });
+  it('three, inner first: each closing hands the focus to the one under it', () => {
+    const { page, els, layers } = nest(3);
+    expect(document.activeElement?.textContent).toBe('b2');
+    close(layers[2], els[2]); expect(document.activeElement?.textContent).toBe('b1');
+    close(layers[1], els[1]); expect(document.activeElement?.textContent).toBe('b0');
+    close(layers[0], els[0]); expect(document.activeElement).toBe(page);
+  });
+  it('a child pushed again after its parent was renewed comes back above it', () => {
+    const got: string[] = [];
+    const a = createLayerOrder(), b = createLayerOrder(a), c = createLayerOrder(b);
+    let pc = pushLayer(() => got.push('c'), false, null, { order: c });   /* reserves a and b */
+    pc();   /* c taken down (hidden) */
+    const pa = asNewOpening(() => pushLayer(() => got.push('a'), false, null, { order: a }));   /* a re-opened */
+    const pb = pushLayer(() => got.push('b'), false, null, { order: b });
+    pc = pushLayer(() => got.push('c'), false, null, { order: c });
+    const esc = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    esc(); pc(); esc(); pb(); esc(); pa();
+    expect(got).toEqual(['c', 'b', 'a']);
+  });
+  it('three, inner first, the middle one closed first: the inner one then gives the focus to the outer one', () => {
+    const { page, els, layers } = nest(3);
+    close(layers[1], els[1]);
+    close(layers[2], els[2]); expect(document.activeElement?.textContent).toBe('b0');
+    close(layers[0], els[0]); expect(document.activeElement).toBe(page);
+  });
+  it('a layer re-opened in an asNewOpening inside another is a new opening too', () => {
+    const got: string[] = [];
+    const a = createLayerOrder(), b = createLayerOrder();
+    let pa = pushLayer(() => got.push('a'), false, null, { order: a }); pa();
+    const pc = pushLayer(() => got.push('c'), false);   /* opened meanwhile */
+    asNewOpening(() => { asNewOpening(() => {}); pa = pushLayer(() => got.push('a'), false, null, { order: a }); });
+    const esc = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    esc(); pa(); esc(); pc(); void b;
+    expect(got).toEqual(['a', 'c']);
   });
 });

@@ -1,6 +1,6 @@
 /* Internal overlay plumbing shared by the overlay components (not part of the public API). */
 import { createContext, useContext, useEffect, useRef } from 'react';
-import { animate, bloomIn, bloomOut, canFocus, easing, prefersReducedMotion, timing, type SpringName, type SpringParams, dirOf, focusables, holdScrollLock, inLayerAbove, place, pushLayer, tabFrom, type Placement } from '@satin-glass/core';
+import { animate, asNewOpening, bloomIn, bloomOut, canFocus, easing, heldAbove, modalCover, prefersReducedMotion, timing, type SpringName, type SpringParams, dirOf, focusables, holdScrollLock, inLayerAbove, place, pushLayer, tabFrom, type Placement } from '@satin-glass/core';
 import { useIsoLayoutEffect, usePresence } from './utils';
 
 /** why an overlay asks to close; 'backdrop': a press outside it (or Tab leaving a menu or popover); 'anchor': the
@@ -109,7 +109,11 @@ export function useOverlayLifecycle(open: boolean, enter: () => Promise<void> | 
      open runs enter again. Passive, so hiding keeps the phase: a hidden exit still ends, and a reveal does not enter */
   useEffect(() => () => { phase.current = 'idle'; }, []);
   useIsoLayoutEffect(() => {
-    if (mounted && !closing && phase.current !== 'open') { phase.current = 'open'; enter(); }
+    if (!mounted || closing || phase.current === 'open') return;
+    /* re-opened during its exit: a new opening, above whatever was opened meanwhile (#104) */
+    const again = phase.current === 'exiting';
+    phase.current = 'open';
+    if (again) asNewOpening(enter); else enter();
   }, [mounted, closing]);
   useEffect(() => {
     if (!closing) return;
@@ -203,6 +207,10 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
     const home = () => {
       const prev = before.current as HTMLElement | null;
       const b = (!prev || prev === document.body || (el && prev !== el && prev.contains(el))) && el ? el : prev;
+      /* opened at once with a dialog around it (its effects first), it recorded the page as where focus was: into
+         that dialog instead (#104) */
+      const cover = b && b.isConnected ? modalCover(b, p) : null;
+      if (cover) return focusables(cover)[0] ?? cover;
       return b && b.isConnected ? b : null;
     };
     /* an anchored panel never makes the page inert: a context menu's lifted item and scrim live in their own portal */
@@ -433,7 +441,8 @@ export function useAnchored(open: boolean, anchor: Anchor, placement: Placement,
         });
       },
     });
-    focusFirst?.(p);
+    /* not when an overlay opened inside it (its effects came first) has the focus, or a modal is shown above (#104) */
+    if (!heldAbove(p)) focusFirst?.(p);
     /* unfold away from the anchor: the axis pointing away from it starts flatter */
     const vertical = at.side === 'top' || at.side === 'bottom';
     return bloomIn(p, { x: at.originX, y: at.originY }, vertical ? [0.6, 0.3] : [0.3, 0.6], 'pop');

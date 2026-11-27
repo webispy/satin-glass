@@ -171,6 +171,10 @@ function homeOf(el: HTMLElement | null): { home: () => HTMLElement | null; give:
 }
 
 const traps: HTMLElement[] = [];
+/* where each trap gives the focus back, changeable: a trap set up under one that already has the focus (an overlay
+   opened inside it that registered first, #104) takes over where that one would give it back, and that one gives it
+   to this trap instead, so closing the inner one leaves the focus in the outer one, not on the page under it */
+const trapGive = new Map<HTMLElement, { get: () => () => void; set: (g: () => void) => void }>();
 /* the layer a trap lies in: its own (the same element), else the nearest one holding it. Not one inside it (an inline
    panel opened from it), and not one beside it in a shared portal. Looked up when needed, so the order a trap and its
    layer were set up in does not matter. */
@@ -184,7 +188,33 @@ const layerOfTrap = (root: HTMLElement): Layer | undefined => {
 /** A focus trap's release, which gives focus back to where it was when the trap began; `resume()` puts focus back in
     the trap after its root was hidden (Suspense, Activity) and shown again. */
 export type FocusTrap = (() => void) & { resume(): void };
+/** The shown modal layer's element that `el` lies under (on the page, or in a layer below it), other than the layer of
+    `except`; null when none does. Where an anchored panel opened at once with a dialog around it gives the focus back:
+    not to the page under that dialog (#104). */
+export function modalCover(el: HTMLElement, except?: HTMLElement): HTMLElement | null {
+  const skip = except ? layerIndexOf(except) : -1;
+  for (let i = stack.length - 1; i >= 0; i--) {
+    const l = stack[i];
+    if (i === skip || l.paused || !l.modal || !l.el) continue;
+    return layerIndexOf(el) < i ? l.el : null;
+  }
+  return null;
+}
+/** Whether the layer holding `el` is under one that has the focus or that is a shown modal (an overlay opened inside
+    it whose effects came first, or a modal opened above it meanwhile): then it takes no focus as it opens or is shown
+    again. 'focus' when a layer above has the focus, 'modal' when only a modal is above it, false otherwise. */
+export function heldAbove(el: HTMLElement): 'focus' | 'modal' | false {
+  const i = layerIndexOf(el);
+  if (i < 0) return false;
+  const a = document.activeElement;
+  if (a && a !== document.body && layerIndexOf(a) > i) return 'focus';
+  return stack.slice(i + 1).some((l) => !l.paused && l.modal) ? 'modal' : false;
+}
 export function trapFocus(root: HTMLElement, initial?: HTMLElement | null): FocusTrap {
+  /* the focus already in a layer above this one (an overlay opened inside it, whose effects came first: both open at
+     once, or an Activity showing them again, #104) stays there; this one gives focus back where that one would */
+  const now = document.activeElement as HTMLElement | null, above = heldAbove(root);
+  const under = above !== false;
   const { home, give } = homeOf(opener());
   /* a layer opened above this one from inside it falls back here when its opener is gone */
   const own = layerOf(root);
@@ -193,7 +223,7 @@ export function trapFocus(root: HTMLElement, initial?: HTMLElement | null): Focu
   const firstOf = () => (initial?.isConnected ? initial : null) ?? root.querySelector<HTMLElement>('[data-autofocus]') ?? focusables(root)[0] ?? root;
   const first = firstOf();
   if (first === root && !root.hasAttribute('tabindex')) root.tabIndex = -1;
-  first.focus({ preventScroll: true });
+  if (!under) first.focus({ preventScroll: true });
   /* focus `to`, or when it no longer takes it (disabled while hidden), the first control that does, else the panel */
   const land = (to: HTMLElement) => {
     for (const c of [to, ...focusables(root), root]) {
@@ -209,11 +239,32 @@ export function trapFocus(root: HTMLElement, initial?: HTMLElement | null): Focu
     step(root, document.activeElement, e.shiftKey);
   };
   root.addEventListener('keydown', onKey);
+  let giveNow = give;
+  if (above === 'focus') {
+    /* the nearest trap above this one, among those opened inside it: it gives the focus here from now on (while this
+       one is still set up), and this one gives it where that one would have */
+    const mineL = layerOfTrap(root), i0 = mineL ? stack.indexOf(mineL) : -1;
+    let inner: HTMLElement | undefined, at = Infinity;
+    for (const t of traps) {
+      const l = layerOfTrap(t), i = l ? stack.indexOf(l) : -1;
+      if (t !== root && i > i0 && i < at && mineL?.order && descends(l!.order, mineL.order)) { inner = t; at = i; }
+    }
+    const rec = inner && trapGive.get(inner);
+    if (rec) {
+      const before = rec.get();
+      giveNow = before;
+      /* this one gone: where this one gives it now (to a trap set up under it since, or on down) */
+      rec.set(() => { if (traps.includes(root) && !layerOfTrap(root)?.paused) land(firstOf()); else giveNow(); });
+      void before;
+    }
+  }
+  trapGive.set(root, { get: () => giveNow, set: (g) => { giveNow = g; } });
   const release = () => {
     root.removeEventListener('keydown', onKey);
     const t = traps.lastIndexOf(root);
     if (t >= 0) traps.splice(t, 1);
-    if (!document.activeElement || root.contains(document.activeElement) || document.activeElement === document.body) give();
+    if (!document.activeElement || root.contains(document.activeElement) || document.activeElement === document.body) giveNow();
+    trapGive.delete(root);
   };
   return Object.assign(release, {
     /* a modal trap holds the focus: shown again, it takes it back from wherever it went meanwhile, unless it is in a
@@ -245,8 +296,77 @@ export function tabFrom(from: HTMLElement, back = false): boolean {
 /* back: where the layer gives focus back to on closing, while that is still in the document; tab: its own Tab from
    an element inside it (see tabFrom); paused: its overlay is hidden for now (Suspense, Activity), so it keeps its place
    in the stack but locks nothing, hides nothing and takes no Escape until it is shown again */
-type Layer = { onEscape: () => void; modal: boolean; el: HTMLElement | null; inert: boolean; back?: () => HTMLElement | null; tab?: (from: HTMLElement, back: boolean) => boolean; paused?: boolean };
+type Layer = { onEscape: () => void; modal: boolean; el: HTMLElement | null; inert: boolean; back?: () => HTMLElement | null; tab?: (from: HTMLElement, back: boolean) => boolean; paused?: boolean; rank: number; own?: boolean; order?: LayerOrder };
 const stack: Layer[] = [];
+
+/* ---- the order of layers (#104). A layer's place is its opening's rank: openings are ranked in the order they are
+   first registered, an opening's ancestors (the overlays it was opened inside) before it. So an overlay opened inside
+   another is always above it, even when it registers first (React connects a child's effects before its parent's:
+   both open at once, or an Activity showing them again), and two unrelated overlays stay in the order they were
+   opened. An opening keeps its rank while it is set aside and comes back to its place. */
+/** An overlay opening's place among the layers (opaque): made with the opening it was opened inside, ranked when it,
+    or an opening inside it, first registers a layer. Pass it as `pushLayer`'s `opts.order`, or give it to the
+    overlay's portal with `setLayerOrder` so that every layer whose element is in that portal takes it. */
+export type LayerOrder = { readonly parent: LayerOrder | null };
+export const createLayerOrder = (parent: LayerOrder | null = null): LayerOrder => ({ parent });
+let nextRank = 0, renewing = 0;
+const ranks = new WeakMap<LayerOrder, number>();
+const rankOf = (o: LayerOrder): number => {
+  let r = ranks.get(o);
+  /* not ranked yet, or ranked before its parent was renewed (re-opened during its exit while this one had no layer):
+     after its parent */
+  const p = o.parent ? rankOf(o.parent) : -1;
+  if (r === undefined || r < p) { r = nextRank++; ranks.set(o, r); }
+  return r;
+};
+const hostOrder = new WeakMap<HTMLElement, LayerOrder>();
+/** Gives a portal (a child of <body>) its opening's order: a layer whose element is inside it takes that place unless
+    `pushLayer` is given its own, a layer pushed from inside it before this was called too. null forgets it. */
+export function setLayerOrder(host: HTMLElement, order: LayerOrder | null) {
+  if (!order) { hostOrder.delete(host); return; }
+  hostOrder.set(host, order);
+  /* layers pushed from inside it already (their effects ran before the portal's own) take its place now */
+  let moved = false;
+  for (const l of stack) if (!l.own && l.el && hostOf(l.el) === host) { l.order = order; l.rank = rankOf(order); moved = true; }
+  if (moved) stack.sort((x, y) => x.rank - y.rank);
+  placeHosts();
+  if (moved) syncHidden();
+}
+/** Runs `open`, in which an overlay that is still leaving (re-opened during its exit) pushes its layer again, as a new
+    opening: it takes a new place, above what was opened meanwhile, rather than the one it had. */
+const descends = (o: LayerOrder | undefined, of: LayerOrder) => { for (let p = o?.parent ?? null; p; p = p.parent) if (p === of) return true; return false; };
+function renew(order: LayerOrder) {
+  const inner = stack.filter((l) => l.order && descends(l.order, order)).sort((x, y) => x.rank - y.rank);
+  ranks.delete(order);
+  const r = rankOf(order);
+  for (const l of stack) if (l.order === order) l.rank = r;
+  const seen = new Set<LayerOrder>();
+  for (const l of inner) { const o = l.order!; if (!seen.has(o)) { seen.add(o); ranks.delete(o); } l.rank = rankOf(o); }
+  stack.sort((x, y) => x.rank - y.rank);
+}
+export function asNewOpening<T>(open: () => T): T {
+  renewing++;
+  try { return open(); } finally { renewing--; }
+}
+/* paint order follows the stack: overlays share one z-index, so the later portal in <body> paints on top. Only
+   portals that carry an order (the library's own) are moved, and only among themselves: from the top down, a host
+   found after the one above it goes in front of it. So the lower one moves, not one that has just come in on top (its
+   entrance and its focus already under way); a move keeps the focus */
+function placeHosts() {
+  /* each ordered host at the place of its topmost shown layer (a paused one holds no place) */
+  const top = new Map<HTMLElement, number>();
+  stack.forEach((l, i) => { const h = !l.paused && l.el && hostOf(l.el); if (h && hostOrder.has(h)) top.set(h, i); });
+  const list = [...top.keys()].sort((x, y) => top.get(x)! - top.get(y)!);
+  for (let i = list.length - 1; i > 0; i--) {
+    if (!(list[i - 1].compareDocumentPosition(list[i]) & Node.DOCUMENT_POSITION_FOLLOWING)) move(list[i - 1], list[i]);
+  }
+}
+function move(h: HTMLElement, before: Node | null) {
+  const a = document.activeElement as HTMLElement | null, had = a && h.contains(a) ? a : null;
+  h.parentNode!.insertBefore(h, before);
+  if (had && document.activeElement !== had) had.focus({ preventScroll: true });
+}
+
 /* the index of the layer that holds `node`: the top one whose element holds it, else (a scrim beside the panel in its
    portal) the top one whose portal holds it. By the element first, so two panels mounted in one container (a core
    user's own #overlays) are told apart. */
@@ -312,22 +432,30 @@ const onKeydown = (e: KeyboardEvent) => {
     overlay's element (any element inside its portal). `opts.back` says where the overlay gives focus back to on
     closing (a focus trap records its own); a layer opened from inside this one goes there when its opener is gone.
     `opts.tab` handles Tab from an element inside a layer that is not a focus trap (see `tabFrom`): true when it
-    moved focus, false to leave it to the browser. Returns the removal, whose `pause(true)` sets the layer aside while
+    moved focus, false to leave it to the browser. `opts.order` places it among the layers by its opening (see
+    `LayerOrder`; by default the order of its portal, else the order it is pushed in). Returns the removal, whose `pause(true)` sets the layer aside while
     its overlay is hidden (Suspense, Activity: it keeps its place, so layers above and below it stay in order, but locks,
     hides and takes nothing) and `pause(false)` brings it back. */
 export type LayerRemoval = (() => void) & { pause(on: boolean): void };
-export function pushLayer(onEscape: () => void, modal: boolean, el: HTMLElement | null = null, opts: { inert?: boolean; back?: () => HTMLElement | null; tab?: (from: HTMLElement, back: boolean) => boolean } = {}): LayerRemoval {
-  const layer: Layer = { onEscape, modal, el, inert: opts.inert ?? modal, back: opts.back, tab: opts.tab };
+export function pushLayer(onEscape: () => void, modal: boolean, el: HTMLElement | null = null, opts: { inert?: boolean; back?: () => HTMLElement | null; tab?: (from: HTMLElement, back: boolean) => boolean; order?: LayerOrder } = {}): LayerRemoval {
+  const host = el && hostOf(el), order = opts.order ?? (host ? hostOrder.get(host) : undefined);
+  /* re-opened during its exit: a new opening, a new place, and the overlays still open inside it come along above it */
+  if (order && renewing) renew(order);
+  const layer: Layer = { onEscape, modal, el, inert: opts.inert ?? modal, back: opts.back, tab: opts.tab, rank: order ? rankOf(order) : nextRank++, own: !!opts.order, order };
   if (!stack.length) document.addEventListener('keydown', onKeydown);
-  stack.push(layer); syncLock(); syncHidden();
+  /* in its rank's place: above every layer ranked before it, below any ranked after (an overlay opened inside it
+     that registered first) */
+  let at = stack.length;
+  while (at > 0 && stack[at - 1].rank > layer.rank) at--;
+  stack.splice(at, 0, layer); placeHosts(); syncLock(); syncHidden();
   const remove = () => {
     const i = stack.indexOf(layer);
     if (i >= 0) stack.splice(i, 1);
     if (!stack.length) document.removeEventListener('keydown', onKeydown);
-    syncLock(); syncHidden();
+    placeHosts(); syncLock(); syncHidden();
   };
   return Object.assign(remove, {
-    pause(on: boolean) { if (!!layer.paused === on || !stack.includes(layer)) return; layer.paused = on; syncLock(); syncHidden(); },
+    pause(on: boolean) { if (!!layer.paused === on || !stack.includes(layer)) return; layer.paused = on; placeHosts(); syncLock(); syncHidden(); },
   });
 }
 /** Whether `target` is inside a layer opened above the layer whose element is `el` — a list opened from a popover

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor, cleanup } from '@testing-library/react';
-import { StrictMode, Suspense, useLayoutEffect, useRef, useState, type ReactElement } from 'react';
-import { topLayerCount } from '@satin-glass/core';
-import { Button, Dialog, Menu, MenuItem, Popover, ActionSheet, Sheet, Drawer, ContextMenu, Toaster, useToast, ThemeProvider, createTheme, MediaViewer } from '../src';
+import { Activity, StrictMode, Suspense, useLayoutEffect, useRef, useState, type ReactElement } from 'react';
+import { topLayerCount, pushLayer } from '@satin-glass/core';
+import { Button, Dialog, Menu, MenuItem, Popover, ActionSheet, Sheet, Drawer, ContextMenu, Toaster, useToast, ThemeProvider, createTheme, MediaViewer, Portal } from '../src';
 
 /* jsdom lays nothing out: offsetParent is always null and getClientRects empty. Stand in for layout so focus traps
    see their stops and anchors count as shown; an element under display: none has neither. */
@@ -1095,5 +1095,156 @@ describe('an overlay opened under StrictMode', () => {
     rerender(<StrictMode><T none gone /></StrictMode>);
     resized(screen.getByText('more'));
     expect(onClose).toHaveBeenLastCalledWith('anchor');
+  });
+});
+
+/* Activity takes an open overlay's effects down and sets them up again, a child's before its parent's: a Sheet open
+   inside a Dialog is still above it when shown again — Escape goes to the Sheet, and the Sheet's portal is not hidden
+   from assistive technology (#104). The same when both are open from the start (the child's effects come first) */
+describe('nested overlays under Activity (#104)', () => {
+  for (const start of ['opened one after the other', 'open from the start'] as const) {
+    it(`a Sheet inside a Dialog stays above it when shown again (${start})`, async () => {
+      const closeDialog = vi.fn(), closeSheet = vi.fn();
+      const view = (mode: 'visible' | 'hidden', sheet: boolean) => <Activity mode={mode}>
+        <Dialog open onClose={closeDialog} title="Edit" actions={<Button>OK</Button>}>
+          <Sheet open={sheet} onClose={closeSheet} title="Pick"><button>body</button></Sheet>
+        </Dialog></Activity>;
+      const { rerender } = render(view('visible', start === 'open from the start'));
+      await act(async () => {});
+      if (start === 'opened one after the other') { rerender(view('visible', true)); await act(async () => {}); }
+      const sheetHost = () => screen.getByText('body').closest('.sg-portal') as HTMLElement;
+      const check = () => {
+        expect(sheetHost().contains(document.activeElement)).toBe(true);   /* the focus in the Sheet, not the Dialog under it */
+        expect(sheetHost().getAttribute('aria-hidden')).not.toBe('true');
+        /* painted above it too: overlays share one z-index, so the later portal in <body> paints on top */
+        const kids = [...document.body.children], dialogHost = screen.getByRole('alertdialog', { hidden: true }).closest('.sg-portal')!;
+        expect(kids.indexOf(sheetHost())).toBeGreaterThan(kids.indexOf(dialogHost));
+        act(() => { fireEvent.keyDown(document, { key: 'Escape' }); });
+        expect(closeSheet).toHaveBeenCalledTimes(1);
+        expect(closeDialog).not.toHaveBeenCalled();
+        closeSheet.mockClear();
+      };
+      check();
+      rerender(view('hidden', true)); await act(async () => {});
+      rerender(view('visible', true)); await act(async () => {});
+      check();
+      /* and twice over */
+      rerender(view('hidden', true)); await act(async () => {});
+      rerender(view('visible', true)); await act(async () => {});
+      check();
+    });
+  }
+  const esc = () => act(() => { fireEvent.keyDown(document, { key: 'Escape' }); });
+  const hosts = () => [...document.body.children];
+  const hostOf = (el: Element) => el.closest('.sg-portal')!;
+  it('a Menu inside a Popover, both open at once: the Menu is on top and keeps the focus', async () => {
+    const outer = vi.fn(), inner = vi.fn();
+    render(<Popover open anchor={new DOMRect(10, 10, 10, 10)} onClose={outer} aria-label="filters"><button>outer button</button>
+      <Menu open anchor={new DOMRect(10, 10, 10, 10)} onClose={inner} aria-label="sort"><MenuItem onSelect={() => {}}>inner item</MenuItem></Menu></Popover>);
+    await act(async () => {});
+    expect(screen.getByRole('menu').contains(document.activeElement)).toBe(true);
+    esc();
+    expect(inner).toHaveBeenCalled(); expect(outer).not.toHaveBeenCalled();
+  });
+  it('shown again under a modal opened meanwhile, a Dialog does not take the focus or Escape', async () => {
+    const a = vi.fn(), b = vi.fn();
+    const view = (mode: 'visible' | 'hidden', bOpen: boolean) => <>
+      <Activity mode={mode}><Dialog open onClose={a} title="Old A" actions={<Button>old A button</Button>} /></Activity>
+      <Dialog open={bOpen} onClose={b} title="New B" actions={<Button>new B button</Button>} /></>;
+    const { rerender } = render(view('visible', false)); await act(async () => {});
+    rerender(view('hidden', false)); await act(async () => {});
+    rerender(view('hidden', true)); await act(async () => {});
+    (document.activeElement as HTMLElement | null)?.blur();   /* the focus on the page */
+    rerender(view('visible', true)); await act(async () => {});
+    expect(screen.getByRole('alertdialog', { name: 'Old A', hidden: true }).contains(document.activeElement)).toBe(false);
+    esc();
+    expect(b).toHaveBeenCalled(); expect(a).not.toHaveBeenCalled();
+  });
+  it('an overlay first shown after another was opened is above it, in the stack and in <body>', async () => {
+    const a = vi.fn(), b = vi.fn();
+    const view = (mode: 'visible' | 'hidden', bOpen: boolean) => <>
+      <Activity mode={mode}><Dialog open onClose={a} title="AA" actions={<Button>A button</Button>} /></Activity>
+      <Dialog open={bOpen} onClose={b} title="BB" actions={<Button>B button</Button>} /></>;
+    const { rerender } = render(view('hidden', false)); await act(async () => {});
+    rerender(view('hidden', true)); await act(async () => {});
+    rerender(view('visible', true)); await act(async () => {});
+    const ha = hostOf(screen.getByText('A button')), hb = hostOf(screen.getByText('B button', { ignore: '' }));
+    expect(hosts().indexOf(ha)).toBeGreaterThan(hosts().indexOf(hb));
+    expect(ha.getAttribute('aria-hidden')).not.toBe('true');
+    esc();
+    expect(a).toHaveBeenCalled(); expect(b).not.toHaveBeenCalled();
+  });
+  it('a layer pushed from inside a public Portal before the portal knows its order still sits under a Dialog inside it', async () => {
+    const got: string[] = [];
+    function Panel() {
+      const ref = useRef<HTMLDivElement>(null);
+      useLayoutEffect(() => pushLayer(() => got.push('panel'), false, ref.current), []);
+      return <div ref={ref}>panel<Dialog open onClose={() => got.push('dialog')} title="Inside" actions={<Button>ok</Button>} /></div>;
+    }
+    render(<Portal><Panel /></Portal>); await act(async () => {});
+    esc();
+    expect(got).toEqual(['dialog']);
+  });
+  it('re-opened during its exit after another opened, a Dialog is a new opening: on top in the stack and in <body>', async () => {
+    const anim = vi.spyOn(Element.prototype, 'animate').mockImplementation(() => ({ finished: new Promise(() => {}), cancel() {}, finish() {}, playState: 'running', effect: { getTiming: () => ({ fill: 'both' }) } }) as unknown as Animation);
+    try {
+      const a = vi.fn(), b = vi.fn();
+      const view = (aOpen: boolean, bOpen: boolean) => <>
+        <Dialog open={aOpen} onClose={a} title="Exit A" actions={<Button>A focus</Button>} />
+        <Dialog open={bOpen} onClose={b} title="BB" actions={<Button>B button</Button>} /></>;
+      const { rerender } = render(view(true, false)); await act(async () => {});
+      rerender(view(false, false)); await act(async () => {});   /* A's exit runs (never ends here) */
+      rerender(view(false, true)); await act(async () => {});
+      rerender(view(true, true)); await act(async () => {});    /* A again, mid-exit */
+      const ha = hostOf(screen.getByText('A focus')), hb = hostOf(screen.getByText('B button'));
+      expect(hosts().indexOf(ha)).toBeGreaterThan(hosts().indexOf(hb));
+      esc();
+      expect(a).toHaveBeenCalled(); expect(b).not.toHaveBeenCalled();
+    } finally { anim.mockRestore(); }
+  });
+  it('a portal moved into its place keeps a focus a control inside it already took', async () => {
+    function Auto() { const ref = useRef<HTMLButtonElement>(null); useLayoutEffect(() => ref.current!.focus(), []); return <button ref={ref}>auto</button>; }
+    render(<Dialog open onClose={() => {}} title="Outer" actions={<Button>ok</Button>}><Auto /><Sheet open onClose={() => {}} title="In">sheet</Sheet></Dialog>);
+    await act(async () => {});
+    expect(document.activeElement?.tagName).not.toBe('BODY');
+  });
+  it('closing a Sheet opened at once with its Dialog gives the focus to the Dialog, not to the page under it', async () => {
+    const view = (open: boolean, sheet: boolean) => <><button>page button</button>
+      <Dialog open={open} onClose={() => {}} title="Outer" actions={<Button>outer ok</Button>}><Sheet open={sheet} onClose={() => {}} title="Inner"><button>inner</button></Sheet></Dialog></>;
+    const { rerender } = render(view(false, false));
+    screen.getByText('page button').focus();   /* the focus on the page, then both open at once */
+    rerender(view(true, true)); await act(async () => {});
+    expect(screen.getByText('inner')).toBe(document.activeElement);
+    rerender(view(true, false)); await act(async () => {}); await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    expect(screen.getByRole('alertdialog', { name: 'Outer' }).contains(document.activeElement)).toBe(true);
+  });
+  for (const both of [false, true]) {
+    it(`re-opened during its exit with a Sheet still open inside it${both ? ' (both closed and re-opened)' : ''}, a Dialog stays under its Sheet`, async () => {
+      const anim = vi.spyOn(Element.prototype, 'animate').mockImplementation(() => ({ finished: new Promise(() => {}), cancel() {}, finish() {}, playState: 'running', effect: { getTiming: () => ({ fill: 'both' }) } }) as unknown as Animation);
+      try {
+        const d = vi.fn(), sh = vi.fn();
+        const view = (dOpen: boolean, sOpen: boolean) => <Dialog open={dOpen} onClose={d} title="Outer" actions={<Button>outer ok</Button>}>
+          <Sheet open={sOpen} onClose={sh} title="Inner"><button>inner</button></Sheet></Dialog>;
+        const { rerender } = render(view(true, true)); await act(async () => {});
+        rerender(view(false, !both)); await act(async () => {});
+        rerender(view(true, true)); await act(async () => {});
+        esc();
+        expect(sh).toHaveBeenCalled(); expect(d).not.toHaveBeenCalled();
+        const kids = hosts();
+        expect(kids.indexOf(hostOf(screen.getByText('inner')))).toBeGreaterThan(kids.indexOf(hostOf(screen.getByText('outer ok'))));
+      } finally { anim.mockRestore(); }
+    });
+  }
+  it('a Menu opened at once with the Dialog around it gives the focus to the Dialog when it closes, not to the page', async () => {
+    const view = (open: boolean, menu: boolean) => <><button>page button</button>
+      <Dialog open={open} onClose={() => {}} title="Outer" actions={<Button>outer ok</Button>}>
+        <Menu open={menu} onClose={() => {}} anchor={new DOMRect(10, 10, 10, 10)} aria-label="more"><MenuItem onSelect={() => {}}>item</MenuItem></Menu>
+      </Dialog></>;
+    const { rerender } = render(view(false, false));
+    screen.getByText('page button').focus();
+    rerender(view(true, true)); await act(async () => {});
+    expect(screen.getByRole('menu').contains(document.activeElement)).toBe(true);
+    rerender(view(true, false)); await act(async () => {}); await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    expect(screen.getByRole('alertdialog', { name: 'Outer' }).contains(document.activeElement)).toBe(true);
   });
 });
