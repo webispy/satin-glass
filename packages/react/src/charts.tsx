@@ -167,22 +167,23 @@ function useWidth<T extends HTMLElement>(fallback = 480) {
 }
 
 /** Move numbers from the previous render to these on a spring each ('smooth' of the motion personality), keeping
-    their velocity if the target changes again mid-way. At once the first time and with reduced motion. */
-function useTween(target: number[], el: React.RefObject<Element | null>, key: string): number[] {
-  const [shown, setShown] = useState(target);
+    their velocity if the target changes again mid-way. At once the first time and with reduced motion. `now` is what
+    a render draws; `painter` draws every frame of a move in place of a render, as useMorph's does (#85). */
+function useTween(target: number[], el: React.RefObject<Element | null>, key: string, painter?: React.RefObject<((now: number[]) => boolean | void) | null>): { now: number[]; sample: () => number[]; moving: boolean } {
+  const [, paint] = useState(0);
   const springs = useRef<Spring[] | null>(null), stop = useRef<(() => void) | null>(null);
   useIsoLayoutEffect(() => {
     const b = target, cur = springs.current;
     if (!cur || cur.length !== b.length || prefersReducedMotion(el.current)) {
       stop.current?.(); stop.current = null;
       springs.current = b.map((v) => new Spring(v, 'smooth', el.current));
-      setShown(b);
+      paint((n) => n + 1);
       return;
     }
     if (cur.every((sp, i) => sp.target === b[i])) {
       /* set up again with the same target (shown after Activity or Suspense hid it): a move its hiding stopped half-way
          settles there rather than staying frozen (#82) */
-      if (!stop.current && cur.some((sp) => sp.value !== sp.target)) { cur.forEach((sp) => sp.jump(sp.target)); setShown(b); }
+      if (!stop.current && cur.some((sp) => sp.value !== sp.target)) { cur.forEach((sp) => sp.jump(sp.target)); paint((n) => n + 1); }
       return;
     }
     cur.forEach((sp, i) => { sp.set('smooth', el.current); sp.target = b[i]; });
@@ -190,15 +191,20 @@ function useTween(target: number[], el: React.RefObject<Element | null>, key: st
     stop.current = loop((dt) => {
       let moving = false;
       for (const sp of cur) { sp.step(dt); if (sp.settled) sp.jump(sp.target); else moving = true; }
-      setShown(cur.map((sp) => sp.value));
-      if (!moving) stop.current = null;
-      return moving;
+      const v = cur.map((sp) => sp.value), draw = painter?.current;
+      /* settled: the end drawn in this frame, then rendered (a painter that finds what it needs missing hands the
+         frame back to React) */
+      if (!moving) { stop.current = null; draw?.(v); paint((n) => n + 1); return false; }
+      if (!draw || draw(v) === false) paint((n) => n + 1);
+      return true;
     });
   }, [key]);
   /* taken down (unmounted, or hidden by Activity or Suspense): the loop stops and is marked stopped, so a later change
      starts a new one. A layout effect: Suspense hiding a shown tree disconnects layout effects but keeps passive ones */
   useIsoLayoutEffect(() => () => { stop.current?.(); stop.current = null; }, []);
-  return shown;
+  /* the springs as they are (the target until they exist, or while its length changes and they are set up again) */
+  const sample = () => { const cur = springs.current; return cur && cur.length === target.length ? cur.map((sp) => sp.value) : target; };
+  return { now: sample(), sample, moving: stop.current !== null };
 }
 
 /** One transition for a whole chart's change: the scale, the gridlines and ticks, and the marks all move together
@@ -211,7 +217,13 @@ function useTween(target: number[], el: React.RefObject<Element | null>, key: st
 type Rebase = (shownNow: number[], from: number[], to: number[], p: number) => number[];
 /* tag: what else makes a new target (a scatter chart's scales: the same numbers on a linear and a log axis are not the
    same drawing) */
-function useMorph(target: number[], el: React.RefObject<Element | null>, rebase?: Rebase, tag = ''): { now: number[]; from: number[]; p: number } {
+/* painter: draws a sample of the move straight into the chart's SVG. Given one, the loop calls it on every frame instead
+   of rendering through React, and renders only when the move settles (#85): a render per frame waited for React's
+   scheduler, which put it after the frame often enough for Firefox to hold a frame and then draw two steps at once,
+   and rendering synchronously instead restarted every pending transition on each frame. The chart applies the same
+   painter after each of its own commits (useFrame), so React's props never outlive a frame it drew */
+type Painter = (now: number[], from: number[], p: number) => boolean | void;
+function useMorph(target: number[], el: React.RefObject<Element | null>, rebase?: Rebase, tag = '', painter?: React.RefObject<Painter | null>): { now: number[]; from: number[]; p: number; sample: () => [number[], number[], number] } {
   const key = `${tag}|${target.join(',')}`;
   const st = useRef<{ from: number[]; to: number[]; key: string; P: Spring | null; stop: (() => void) | null }>({ from: target, to: target, key, P: null, stop: null });
   const [, paint] = useState(0);
@@ -237,15 +249,86 @@ function useMorph(target: number[], el: React.RefObject<Element | null>, rebase?
       const P = m.P; if (!P) { m.stop = null; return false; }
       P.step(dt);
       /* settled in progress units (the spring's own test is for pixels) */
-      if (Math.abs(1 - P.value) < 0.001 && Math.abs(P.velocity) < 0.01) { m.P = null; m.from = m.to; m.stop = null; paint((n) => n + 1); return false; }
-      paint((n) => n + 1);
+      if (Math.abs(1 - P.value) < 0.001 && Math.abs(P.velocity) < 0.01) {
+        /* the end drawn in this frame, then React prunes what only the move needed (fading ticks, emptied bars) */
+        m.P = null; m.from = m.to; m.stop = null; painter?.current?.(m.to, m.to, 1); paint((n) => n + 1); return false;
+      }
+      /* a painter that finds what it needs missing hands the frame back to React */
+      const q = Math.min(1, Math.max(0, P.value)), draw = painter?.current;
+      if (!draw || draw(lerp(m.from, m.to, q), m.from, q) === false) paint((n) => n + 1);
     });
   }, [key]);
   /* taken down (unmounted, or hidden by Activity or Suspense): the loop stops and is marked stopped, so a later change
      starts a new one. A layout effect: Suspense hiding a shown tree disconnects layout effects but keeps passive ones */
   useIsoLayoutEffect(() => () => { const m = st.current; m.stop?.(); m.stop = null; }, []);
   const m = st.current;
-  return { now: m.P ? lerp(m.from, m.to, p) : m.to, from: m.from, p: m.P ? p : 1 };
+  /* the move as it is now, read when it is drawn (after a commit, a render's own values can be frames old) */
+  const sample = (): [number[], number[], number] => {
+    const q = m.P ? Math.min(1, Math.max(0, m.P.value)) : 1;
+    return [m.P ? lerp(m.from, m.to, q) : m.to, m.from, m.P ? q : 1];
+  };
+  return { now: m.P ? lerp(m.from, m.to, p) : m.to, from: m.from, p: m.P ? p : 1, sample };
+}
+
+/* ---- painting a move (#85): what the charts' painters share */
+/** sets attributes on an element (null removes one); nothing when the element is not there */
+function setAttrs(el: Element | null | undefined, a: Record<string, string | number | null>) {
+  if (!el) return;
+  for (const k in a) { const v = a[k]; if (v === null) el.removeAttribute(k); else el.setAttribute(k, String(v)); }
+}
+/** the gridlines and their labels (`g[data-grid]`: a line, then its text), as tickLayer places them; false when one
+    is not mounted */
+function paintGrid(svg: SVGSVGElement, grid: { t: number; o: number; y: number }[], left: number, iw: number): boolean {
+  for (const { t, o, y } of grid) {
+    const gl = svg.querySelector(`g[data-grid="${t}"]`);
+    if (!gl) return false;
+    setAttrs(gl, { opacity: o < 1 ? o.toFixed(3) : null });
+    setAttrs(gl.firstElementChild, { x1: left, x2: left + iw, y1: y, y2: y });
+    setAttrs(gl.lastElementChild, { x: left - 8, y });
+  }
+  return true;
+}
+/** the category labels (`text[data-xl]`, its index): where each one is, and whether it shows; false when one that
+    shows is not mounted */
+function paintLabels(svg: SVGSVGElement, count: number, xOf: (i: number) => number, shows: (i: number) => boolean): boolean {
+  const els = svg.querySelectorAll<SVGTextElement>('text[data-xl]');
+  let n = 0;
+  for (const el of els) {
+    const i = +(el.dataset.xl ?? 0), on = shows(i);
+    setAttrs(el, { x: xOf(i), display: on ? null : 'none' });
+    if (on) n++;
+  }
+  let want = 0;
+  for (let i = 0; i < count; i++) if (shows(i)) want++;
+  return n === want;
+}
+/** the tooltip, beside the point it reads */
+function paintTip(box: HTMLElement | null, x: number, w: number) {
+  const tip = box?.querySelector<HTMLElement>(':scope > .sg-chart__tip');
+  if (tip) { tip.style.left = `${x}px`; tip.style.transform = tipShift(x, w); }
+}
+/** how many categories share a category label at a plot width: as many labels as fit, one per `per` px */
+const strideAt = (iw: number, per: number, count: number) => Math.max(1, Math.ceil(count / Math.max(1, Math.floor(iw / per))));
+/** whether a category's label is mounted while the plot's width moves through `iws` (its ends and now: the gutter moves
+    one way): every stride that a width between them gives, found from how many labels fit, a handful at most however
+    many categories there are (every whole number between the two strides was thousands for a long axis) */
+function labelSteps(iws: number[], per: number, count: number): (i: number, shows: (i: number, step: number) => boolean) => boolean {
+  const lo = Math.max(1, Math.floor(Math.min(...iws) / per)), hi = Math.max(1, Math.floor(Math.max(...iws) / per));
+  const steps = new Set<number>();
+  for (let n = lo; n <= hi; n++) steps.add(Math.max(1, Math.ceil(count / n)));
+  return (i, shows) => { for (const k of steps) if (shows(i, k)) return true; return false; };
+}
+/** draws a chart's move after each of its commits and hands its painter to the move's frame loop. The painter is this
+    render's (never one from a render React dropped), and what React just wrote is drawn over with the move as it is
+    now. At rest, with nothing drawn by a frame since, React's own drawing stands (drawing it again cost a second pass
+    on every hover) */
+function usePainter<A extends unknown[]>(painter: React.RefObject<((...a: A) => boolean | void) | null>, draw: (...a: A) => boolean | void, sample: () => A, moving: boolean) {
+  const framed = useRef(false);
+  useIsoLayoutEffect(() => {
+    painter.current = (...a: A) => { framed.current = true; return draw(...a); };
+    if (moving || framed.current) { draw(...sample()); framed.current = moving; }
+    return () => { painter.current = null; };
+  });
 }
 
 /** Gridlines and their labels while the scale moves: the new ticks fade in, the old ones fade out, all placed on the
@@ -372,10 +455,11 @@ function plotKeys(e: KeyboardEvent, count: number, active: Active, set: (a: Acti
 }
 
 type TipRow = { color: string; label: string; value: string };
+/* beside the point, on the side with more room */
+const tipShift = (x: number, w: number) => `translate(${x > w * 0.6 ? 'calc(-100% - 12px)' : '12px'}, -50%)`;
 function Tip({ x, y, w, title, rows }: { x: number; y: number; w: number; title: string; rows: TipRow[] }) {
-  const right = x > w * 0.6;
   return (
-    <div className="sg-chart__tip" aria-hidden="true" style={{ left: x, top: y, transform: `translate(${right ? 'calc(-100% - 12px)' : '12px'}, -50%)` }}>
+    <div className="sg-chart__tip" aria-hidden="true" style={{ left: x, top: y, transform: tipShift(x, w) }}>
       <div className="sg-chart__tip-title">{title}</div>
       {rows.map((r) => <div key={r.label} className="sg-chart__tip-row">{r.color && <span className="sg-chart__swatch" style={{ background: r.color }} />}{r.label}<b>{r.value}</b></div>)}
     </div>
@@ -444,23 +528,83 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
   const leftTo = yAxisWidth(ticks.map(tickFmt)), ih = height - M.top - M.bottom;
   /* the scale and every point (per series × point, in data units) move as one (useMorph). A gap stands on the
      straight line between its neighbours: unseen while it is a gap, and where a value that fills it rises from */
-  const morph = useMorph([y0, y1, ...series.flatMap((s) => bridged(data.map((d) => d[s.key]), y0)), leftTo], box);
-  const left = morph.now[morph.now.length - 1];
-  const iw = Math.max(10, width - left - M.right);
-  const X = (i: number) => left + (data.length <= 1 ? iw / 2 : (i / (data.length - 1)) * iw);
-  const [sy0, sy1] = morph.now, [py0, py1] = morph.from;
-  const Y = (v: number) => M.top + ih - ((v - sy0) / (sy1 - sy0 || 1)) * ih;
-  const ys = morph.now.slice(2, -1).map(Y);
-  /* the ticks on screen when the axis changed fade out, each with the label it was drawn with */
-  const prevTicks = py0 === y0 && py1 === y1 ? ticks : axis.outgoing(morph.p);
+  const painter = useRef<Painter | null>(null);
+  const morph = useMorph([y0, y1, ...series.flatMap((s) => bridged(data.map((d) => d[s.key]), y0)), leftTo], box, undefined, '', painter);
+  const stepOf = (iw: number) => strideAt(iw, 72, data.length);
+  /* every step-th label, plus the last one when it does not crowd its neighbour */
+  const every = (i: number, k: number) => i % k === 0 || (i === data.length - 1 && i % k >= k / 2);
+  /* everything that moves, for one sample of the move: React renders it, and the painter writes it on every frame of a
+     move (#85) */
+  const geom = (now: number[], from: number[], p: number) => {
+    const left = now[now.length - 1];
+    const iw = Math.max(10, width - left - M.right);
+    const X = (i: number) => left + (data.length <= 1 ? iw / 2 : (i / (data.length - 1)) * iw);
+    const [sy0, sy1] = now, [py0, py1] = from;
+    const Y = (v: number) => M.top + ih - ((v - sy0) / (sy1 - sy0 || 1)) * ih;
+    const ys = now.slice(2, -1).map(Y);
+    /* the ticks on screen when the axis changed fade out, each with the label it was drawn with */
+    const grid = tickLayer(ticks, py0 === y0 && py1 === y1 ? ticks : axis.outgoing(p), p).map(({ t, o }) => ({ t, o, y: Y(t) }));
+    const base = Y(Math.max(sy0, 0));
+    /* nothing is drawn until the width is known (the server, the first render) */
+    const lines = series.map((s, si) => {
+      if (hidden.has(s.key) || measured === null) return null;
+      /* a gap breaks the line and the area: one piece per run of values (the data as it is now, so a gap opens or
+         closes at once and the points then move) */
+      const runs: [number, number][][] = [];
+      data.forEach((d, i) => {
+        if (!isNum(d[s.key])) return;
+        const pt: [number, number] = [X(i), ys[si * data.length + i] ?? Y(y0)];
+        if (i > 0 && isNum(data[i - 1][s.key])) runs[runs.length - 1].push(pt); else runs.push([pt]);
+      });
+      /* a value alone between gaps is a dot: a zero-length piece drawn with the line's round caps */
+      const line = runs.map((r) => pathOf(r, curve === 'smooth') + (r.length === 1 ? 'h0' : '')).join('');
+      const fill = runs.filter((r) => r.length > 1).map((r) => `${pathOf(r, curve === 'smooth')}L${r[r.length - 1][0]},${base}L${r[0][0]},${base}Z`).join('');
+      return { key: s.key, si, line, fill };
+    });
+    /* the crosshair's dots sit on the lines as drawn (on the target values, they left the line while it moved) */
+    const dot = (si: number, i: number) => ys[si * data.length + i] ?? Y(y0);
+    return { left, iw, X, grid, step: stepOf(iw), lines, dot };
+  };
+  const G = geom(morph.now, morph.from, morph.p), moving = morph.p < 1;
+  const { left, iw, X } = G;
+  /* while it moves, every label the moving gutter can make room for is mounted, and the painter shows the ones it does */
+  const labelled = labelSteps(moving ? [Math.max(10, width - morph.from[morph.from.length - 1] - M.right), Math.max(10, width - leftTo - M.right), iw] : [iw], 72, data.length);
   const tickLabel = axis.label;
   useDrawIn(g, [measured !== null]);
-  const step = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor(iw / 72))));
+  /* the layout as last drawn: what a pointer is over (React's at rest, the painter's while it moves) */
+  const geo = useRef(G);
+  useIsoLayoutEffect(() => { geo.current = G; });
+  /* draws a sample into what React mounted; false when it needs something that is not there (React renders instead) */
+  const draw = (now: number[], from: number[], p: number): boolean => {
+    const svg = box.current?.querySelector('svg');
+    if (!svg) return true;
+    const D = geom(now, from, p);
+    geo.current = D;
+    if (!paintGrid(svg, D.grid, D.left, D.iw)) return false;
+    if (!paintLabels(svg, data.length, D.X, (i) => every(i, D.step))) return false;
+    /* by the key as data, not in a selector (a key can hold what a selector cannot) */
+    const groups = new Map([...svg.querySelectorAll<SVGGElement>('g[data-k]')].map((el) => [el.dataset.k, el]));
+    for (const l of D.lines) {
+      if (!l) continue;
+      const sg = groups.get(l.key);
+      if (!sg) return false;
+      setAttrs(sg.querySelector('[data-draw]'), { d: l.line });
+      const f = sg.querySelector('[data-fade]');
+      if (f) setAttrs(f, { d: l.fill }); else if (area && l.fill) return false;
+    }
+    if (active !== null) {
+      setAttrs(svg.querySelector('.sg-chart__cross line'), { x1: D.X(active), x2: D.X(active) });
+      for (const c of svg.querySelectorAll<SVGCircleElement>('.sg-chart__cross circle')) setAttrs(c, { cx: D.X(active), cy: D.dot(+(c.dataset.si ?? 0), active) });
+      paintTip(box.current, D.X(active), width);
+    }
+    return true;
+  };
+  usePainter(painter, draw, morph.sample, moving);
   const onMove = (e: React.PointerEvent) => {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect(), at = geo.current;
     const px = e.clientX - r.left;
     setKbd(false);
-    setActive(data.length ? Math.max(0, Math.min(data.length - 1, Math.round(((px - left) / iw) * (data.length - 1)))) : null);
+    setActive(data.length ? Math.max(0, Math.min(data.length - 1, Math.round(((px - at.left) / at.iw) * (data.length - 1)))) : null);
   };
   const cell = (v: ChartDatum[string]) => (isNum(v) ? fmt(v) : '—');
   const rowsFor = (i: number) => shown.map((s) => ({ color: s.color ?? COLOR(series.indexOf(s)), label: s.label, value: cell(data[i][s.key]) }));
@@ -477,38 +621,22 @@ export function LineChart({ data, x, series, area, curve = 'smooth', zero, heigh
           <defs>{series.map((s, i) => (
             <linearGradient key={s.key} id={`${gid}-${i}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={s.color ?? COLOR(i)} stopOpacity="0.22" /><stop offset="1" stopColor={s.color ?? COLOR(i)} stopOpacity="0" /></linearGradient>
           ))}</defs>
-          {tickLayer(ticks, prevTicks, morph.p).map(({ t, o }) => <g key={t} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{tickLabel(t)}</text></g>)}
-          {/* every step-th label, plus the last one when it does not crowd its neighbour */}
-          {data.map((d, i) => (i % step === 0 || (i === data.length - 1 && i % step >= step / 2)) ? (
-            <text key={i} className="sg-chart__tick" x={X(i)} y={height - 6} textAnchor={i === 0 ? 'start' : i === data.length - 1 ? 'end' : 'middle'}>{xFormat(String(d[x]))}</text>
+          {G.grid.map(({ t, o, y }) => <g key={t} data-grid={t} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={y} y2={y} /><text className="sg-chart__tick" x={left - 8} y={y} dy="0.35em" textAnchor="end">{tickLabel(t)}</text></g>)}
+          {data.map((d, i) => labelled(i, every) ? (
+            <text key={i} data-xl={i} className="sg-chart__tick" x={X(i)} y={height - 6} textAnchor={i === 0 ? 'start' : i === data.length - 1 ? 'end' : 'middle'} display={every(i, G.step) ? undefined : 'none'}>{xFormat(String(d[x]))}</text>
           ) : null)}
           <g ref={g}>
-            {series.map((s, si) => {
-              if (hidden.has(s.key)) return null;
-              /* a gap breaks the line and the area: one piece per run of values (the data as it is now, so a gap
-                 opens or closes at once and the points then move) */
-              const runs: [number, number][][] = [];
-              data.forEach((d, i) => {
-                if (!isNum(d[s.key])) return;
-                const pt: [number, number] = [X(i), ys[si * data.length + i] ?? Y(y0)];
-                if (i > 0 && isNum(data[i - 1][s.key])) runs[runs.length - 1].push(pt); else runs.push([pt]);
-              });
-              const base = Y(Math.max(sy0, 0));
-              /* a value alone between gaps is a dot: a zero-length piece drawn with the line's round caps */
-              const line = runs.map((r) => pathOf(r, curve === 'smooth') + (r.length === 1 ? 'h0' : '')).join('');
-              const fill = runs.filter((r) => r.length > 1).map((r) => `${pathOf(r, curve === 'smooth')}L${r[r.length - 1][0]},${base}L${r[0][0]},${base}Z`).join('');
-              return (
-                <g key={s.key} style={{ color: s.color ?? COLOR(si) }}>
-                  {area && fill && <path data-fade d={fill} fill={`url(#${gid}-${si})`} />}
-                  <path data-draw className="sg-chart__line" d={line} pathLength={1} />
-                </g>
-              );
-            })}
+            {G.lines.map((l) => l && (
+              <g key={l.key} data-k={l.key} style={{ color: series[l.si].color ?? COLOR(l.si) }}>
+                {area && l.fill && <path data-fade d={l.fill} fill={`url(#${gid}-${l.si})`} />}
+                <path data-draw className="sg-chart__line" d={l.line} pathLength={1} />
+              </g>
+            ))}
           </g>
           {active !== null && (
             <g className="sg-chart__cross">
               <line x1={X(active)} x2={X(active)} y1={M.top} y2={M.top + ih} />
-              {shown.map((s) => { const si = series.indexOf(s); const v = data[active][s.key]; return isNum(v) ? <circle key={s.key} cx={X(active)} cy={Y(v)} r={4} style={{ fill: s.color ?? COLOR(si) }} /> : null; })}
+              {shown.map((s) => { const si = series.indexOf(s); return isNum(data[active][s.key]) ? <circle key={s.key} data-si={si} cx={X(active)} cy={G.dot(si, active)} r={4} style={{ fill: s.color ?? COLOR(si) }} /> : null; })}
             </g>
           )}
         </svg>}
@@ -694,10 +822,8 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
   };
   /* above the layout effect that commits `shown` (below): useMorph's own layout effect runs first and calls rebase,
      which reads the move still running from `shown` and leaves `carried` for that effect to take */
-  const morph = useMorph(mt, box, rebase, `${xl},${yl}`);
-  /* the gutter moves with the scales */
-  const left = morph.now[morph.now.length - 1], iw = Math.max(10, width - left - M.right);
-  const [sx0, sx1, sy0, sy1] = morph.now, [px0, px1, py0, py1] = morph.from;
+  const painter = useRef<Painter | null>(null);
+  const morph = useMorph(mt, box, rebase, `${xl},${yl}`, painter);
   /* the scale the move started from: after a switch between linear and log the old range is in the other scale's units, so its
      ticks are not drawn again (they would be read in the new units); the new ticks fade in as the axis moves */
   /* the scales as last committed, and the ones the move to them started from: written in a layout effect, so a render
@@ -716,52 +842,108 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
   /* ticks carried from a move drawn on the screen: each from where it is drawn to its place on the new scale, and from
      as faded as it is to shown (a tick of the new scale) or gone */
   const cX = shown.current.target === target ? shown.current.carryX : null, cY = shown.current.target === target ? shown.current.carryY : null;
-  /* a tick not carried (not drawn then) is drawn as the move draws a new one, fading in: at its place across a switch,
-     else on the moving scale */
-  const carriedAt = (c: Carry, t: number, axis: 0 | 1, log: boolean, switched: boolean) => {
-    const k = axis * 2, e = c.get(t);
-    if (e) return carriedPlace(e.f, u(t, log), switched, morph.from, mt, k, morph.p);
-    const lo = morph.now[k], hi = morph.now[k + 1];
-    return switched ? (u(t, log) - mt[k]) / (mt[k + 1] - mt[k] || 1) : (u(t, log) - lo) / (hi - lo || 1);
-  };
-  const carriedLayer = (c: Carry, next: number[]) => [...new Set([...next, ...c.keys()])]
-    .map((t) => { const o0 = c.get(t)?.o ?? 0; return { t, o: next.includes(t) ? o0 + (1 - o0) * morph.p : o0 * (1 - morph.p) }; })
-    .filter(({ o }) => o > 0.001);
   /* a carried tick leaving keeps the label it was drawn with */
   const carriedLabel = (c: Carry | null, next: number[], own: (t: number) => string) => (t: number) => (c && !next.includes(t) ? c.get(t)?.label ?? own(t) : own(t));
   const xSwitched = fromX !== xl, ySwitched = fromY !== yl;
-  /* across a switch the two ranges are in different units (log10 4–5 against 0–100,000), and a move in units would be all one or
-     the other; so a switched axis moves on the screen instead: each point and tick from its place on the old axis to its place on
-     the new one, on the move's progress */
-  const along = (v: number, from: boolean, lo0: number, hi0: number, now: boolean, lo1: number, hi1: number) => {
-    const b = (u(v, now) - lo1) / (hi1 - lo1 || 1), a = (u(v, from) - lo0) / (hi0 - lo0 || 1);
-    return isFinite(a) ? a + (b - a) * morph.p : b;
-  };
-  const xAt = (v: number) => left + along(v, fromX, px0, px1, xl, ax.lo, ax.hi) * iw;
-  const yAt = (v: number) => top + ih - along(v, fromY, py0, py1, yl, ay.lo, ay.hi) * ih;
-  /* a point across a switch starts from where it was drawn: its value at the move's start (morph.from, in the old axis's
-     units), not its new value read on the old axis, a place it never had (new data with the switch, or while hidden) */
-  const fromAlong = (f: number, v: number, lo0: number, hi0: number, now: boolean, lo1: number, hi1: number) => {
-    const b = (u(v, now) - lo1) / (hi1 - lo1 || 1), a = (f - lo0) / (hi0 - lo0 || 1);
-    return isFinite(a) ? a + (b - a) * morph.p : b;
-  };
-  const tx = (t: number) => (cX ? left + carriedAt(cX, t, 0, xl, xSwitched) * iw : xSwitched ? xAt(t) : X(u(t, xl)));
-  const ty = (t: number) => (cY ? top + ih - carriedAt(cY, t, 1, yl, ySwitched) * ih : ySwitched ? yAt(t) : Y(u(t, yl)));
-  const pos = (i: number): [number, number] => [
-    xSwitched ? left + fromAlong(morph.from[4 + i * 2], num(data[i], x, xl)!, px0, px1, xl, ax.lo, ax.hi) * iw : X(morph.now[4 + i * 2]),
-    ySwitched ? top + ih - fromAlong(morph.from[5 + i * 2], num(data[i], y, yl)!, py0, py1, yl, ay.lo, ay.hi) * ih : Y(morph.now[5 + i * 2]),
-  ];
-  /* while a switch moves them, ticks outside the plot are not drawn */
-  const inX = (t: number) => { const v = tx(t); return isFinite(v) && v >= left - 1 && v <= left + iw + 1; };
-  const inY = (t: number) => { const v = ty(t); return isFinite(v) && v >= top - 1 && v <= top + ih + 1; };
-  const X = (uv: number) => left + ((uv - sx0) / (sx1 - sx0 || 1)) * iw;
-  const Y = (uv: number) => top + ih - ((uv - sy0) / (sy1 - sy0 || 1)) * ih;
-  const prevX = xSwitched ? [] : px0 === ax.lo && px1 === ax.hi ? ax.ticks : xAxis.outgoing(morph.p);
-  const prevY = ySwitched ? [] : py0 === ay.lo && py1 === ay.hi ? ay.ticks : yAxis.outgoing(morph.p);
   const xLabelOf = xAxis.label, yLabelOf = yAxis.label;
   const xTickLabel = carriedLabel(cX, ax.ticks, xLabelOf), yTickLabel = carriedLabel(cY, ay.ticks, yLabelOf);
   const picked = new Set(highlight ?? []);
   const name = (i: number) => String(data[i][pointLabel] ?? '');
+  /* the label's width at 12 px, near enough: wide (CJK) characters about 12 px, others about 7 */
+  const tw = (t: string) => [...t].reduce((a, c) => a + (c.charCodeAt(0) > 0x1100 ? 12 : 7), 4);
+  /* everything that moves, for one sample of the move: React renders it, and the painter writes it on every frame of a
+     move (#85) */
+  const geom = (now: number[], from: number[], p: number) => {
+    /* the gutter moves with the scales */
+    const left = now[now.length - 1], iw = Math.max(10, width - left - M.right);
+    const [sx0, sx1, sy0, sy1] = now, [px0, px1, py0, py1] = from;
+    const X = (uv: number) => left + ((uv - sx0) / (sx1 - sx0 || 1)) * iw;
+    const Y = (uv: number) => top + ih - ((uv - sy0) / (sy1 - sy0 || 1)) * ih;
+    /* a tick not carried (not drawn then) is drawn as the move draws a new one, fading in: at its place across a switch,
+       else on the moving scale */
+    const carriedAt = (c: Carry, t: number, axis: 0 | 1, log: boolean, switched: boolean) => {
+      const k = axis * 2, e = c.get(t);
+      if (e) return carriedPlace(e.f, u(t, log), switched, from, mt, k, p);
+      const lo = now[k], hi = now[k + 1];
+      return switched ? (u(t, log) - mt[k]) / (mt[k + 1] - mt[k] || 1) : (u(t, log) - lo) / (hi - lo || 1);
+    };
+    const carriedLayer = (c: Carry, next: number[]) => [...new Set([...next, ...c.keys()])]
+      .map((t) => { const o0 = c.get(t)?.o ?? 0; return { t, o: next.includes(t) ? o0 + (1 - o0) * p : o0 * (1 - p) }; });
+    /* across a switch the two ranges are in different units (log10 4–5 against 0–100,000), and a move in units would be all one or
+       the other; so a switched axis moves on the screen instead: each point and tick from its place on the old axis to its place on
+       the new one, on the move's progress */
+    const along = (v: number, was: boolean, lo0: number, hi0: number, is: boolean, lo1: number, hi1: number) => {
+      const b = (u(v, is) - lo1) / (hi1 - lo1 || 1), a = (u(v, was) - lo0) / (hi0 - lo0 || 1);
+      return isFinite(a) ? a + (b - a) * p : b;
+    };
+    const xAt = (v: number) => left + along(v, fromX, px0, px1, xl, ax.lo, ax.hi) * iw;
+    const yAt = (v: number) => top + ih - along(v, fromY, py0, py1, yl, ay.lo, ay.hi) * ih;
+    /* a point across a switch starts from where it was drawn: its value at the move's start (from, in the old axis's
+       units), not its new value read on the old axis, a place it never had (new data with the switch, or while hidden) */
+    const fromAlong = (f: number, v: number, lo0: number, hi0: number, is: boolean, lo1: number, hi1: number) => {
+      const b = (u(v, is) - lo1) / (hi1 - lo1 || 1), a = (f - lo0) / (hi0 - lo0 || 1);
+      return isFinite(a) ? a + (b - a) * p : b;
+    };
+    const tx = (t: number) => (cX ? left + carriedAt(cX, t, 0, xl, xSwitched) * iw : xSwitched ? xAt(t) : X(u(t, xl)));
+    const ty = (t: number) => (cY ? top + ih - carriedAt(cY, t, 1, yl, ySwitched) * ih : ySwitched ? yAt(t) : Y(u(t, yl)));
+    const pos = (i: number): [number, number] => [
+      xSwitched ? left + fromAlong(from[4 + i * 2], num(data[i], x, xl)!, px0, px1, xl, ax.lo, ax.hi) * iw : X(now[4 + i * 2]),
+      ySwitched ? top + ih - fromAlong(from[5 + i * 2], num(data[i], y, yl)!, py0, py1, yl, ay.lo, ay.hi) * ih : Y(now[5 + i * 2]),
+    ];
+    /* while a switch moves them, ticks outside the plot are not drawn, nor carried ones faded out */
+    const inX = (t: number) => { const v = tx(t); return isFinite(v) && v >= left - 1 && v <= left + iw + 1; };
+    const inY = (t: number) => { const v = ty(t); return isFinite(v) && v >= top - 1 && v <= top + ih + 1; };
+    const prevX = xSwitched ? [] : px0 === ax.lo && px1 === ax.hi ? ax.ticks : xAxis.outgoing(p);
+    const prevY = ySwitched ? [] : py0 === ay.lo && py1 === ay.hi ? ay.ticks : yAxis.outgoing(p);
+    const gridY = (cY ? carriedLayer(cY, ay.ticks) : tickLayer(ay.ticks, prevY, p)).map(({ t, o }) => ({ t, o, at: ty(t), on: (!cY || o > 0.001) && inY(t) }));
+    const gridX = (cX ? carriedLayer(cX, ax.ticks) : tickLayer(ax.ticks, prevX, p)).map(({ t, o }) => ({ t, o, at: tx(t), on: (!cX || o > 0.001) && inX(t) }));
+    /* names of the picked points: beside the point (left of it near the right edge); a name that would cover one
+       already placed moves down a line, so points close together keep both names readable */
+    const labels: { i: number; x: number; y: number; flip: boolean }[] = [];
+    for (const i of plotted) {
+      if (!onShow(data[i]) || !picked.has(name(i)) || measured === null) continue;
+      const [cx, cy] = pos(i), flip = cx > left + iw * 0.75, w = tw(name(i));
+      const lx = cx + (flip ? -10 : 10), x0 = flip ? lx - w : lx, x1 = flip ? lx : lx + w;
+      let ly = cy;
+      for (let n = 0; n < labels.length + 1; n++) {
+        const hit = labels.find((l) => { const w2 = tw(name(l.i)), a0 = l.flip ? l.x - w2 : l.x, a1 = l.flip ? l.x : l.x + w2; return a0 < x1 && x0 < a1 && Math.abs(l.y - ly) < 15; });
+        if (!hit) break;
+        ly = hit.y + 15;
+      }
+      labels.push({ i, x: lx, y: ly, flip });
+    }
+    return { left, iw, pos, gridX, gridY, labels };
+  };
+  const G = geom(morph.now, morph.from, morph.p), moving = morph.p < 1;
+  const { left, iw, pos } = G;
+  /* the layout as last drawn: what a pointer is over (React's at rest, the painter's while it moves) */
+  const geo = useRef(G);
+  useIsoLayoutEffect(() => { geo.current = G; });
+  /* draws a sample into what React mounted; false when it needs something that is not there (React renders instead) */
+  const draw = (now: number[], from: number[], p: number): boolean => {
+    const svg = box.current?.querySelector('svg');
+    if (!svg) return true;
+    const D = geom(now, from, p);
+    geo.current = D;
+    for (const [axis, grid] of [['y', D.gridY], ['x', D.gridX]] as const) for (const { t, o, at, on } of grid) {
+      const gl = svg.querySelector(`g[data-grid="${axis}${t}"]`);
+      if (!gl) { if (on) return false; continue; }
+      setAttrs(gl, { opacity: o < 1 ? o.toFixed(3) : null, display: on ? null : 'none' });
+      if (axis === 'y') { setAttrs(gl.firstElementChild, { x1: D.left, x2: D.left + D.iw, y1: at, y2: at }); setAttrs(gl.lastElementChild, { x: D.left - 8, y: at }); }
+      else { setAttrs(gl.firstElementChild, { x1: at, x2: at }); setAttrs(gl.lastElementChild, { x: at }); }
+    }
+    setAttrs(svg.querySelector('[data-title=y]'), { x: D.left });
+    setAttrs(svg.querySelector('[data-title=x]'), { x: D.left + D.iw });
+    for (const c of svg.querySelectorAll<SVGCircleElement>('circle[data-pop]')) { const [cx, cy] = D.pos(+(c.dataset.i ?? 0)); setAttrs(c, { cx, cy }); }
+    const names = svg.querySelectorAll<SVGTextElement>('text[data-name]');
+    if (names.length !== D.labels.length) return false;
+    D.labels.forEach((l, k) => setAttrs(names[k], { x: l.x, y: l.y, 'text-anchor': l.flip ? 'end' : 'start' }));
+    if (active !== null) paintTip(box.current, D.pos(active)[0], width);
+    const tip = box.current?.querySelector<HTMLElement>(':scope > .sg-chart__tip');
+    if (tip && active !== null) tip.style.top = `${D.pos(active)[1]}px`;
+    return true;
+  };
+  usePainter(painter, draw, morph.sample, moving);
   /* entrance: the points pop in from left to right */
   useIsoLayoutEffect(() => {
     const el = g.current;
@@ -771,30 +953,13 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
     const order = pts.map((p, k) => [k, +(p.getAttribute('cx') ?? 0)] as const).sort((a, b) => a[1] - b[1]).map(([k]) => k);
     order.forEach((k, n) => { animate(pts[k], [{ transform: 'scale(0)' }, { transform: 'scale(1)' }], 'pop', { delay: Math.min(n * 12, 300), fill: 'backwards' }); });
   }, [measured !== null]);
-  /* names of the picked points: beside the point (left of it near the right edge); a name that would cover one
-     already placed moves down a line, so points close together keep both names readable */
-  const labels: { i: number; x: number; y: number; flip: boolean }[] = [];
-  /* the label's width at 12 px, near enough: wide (CJK) characters about 12 px, others about 7 */
-  const tw = (t: string) => [...t].reduce((a, c) => a + (c.charCodeAt(0) > 0x1100 ? 12 : 7), 4);
-  for (const i of plotted) {
-    if (!onShow(data[i]) || !picked.has(name(i)) || measured === null) continue;
-    const [cx, cy] = pos(i), flip = cx > left + iw * 0.75, w = tw(name(i));
-    const x = cx + (flip ? -10 : 10), x0 = flip ? x - w : x, x1 = flip ? x : x + w;
-    let y = cy;
-    for (let n = 0; n < labels.length + 1; n++) {
-      const hit = labels.find((l) => { const w2 = tw(name(l.i)), a0 = l.flip ? l.x - w2 : l.x, a1 = l.flip ? l.x : l.x + w2; return a0 < x1 && x0 < a1 && Math.abs(l.y - y) < 15; });
-      if (!hit) break;
-      y = hit.y + 15;
-    }
-    labels.push({ i, x, y, flip });
-  }
-  /* keys walk the points left to right */
-  const byX = [...visible].sort((a, b) => morph.now[4 + a * 2] - morph.now[4 + b * 2]);
+  /* keys walk the points left to right, as they are drawn (they cross while they move) */
+  const byX = () => { const at = geo.current; return [...visible].sort((a, b) => at.pos(a)[0] - at.pos(b)[0]); };
   const onMove = (e: ReactPointerEvent) => {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect(), at = geo.current;
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     let best: number | null = null, bd = 28 * 28;
-    for (const i of visible) { const [px, py] = pos(i), d = (px - mx) ** 2 + (py - my) ** 2; if (d < bd) { bd = d; best = i; } }
+    for (const i of visible) { const [px, py] = at.pos(i), d = (px - mx) ** 2 + (py - my) ** 2; if (d < bd) { bd = d; best = i; } }
     setKbd(false);
     setActive(best);
   };
@@ -808,24 +973,26 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
   const table = useMemo(() => srTable(label, [xLabel, yLabel, ...(group ? [''] : [])],
     data.map((d) => ({ head: String(d[pointLabel] ?? ''), cells: [cell(d, x, fx), cell(d, y, fy), ...(group ? [groups[gi(d)]?.label ?? String(d[group] ?? '')] : [])] }))),
   [label, data, x, y, pointLabel, group, groups, xLabel, yLabel, fx, fy]);
+  /* while it moves, every tick the move can draw is mounted and the painter shows the ones it does */
+  const mounted = (q: { on: boolean }) => q.on || moving;
   return (
     <ChartChrome label={label} locale={locale} series={groups} hidden={hidden} toggle={toggle} legend={legend && !!group} announce={announce} caption={caption} className={className} style={style}
       table={table}>
       <div ref={box} className="sg-chart__plot sg-scatter" tabIndex={0} role="img" aria-label={label}
         onPointerMove={onMove} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}
-        onKeyDown={(e) => { setKbd(true); const at = active === null ? null : byX.indexOf(active); plotKeys(e, byX.length, at !== null && at >= 0 ? at : null, (n) => setActive(n === null ? null : byX[n] ?? null)); }}>
+        onKeyDown={(e) => { setKbd(true); const order = byX(), at = active === null ? null : order.indexOf(active); plotKeys(e, order.length, at !== null && at >= 0 ? at : null, (n) => setActive(n === null ? null : order[n] ?? null)); }}>
         {measured === null ? <div style={{ height }} /> : <svg width={width} height={height} aria-hidden="true">
-          {(cY ? carriedLayer(cY, ay.ticks) : tickLayer(ay.ticks, prevY, morph.p)).filter(({ t }) => inY(t)).map(({ t, o }) => <g key={`y${t}`} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={ty(t)} y2={ty(t)} /><text className="sg-chart__tick" x={left - 8} y={ty(t)} dy="0.35em" textAnchor="end">{yTickLabel(t)}</text></g>)}
-          {(cX ? carriedLayer(cX, ax.ticks) : tickLayer(ax.ticks, prevX, morph.p)).filter(({ t }) => inX(t)).map(({ t, o }) => <g key={`x${t}`} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={tx(t)} x2={tx(t)} y1={top} y2={top + ih} /><text className="sg-chart__tick" x={tx(t)} y={top + ih + 16} textAnchor="middle">{xTickLabel(t)}</text></g>)}
-          {yLabel && <text className="sg-chart__axis-title" x={left} y={M.top + 2} dy="0.35em" textAnchor="start">{yLabel}</text>}
-          {xLabel && <text className="sg-chart__axis-title" x={left + iw} y={height - 4} textAnchor="end">{xLabel}</text>}
+          {G.gridY.filter(mounted).map(({ t, o, at, on }) => <g key={`y${t}`} data-grid={`y${t}`} opacity={o < 1 ? o.toFixed(3) : undefined} display={on ? undefined : 'none'}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={at} y2={at} /><text className="sg-chart__tick" x={left - 8} y={at} dy="0.35em" textAnchor="end">{yTickLabel(t)}</text></g>)}
+          {G.gridX.filter(mounted).map(({ t, o, at, on }) => <g key={`x${t}`} data-grid={`x${t}`} opacity={o < 1 ? o.toFixed(3) : undefined} display={on ? undefined : 'none'}><line className="sg-chart__grid" x1={at} x2={at} y1={top} y2={top + ih} /><text className="sg-chart__tick" x={at} y={top + ih + 16} textAnchor="middle">{xTickLabel(t)}</text></g>)}
+          {yLabel && <text data-title="y" className="sg-chart__axis-title" x={left} y={M.top + 2} dy="0.35em" textAnchor="start">{yLabel}</text>}
+          {xLabel && <text data-title="x" className="sg-chart__axis-title" x={left + iw} y={height - 4} textAnchor="end">{xLabel}</text>}
           <g ref={g} data-picking={picked.size > 0 || undefined}>
             {plotted.map((i) => {
               if (!onShow(data[i])) return null;
               const [cx, cy] = pos(i), on = picked.has(name(i));
-              return <circle key={i} data-pop className="sg-scatter__point" data-picked={on || undefined} data-active={active === i || undefined} cx={cx} cy={cy} r={on ? 6.5 : 5} style={{ fill: colorOf(data[i]) }} />;
+              return <circle key={i} data-pop data-i={i} className="sg-scatter__point" data-picked={on || undefined} data-active={active === i || undefined} cx={cx} cy={cy} r={on ? 6.5 : 5} style={{ fill: colorOf(data[i]) }} />;
             })}
-            {labels.map((l) => <text key={`l${l.i}`} className="sg-scatter__label" x={l.x} y={l.y} dy="0.35em" textAnchor={l.flip ? 'end' : 'start'}>{name(l.i)}</text>)}
+            {G.labels.map((l) => <text key={`l${l.i}`} data-name className="sg-scatter__label" x={l.x} y={l.y} dy="0.35em" textAnchor={l.flip ? 'end' : 'start'}>{name(l.i)}</text>)}
           </g>
         </svg>}
         {active !== null && measured !== null && <Tip x={pos(active)[0]} y={pos(active)[1]} w={width} title={name(active)} rows={rowsFor(active)} />}
@@ -885,15 +1052,79 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
     if (stacked) slots.push(0, 1);
     else slots.push(before / Math.max(1, shown.length), hidden.has(s.key) ? 0 : 1 / Math.max(1, shown.length));
   });
-  const morph = useMorph([top, ...ends, stacked ? 1 : 0, ...slots, leftTo], box);
-  /* the gutter moves with the scale */
-  const left = morph.now[morph.now.length - 1], iw = Math.max(10, width - left - M.right);
-  const band = iw / Math.max(1, data.length), pad = Math.min(band * 0.28, 18);
-  const sTop = morph.now[0], pTop = morph.from[0];
-  const Y = (v: number) => M.top + ih - (v / (sTop || 1)) * ih;
-  const gv: number[] = [];
-  for (let j = 1; j < 1 + ends.length; j += 2) { const a = morph.now[j], b2 = morph.now[j + 1]; gv.push(Y(b2), Y(a) - Y(b2)); }
-  const prevTicks = pTop === top ? ticks : axis.outgoing(morph.p);
+  const painter = useRef<Painter | null>(null);
+  const morph = useMorph([top, ...ends, stacked ? 1 : 0, ...slots, leftTo], box, undefined, '', painter);
+  const nAt = 1 + ends.length, slot0 = 2 + ends.length;
+  /* how many categories share one label: as many as the plot's width leaves room for */
+  const stepOf = (iw: number) => strideAt(iw, 64, data.length);
+  /* everything that moves, for one sample of the move: React renders it, and the painter writes it on every frame of a
+     move (#85). The gutter moves with the scale. */
+  const geom = (now: number[], from: number[], p: number) => {
+    const left = now[now.length - 1], iw = Math.max(10, width - left - M.right);
+    const band = iw / Math.max(1, data.length), pad = Math.min(band * 0.28, 18);
+    const sTop = now[0];
+    const Y = (v: number) => M.top + ih - (v / (sTop || 1)) * ih;
+    const grid = tickLayer(ticks, from[0] === top ? ticks : axis.outgoing(p), p).map(({ t, o }) => ({ t, o, y: Y(t) }));
+    const nS = now[nAt], n = Math.max(1, shown.length);
+    /* narrower bars than the band allows: a stack at most 40 px, a group's bars 22 px each */
+    const wS = Math.min(band - pad, 40), wG = Math.min(band - pad, n * 22 + (n - 1) * 2);
+    const inner = wG + (wS - wG) * nS;
+    const gapX = shown.length > 1 ? 2 * (1 - nS) : 0;
+    /* nothing is drawn until the width is known (the server, the first render) */
+    const cols = (measured === null ? [] : data).map((_, i) => {
+      const x0 = left + i * band + (band - inner) / 2;
+      const segs = series.map((s, si) => {
+        const at = (i * series.length + si) * 2;
+        const base = now[1 + at], y = Y(now[2 + at]), h = Math.max(0, Y(base) - y);
+        const st = now[slot0 + si * 2], sw = now[slot0 + si * 2 + 1];
+        const w = Math.max(0, sw * inner - gapX);
+        return { key: s.key, si, base, y, h, x: x0 + st * inner + gapX / 2, w, live: !hidden.has(s.key) || h > 0.5 || w > 0.5 };
+      });
+      const topY = Math.min(...segs.filter((q) => q.live && q.h > 0.5).map((q) => q.y), Y(0));
+      return segs.map(({ key, si, base, y, h, x: bx, w, live }) => {
+        const R = Math.min(6, w / 2.5);
+        const onStack = base > (top || 1) * 1e-4;   /* something under it in the stack */
+        /* top corners: a grouped bar rounds its own top; in a stack only the stack's top is round (a piece just under a
+           shrinking top piece rounds in as it reaches the top, so a hidden series hands the roundness over without a
+           jump) */
+        const rt = R * (1 - nS) + Math.max(0, R - (y - topY)) * nS;
+        /* a seam (2 px of the plot showing through) under every piece that sits on another, so the parts read apart
+           without leaning on their colours alone, as the donut's slices */
+        const gapY = onStack ? 2 * nS : 0;
+        return { key, si, live, d: barPath(bx, y, w, h - Math.min(gapY, h), rt) };
+      });
+    });
+    return { left, iw, band, base: Y(0), grid, step: stepOf(iw), cols };
+  };
+  const G = geom(morph.now, morph.from, morph.p), moving = morph.p < 1;
+  const { left, iw, band } = G;
+  /* while it moves, every label the moving gutter can make room for is mounted, and the painter shows the ones it does */
+  const labelled = labelSteps(moving ? [Math.max(10, width - morph.from[morph.from.length - 1] - M.right), Math.max(10, width - leftTo - M.right), iw] : [iw], 64, data.length);
+  const every = (i: number, k: number) => i % k === 0;
+  /* the layout as last drawn: what a pointer is over (React's at rest, the painter's while it moves) */
+  const geo = useRef(G);
+  useIsoLayoutEffect(() => { geo.current = G; });
+  const tipAt = (l: number, b: number) => l + (active ?? 0) * b + b / 2;
+  /* draws a sample into what React mounted; false when it needs something that is not there (React renders instead) */
+  const draw = (now: number[], from: number[], p: number): boolean => {
+    const svg = box.current?.querySelector('svg');
+    if (!svg) return true;
+    const D = geom(now, from, p);
+    geo.current = D;
+    if (!paintGrid(svg, D.grid, D.left, D.iw)) return false;
+    if (!paintLabels(svg, data.length, (i) => D.left + i * D.band + D.band / 2, (i) => every(i, D.step))) return false;
+    const bars = new Map<string, Element>();
+    for (const el of svg.querySelectorAll<SVGPathElement>('path[data-bar]')) bars.set(`${el.dataset.i}|${el.dataset.k}`, el);
+    for (let i = 0; i < D.cols.length; i++) for (const q of D.cols[i]) {
+      const el = bars.get(`${i}|${q.key}`);
+      if (el) setAttrs(el, { d: q.d }); else if (q.live) return false;
+    }
+    setAttrs(svg.querySelector('[data-band]'), { x: D.left + (active ?? 0) * D.band, width: D.band });
+    setAttrs(svg.querySelector('[data-axis]'), { x1: D.left, x2: D.left + D.iw });
+    paintTip(box.current, tipAt(D.left, D.band), width);
+    return true;
+  };
+  usePainter(painter, draw, morph.sample, moving);
   const tickLabel = axis.label;
   /* entrance: each category rises from the baseline as one bar (its pieces stay stacked), one after another */
   useIsoLayoutEffect(() => {
@@ -905,11 +1136,10 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
       animate(r, [{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], 'bouncy', { delay: Math.min(i * 28, 300), fill: 'backwards' });
     });
   }, [measured !== null]);
-  const step = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor(iw / 64))));
   const onMove = (e: React.PointerEvent) => {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect(), at = geo.current;
     setKbd(false);
-    setActive(data.length ? Math.max(0, Math.min(data.length - 1, Math.floor((e.clientX - r.left - left) / band))) : null);
+    setActive(data.length ? Math.max(0, Math.min(data.length - 1, Math.floor((e.clientX - r.left - at.left) / at.band))) : null);
   };
   const cell = (v: ChartDatum[string]) => (isNum(v) ? fmt(v) : '—');
   const rowsFor = (i: number) => shown.map((s) => ({ color: s.color ?? COLOR(series.indexOf(s)), label: s.label, value: cell(data[i][s.key]) }));
@@ -923,46 +1153,20 @@ export function BarChart({ data, x, series, stacked, height = 240, yFormat, xFor
         onPointerMove={onMove} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}
         onKeyDown={(e) => { setKbd(true); plotKeys(e, data.length, active, setActive); }}>
         {measured === null ? <div style={{ height }} /> : <svg width={width} height={height} aria-hidden="true">
-          {active !== null && <rect className="sg-chart__band" x={left + active * band} y={M.top} width={band} height={ih} rx={6} />}
-          {tickLayer(ticks, prevTicks, morph.p).map(({ t, o }) => <g key={t} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={Y(t)} y2={Y(t)} /><text className="sg-chart__tick" x={left - 8} y={Y(t)} dy="0.35em" textAnchor="end">{tickLabel(t)}</text></g>)}
-          {data.map((d, i) => (i % step === 0 ? <text key={i} className="sg-chart__tick" x={left + i * band + band / 2} y={height - 6} textAnchor="middle">{xFormat(String(d[x]))}</text> : null))}
+          {active !== null && <rect data-band className="sg-chart__band" x={left + active * band} y={M.top} width={band} height={ih} rx={6} />}
+          {G.grid.map(({ t, o, y }) => <g key={t} data-grid={t} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={y} y2={y} /><text className="sg-chart__tick" x={left - 8} y={y} dy="0.35em" textAnchor="end">{tickLabel(t)}</text></g>)}
+          {data.map((d, i) => (labelled(i, every) ? <text key={i} data-xl={i} className="sg-chart__tick" x={left + i * band + band / 2} y={height - 6} textAnchor="middle" display={i % G.step === 0 ? undefined : 'none'}>{xFormat(String(d[x]))}</text> : null))}
           <g ref={g}>
-            {data.map((_, i) => {
-              const nS = morph.now[1 + ends.length], slot0 = 2 + ends.length;
-              const n = Math.max(1, shown.length);
-              /* narrower bars than the band allows: a stack at most 40 px, a group's bars 22 px each */
-              const wS = Math.min(band - pad, 40), wG = Math.min(band - pad, n * 22 + (n - 1) * 2);
-              const inner = wG + (wS - wG) * nS, x0 = left + i * band + (band - inner) / 2;
-              const gapX = shown.length > 1 ? 2 * (1 - nS) : 0;
-              const segs = series.map((s, si) => {
-                const at = (i * series.length + si) * 2;
-                const base = morph.now[1 + at], y = gv[at] ?? Y(0), h = Math.max(0, gv[at + 1] ?? 0);
-                const st = morph.now[slot0 + si * 2], sw = morph.now[slot0 + si * 2 + 1];
-                return { s, si, base, y, h, x: x0 + st * inner + gapX / 2, w: Math.max(0, sw * inner - gapX) };
-              });
-              const live = segs.filter((q) => !hidden.has(q.s.key) || q.h > 0.5 || q.w > 0.5);
-              const topY = Math.min(...live.filter((q) => q.h > 0.5).map((q) => q.y), Y(0));
-              return (
-                <g key={i} data-col data-i={i} className="sg-chart__col">
-                  {live.map(({ s, si, base, y, h, x: bx, w }) => {
-                    const R = Math.min(6, w / 2.5);
-                    const onStack = base > (top || 1) * 1e-4;   /* something under it in the stack */
-                    /* top corners: a grouped bar rounds its own top; in a stack only the stack's top is round (a piece
-                       just under a shrinking top piece rounds in as it reaches the top, so a hidden series hands the
-                       roundness over without a jump) */
-                    const rt = R * (1 - nS) + Math.max(0, R - (y - topY)) * nS;
-                    /* a seam (2 px of the plot showing through) under every piece that sits on another, so the parts
-                       read apart without leaning on their colours alone, as the donut's slices */
-                    const gapY = onStack ? 2 * nS : 0;
-                    return <path key={s.key} data-bar data-i={i} className="sg-chart__bar" d={barPath(bx, y, w, h - Math.min(gapY, h), rt)} style={{ fill: s.color ?? COLOR(si) }} />;
-                  })}
-                </g>
-              );
-            })}
+            {G.cols.map((segs, i) => (
+              <g key={i} data-col data-i={i} className="sg-chart__col">
+                {/* a piece that has closed to nothing is let go once the move ends (while it moves, it stays for the painter) */}
+                {segs.filter((q) => q.live || moving).map(({ key, si, d }) => <path key={key} data-bar data-i={i} data-k={key} className="sg-chart__bar" d={d} style={{ fill: series[si].color ?? COLOR(si) }} />)}
+              </g>
+            ))}
           </g>
-          <line className="sg-chart__axis" x1={left} x2={left + iw} y1={Y(0)} y2={Y(0)} />
+          <line data-axis className="sg-chart__axis" x1={left} x2={left + iw} y1={G.base} y2={G.base} />
         </svg>}
-        {active !== null && <Tip x={left + active * band + band / 2} y={M.top + ih / 2} w={width} title={xFormat(String(data[active][x]))} rows={rowsFor(active)} />}
+        {active !== null && <Tip x={tipAt(left, band)} y={M.top + ih / 2} w={width} title={xFormat(String(data[active][x]))} rows={rowsFor(active)} />}
       </div>
     </ChartChrome>
   );
@@ -1021,7 +1225,8 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
   /* tween the cumulative angles */
   const ends: number[] = [];
   data.reduce((a, d) => { const e = a + (part(d) / total) * Math.PI * 2; ends.push(e); return e; }, 0);
-  const ang = useTween(ends, svg, ends.map((v) => v.toFixed(4)).join(','));
+  const painter = useRef<((now: number[]) => boolean | void) | null>(null);
+  const tween = useTween(ends, svg, ends.map((v) => v.toFixed(4)).join(','), painter), ang = tween.now;
   useIsoLayoutEffect(() => {
     const el = svg.current?.querySelector<SVGGElement>('g[data-rings]');
     if (!el) return;
@@ -1044,9 +1249,28 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
     const b = e.currentTarget.getBoundingClientRect(), x = e.clientX - b.left - c, y = e.clientY - b.top - c, dist = Math.hypot(x, y);
     if (dist < ri - 2 || dist > r + 6) return null;
     const a = (Math.atan2(x, -y) + Math.PI * 2) % (Math.PI * 2);
-    const i = ang.findIndex((end) => a < end);
+    const i = drawn.current.findIndex((end) => a < end);
     return i < 0 ? null : i;
   };
+  /* the active slice lifts outward along its middle */
+  const lift = (a0: number, a1: number) => { const m = (a0 + a1) / 2; return `translate(${(Math.sin(m) * 4).toFixed(2)}px, ${(-Math.cos(m) * 4).toFixed(2)}px)`; };
+  /* the angles as last drawn: what a pointer is over (React's at rest, the painter's while it moves) */
+  const drawn = useRef(ang);
+  useIsoLayoutEffect(() => { drawn.current = ang; });
+  /* draws the angles into the slices React mounted (one per datum, in order); false when they are not all there */
+  const draw = (now: number[]): boolean => {
+    const els = svg.current?.querySelectorAll<SVGPathElement>('path.sg-donut__slice');
+    if (!els) return true;
+    if (els.length !== now.length) return false;
+    drawn.current = now;
+    els.forEach((el, i) => {
+      const a0 = i ? now[i - 1] : 0;
+      setAttrs(el, { d: arc(a0, now[i]) });
+      if (i === active) el.style.setProperty('--_lift', lift(a0, now[i]));
+    });
+    return true;
+  };
+  usePainter(painter, draw, () => [tween.sample()] as [number[]], tween.moving);
   const value = (d: DonutSlice) => (isNum(d.value) ? fmt(d.value) : '—');
   const say = (i: number) => `${data[i].label}: ${value(data[i])} (${pct.format(part(data[i]) / total)})`;
   return (
@@ -1063,7 +1287,7 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel, cent
             {data.map((d, i) => (
               /* the active slice lifts outward along its middle — a transform, so it moves on a spring instead of jumping */
               <path key={d.label} className="sg-donut__slice" d={arc(i ? ang[i - 1] : 0, ang[i])} data-active={active === i || undefined}
-                style={{ fill: d.color ?? COLOR(i), opacity: active !== null && active !== i ? 0.45 : 1, ...(active === i ? { '--_lift': (() => { const m = ((i ? ang[i - 1] : 0) + ang[i]) / 2; return `translate(${(Math.sin(m) * 4).toFixed(2)}px, ${(-Math.cos(m) * 4).toFixed(2)}px)`; })() } as CSSProperties : {}) }} />
+                style={{ fill: d.color ?? COLOR(i), opacity: active !== null && active !== i ? 0.45 : 1, ...(active === i ? { '--_lift': lift(i ? ang[i - 1] : 0, ang[i]) } as CSSProperties : {}) }} />
             ))}
           </g>
         </svg>
@@ -1107,10 +1331,25 @@ export function Sparkline({ values, tone = 'accent', area = true, height = 32, '
   const gid = useStableId('sg-sp');
   const [lo, hi] = extent(values), pad = 3;
   const Y = (v: number) => pad + (height - pad * 2) * (1 - (v - lo) / (hi - lo || 1));
-  const ys = useTween(values.map(Y), box, values.join(','));
+  const painter = useRef<((now: number[]) => boolean | void) | null>(null);
+  const tween = useTween(values.map(Y), box, values.join(','), painter);
   const X = (i: number) => pad + (i / Math.max(1, values.length - 1)) * (width - pad * 2);
-  const pts = ys.map((y, i) => [X(i), y] as [number, number]);
-  const line = pathOf(pts, true);
+  const geom = (ys: number[]) => {
+    const pts = ys.map((y, i) => [X(i), y] as [number, number]), line = pathOf(pts, true);
+    return { pts, line, fill: `${line}L${X(values.length - 1)},${height}L${X(0)},${height}Z` };
+  };
+  const { pts, line, fill } = geom(tween.now);
+  /* draws a sample of the move into what React mounted (#85) */
+  const draw = (now: number[]) => {
+    const svg = box.current?.querySelector('svg');
+    if (!svg) return true;
+    const D = geom(now), end = D.pts[D.pts.length - 1];
+    setAttrs(svg.querySelector('[data-draw]'), { d: D.line });
+    setAttrs(svg.querySelector('[data-fade]'), { d: D.fill });
+    if (end) setAttrs(svg.querySelector('circle'), { cx: end[0], cy: end[1] });
+    return true;
+  };
+  usePainter(painter, draw, () => [tween.sample()] as [number[]], tween.moving);
   useDrawIn(g, [measured !== null]);
   const color = tone === 'neutral' ? 'var(--sg-label-tertiary)' : tone === 'accent' ? 'var(--sg-accent)' : tone === 'info' ? 'var(--sg-info-text)' : `var(--sg-${tone})`;
   return (
@@ -1118,7 +1357,7 @@ export function Sparkline({ values, tone = 'accent', area = true, height = 32, '
       {measured !== null && <svg width={width} height={height}>
         <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="currentColor" stopOpacity="0.2" /><stop offset="1" stopColor="currentColor" stopOpacity="0" /></linearGradient></defs>
         <g ref={g}>
-          {area && <path data-fade d={`${line}L${X(values.length - 1)},${height}L${X(0)},${height}Z`} fill={`url(#${gid})`} />}
+          {area && <path data-fade d={fill} fill={`url(#${gid})`} />}
           <path data-draw className="sg-sparkline__line" d={line} pathLength={1} />
         </g>
         {pts.length > 0 && <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r={2.5} fill="currentColor" />}
