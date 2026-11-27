@@ -45,11 +45,11 @@ async function expect(what, ok) {
 }
 const on = (loc, attr = 'aria-selected') => async () => (await loc.getAttribute(attr)) === 'true';
 const shown = (loc) => async () => (await loc.count()) > 0;
-async function measure(name, act, ms = 700) {
-  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+async function measure(name, act, ms = 700, page = p, session = cdp) {
+  await session.send('Emulation.setCPUThrottlingRate', { rate: 4 });
   /* the sampler's first frame is the baseline; the input goes in after it, and every interval from there counts, the
      input's own handling included (sent before the first frame, it fell in an interval that was left out) */
-  await p.evaluate((ms) => new Promise((ready) => {
+  await page.evaluate((ms) => new Promise((ready) => {
     const s = window.__sample = { d: [] }, l0 = window.__long;
     s.result = new Promise((done) => {
       requestAnimationFrame((t0) => {
@@ -61,8 +61,8 @@ async function measure(name, act, ms = 700) {
     });
   }), ms);
   await act();
-  const r = await p.evaluate(() => window.__sample.result);
-  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  const r = await page.evaluate(() => window.__sample.result);
+  await session.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   const d = [...r.d].sort((a, b) => a - b), max = d[d.length - 1], p90 = d[Math.floor(d.length * 0.9)], drops = d.filter((x) => x > 25).length;
   const info = name.includes('informational');
   const pass = info || (drops <= 1 && r.long === 0);
@@ -70,17 +70,39 @@ async function measure(name, act, ms = 700) {
   console.log(`${info ? 'INFO' : pass ? 'PASS' : 'FAIL'} ${name}: ${r.d.length} frames, p90 ${p90.toFixed(1)} ms, max ${max.toFixed(1)} ms, >25ms ${drops}, long tasks ${r.long}`);
 }
 await p.goto(`${ORIGIN}/#/navigation`); await p.waitForTimeout(800);
+/* the first mouse event on this page is followed, about 200-350 ms later, by one main frame of 35-50 ms in which the
+   renderer waits (under 1 ms of its CPU) — also at CPU ×1, with no click, and not on the overview page or a plain one.
+   A click in that time drops the frame; one 300 ms or more after the pointer first moved does not, and nor does a tap
+   by touch (judged below). Not raster, and not the pointer light, the sheen, the backdrop filters, the tab bar's styles
+   or any one section of the page (#87). Recorded, not judged (design language 3.7, exceptions) */
 const tabs = p.locator('.sg-tabbar__item');
-/* the first tap after load rasterizes something for the first time (#87): 1-2 frames of 33-50 ms right after it, and
-   none on any later tap. A one-time first cost (design language 3.7, exceptions): recorded, not judged, and the travel
-   is judged from the second tap on */
-await measure('tab bar: first tap after load (informational, #87)', await tap(tabs.nth(2)));
-await expect('tab bar: first tap', on(tabs.nth(2)));
+await measure('tab bar: first click after load (informational, #87)', await tap(tabs.nth(2)));
+await expect('tab bar: first click', on(tabs.nth(2)));
 await p.waitForTimeout(600);
 await measure('tab bar: tap travel (droplet)', await tap(tabs.nth(3)));
 await expect('tab bar: tap travel', on(tabs.nth(3)));
 await measure('tab bar: tap back', await tap(tabs.nth(0)));
 await expect('tab bar: tap back', on(tabs.nth(0)));
+/* the first tap on a tab bar after load, by touch, as a phone takes it: judged like any other (#87). On a page of its
+   own, after the mouse samples above, so those keep the conditions they were set on */
+{
+  const t = await b.newPage({ viewport: { width: 1280, height: 900 }, hasTouch: true });
+  const tc = await t.context().newCDPSession(t);
+  await t.route(/pretendard/i, (r) => r.abort());
+  await t.addInitScript(() => {
+    window.__long = 0;
+    try { new PerformanceObserver((l) => { window.__long += l.getEntries().length; }).observe({ type: 'longtask', buffered: true }); } catch {}
+  });
+  await t.goto(`${ORIGIN}/#/navigation`); await t.waitForTimeout(800);
+  const item = t.locator('.sg-tabbar__item').nth(2);
+  await item.scrollIntoViewIfNeeded();
+  const bb = await item.boundingBox();
+  /* not selected before the tap, so a tap that misses cannot pass on idle frames */
+  if ((await item.getAttribute('aria-selected')) !== 'false') { failed++; console.log('FAIL tab bar: first tap (touch): the tab was selected before the tap'); }
+  await measure('tab bar: first tap after load (touch)', () => t.touchscreen.tap(bb.x + bb.width / 2, bb.y + bb.height / 2), 700, t, tc);
+  await expect('tab bar: first tap (touch)', on(item));
+  await t.close();
+}
 await p.goto(`${ORIGIN}/#/overlays`); await p.waitForTimeout(800);
 await measure('menu bloom', await tap(p.getByRole('button', { name: '길찾기' })));
 await expect('menu bloom', shown(p.getByRole('menu')));
