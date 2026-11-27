@@ -4,7 +4,7 @@
    only. Reduced motion: opening, closing and paging by button or key fade; finger-driven motion still follows
    the finger and settles without overshoot. */
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Spring, animate, fade, loop, prefersReducedMotion, pushLayer, trapFocus, timing, easing } from '@satin-glass/core';
+import { Spring, animate, loop, prefersReducedMotion, pushLayer, trapFocus, timing, easing } from '@satin-glass/core';
 import { cx, useControllable, useIsoLayoutEffect } from './utils';
 import { Portal, useTheme } from './foundation';
 import { IconButton } from './controls';
@@ -47,6 +47,11 @@ export type MediaViewerProps = {
 const GAP = 24, MAX_ZOOM = 4, DOUBLE_TAP_ZOOM = 2.5;
 type Z = { s: number; x: number; y: number };
 
+/* the viewer's own animations carry this id: taking over from an exit cancels those, and an app's animation on the
+   viewer (its className) keeps running (#105) */
+const OWN = 'sg-media';
+const fadeOwn = (x: HTMLElement, a: number, b: number, ms: number) =>
+  x.animate([{ opacity: a }, { opacity: b }], { duration: ms, fill: b === 0 ? 'both' : 'backwards', id: OWN }).finished.then(() => undefined, () => undefined);
 export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onIndexChange, getOrigin, actions, 'aria-label': labelProp, labels = {}, className }: MediaViewerProps) {
   const words = useMessages(), label = labelProp ?? words.mediaViewer;
   const n = items.length;
@@ -66,6 +71,11 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
   const atRef = useRef(at); atRef.current = at;
   const swiped = useRef(false);
   const hiddenThumb = useRef<HTMLElement | null>(null);
+  /* each opening's number: an exit that ends after the viewer was opened again (#105) leaves the new opening's
+     thumbnail and focus alone */
+  const opening = useRef(0);
+  /* a gesture under way is let go of when the viewer is hidden (#105): set by the gestures' effect */
+  const dropGesture = useRef<() => void>(() => {});
   /* photos are looked at in the dark: the viewer is always the dark theme (keeping high contrast) */
   const dark = useTheme().name.endsWith('-hc') ? 'dark-hc' : 'dark';
 
@@ -148,7 +158,8 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
       /* a large movement: fade the new item in place */
       stopT.current(); tx.current?.jump(-i * pitch); paintT(-i * pitch);
       /* unless the index moved on again before the frame: that item is a neighbour now, sliding away */
-      requestAnimationFrame(() => { const l = atRef.current === i ? layer(i) : null; if (l) fade(l, 0, 1, timing.appear); });
+      const g = opening.current;   /* not on an opening that began since (closed and opened again before the frame) */
+      requestAnimationFrame(() => { const l = atRef.current === i && opening.current === g ? layer(i) : null; if (l) fadeOwn(l, 0, 1, timing.appear); });
     } else trackTo(i, velocity);
   };
   /* the thumbnail of the open item stays hidden: the photo has "left" it */
@@ -186,6 +197,7 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
   };
   const { mounted } = useOverlayLifecycle(open, () => {
     const el = root.current!;
+    opening.current++;
     swiped.current = false; setChrome(true);
     /* lock first, then measure: the lock takes the page's scrollbar away and the stage widens */
     const pop = pushLayer(() => close.current('escape'), true, el);
@@ -195,33 +207,63 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
     /* hidden while open (#79): the thumbnail it opened from shows again in the page meanwhile, and is hidden again
        (the photo is back over it) when the viewer is shown */
     release.set(() => { pop(); trap(); stopZ.current(); stopT.current(); }, {
-      hide: () => { pop.pause(true); if (hiddenThumb.current) hiddenThumb.current.style.visibility = ''; },
+      hide: () => { dropGesture.current(); pop.pause(true); if (hiddenThumb.current) hiddenThumb.current.style.visibility = ''; },
       show: () => { pop.pause(false); trap.resume?.(); hideThumbNow.current(atRef.current); },   /* the latest getOrigin */
     });
     const st = stage.current!; const b = { w: st.clientWidth, h: st.clientHeight };
     if (b.w !== box.w || b.h !== box.h) setBox(b);
-    z.current = { s: 1, x: 0, y: 0 }; zs.current = null;
+    /* at 1, the frames too: an entrance again for an opening that never closed (Activity shows it again, #104) left a
+       photo drawn zoomed that the keys took to be at 1 (#105) */
+    resetZ();
     tx.current = new Spring(-atRef.current * (b.w + GAP), 'smooth', el); paintT(-atRef.current * (b.w + GAP));
     trap = trapFocus(el, el.querySelector<HTMLElement>('[data-sg-close]'));
     hideThumb(atRef.current);
     const l = layer();
     backdrop.current!.style.opacity = '';
+    /* opened again while the exit still runs (#105): the exit's animations hold their end (the photo folded into its
+       thumbnail, the backdrop and the bars faded out), which would apply again once the entrance let go. Each part
+       is taken from where it is drawn and the exit's animations are stopped, so the viewer turns round */
+    /* the viewer's own animations only (OWN): not an app's on its className, nor the bars' CSS transitions */
+    const own = (x: Element) => x.getAnimations().filter((a) => a.id === OWN);
+    const held = (x: Element | null | undefined) => {
+      const running = x ? own(x) : [];
+      if (!x || !running.length) return null;
+      const cs = getComputedStyle(x), o = parseFloat(cs.opacity);
+      const at = { transform: cs.transform || 'none', clip: cs.clipPath || 'none', opacity: Number.isFinite(o) ? o : 1 };
+      running.forEach((a) => a.cancel());
+      return at;
+    };
+    const was = { el: held(el), layer: held(l), backdrop: held(backdrop.current) };
+    /* the photo closed was another (opened again on its neighbour): its slide keeps its folded end too. A swipe's
+       transform, left inline for the exit to start from, would show again once the entrance let go */
+    el.querySelectorAll<HTMLElement>('.sg-media__dismiss').forEach((x) => { if (x !== l) own(x).forEach((a) => a.cancel()); x.style.transform = ''; });
+    /* a zoomed photo was easing back to 1 as it closed: from there to 1, not at once */
+    el.querySelectorAll<HTMLElement>('.sg-media__frame').forEach((f) => { const w = held(f); if (w && w.transform !== 'none') f.animate([{ transform: w.transform }, { transform: 'none' }], { duration: 220, easing: easing.move, fill: 'backwards', id: OWN }); });
+    const chromeEls = [...el.querySelectorAll<HTMLElement>('.sg-media__bar, .sg-media__caption, .sg-media__nav')].map((x) => [x, held(x)] as const);
     /* no item to open out of (`items` empty): the viewer fades in with its bar */
-    if (prefersReducedMotion(el) || !l) return fade(el, 0, 1, timing.appear);
+    if (prefersReducedMotion(el) || !l) return fadeOwn(el, was.el?.opacity ?? 0, 1, timing.appear);
+    if (was.el && was.el.opacity < 1) fadeOwn(el, was.el.opacity, 1, timing.appear);   /* a reduced-motion exit, cut short */
     const from = origin(atRef.current, b);
-    fade(backdrop.current!, 0, 1, 220);
-    el.querySelectorAll<HTMLElement>('.sg-media__bar, .sg-media__caption, .sg-media__nav').forEach((x) => fade(x, 0, 1, 200));
-    if (from) return animate(l, [{ transform: from.transform, clipPath: from.clip }, { transform: 'none', clipPath: from.full }], 'smooth').finished.then(() => undefined, () => undefined);
-    return animate(l, [{ transform: 'scale(0.92)', opacity: 0 }, { transform: 'none', opacity: 1 }], 'smooth').finished.then(() => undefined, () => undefined);
+    fadeOwn(backdrop.current!, was.backdrop?.opacity ?? 0, 1, 220);
+    chromeEls.forEach(([x, w]) => fadeOwn(x, w?.opacity ?? 0, 1, 200));
+    if (was.layer) {
+      /* to the whole stage: an inset in flight ends as an inset, whether or not the thumbnail can still be found */
+      const full = 'inset(0px 0px round 0px)', clip = was.layer.clip === 'none' ? full : was.layer.clip;
+      return animate(l, [{ transform: was.layer.transform, clipPath: clip, opacity: was.layer.opacity }, { transform: 'none', clipPath: full, opacity: 1 }], 'smooth', { id: OWN }).finished.then(() => undefined, () => undefined);
+    }
+    if (from) return animate(l, [{ transform: from.transform, clipPath: from.clip }, { transform: 'none', clipPath: from.full }], 'smooth', { id: OWN }).finished.then(() => undefined, () => undefined);
+    return animate(l, [{ transform: 'scale(0.92)', opacity: 0 }, { transform: 'none', opacity: 1 }], 'smooth', { id: OWN }).finished.then(() => undefined, () => undefined);
   }, () => {
     const before = document.activeElement;
     release.run();
     /* where the focus trap gave focus back (the opener: the first thumbnail pressed, not the one you are on now);
        none when it was elsewhere already (moved there while the viewer was hidden, #79) */
     const returned = document.activeElement !== before ? document.activeElement : null;
-    const el = root.current!;
-    /* the photo folds back into the thumbnail of the item you were on: focus lands there too (once visible) */
+    const el = root.current!, gen = opening.current;
+    /* the photo folds back into the thumbnail of the item you were on: focus lands there too (once visible). Opened
+       again before this ends (#105), the new opening has that thumbnail hidden and the focus: they are left to it */
     const restore = () => {
+      if (opening.current !== gen) return;
       const t = hiddenThumb.current;
       if (t) t.style.visibility = '';
       hiddenThumb.current = null;
@@ -230,18 +272,18 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
          viewer was hidden (#79) is where someone put it */
       if (t && document.contains(t) && (!a || a === document.body || !el.isConnected || el.contains(a) || a === returned)) t.focus({ preventScroll: true });
     };
-    if (prefersReducedMotion(el)) return fade(el, 1, 0, timing.leave).then(restore);
+    if (prefersReducedMotion(el)) return fadeOwn(el, 1, 0, timing.leave).then(restore);
     const l = layer(), f = frame();
-    el.querySelectorAll<HTMLElement>('.sg-media__bar, .sg-media__caption, .sg-media__nav').forEach((x) => fade(x, +getComputedStyle(x).opacity, 0, 120));
+    el.querySelectorAll<HTMLElement>('.sg-media__bar, .sg-media__caption, .sg-media__nav').forEach((x) => fadeOwn(x, +getComputedStyle(x).opacity, 0, 120));
     const bd = backdrop.current!;
-    fade(bd, +getComputedStyle(bd).opacity, 0, 220);
-    if (!l) return fade(el, 1, 0, 160).then(restore);
+    fadeOwn(bd, +getComputedStyle(bd).opacity, 0, 220);
+    if (!l) return fadeOwn(el, 1, 0, 160).then(restore);
     const now = getComputedStyle(l).transform;
     const start = now && now !== 'none' ? now : 'none';
-    if (f && f.style.transform) f.animate([{ transform: f.style.transform }, { transform: 'none' }], { duration: 220, easing: easing.move, fill: 'both' });
+    if (f && f.style.transform) f.animate([{ transform: f.style.transform }, { transform: 'none' }], { duration: 220, easing: easing.move, fill: 'both', id: OWN });
     const st = stage.current, to = origin(atRef.current, st ? { w: st.clientWidth, h: st.clientHeight } : box);
-    if (to) return l.animate([{ transform: start, clipPath: to.full }, { transform: to.transform, clipPath: to.clip }], { duration: timing.mediaReturn, easing: easing.move, fill: 'both' }).finished.then(restore, restore);
-    return l.animate([{ transform: start, opacity: 1 }, { transform: `${start === 'none' ? '' : start} scale(0.94)`, opacity: 0 }], { duration: 180, easing: 'ease-in', fill: 'both' }).finished.then(restore, restore);
+    if (to) return l.animate([{ transform: start, clipPath: to.full }, { transform: to.transform, clipPath: to.clip }], { duration: timing.mediaReturn, easing: easing.move, fill: 'both', id: OWN }).finished.then(restore, restore);
+    return l.animate([{ transform: start, opacity: 1 }, { transform: `${start === 'none' ? '' : start} scale(0.94)`, opacity: 0 }], { duration: 180, easing: 'ease-in', fill: 'both', id: OWN }).finished.then(restore, restore);
   }, release);
   useEffect(() => () => { if (hiddenThumb.current) hiddenThumb.current.style.visibility = ''; }, []);
   /* the track goes to the committed index: on the paging spring (or the reduced-motion fade) when it changed — by
@@ -372,8 +414,8 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
         if (!cancelled && (Math.abs(dy) > 110 || Math.abs(vy) > 700)) { swiped.current = true; close.current('swipe'); return; }
         const l = layer(), from = dy;
         dy = 0;
-        if (l) { const tr = l.style.transform; l.style.transform = ''; if (tr) animate(l, [{ transform: tr }, { transform: 'none' }], 'smooth'); }
-        if (backdrop.current) { const o = +backdrop.current.style.opacity || 1; backdrop.current.style.opacity = ''; if (from) fade(backdrop.current, o, 1, 160); }
+        if (l) { const tr = l.style.transform; l.style.transform = ''; if (tr) animate(l, [{ transform: tr }, { transform: 'none' }], 'smooth', { id: OWN }); }
+        if (backdrop.current) { const o = +backdrop.current.style.opacity || 1; backdrop.current.style.opacity = ''; if (from) fadeOwn(backdrop.current, o, 1, 160); }
         setChrome(true);
         return;
       }
@@ -400,10 +442,22 @@ export function MediaViewer({ open, onClose, items, index, defaultIndex = 0, onI
         setZoomed(s > 1.01);
       } else if (z.current.s > 1.01) { stopZ.current(); z.current = clampZ({ ...z.current, x: z.current.x - e.deltaX, y: z.current.y - e.deltaY }); paintZ(); }
     };
+    /* hidden mid-gesture: let go of it without its release (that would land on whatever shows meanwhile) and put the
+       photo, the backdrop and the track back at rest; a pinch or a pan keeps the zoom it reached, within bounds */
+    dropGesture.current = () => {
+      if (!pts.size && mode === 'none') return;
+      const m = mode;
+      pts.clear(); mode = 'none'; clearTimeout(tapTimer);
+      if (m === 'dismiss' || dy) { dy = 0; setDismiss(0); if (backdrop.current) backdrop.current.style.opacity = ''; setChrome(true); }
+      else if (m === 'page') trackTo(atRef.current);
+      else if (m === 'pan' || m === 'pinch') springZ(clampZ(z.current));
+    };
     st.addEventListener('pointerdown', down);
     addEventListener('pointermove', move, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
     st.addEventListener('wheel', wheel, { passive: false });
     return () => {
+      /* not let go of here: a resize or a neighbour's image loading sets these listeners up again mid-gesture */
+      dropGesture.current = () => {};
       clearTimeout(tapTimer);
       st.removeEventListener('pointerdown', down);
       removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
