@@ -183,7 +183,7 @@ export function Selection() {
           <Demo col data-demo="range">
             <DateRangePicker label={t({ en: 'Stay', ko: '숙박 일정' })} locale={locale} value={stay} onChange={setStay} unit="nights" labels={{ start: t({ en: 'check-in', ko: '체크인' }), end: t({ en: 'check-out', ko: '체크아웃' }) }} minLength={1} maxLength={14}
               min={new Date()} max={maxDate} isDateDisabled={(d) => soldOut(d)} name="stay" helperText={t({ en: 'Up to 14 nights · struck-through nights are full', ko: '최대 14박 · 줄 그은 날은 만실' })} />
-            <DateRangePicker label={t({ en: 'Holiday', ko: '휴가 기간' })} locale={locale} value={trip} onChange={setTrip} maxLength={29} helperText={t({ en: 'Up to 30 days', ko: '최대 30일' })} />
+            <DateRangePicker label={t({ en: 'Holiday', ko: '휴가 기간' })} locale={locale} value={trip} onChange={setTrip} maxLength={29} months={2} helperText={t({ en: 'Up to 30 days · two months when the window has room', ko: '최대 30일 · 창이 넓으면 두 달' })} />
             <DateRangePicker label={t({ en: 'Report period', ko: '보고서 기간' })} locale={locale} value={report} onChange={setReport} max={new Date()} defaultMonth={new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1)} helperText={t({ en: 'Up to today', ko: '오늘까지' })} />
             <Stack direction="row" gap={8} wrap>
               {([[t({ en: 'Last 7 days', ko: '최근 7일' }), 6], [t({ en: 'Last 30 days', ko: '최근 30일' }), 29]] as const).map(([l, n]) => {
@@ -200,6 +200,11 @@ export function Selection() {
             <RangeCalendar aria-label={t({ en: 'Trip dates', ko: '여행 일정' })} locale={locale} unit="nights" labels={{ start: t({ en: 'departure', ko: '가는 날' }), end: t({ en: 'return', ko: '오는 날' }) }} minLength={1} min={new Date()} />
           </Demo>
         </div>
+        <Demo center data-demo="range-two" caption={<L
+          en="months={2}: two months side by side, one band across both, the arrow keys crossing from one to the other. The previous and next buttons move one month. Below 584 px, it shows one month."
+          ko="months={2}: 두 달을 나란히 보여 주고, 띠는 두 달에 걸쳐 이어지며, 방향키로 두 달 사이를 오갑니다. 이전·다음 버튼은 한 달씩 넘깁니다. 두 달이 들어갈 폭(584px)보다 좁으면 한 달만 보여 줍니다." />}>
+          <RangeCalendar months={2} aria-label={t({ en: 'Booking dates', ko: '예약 일정' })} locale={locale} unit="nights" minLength={1} min={new Date()} />
+        </Demo>
         <Usage example={DateRangeExample} code={dateRangeSrc} />
       </Section>
 

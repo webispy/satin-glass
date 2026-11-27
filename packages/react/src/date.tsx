@@ -93,12 +93,24 @@ function useDayValue(value: Date | null | undefined, defaultValue: Date | null, 
   cb.current = onChange;
   return [value === undefined ? dayOf(k) : value, useCallback((d: Date | null) => { setK(keyOf(d)); cb.current?.(d); }, [setK])];
 }
+/* an element the page shows: checkVisibility (with visibility: hidden counted) where there is one; else a box laid
+   out (in a document with no layout at all, as in a test without a browser, everything counts as shown) */
+const shownOnPage = (el: HTMLElement) => {
+  const c = (el as HTMLElement & { checkVisibility?: (o?: object) => boolean }).checkVisibility;
+  if (c) return c.call(el, { visibilityProperty: true });
+  if (document.documentElement.getClientRects().length === 0) return true;
+  return el.getClientRects().length > 0 && getComputedStyle(el).visibility === 'visible';
+};
+/* two months side by side need this much room: 2 × 7 days of 40 px, 24 px between (the stylesheet's container query) */
+const PAIR_WIDTH = 584;
 /* stands in for the month while it is not known yet; never shown (the grid is drawn empty) */
 const NO_MONTH = day(2000, 0, 1);
 
 /* ================================================================================================ Calendar */
 /* a RangeCalendar around a Calendar: the days show the range and a pick goes to it */
-type RangeCtx = { start: Date | null; end: Date | null; pick: (d: Date) => void; reach: (d: Date) => boolean; starts: string; ends: string };
+/* months: how many months the range asks for side by side (#5); room: how many the picker holding it has room for (from
+   the window), or null on the page, where the calendar's container decides */
+type RangeCtx = { start: Date | null; end: Date | null; pick: (d: Date) => void; reach: (d: Date) => boolean; starts: string; ends: string; months: 1 | 2; room: 1 | 2 | null };
 const RangeContext = createContext<RangeCtx | null>(null);
 
 export type CalendarProps = {
@@ -116,7 +128,8 @@ export type CalendarProps = {
   locale?: string;
   /** 0 = Sunday (default), 1 = Monday */
   weekStartsOn?: 0 | 1;
-  /** move focus to the selected (or today's) day when shown */
+  /** move focus to the selected (or today's) day when shown; not if the focus moves elsewhere first (inside a shadow
+      root, a move between two of its elements is not seen) */
   autoFocus?: boolean;
   /** the month shown while there is no value (default: this month), e.g. when the likely dates are far from today */
   defaultMonth?: Date;
@@ -139,21 +152,66 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
      earlier render (see useToday) */
   const now = useToday(), todayK = now ? now.key : null;
   const todayY = todayK === null ? null : Math.floor(todayK / 10000), todayM = todayK === null ? -1 : Math.floor(todayK / 100) % 100 - 1;
+  /* two months asked for with min and max in one month: that month, known without today (on the server too) */
+  const boundMonth = range?.months === 2 && min && max && sameMonth(min, max) ? day(min.getFullYear(), min.getMonth(), 1) : null;
   const initial = v ?? (defaultMonth ? day(defaultMonth.getFullYear(), defaultMonth.getMonth(), 1) : todayK === null ? null : fromKey(todayK));
   /* The focused day and the month on show are kept as civil numbers (yyyymmdd; year × 12 + month), like today, and
      made into Dates (local noon) in each render: a Date kept from before is an instant, and after a change of time
      zone it can read as the day before (the 1st, local noon in Auckland, is the 31st in Honolulu). */
   const [focusedK, setFocusedK] = useState<number>(() => ymd(initial ?? NO_MONTH));
   const focused = fromKey(focusedK);
-  const setFocused = (u: Date | ((f: Date) => Date)) => setFocusedK((k) => ymd(typeof u === 'function' ? u(fromKey(k)) : u));
+  /* the month came from the bounds before today was known: the focused day is provisional until today comes (or a
+     day is focused or chosen first) */
+  const boundFocus = useRef(initial === null && boundMonth !== null);
+  const setFocused = (u: Date | ((f: Date) => Date)) => { boundFocus.current = false; setFocusedK((k) => ymd(typeof u === 'function' ? u(fromKey(k)) : u)); };
   /* null: no value, no defaultMonth and today not known yet (hydrating); the month comes with today, below */
-  const [shownM, setShownM] = useState<number | null>(() => initial && monthKey(initial));
+  /* the bounds' month shows before today is known; the focused day still waits for today (it wins within the bounds) */
+  const [shownM, setShownM] = useState<number | null>(() => { const m = initial ?? boundMonth; return m && monthKey(m); });
   const setMonth = (d: Date) => setShownM(monthKey(d));
-  const pending = shownM === null, month = shownM === null ? NO_MONTH : fromMonthKey(shownM);
-  useIsoLayoutEffect(() => { if (pending && todayK !== null) { const d = fromKey(todayK); setMonth(d); setFocused(d); } }, [todayK]);
+  /* two months side by side (#5): asked for by the range; shown when the bounds leave more than one month and, unless
+     the picker holding it decided from the viewport, when its container has room (until it is measured, as asked:
+     the stylesheet hides the second month in a narrower container, on the server too) */
+  const minM = min ? monthKey(min) : -Infinity, maxM = max ? monthKey(max) : Infinity;
+  /* the container's room for two: null until measured (the server, the first render), while the stylesheet decides */
+  const [fits, setFits] = useState<boolean | null>(null);
+  /* unmeasured: two asked for, more than one month within the bounds, and the container not measured yet */
+  const asked = range?.months === 2, sized = asked && range.room === null, unmeasured = sized && fits === null && maxM > minM;
+  const count: 1 | 2 = asked && maxM > minM && (range.room !== null ? range.room === 2 : fits !== false) ? 2 : 1;
+  /* the first month shown, when two are asked for (also while one is shown): from min's month to the month before
+     max's with two, to max's with one, so no month shown is past them (only the view is held there; the value is not
+     changed). The month and year pickers keep the month chosen in them (shownM): the last month shows second */
+  const firstM = shownM === null ? null : asked ? Math.max(minM, Math.min(maxM - (count - 1), shownM)) : shownM;
+  const pending = firstM === null, month = firstM === null ? NO_MONTH : fromMonthKey(firstM);
+  const chosen = shownM === null || !asked ? month : fromMonthKey(Math.max(minM, Math.min(maxM, shownM)));
+  const shownMonths = count === 2 ? [month, fromMonthKey(monthKey(month) + 1)] : [month];
+  /* a day in one of the months shown */
+  const inView = (d: Date, first = monthKey(month)) => { const k = monthKey(d); return k >= first && k < first + count; };
+  /* the day that takes the Tab key: the focused one, or, when bounds (or a narrower container) moved the view away
+     from it, its date in the first month shown; within min and max, so the grid always has one that can be chosen.
+     Until the container is measured, in the first month (the stylesheet may hide the second) */
+  const tabDay = (() => {
+    if (!asked || pending) return focused;
+    let d = focused;
+    if (!(unmeasured ? sameMonth(focused, month) : inView(focused))) {
+      const last = day(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+      d = day(month.getFullYear(), month.getMonth(), Math.min(focused.getDate(), last));
+    }
+    if (min && ymd(d) < ymd(min)) d = day(min.getFullYear(), min.getMonth(), min.getDate());
+    if (max && ymd(d) > ymd(max)) d = day(max.getFullYear(), max.getMonth(), max.getDate());
+    return d;
+  })();
+  useIsoLayoutEffect(() => {
+    if (todayK === null) return;
+    const d = fromKey(todayK);
+    if (pending) { setMonth(d); setFocused(d); }
+    else if (boundFocus.current) setFocusedK(todayK);   /* the month came from the bounds: the focused day is today's */
+  }, [todayK]);
+  /* provisional no longer once the render with today's day is in (not when it is asked for: an effect of the render
+     before would take the old day) */
+  useIsoLayoutEffect(() => { if (boundFocus.current && todayK !== null && focusedK === todayK) boundFocus.current = false; }, [focusedK, todayK]);
   const wheels = monthPicker === 'wheel';
   const [view, setView] = useState<'day' | 'month' | 'year'>(wheels && openTo === 'year' ? 'month' : openTo);
-  const root = useRef<HTMLDivElement>(null), body = useRef<HTMLTableSectionElement>(null);
+  const root = useRef<HTMLDivElement>(null), bodies = useRef<(HTMLTableSectionElement | null)[]>([]);
   const locale = useLocaleOf(localeProp), t = messagesFor(locale).date;
   const id = useStableId('sg-cal');
   const fmt = useMemo(() => ({
@@ -166,13 +224,13 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     /* a formatter keeps the time zone it was built in: built again when the zone changes */
   }), [locale, now?.zone]);
   /* the years min..max (or a century back and twenty years on from today); months outside min / max are passed over */
-  const thisYear = todayY ?? month.getFullYear();
+  const thisYear = todayY ?? chosen.getFullYear();
   const y0 = min ? min.getFullYear() : thisYear - 100, y1 = max ? max.getFullYear() : thisYear + 20;
   const years = useMemo(() => Array.from({ length: y1 - y0 + 1 }, (_, i) => ({ value: y0 + i, label: fmt.year.format(day(y0 + i, 0, 1)) })), [y0, y1, fmt]);
   const months = useMemo(() => Array.from({ length: 12 }, (_, m) => ({
     value: m, label: fmt.month.format(day(2000, m, 1)),
-    disabled: Boolean((min && (month.getFullYear() * 12 + m) < min.getFullYear() * 12 + min.getMonth()) || (max && (month.getFullYear() * 12 + m) > max.getFullYear() * 12 + max.getMonth())),
-  })), [fmt, month.getFullYear(), min ? ymd(min) : 0, max ? ymd(max) : 0]);
+    disabled: Boolean((min && (chosen.getFullYear() * 12 + m) < min.getFullYear() * 12 + min.getMonth()) || (max && (chosen.getFullYear() * 12 + m) > max.getFullYear() * 12 + max.getMonth())),
+  })), [fmt, chosen.getFullYear(), min ? ymd(min) : 0, max ? ymd(max) : 0]);
   /* year first where the locale writes it first ("2026년 11월"), month first otherwise ("November 2026") */
   const yearFirst = useMemo(() => { const p = fmt.title.formatToParts(day(2000, 0, 1)); return p.findIndex((x) => x.type === 'year') < p.findIndex((x) => x.type === 'month'); }, [fmt]);
   const toMonth = (y: number, m: number) => {
@@ -204,19 +262,61 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   const [yearEdge, setYearEdge] = useState({ top: false, bottom: false });
 
   const disabled = (d: Date) => (min && ymd(d) < ymd(min)) || (max && ymd(d) > ymd(max)) || Boolean(isDateDisabled?.(d));
-  /* follow an outside change of value to its month */
-  useEffect(() => { if (v && (pending || !sameMonth(v, month))) { setMonth(v); setFocused(v); } }, [v ? ymd(v) : 0]);
+  /* follow an outside change of value to its month (with two shown, only when it is in neither: a start picked in the
+     second month leaves the pair where it is) */
+  useEffect(() => { if (v && (pending || !inView(v))) { setMonth(v); setFocused(v); } }, [v ? ymd(v) : 0]);
 
-  /* the month changed: slide the grid in from the side it came from */
-  const last = useRef(shownM);
+  /* the month changed: slide the grids (and their months' names) in from the side it came from, mirrored right to
+     left */
+  const last = useRef(firstM);
   useIsoLayoutEffect(() => {
-    const prev = last.current; last.current = shownM;
-    const b = body.current;
-    if (!b || prev === null || shownM === null || prev === shownM) return;   /* the first month known does not slide in */
-    const dir = shownM > prev ? 1 : -1;
-    if (prefersReducedMotion(b)) { fade(b, 0, 1, timing.appear); return; }
-    animate(b, [{ transform: `translateX(${dir * 28}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }], 'smooth');
-  }, [shownM]);
+    const prev = last.current; last.current = firstM;
+    const els = root.current ? [...root.current.querySelectorAll<HTMLElement>('.sg-calendar__body, .sg-calendar__mtitle')] : [];
+    if (!els.length || prev === null || firstM === null || prev === firstM) return;   /* the first month known does not slide in */
+    const dir = (firstM > prev ? 1 : -1) * (getComputedStyle(els[0]).direction === 'rtl' ? -1 : 1);
+    for (const b of els) {
+      if (prefersReducedMotion(b)) fade(b, 0, 1, timing.appear);
+      else animate(b, [{ transform: `translateX(${dir * 28}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }], 'smooth');
+    }
+  }, [firstM]);
+
+  /* one month shown instead of two, or two instead of one, with the focus in the calendar: the focused element may have
+     gone (a day hidden by the stylesheet, or moved to the other grid) or been disabled (the next arrow, with max's
+     month now shown), so focus fell to the page. It goes back to the day, its month brought in if it is no longer
+     shown, or from a control to the days' tab stop; in the next frame, and only if nothing has taken the focus since */
+  const inside = useRef<'day' | 'other' | null>(null), lastCount = useRef(count);
+  /* the focus is lost: on the page itself, on an element no longer in it, or on one of the calendar's controls just
+     disabled (it still holds the focus until the browser moves it) */
+  const lost = () => {
+    const at = document.activeElement as (HTMLElement & { disabled?: boolean }) | null;
+    return !at || at === document.body || !at.isConnected || (!!at.disabled && !!root.current?.contains(at));
+  };
+  useIsoLayoutEffect(() => {
+    const was = lastCount.current; lastCount.current = count;
+    const what = inside.current;
+    if (was === count || pending || !what || !lost()) return;
+    inside.current = null;   /* given back once; a later loss is not this one */
+    if (what === 'day' && !inView(focused)) setMonth(focused);
+    const sel = what === 'day' ? `.sg-day[data-date="${toISODate(focused)}"]` : '.sg-day[tabindex="0"]';
+    /* a press or a focus outside the calendar before the frame is a choice of where the focus goes: nothing is given
+       back. Cut short by another change of count first, it is handed on to that one */
+    let frame = 0, settled = false;
+    const off = () => { document.removeEventListener('pointerdown', outside, true); document.removeEventListener('focusin', outside, true); };
+    const outside = (e: Event) => { if (!root.current?.contains(e.target as Node)) { settled = true; cancelAnimationFrame(frame); off(); } };
+    document.addEventListener('pointerdown', outside, true); document.addEventListener('focusin', outside, true);
+    frame = requestAnimationFrame(() => { settled = true; off(); if (lost()) root.current?.querySelector<HTMLElement>(sel)?.focus({ preventScroll: true }); });
+    return () => { cancelAnimationFrame(frame); off(); if (!settled) inside.current = what; };
+  }, [count]);
+  /* the container's room, while two months are asked for and the calendar sizes itself (2 × 7 days of 40 px and the
+     24 px between them, as the stylesheet's container query) */
+  useIsoLayoutEffect(() => {
+    const box = root.current?.parentElement;
+    if (!sized || !box) return;
+    if (typeof ResizeObserver === 'undefined') { setFits(true); return; }   /* nothing to measure with: as asked */
+    const ro = new ResizeObserver(([e]) => setFits(e.contentRect.width >= PAIR_WIDTH));   /* as the stylesheet: (width < 584px) is one */
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [sized]);
 
   /* keep keyboard focus on the focused day after it moves (only when focus is already in the grid) */
   const keyboard = useRef(false);
@@ -228,14 +328,39 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   /* a flag no move took (going back to the same month's days) is dropped once the render is in, so a later move made
      elsewhere (the next month's button) does not pull focus into the grid */
   useEffect(() => { keyboard.current = false; });
+  /* once the month is known and, asked for two on the page, the container measured (the tab stop may move then), and
+     once its day is shown (a calendar mounted hidden waits to be shown); not if the app has put the focus elsewhere
+     meanwhile */
+  /* It gives up if the focus is moved elsewhere while it waits (a focus or a press outside the calendar), not because
+     something else has it: the button that opened the calendar may still have it. It waits for today when the month
+     came from the bounds (the day it would take is provisional). Done only once the day has the focus (read in the
+     calendar's own root, a shadow root too); a calendar shown later (mounted hidden) is tried again when it gets a
+     size, or on its next render. Its listeners go once it is done or has given up */
+  const autoDone = useRef(false), autoGaveUp = useRef(false), autoTry = useRef<() => void>(() => {}), autoOff = useRef<() => void>(() => {});
+  autoTry.current = () => {
+    if (!autoFocus || pending || unmeasured || boundFocus.current || autoDone.current || autoGaveUp.current) return;
+    const btn = root.current?.querySelector<HTMLButtonElement>(`.sg-day[data-date="${toISODate(tabDay)}"]`);
+    if (!btn || !shownOnPage(btn)) return;
+    btn.focus({ preventScroll: true });
+    const host = btn.getRootNode() as Document | ShadowRoot;
+    if (host.activeElement === btn) { autoDone.current = true; autoOff.current(); }
+  };
+  useEffect(() => { autoTry.current(); });
   useEffect(() => {
-    if (autoFocus && !pending) root.current?.querySelector<HTMLButtonElement>(`[data-date="${toISODate(focused)}"]`)?.focus({ preventScroll: true });
-  }, [pending]);
+    const el = root.current;
+    if (!autoFocus || !el || autoDone.current || autoGaveUp.current) return;
+    const away = (e: Event) => { if (!autoDone.current && !el.contains(e.target as Node)) { autoGaveUp.current = true; autoOff.current(); } };
+    document.addEventListener('focusin', away, true); document.addEventListener('pointerdown', away, true);
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => autoTry.current());
+    ro?.observe(el);
+    const off = autoOff.current = () => { document.removeEventListener('focusin', away, true); document.removeEventListener('pointerdown', away, true); ro?.disconnect(); };
+    return off;
+  }, [autoFocus]);
 
   const goMonth = (n: number) => {
     const m = addMonths(month, n);
     setMonth(m);
-    setFocused((f) => (sameMonth(f, m) ? f : addMonths(f, n)));
+    setFocused((f) => (inView(f, monthKey(m)) ? f : addMonths(f, n)));
   };
   const focusDay = (d0: Date) => {
     /* keyboard movement stays inside min / max; days disabled by isDateDisabled stay focusable (aria-disabled) */
@@ -246,14 +371,18 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     if (ymd(d) === focusedK) return;
     keyboard.current = true;
     setFocused(d);
-    if (!sameMonth(d, month)) setMonth(d);
+    /* past the months shown, they move only as far as it takes to show the day: past the second, it becomes the
+       second */
+    if (!inView(d)) setShownM(monthKey(d) > monthKey(month) ? monthKey(d) - (count - 1) : monthKey(d));
   };
   const onKey = (e: KeyboardEvent<HTMLTableElement>) => {
     const k = e.key;
     const dow = (focused.getDay() - weekStartsOn + 7) % 7;
+    /* the arrows go the way the days are laid out: right to left, the left arrow is the next day */
+    const ahead = getComputedStyle(e.currentTarget).direction === 'rtl' ? -1 : 1;
     let d: Date | null = null;
-    if (k === 'ArrowLeft') d = addDays(focused, -1);
-    else if (k === 'ArrowRight') d = addDays(focused, 1);
+    if (k === 'ArrowLeft') d = addDays(focused, -ahead);
+    else if (k === 'ArrowRight') d = addDays(focused, ahead);
     else if (k === 'ArrowUp') d = addDays(focused, -7);
     else if (k === 'ArrowDown') d = addDays(focused, 7);
     else if (k === 'Home') d = addDays(focused, -dow);
@@ -267,9 +396,8 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   };
 
   /* 6 weeks starting on weekStartsOn, so the grid never changes height */
-  const first = month, lead = (first.getDay() - weekStartsOn + 7) % 7;
-  const start = addDays(first, -lead);
-  const weeks = Array.from({ length: 6 }, (_, w) => Array.from({ length: 7 }, (_, i) => addDays(start, w * 7 + i)));
+  const weeksOf = (first: Date) => { const s0 = addDays(first, -((first.getDay() - weekStartsOn + 7) % 7)); return Array.from({ length: 6 }, (_, w) => Array.from({ length: 7 }, (_, i) => addDays(s0, w * 7 + i))); };
+  const weeks = weeksOf(month), start = weeks[0][0];
   const titleId = `${id}-title`;
 
   /* ---- the range band: the days between lie in a groove (the path a range is laid along: depth -1) holding the
@@ -281,40 +409,53 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
   const bands = useRef<HTMLDivElement>(null);
   /* draw: this render's painting (its runs, kind and geometry), set again by every render, so a loop started by an
      earlier one paints what is shown now: an end picked mid-spring is a committed range, not the preview (#94) */
-  /* geo: the grid the head's pixels were measured in (bandGeometry's sig, and the grid's first day); when it changes
-     (a resize across the calendar's cap, a row or header growing, weekStartsOn) the head snaps to the new geometry
-     instead of springing on from a place, and with a velocity, that no longer means anything (#108) */
-  type BandEng = { H: Spring; stop: (() => void) | null; month: number; key: string; geo: string; sig: string; draw: (head: number) => void };
+  /* geo: the grids the head's pixels were measured in (bandGeometry's sig for each, the first grid's first day, how
+     many months); when it changes (a resize across the calendar's cap, a row or header growing, weekStartsOn) the
+     head snaps to the new geometry instead of springing on from a place, and with a velocity, that no longer means
+     anything (#108). month: the days as laid out (month, count, first weekday) */
+  type BandEng = { H: Spring; stop: (() => void) | null; month: string; key: string; geo: string; sig: string; draw: (head: number) => void };
   const bandEng = useRef<BandEng | null>(null);
   const [resized, setResized] = useState(0);
   const candidate = range && range.start && !range.end && hover && range.reach(hover) && ymd(hover) !== ymd(range.start) ? hover : null;
   const hoverKey = candidate ? ymd(candidate) : 0;
   useIsoLayoutEffect(() => {
-    const layer = bands.current, tb = body.current, table = tb?.parentElement as HTMLElement | undefined;
+    const layer = bands.current, tbs = bodies.current.slice(0, count);
     /* no day grid (the months or years shown, or not known yet): a loop still running would paint segments no longer
        in the page, and draw would hold them; both stop, and the head moves on from where it was when days come back */
-    if (!range || !layer || !tb || !table || view !== 'day' || pending) { const g = bandEng.current; if (g) { g.stop?.(); g.stop = null; g.draw = () => {}; } return; }
-    const g = bandGeometry(tb, table), cell = g.cell || 40, W = cell * 7, rowY = g.rowY, pool = layer.children as HTMLCollectionOf<HTMLElement>;
+    if (!range || !layer || tbs.length < count || tbs.some((b) => !b?.parentElement) || view !== 'day' || pending) { const g = bandEng.current; if (g) { g.stop?.(); g.stop = null; g.draw = () => {}; } return; }
+    const geos = tbs.map((tb) => bandGeometry(tb!, tb!.parentElement as HTMLElement));
+    const cell = geos[0].cell || 40, pool = layer.children as HTMLCollectionOf<HTMLElement>, sig = geos.map((g) => g.sig).join(';');
+    /* The band's position is a place along the days in order, `cell` px a day from the first grid's first cell: one
+       strip across both months, so the head runs from the first month's last day to the second's first without
+       crossing the gap. Each grid draws the part of it on its own days (with two, only its month's days: the others
+       are blank). */
     const idx = (d: Date) => Math.round((d.getTime() - start.getTime()) / 864e5);
+    const grids = tbs.map((tb, g) => {
+      const table = tb!.parentElement as HTMLElement, m = shownMonths[g], rowY = geos[g].rowY;   /* rows: see bandGeometry */
+      const o = idx(weeksOf(m)[0][0]), c = geos[g].cell || cell;   /* its own cells' width */
+      return { table, rowY, o, c, lo: count === 2 ? idx(m) : o, hi: count === 2 ? idx(day(m.getFullYear(), m.getMonth() + 1, 0)) : o + 41, rtl: getComputedStyle(table).direction === 'rtl' };
+    });
     const Lx = (i: number) => i * cell + 2, Rx = (i: number) => (i + 1) * cell - 2;
     type Run = [number, number, 'soft' | 'faint'];
     const paint = (runs: Run[]) => {
       let n = 0;
       for (const [a0, b0, kind] of runs) {
         const lo = Math.min(a0, b0), hi = Math.max(a0, b0);
-        for (let r = 0; r < rowY.length && n < pool.length; r++) {
-          const L = Math.max(2, Math.max(lo, r * W) - r * W), R = Math.min(W - 2, Math.min(hi, (r + 1) * W) - r * W);
+        /* the strip is in the first grid's pixels (cell a day); each grid draws it in its own (G.c a day) */
+        for (const G of grids) for (let r = 0; r < G.rowY.length && n < pool.length; r++) {
+          const rs = G.o + r * 7, k = G.c / cell, WG = G.c * 7;
+          const L = Math.max((lo - rs * cell) * k, 2, (G.lo - rs) * G.c + 2), R = Math.min((hi - rs * cell) * k, WG - 2, (G.hi + 1 - rs) * G.c - 2);
           if (R - L < 1) continue;
           const el = pool[n++];
           el.dataset.kind = kind; el.style.display = 'block';
-          el.style.transform = `translate(${(table.offsetLeft + L).toFixed(2)}px, ${rowY[r].toFixed(2)}px)`;
+          el.style.transform = `translate(${(G.table.offsetLeft + (G.rtl ? WG - R : L)).toFixed(2)}px, ${G.rowY[r].toFixed(2)}px)`;
           el.style.width = `${(R - L).toFixed(2)}px`;
           el.style.borderRadius = `${Math.min(18, (R - L) / 2).toFixed(2)}px`;
         }
       }
       for (; n < pool.length; n++) pool[n].style.display = 'none';
     };
-    const btnOf = (d: Date) => tb.querySelector<HTMLElement>(`[data-date="${toISODate(d)}"]`);
+    const btnOf = (d: Date) => root.current?.querySelector<HTMLElement>(`.sg-day[data-date="${toISODate(d)}"]`) ?? null;
     const reduced = prefersReducedMotion(layer), sq = motionFor(layer).squash;
     /* the accent face opens from the centre on the pop spring: from 30 (calm) / 28 (lively) / 27 (playful) px to 36 */
     const seat = (d: Date) => { const f = btnOf(d)?.querySelector<HTMLElement>('.sg-day__face'); if (f && !reduced) animate(f, [{ transform: `scale(${((30 - 14 * sq) / 36).toFixed(3)})` }, { transform: 'none' }], 'pop'); };
@@ -327,13 +468,15 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     const tintKind: Run[2] = eI !== null ? 'soft' : 'faint';
     const runsAt = (head: number): Run[] => (head > Lx(sI) + 1 ? [[Lx(sI), head, tintKind]] : []);
     const key = `${ymd(startD)}-${range.end ? ymd(range.end) : ''}`;
-    if (!st) st = bandEng.current = { H: new Spring(tintTo, 'snappy', layer), stop: null, month: 0, key: '', geo: '', sig: '', draw: () => {} };
+    if (!st) st = bandEng.current = { H: new Spring(tintTo, 'snappy', layer), stop: null, month: '', key: '', geo: '', sig: '', draw: () => {} };
     st.draw = (head) => paint(runsAt(head));
     const was = st.key, newStart = !was || was.split('-')[0] !== String(ymd(startD)), committed = eI !== null && was !== key && !newStart;
-    const geo = `${g.sig}|${ymd(start)}`;
-    const fresh = st.month !== ymd(month) || !was || reduced || st.geo !== geo;
-    const monthMoved = Boolean(st.month) && st.month !== ymd(month);
-    st.key = key; st.month = ymd(month); st.geo = geo; st.sig = g.sig;
+    /* the days laid out again (another month, one month or two, another first weekday) or measured again: the head's
+       place along them is another, so it starts where it belongs */
+    const laid = `${ymd(month)}|${count}|${weekStartsOn}`, geo = `${sig}|${ymd(start)}`;
+    const fresh = st.month !== laid || !was || reduced || st.geo !== geo;
+    const monthMoved = Boolean(st.month) && st.month.split('|')[0] !== String(ymd(month));
+    st.key = key; st.month = laid; st.geo = geo; st.sig = sig;
     const e = st;
     const animateHead = (onTick?: () => void) => {
       if (e.stop) return;
@@ -355,126 +498,171 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     }
     e.H.target = tintTo; animateHead();
     if (committed) seat(range.end!);
-  }, [range?.start ? ymd(range.start) : 0, range?.end ? ymd(range.end) : 0, hoverKey, ymd(month), ymd(start), view, pending, resized]);
+  }, [range?.start ? ymd(range.start) : 0, range?.end ? ymd(range.end) : 0, hoverKey, ymd(month), ymd(start), view, pending, count, asked, weekStartsOn, resized]);
   /* the cells' width follows the calendar's (up to its cap), and a row or the weekday header can grow: a resize of
-     the table, its body or a row that changes what the band was drawn in paints it again (no range drawn: nothing to do) */
+     a table, its body or a row that changes what the band was drawn in paints it again (no range drawn: nothing to do) */
   const banded = Boolean(range) && view === 'day' && !pending;
   useEffect(() => {
-    const tb = body.current, table = tb?.parentElement;
-    if (!banded || !tb || !table || typeof ResizeObserver !== 'function') return;
+    const tbs = bodies.current.slice(0, count).filter((b): b is HTMLTableSectionElement => Boolean(b?.parentElement));
+    if (!banded || !tbs.length || typeof ResizeObserver !== 'function') return;
     const ro = new ResizeObserver(() => {
       const e = bandEng.current;
-      if (e?.key && bandGeometry(tb, table).sig !== e.sig) setResized((n) => n + 1);
+      if (e?.key && tbs.map((tb) => bandGeometry(tb, tb.parentElement as HTMLElement).sig).join(';') !== e.sig) setResized((n) => n + 1);
     });
-    ro.observe(tb); ro.observe(table);
-    for (const r of Array.from(tb.rows)) ro.observe(r);   /* one row growing as another shrinks leaves both boxes as they were */
+    for (const tb of tbs) {
+      ro.observe(tb); ro.observe(tb.parentElement!);
+      for (const r of Array.from(tb.rows)) ro.observe(r);   /* one row growing as another shrinks leaves both boxes as they were */
+    }
     return () => ro.disconnect();
-  }, [banded]);
-  /* unmounted, or hidden by Activity: the loop stops and says so, so shown again a new spring can start */
-  useEffect(() => () => { const e = bandEng.current; if (e) { e.stop?.(); e.stop = null; } }, []);
+  }, [banded, count, asked]);   /* asked for two, the grid is another element (inside the pair's wrapper) */
+  /* unmounted, or hidden by Activity or Suspense: the loop stops and says so, so shown again a new spring can start. A
+     layout effect: Suspense hiding a shown tree disconnects layout effects but keeps passive ones */
+  useIsoLayoutEffect(() => () => { const e = bandEng.current; if (e) { e.stop?.(); e.stop = null; } }, []);
+
+  /* two months: each grid is named by its month, and the caller's label names the pair. One header over both: the
+     chips name the first month, the second month's name sits over its own grid, and the arrows stay at the end, so
+     the header is as tall as one month's and the order of its controls is the same (#5, chosen from three studies) */
+  const pair = count === 2;
+  const mtitle = (m: Date) => <div key={monthKey(m)} className="sg-calendar__mtitle" aria-hidden="true">{pending ? '' : fmt.title.format(m)}</div>;
+  const chips = (
+    <div className="sg-calendar__chips">
+      {(() => {
+        const chip = (which: 'year' | 'month') => {
+          const open = !pending && (wheels ? view === 'month' : view === which);
+          const shown = pending ? '' : which === 'year' ? fmt.year.format(month) : fmt.month.format(month);
+          return (
+            <button key={which} type="button" className="sg-calendar__chip" aria-expanded={open} disabled={pending || undefined}
+              aria-label={`${shown ? `${shown}, ` : ''}${which === 'year' ? t.pickYear : t.pickMonth}`}
+              onClick={(e) => {
+                opener.current = e.currentTarget;
+                if (open) { backToDays(); return; }
+                setView(wheels ? 'month' : which);
+                /* into the grid (or the wheels), so arrows and typing work at once */
+                focusSoon(wheels ? '.sg-calendar__wheels [role="spinbutton"]' : '.sg-calendar__cell[aria-selected="true"], .sg-calendar__cell[tabindex="0"]');
+              }}>
+              <span>{shown}</span><ChevronDownIcon className="sg-calendar__chip-chevron" />
+            </button>
+          );
+        };
+        return yearFirst ? [chip('year'), chip('month')] : [chip('month'), chip('year')];
+      })()}
+    </div>
+  );
+  const [prev, next] = pending ? [
+    <IconButton key="p" size="sm" icon={<ChevronLeftIcon />} label={t.prev} disabled />,
+    <IconButton key="n" size="sm" icon={<ChevronRightIcon />} label={t.next} disabled />,
+  ] : view === 'year' ? [
+    <IconButton key="p" size="sm" icon={<ChevronLeftIcon />} label={t.prevYears} onClick={() => yearPage.current(-1)} disabled={yearEdge.top} />,
+    <IconButton key="n" size="sm" icon={<ChevronRightIcon />} label={t.nextYears} onClick={() => yearPage.current(1)} disabled={yearEdge.bottom} />,
+  ] : view === 'month' ? [
+    <IconButton key="p" size="sm" icon={<ChevronLeftIcon />} label={t.prevYear} onClick={() => toMonth(chosen.getFullYear() - 1, chosen.getMonth())} disabled={chosen.getFullYear() <= y0} />,
+    <IconButton key="n" size="sm" icon={<ChevronRightIcon />} label={t.nextYear} onClick={() => toMonth(chosen.getFullYear() + 1, chosen.getMonth())} disabled={chosen.getFullYear() >= y1} />,
+  ] : [
+    <IconButton key="p" size="sm" icon={<ChevronLeftIcon />} label={t.prev} onClick={() => goMonth(-1)} disabled={min ? ymd(addDays(month, -1)) < ymd(min) : false} />,
+    /* with two, the second month is the last one shown */
+    <IconButton key="n" size="sm" icon={<ChevronRightIcon />} label={t.next} onClick={() => goMonth(1)} disabled={max ? ymd(addMonths(month, count)) > ymd(max) : false} />,
+  ];
+  const navHidden = wheels && view === 'month' && !pending;
+  const second = pair && view === 'day' ? mtitle(shownMonths[1]) : null;
+
+  /* the range drawn: chosen, or from the start to the day under the pointer while the end is chosen */
+  const lo = range?.start ?? null;
+  const hi = range ? (range.end ?? (lo && hover && range.reach(hover) ? hover : null)) : null;
+  const preview = Boolean(range && !range.end && hi);
+  const a = lo && hi ? ymd(lo) : 0, z = lo && hi ? ymd(hi) : 0;
+  const grid = (m: Date, gi: number) => {
+    const wks = gi === 0 ? weeks : weeksOf(m);
+    return (
+      <table key={gi} role="grid" aria-labelledby={pair || ariaLabel ? undefined : titleId} aria-label={pair ? (pending ? undefined : fmt.title.format(m)) : ariaLabel}
+        aria-multiselectable={range ? true : undefined} className="sg-calendar__grid" onKeyDown={onKey}
+        onMouseLeave={range && !asked ? () => setHover(null) : undefined}>
+        <thead>
+          <tr>{wks[0].map((d) => <th key={d.getDay()} scope="col" abbr={fmt.wdLong.format(d)}>{fmt.wdShort.format(d)}</th>)}</tr>
+        </thead>
+        <tbody ref={(el) => { bodies.current[gi] = el; }} className="sg-calendar__body">
+          {wks.map((wk, wi) => (
+            <tr key={wi}>
+              {wk.map((d, col) => {
+                const k = ymd(d), out = !sameMonth(d, m);
+                /* not known yet: drawn empty. With two months, a day of another month is a blank (it is in the other
+                   grid, or past the pair) */
+                if (pending || (pair && out)) return <td key={k} role="gridcell" />;
+                const isToday = k === todayK, off = disabled(d);
+                const sel = range ? Boolean((range.start && k === ymd(range.start)) || (range.end && k === ymd(range.end))) : v ? k === ymd(v) : false;
+                const band = a && z && a !== z && k >= a && k <= z ? (k === a ? 'start' : k === z ? 'end' : 'mid') : undefined;
+                /* what the day is to the range: its start, its end, or both (a range of one day) */
+                const role = range && sel ? [range.start && k === ymd(range.start) ? range.starts : '', range.end && k === ymd(range.end) ? range.ends : ''].filter(Boolean).join(', ') : '';
+                return (
+                  <td key={k} role="gridcell" aria-selected={sel || (band === 'mid' && !preview)} data-band={band} data-col={band ? col : undefined} data-preview={band && preview ? '' : undefined}>
+                    <button type="button" className="sg-day" data-date={toISODate(d)} tabIndex={k === ymd(tabDay) ? 0 : -1}
+                      aria-pressed={sel} aria-current={isToday ? 'date' : undefined} aria-disabled={off || undefined}
+                      data-today={isToday ? '' : undefined} data-outside={out ? '' : undefined}
+                      onMouseEnter={range ? () => setHover(d) : undefined}
+                      /* the keys move from the day that has the focus, however it got there (a screen reader's cursor, a
+                         script), and it becomes the tab stop */
+                      onFocus={() => { boundFocus.current = false; setFocusedK(k); if (range) setHover(d); }}
+                      onClick={() => { if (off) return; setFocused(d); if (out) setMonth(d); if (range) range.pick(d); else setV(d); }}>
+                      {range && sel && <span className="sg-day__face" aria-hidden="true" />}
+                      {/* the number is what you see; the full date is what a screen reader hears */}
+                      <span aria-hidden="true">{d.getDate()}</span>
+                      <span className="sg-visually-hidden">{`${fmt.full.format(d)}${isToday ? `, ${t.today}` : ''}${role ? `, ${role}` : ''}`}</span>
+                    </button>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
 
   return (
-    <div ref={mergeRefs(ref, root)} className={cx('sg-calendar', className)} style={style} lang={localeProp}>
-      <div className="sg-calendar__head">
-        {/* the title for assistive technology (and the grid's label); the chips are what you see */}
-        <h2 id={titleId} className="sg-visually-hidden" aria-live="polite">{pending ? '' : fmt.title.format(month)}</h2>
-        <div className="sg-calendar__chips">
-          {(() => {
-            const chip = (which: 'year' | 'month') => {
-              const open = !pending && (wheels ? view === 'month' : view === which);
-              const shown = pending ? '' : which === 'year' ? fmt.year.format(month) : fmt.month.format(month);
-              return (
-                <button key={which} type="button" className="sg-calendar__chip" aria-expanded={open} disabled={pending || undefined}
-                  aria-label={`${shown ? `${shown}, ` : ''}${which === 'year' ? t.pickYear : t.pickMonth}`}
-                  onClick={(e) => {
-                    opener.current = e.currentTarget;
-                    if (open) { backToDays(); return; }
-                    setView(wheels ? 'month' : which);
-                    /* into the grid (or the wheels), so arrows and typing work at once */
-                    focusSoon(wheels ? '.sg-calendar__wheels [role="spinbutton"]' : '.sg-calendar__cell[aria-selected="true"], .sg-calendar__cell[tabindex="0"]');
-                  }}>
-                  <span>{shown}</span><ChevronDownIcon className="sg-calendar__chip-chevron" />
-                </button>
-              );
-            };
-            return yearFirst ? [chip('year'), chip('month')] : [chip('month'), chip('year')];
-          })()}
-        </div>
-        <div className="sg-calendar__nav" hidden={wheels && view === 'month' && !pending}>
-          {pending ? (<>
-            <IconButton size="sm" icon={<ChevronLeftIcon />} label={t.prev} disabled />
-            <IconButton size="sm" icon={<ChevronRightIcon />} label={t.next} disabled />
-          </>) : view === 'year' ? (<>
-            <IconButton size="sm" icon={<ChevronLeftIcon />} label={t.prevYears} onClick={() => yearPage.current(-1)} disabled={yearEdge.top} />
-            <IconButton size="sm" icon={<ChevronRightIcon />} label={t.nextYears} onClick={() => yearPage.current(1)} disabled={yearEdge.bottom} />
-          </>) : view === 'month' ? (<>
-            <IconButton size="sm" icon={<ChevronLeftIcon />} label={t.prevYear} onClick={() => toMonth(month.getFullYear() - 1, month.getMonth())} disabled={month.getFullYear() <= y0} />
-            <IconButton size="sm" icon={<ChevronRightIcon />} label={t.nextYear} onClick={() => toMonth(month.getFullYear() + 1, month.getMonth())} disabled={month.getFullYear() >= y1} />
-          </>) : (<>
-            <IconButton size="sm" icon={<ChevronLeftIcon />} label={t.prev} onClick={() => goMonth(-1)} disabled={min ? ymd(addDays(month, -1)) < ymd(min) : false} />
-            <IconButton size="sm" icon={<ChevronRightIcon />} label={t.next} onClick={() => goMonth(1)} disabled={max ? ymd(addMonths(month, 1)) > ymd(max) : false} />
-          </>)}
-        </div>
+    <div ref={mergeRefs(ref, root)} className={cx('sg-calendar', className)} style={style} lang={localeProp} data-pair={pair || undefined}
+      onFocus={(e) => { inside.current = (e.target as HTMLElement).classList.contains('sg-day') ? 'day' : 'other'; }}
+      /* leaving the calendar: focus moved elsewhere, or a press on the page. An element hidden by the stylesheet or
+         disabled loses the focus without anyone moving it: that does not count, so the focus can be given back */
+      onBlur={(e) => {
+        const t = e.target as HTMLElement & { disabled?: boolean }, to = e.relatedTarget as Node | null;
+        if (to ? !root.current?.contains(to) : t.offsetParent !== null && !t.disabled) inside.current = null;
+      }}>
+      <div className="sg-calendar__head" data-split={pair || undefined}>
+        {/* the title for assistive technology (and the grid's label); the chips are what you see. Two months: the pair
+            ("November – December 2026"), each grid named by its own */}
+        <h2 id={titleId} className="sg-visually-hidden" aria-live="polite">{pending || unmeasured ? '' : pair ? formatRange(fmt.title, month, shownMonths[1]) : fmt.title.format(month)}</h2>
+        {/* asked for two, the header (and below, the grids) keep one structure whether one month or two is shown, so a
+            resize across 584 px remounts nothing that may have the focus */}
+        {asked ? (<>
+          <div className="sg-calendar__half">{chips}</div>
+          <div className="sg-calendar__half">{second}<div className="sg-calendar__nav" hidden={navHidden}>{prev}{next}</div></div>
+        </>) : (<>
+          {chips}
+          <div className="sg-calendar__nav" hidden={navHidden}>{prev}{next}</div>
+        </>)}
       </div>
       <div ref={viewBox} className="sg-calendar__view">
       {range && (view === 'day' || pending) && <div ref={bands} className="sg-calendar__bands" aria-hidden="true">{Array.from({ length: 18 }, (_, i) => <span key={i} className="sg-calendar__seg" />)}</div>}
       {/* while the month is not known yet, the days' grid is drawn empty (it keeps its size) */}
       {!pending && view === 'year' && !wheels ? (
-        <YearGrid key={todayK === null ? 'guess' : 'today'} years={years} value={month.getFullYear()} current={todayY ?? -1} label={t.pickYear} pageRef={yearPage} onEdge={setYearEdge}
-          onPick={(y) => { toMonth(y, month.getMonth()); opener.current = null; setView('month'); focusSoon('.sg-calendar__cell[aria-selected="true"]'); }} onCancel={backToDays} />
+        <YearGrid key={todayK === null ? 'guess' : 'today'} years={years} value={chosen.getFullYear()} current={todayY ?? -1} label={t.pickYear} pageRef={yearPage} onEdge={setYearEdge}
+          onPick={(y) => { toMonth(y, chosen.getMonth()); opener.current = null; setView('month'); focusSoon('.sg-calendar__cell[aria-selected="true"]'); }} onCancel={backToDays} />
       ) : !pending && view === 'month' && !wheels ? (
-        <MonthGrid months={months} value={month.getMonth()} current={month.getFullYear() === todayY ? todayM : -1} label={t.pickMonth} caption={fmt.year.format(month)}
-          onPick={(m) => { toMonth(month.getFullYear(), m); backToDays(); }} onCancel={backToDays} />
+        <MonthGrid months={months} value={chosen.getMonth()} current={chosen.getFullYear() === todayY ? todayM : -1} label={t.pickMonth} caption={fmt.year.format(chosen)}
+          onPick={(m) => { toMonth(chosen.getFullYear(), m); backToDays(); }} onCancel={backToDays} />
       ) : !pending && view === 'month' ? (
         <div className="sg-calendar__wheels">
           <WheelGroup rows={7} aria-label={t.pick}>
             {[
-              <Wheel key="y" aria-label={t.year} options={years} value={month.getFullYear()} pageStep={10} onChange={(y) => toMonth(y, month.getMonth())} onCommit={backToDays} />,
-              <Wheel key="m" aria-label={t.month} options={months} value={month.getMonth()} pageStep={3} onChange={(m) => toMonth(month.getFullYear(), m)} onCommit={backToDays} />,
+              <Wheel key="y" aria-label={t.year} options={years} value={chosen.getFullYear()} pageStep={10} onChange={(y) => toMonth(y, chosen.getMonth())} onCommit={backToDays} />,
+              <Wheel key="m" aria-label={t.month} options={months} value={chosen.getMonth()} pageStep={3} onChange={(m) => toMonth(chosen.getFullYear(), m)} onCommit={backToDays} />,
             ][yearFirst ? 'slice' : 'reverse']()}
           </WheelGroup>
         </div>
-      ) : (
-      <table role="grid" aria-labelledby={ariaLabel ? undefined : titleId} aria-label={ariaLabel} aria-multiselectable={range ? true : undefined} className="sg-calendar__grid" onKeyDown={onKey}
-        onMouseLeave={range ? () => setHover(null) : undefined}>
-        <thead>
-          <tr>{weeks[0].map((d) => <th key={d.getDay()} scope="col" abbr={fmt.wdLong.format(d)}>{fmt.wdShort.format(d)}</th>)}</tr>
-        </thead>
-        <tbody ref={body} className="sg-calendar__body">
-          {pending ? weeks.map((wk, wi) => <tr key={wi}>{wk.map((_, col) => <td key={col} role="gridcell" />)}</tr>) : (() => {
-            /* the range drawn: chosen, or from the start to the day under the pointer while the end is chosen */
-            const lo = range?.start ?? null;
-            const hi = range ? (range.end ?? (lo && hover && range.reach(hover) ? hover : null)) : null;
-            const preview = Boolean(range && !range.end && hi);
-            const a = lo && hi ? ymd(lo) : 0, z = lo && hi ? ymd(hi) : 0;
-            return weeks.map((wk, wi) => (
-              <tr key={wi}>
-                {wk.map((d, col) => {
-                  const k = ymd(d), isToday = k === todayK, off = disabled(d), out = !sameMonth(d, month);
-                  const sel = range ? Boolean((range.start && k === ymd(range.start)) || (range.end && k === ymd(range.end))) : v ? k === ymd(v) : false;
-                  const band = a && z && a !== z && k >= a && k <= z ? (k === a ? 'start' : k === z ? 'end' : 'mid') : undefined;
-                  const role = range && sel ? (range.start && k === ymd(range.start) ? range.starts : range.ends) : '';
-                  return (
-                    <td key={k} role="gridcell" aria-selected={sel || (band === 'mid' && !preview)} data-band={band} data-col={band ? col : undefined} data-preview={band && preview ? '' : undefined}>
-                      <button type="button" className="sg-day" data-date={toISODate(d)} tabIndex={k === ymd(focused) ? 0 : -1}
-                        aria-pressed={sel} aria-current={isToday ? 'date' : undefined} aria-disabled={off || undefined}
-                        data-today={isToday ? '' : undefined} data-outside={out ? '' : undefined}
-                        onMouseEnter={range ? () => setHover(d) : undefined} onFocus={range ? () => setHover(d) : undefined}
-                        onClick={() => { if (off) return; setFocused(d); if (out) setMonth(d); if (range) range.pick(d); else setV(d); }}>
-                        {range && sel && <span className="sg-day__face" aria-hidden="true" />}
-                        {/* the number is what you see; the full date is what a screen reader hears */}
-                        <span aria-hidden="true">{d.getDate()}</span>
-                        <span className="sg-visually-hidden">{`${fmt.full.format(d)}${isToday ? `, ${t.today}` : ''}${role ? `, ${role}` : ''}`}</span>
-                      </button>
-                    </td>
-                  );
-                })}
-              </tr>
-            ));
-          })()}
-        </tbody>
-      </table>
-      )}
+      ) : asked ? (
+        <div className="sg-calendar__pair" role={pair && ariaLabel ? 'group' : undefined} aria-label={pair ? ariaLabel : undefined} onMouseLeave={() => setHover(null)}>
+          {shownMonths.map((m, gi) => <div key={gi} className="sg-calendar__month">{grid(m, gi)}</div>)}
+        </div>
+      ) : grid(month, 0)}
       </div>
     </div>
   );
@@ -692,7 +880,11 @@ function bandGeometry(tb: HTMLTableSectionElement, table: HTMLElement) {
   const cell = laid > 0 ? laid / 7 : tb.rows[0]?.cells[0]?.offsetWidth || 0;
   const tr = table.getBoundingClientRect(), k = tr.height / (table.offsetHeight || 1) || 1;
   const rowY = Array.from(tb.rows, (r) => table.offsetTop + (r.getBoundingClientRect().top - tr.top) / k + (r.offsetHeight - 36) / 2);
-  const sig = `${cell.toFixed(2)}:${table.offsetLeft},${table.offsetTop},${tb.offsetTop}:${Array.from(tb.rows, (r) => `${r.offsetTop}/${r.offsetHeight}`).join(',')}`;
+  /* the rows from the first one: a row's offsetTop is measured from the body while it has a transform (sliding
+     between months) and from the table after, in WebKit, so taken as it is the signature changed when the slide ended
+     and the next preview jumped instead of springing */
+  const r0 = tb.rows[0]?.offsetTop ?? 0;
+  const sig = `${cell.toFixed(2)}:${table.offsetLeft},${table.offsetTop},${tb.offsetTop}:${Array.from(tb.rows, (r) => `${r.offsetTop - r0}/${r.offsetHeight}`).join(',')}`;
   return { cell, rowY, sig };
 }
 
@@ -727,14 +919,21 @@ export type RangeCalendarProps = Omit<CalendarProps, 'value' | 'defaultValue' | 
   labels?: { start?: string; end?: string };
   /** the line under the days that says what to choose next and how long the range is (default true) */
   status?: boolean;
+  /** how many months to show side by side: 1 (default) or 2. Two need 584 px of width (in a `DateRangePicker`'s
+      panel, a window 632 px wide); with less room, or when `min` and `max` are in the same month, one is shown. In a
+      container that sizes to its content, give a `RangeCalendar` a width */
+  months?: 1 | 2;
 };
+/* the months a DateRangePicker's panel holds, decided from the window (null: a calendar on the page sizes itself) */
+const PanelMonths = createContext<1 | 2 | null>(null);
 
 /** A calendar that chooses a start and an end. The first pick is the start; the second, the end (an earlier day, or
     one the range cannot reach — past maxLength or past a disabled day — starts over; the start again clears it).
     Days between start and end are joined by a band. */
 export const RangeCalendar = forwardRef<HTMLDivElement, RangeCalendarProps>(function RangeCalendar(
-  { value, defaultValue = null, onChange, onPartial, minLength = 0, maxLength = Infinity, unit = 'days', labels, status = true, locale: localeProp, min, max, isDateDisabled, className, style, ...cal }, ref,
+  { value, defaultValue = null, onChange, onPartial, minLength = 0, maxLength = Infinity, unit = 'days', labels, status = true, months: monthsProp = 1, locale: localeProp, min, max, isDateDisabled, className, style, ...cal }, ref,
 ) {
+  const panel = useContext(PanelMonths), months = monthsProp === 2 ? 2 : 1;
   const [v, setV] = useRangeValue(value, defaultValue, onChange as (r: DateRange | null) => void);
   /* the days being chosen, as civil keys (see useDayValue) */
   const [draftK, setDraftK] = useState<{ s: number | null; e: number | null }>(() => ({ s: v ? ymd(v.start) : null, e: v ? ymd(v.end) : null }));
@@ -777,10 +976,12 @@ export const RangeCalendar = forwardRef<HTMLDivElement, RangeCalendarProps>(func
   /* the context's pick calls the latest one, with this render's setter and onPartial */
   const latestPick = useRef(pick);
   latestPick.current = pick;
-  const ctx = useMemo<RangeCtx>(() => ({ start: draft.start, end: draft.end, pick: (d: Date) => latestPick.current(d), reach, starts: S, ends: E }),
-    [draft.start ? ymd(draft.start) : 0, draft.end ? ymd(draft.end) : 0, minLength, maxLength, S, E, min ? ymd(min) : 0, max ? ymd(max) : 0, isDateDisabled, zone]);   /* its days are Dates of this zone */
+  const ctx = useMemo<RangeCtx>(() => ({ start: draft.start, end: draft.end, pick: (d: Date) => latestPick.current(d), reach, starts: S, ends: E, months, room: panel }),
+    [draft.start ? ymd(draft.start) : 0, draft.end ? ymd(draft.end) : 0, minLength, maxLength, S, E, min ? ymd(min) : 0, max ? ymd(max) : 0, isDateDisabled, zone, months, panel]);   /* its days are Dates of this zone */
   return (
-    <div ref={ref} className={cx('sg-rangecalendar', className)} style={style} lang={localeProp}>
+    /* two months on the page: the calendar fills its container up to the pair's width and is the container its
+       stylesheet asks (the second month shows when it holds both) */
+    <div ref={ref} className={cx('sg-rangecalendar', className)} style={style} lang={localeProp} data-fit={months === 2 && panel === null ? '' : undefined}>
       <RangeContext.Provider value={ctx}>
         <Calendar {...cal} locale={locale} min={min} max={max} isDateDisabled={isDateDisabled} value={draft.start} />
       </RangeContext.Provider>
@@ -815,6 +1016,18 @@ export const DateRangePicker = forwardRef<HTMLButtonElement, DateRangePickerProp
 ) {
   const [v, setV] = useRangeValue(value, defaultValue, onChange as (r: DateRange | null) => void);
   const [open, setOpenNow] = useState(false);
+  /* two months when asked for and the window holds them: the days' 584 px, the panel's padding and the margin a placed
+     panel keeps from the window's edges (12 px each side, each); decided as it opens, before it is placed and focused,
+     and again when the window is resized */
+  const wide = () => typeof window !== 'undefined' && window.innerWidth >= PAIR_WIDTH + 48;
+  const [roomy, setRoomy] = useState(false);
+  useEffect(() => {
+    if (!open || range.months !== 2) return;
+    const on = () => setRoomy(wide());
+    on();   /* also now: months may have become 2 while it was open, at a width taken when it opened */
+    window.addEventListener('resize', on);
+    return () => window.removeEventListener('resize', on);
+  }, [open, range.months]);
   /* the close that follows a finished range: cancelled by any other open or close (and on unmount), so a quick
      reopen is not shut by the earlier choice's timer */
   const closing = useRef(0);
@@ -843,7 +1056,7 @@ export const DateRangePicker = forwardRef<HTMLButtonElement, DateRangePickerProp
         <button ref={mergeRefs(ref, trigger)} id={fid} type="button" className="sg-select" disabled={disabled}
           aria-haspopup="dialog" aria-expanded={open} aria-labelledby={labelId ? `${labelId} ${fid}` : undefined} aria-label={labelId ? undefined : ariaLabel ?? t.chooseRange}
           aria-invalid={invalid || undefined} aria-describedby={help ? `${fid}-help` : undefined}
-          onClick={() => setOpen((o) => !o)}>
+          onClick={() => { if (!open) setRoomy(wide()); setOpen((o) => !o); }}>
           <span className="sg-select__value">{v
             ? <><span>{text(v)}</span><span className="sg-select__meta">{length(v)}</span></>
             : <span className="sg-select__placeholder">{placeholder ?? t.chooseRange}</span>}</span>
@@ -856,8 +1069,10 @@ export const DateRangePicker = forwardRef<HTMLButtonElement, DateRangePickerProp
         <Portal className="sg-portal--passthrough sg-portal--anchored">
           <div ref={mergeRefs(panel, lightRef)} role="dialog" aria-modal="false" aria-label={typeof label === 'string' ? label : t.chooseRange} lang={localeProp} tabIndex={-1} className={cx('sg-datepicker-panel', glassClass('strong'))}>
             <div data-sg-content>
+              <PanelMonths.Provider value={range.months === 2 && roomy ? 2 : 1}>
               <RangeCalendar {...range} unit={unit} locale={locale} value={v}
                 onChange={(r) => { setV(r); clearTimeout(closing.current); closing.current = window.setTimeout(() => setOpenNow(false), timing.closeAfterChoice); /* let the band fill before it closes */ }} />
+              </PanelMonths.Provider>
             </div>
           </div>
         </Portal>
