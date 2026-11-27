@@ -184,7 +184,9 @@ describe('charts: a scatter chart keeps the scale history of what it showed (#83
   });
   const cxOf = (c: HTMLElement) => [...c.querySelectorAll('circle.sg-scatter__point')].map((e) => Number(e.getAttribute('cx')));
   const holdFrames = () => { const frames: FrameRequestCallback[] = []; vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { frames.push(cb); return frames.length; }); vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {}); return frames; };
-  const settle = async (frames: FrameRequestCallback[]) => { let t = performance.now(); for (let k = 0; k < 400 && frames.length; k++) { t += 50; const f = frames.splice(0); await act(async () => { f.forEach((cb) => cb(t)); }); } };
+  /* one clock for every frame run, so it never goes back */
+  let clock = 0;
+  const settle = async (frames: FrameRequestCallback[]) => { for (let k = 0; k < 400 && frames.length; k++) { clock += 50; const t = clock, f = frames.splice(0); await act(async () => { f.forEach((cb) => cb(t)); }); } };
   /* switched to log and given new data while hidden (Activity): shown again, every point starts where it was drawn, not
      at its new value read on the old axis (the third point started some 2,900 px off a 400 px plot) */
   it('a switch with new data while hidden starts every point where it was drawn', async () => {
@@ -221,6 +223,215 @@ describe('charts: a scatter chart keeps the scale history of what it showed (#83
     const first = cxOf(container);
     expect(first.length).toBe(3);
     first.forEach((x, i) => expect(x).toBeCloseTo(before[i], 2));
+  });
+  /* new data while the switch is moving the points (#102): the new move starts from where each point is drawn (the
+     middle point jumped from about 145 px to 70 px when it started from a mix of linear and log units) */
+  const step = async (frames: FrameRequestCallback[], n: number) => { for (let k = 0; k < n && frames.length; k++) { clock += 16; const t = clock, f = frames.splice(0); await act(async () => { f.forEach((cb) => cb(t)); }); } };
+  /* an axis's ticks as drawn: label → place and opacity */
+  const xTicks = (c: HTMLElement) => new Map([...c.querySelectorAll('text.sg-chart__tick[text-anchor="middle"]')].map((e) => [e.textContent!, { x: Number(e.getAttribute('x')), o: Number(e.parentElement!.getAttribute('opacity') ?? 1) }]));
+  const yTicks = (c: HTMLElement) => new Map([...c.querySelectorAll('text.sg-chart__tick[text-anchor="end"]')].map((e) => [e.textContent!, { x: Number(e.getAttribute('y')), o: Number(e.parentElement!.getAttribute('opacity') ?? 1) }]));
+  /* every tick drawn before is drawn now at the same place and opacity, and no other tick shows */
+  const sameTicks = (a: ReturnType<typeof xTicks>, b: ReturnType<typeof xTicks>) => {
+    for (const [k, v] of a) { if (v.o < 0.01) continue; expect(b.get(k), k).toBeDefined(); expect(b.get(k)!.x, k).toBeCloseTo(v.x, 1); expect(b.get(k)!.o, k).toBeCloseTo(v.o, 2); }
+    for (const [k, v] of b) if (!a.has(k)) expect(v.o, k).toBeLessThan(0.01);
+  };
+  it.each([0, 3])('new data during a switch to log, %i frames in, starts every point where it is drawn', async (n) => {
+    const frames = holdFrames();
+    const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 2 }, { n: 'r', a: 100, b: 3 }];
+    const view = (scale: 'linear' | 'log', data: typeof A) => <ScatterChart aria-label="s" data={data} x="a" y="b" pointLabel="n" xScale={scale} />;
+    const { container, rerender } = render(view('linear', A));
+    await settle(frames);
+    const lin = cxOf(container);
+    await act(async () => { rerender(view('log', A)); });
+    await step(frames, n);
+    const mid = cxOf(container), midTicks = xTicks(container);
+    /* none run: still where it was; some: the switch is under way, the middle point between its linear place and its log one */
+    if (n) expect(Math.abs(mid[1] - lin[1])).toBeGreaterThan(1); else mid.forEach((x, i) => expect(x).toBeCloseTo(lin[i], 2));
+    await act(async () => { rerender(view('log', [A[0], { ...A[1], a: 20 }, A[2]])); });
+    const first = cxOf(container);
+    expect(first.length).toBe(3);
+    first.forEach((x, i) => expect(x).toBeCloseTo(mid[i], 2));
+    /* the gridlines and their labels too: where they were drawn, as faded as they were */
+    sameTicks(midTicks, xTicks(container));
+    /* and it goes on smoothly, ending on the log layout of the new data, inside the plot */
+    await step(frames, 1);
+    cxOf(container).forEach((x, i) => expect(Math.abs(x - first[i])).toBeLessThan(40));
+    await settle(frames);
+    const end = cxOf(container);
+    await act(async () => { rerender(view('log', [A[0], { ...A[1], a: 20 }, A[2]])); });
+    expect(cxOf(container)).toEqual(end);
+    expect(end[0]).toBeLessThan(end[1]); expect(end[1]).toBeLessThan(end[2]);
+    end.forEach((x) => { expect(x).toBeGreaterThanOrEqual(0); expect(x).toBeLessThanOrEqual(400); });
+  });
+  /* new data that moves the bounds: the linear ticks the switch had left do not come back */
+  it('new data with new bounds during a switch keeps the ticks where they are drawn', async () => {
+    const frames = holdFrames();
+    const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 2 }, { n: 'r', a: 100, b: 3 }];
+    const view = (scale: 'linear' | 'log', data: typeof A) => <ScatterChart aria-label="s" data={data} x="a" y="b" pointLabel="n" xScale={scale} />;
+    const { container, rerender } = render(view('linear', A));
+    await settle(frames);
+    await act(async () => { rerender(view('log', A)); });
+    await step(frames, 3);
+    const mid = cxOf(container), midTicks = xTicks(container);
+    await act(async () => { rerender(view('log', [A[0], A[1], { ...A[2], a: 105 }])); });
+    cxOf(container).forEach((x, i) => expect(x).toBeCloseTo(mid[i], 2));
+    sameTicks(midTicks, xTicks(container));
+    /* one frame on, every tick has moved a little, none jumped */
+    const one = xTicks(container); await step(frames, 1);
+    for (const [k, v] of xTicks(container)) if (one.has(k)) { expect(Math.abs(v.x - one.get(k)!.x), k).toBeLessThan(40); expect(Math.abs(v.o - one.get(k)!.o), k).toBeLessThan(0.3); }
+    await settle(frames);
+    for (const [, v] of xTicks(container)) expect(v.o).toBe(1);
+  });
+  /* new data again and again while a switch runs (a live feed): each new move carries on from the last, at no growing
+     cost, and the ticks stay put and keep their labels at each one */
+  it('new data many times during a switch keeps every point and tick where it is drawn', async () => {
+    const frames = holdFrames();
+    const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 2 }, { n: 'r', a: 100, b: 3 }];
+    const view = (data: typeof A, scale: 'linear' | 'log' = 'log') => <ScatterChart aria-label="s" data={data} x="a" y="b" pointLabel="n" xScale={scale} />;
+    const { container, rerender } = render(view(A, 'linear'));
+    await settle(frames);
+    await act(async () => { rerender(view(A)); });
+    await step(frames, 2);
+    const t0 = performance.now();
+    for (let n = 1; n <= 30; n++) {
+      const mid = cxOf(container), midTicks = xTicks(container);
+      await act(async () => { rerender(view([A[0], { ...A[1], a: 10 + n }, { ...A[2], a: 100 + n * 7 }])); });
+      cxOf(container).forEach((x, i) => expect(x).toBeCloseTo(mid[i], 1));
+      sameTicks(midTicks, xTicks(container));
+      await step(frames, 1);
+    }
+    expect(performance.now() - t0).toBeLessThan(3000);
+    await settle(frames);
+    for (const [, v] of xTicks(container)) expect(v.o).toBe(1);
+  });
+  /* switched back to linear before the switch to log ends: once settled, the linear axis has all its ticks, 0 included
+     (a tick with no place on the log axis) */
+  it('a switch back before the switch ends settles with every tick of the axis', async () => {
+    const frames = holdFrames();
+    const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 2 }, { n: 'r', a: 100, b: 3 }];
+    const view = (scale: 'linear' | 'log') => <ScatterChart aria-label="s" data={A} x="a" y="b" pointLabel="n" xScale={scale} />;
+    const { container, rerender } = render(view('linear'));
+    await settle(frames);
+    const lin = [...xTicks(container).keys()];
+    expect(lin).toContain('0');
+    await act(async () => { rerender(view('log')); });
+    await step(frames, 3);
+    await act(async () => { rerender(view('linear')); });
+    await settle(frames);
+    const end = xTicks(container);
+    expect([...end.keys()].sort()).toEqual([...lin].sort());
+    for (const [, v] of end) expect(v.o).toBe(1);
+  });
+  /* laid out again mid-move with the same bounds (fewer ticks for a shorter chart), then new data: the ticks carried
+     are the ones drawn */
+  it('new data after a relayout mid-switch keeps the ticks drawn', async () => {
+    const frames = holdFrames();
+    const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 10 }, { n: 'r', a: 100, b: 100 }];
+    const view = (scale: 'linear' | 'log', height: number, data = A) => <ScatterChart aria-label="s" data={data} x="a" y="b" pointLabel="n" yScale={scale} height={height} />;
+    const { container, rerender } = render(view('log', 280));
+    await settle(frames);
+    await act(async () => { rerender(view('linear', 280)); });
+    await step(frames, 3);
+    await act(async () => { rerender(view('linear', 112)); });
+    await step(frames, 1);
+    const mid = yTicks(container);
+    await act(async () => { rerender(view('linear', 112, [A[0], { ...A[1], b: 12 }, A[2]])); });
+    sameTicks(mid, yTicks(container));
+  });
+  /* a switch to linear reversed before it ends: the 0 tick, drawn on the way, stays where it is and fades out (it has
+     no place on a log axis) */
+  it('a switch to linear reversed mid-move keeps the 0 tick where it is drawn, fading out', async () => {
+    const frames = holdFrames();
+    const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 2 }, { n: 'r', a: 100, b: 3 }];
+    const view = (scale: 'linear' | 'log', data = A) => <ScatterChart aria-label="s" data={data} x="a" y="b" pointLabel="n" xScale={scale} />;
+    const { container, rerender } = render(view('log'));
+    await settle(frames);
+    await act(async () => { rerender(view('linear')); });
+    await step(frames, 3);
+    const mid = xTicks(container);
+    expect(mid.get('0')?.o ?? 0).toBeGreaterThan(0.01);
+    await act(async () => { rerender(view('log', [A[0], { ...A[1], a: 20 }, A[2]])); });
+    sameTicks(mid, xTicks(container));
+    await step(frames, 1);
+    expect(xTicks(container).get('0')?.o ?? 0).toBeLessThan(mid.get('0')!.o);
+    await settle(frames);
+    expect(xTicks(container).has('0')).toBe(false);
+  });
+  /* a tick the switch had outside the plot (clipped) is not carried: the next move fades it in where it goes */
+  it('new data during a switch fades in the ticks it shows, drawn at once', async () => {
+    const frames = holdFrames();
+    const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 2 }, { n: 'r', a: 100, b: 3 }];
+    const view = (scale: 'linear' | 'log', data = A) => <ScatterChart aria-label="s" data={data} x="a" y="b" pointLabel="n" xScale={scale} />;
+    const { container, rerender } = render(view('linear'));
+    await settle(frames);
+    /* the switch brings a far greater value: its tick starts far outside the plot */
+    await act(async () => { rerender(view('log', [A[0], A[1], { ...A[2], a: 10000 }])); });
+    await step(frames, 2);
+    await act(async () => { rerender(view('log', [A[0], A[1], { ...A[2], a: 11000 }])); });
+    await step(frames, 2);
+    const during = xTicks(container);
+    await settle(frames);
+    /* every tick of the new axis is already drawn, fading in, not held outside the plot */
+    for (const k of xTicks(container).keys()) expect(during.get(k)?.o ?? 0, k).toBeGreaterThan(0.01);
+  });
+  /* a point and its gridline move together when new bounds interrupt a switch */
+  it('new bounds during a switch keep an unchanged point on its gridline', async () => {
+    const frames = holdFrames();
+    const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 2 }, { n: 'r', a: 100, b: 3 }, { n: 's', a: 100, b: 4 }];
+    const view = (scale: 'linear' | 'log', data = A) => <ScatterChart aria-label="s" data={data} x="a" y="b" pointLabel="n" xScale={scale} />;
+    const { container, rerender } = render(view('linear'));
+    await settle(frames);
+    await act(async () => { rerender(view('log')); });
+    await step(frames, 3);
+    await act(async () => { rerender(view('log', [A[0], A[1], A[2], { ...A[3], a: 1e8 }])); });
+    for (let n = 0; n < 12; n++) {
+      const t = xTicks(container).get('100');
+      if (t && t.o > 0.01) expect(cxOf(container)[2], `frame ${n}`).toBeCloseTo(t.x, 0);
+      await step(frames, 1);
+    }
+  });
+  /* a tick leaving keeps the label it was drawn with, through new data twice, each with a new format (the axis keeps
+     only the format before its present ticks) */
+  it('a tick leaving keeps its label through two changes mid-switch', async () => {
+    const frames = holdFrames();
+    const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 2 }, { n: 'r', a: 100, b: 3 }];
+    const view = (scale: 'linear' | 'log', data = A, xFormat?: (v: number) => string) => <ScatterChart aria-label="s" data={data} x="a" y="b" pointLabel="n" xScale={scale} xFormat={xFormat} />;
+    const { container, rerender } = render(view('linear'));
+    await settle(frames);
+    await act(async () => { rerender(view('log')); });
+    await step(frames, 3);
+    expect(xTicks(container).get('1')?.o ?? 0).toBeGreaterThan(0.01);
+    /* 1 leaves the axis */
+    await act(async () => { rerender(view('log', [{ ...A[0], a: 20 }, { ...A[1], a: 50 }, A[2]], (v) => `#${v}`)); });
+    await step(frames, 1);
+    const before = xTicks(container);
+    expect(before.get('1')?.o ?? 0).toBeGreaterThan(0.01);
+    /* new ticks again, with another format: 1, still fading out, is still "1" */
+    await act(async () => { rerender(view('log', [{ ...A[0], a: 200 }, { ...A[1], a: 500 }, { ...A[2], a: 1000 }], (v) => `@${v}`)); });
+    const now = xTicks(container);
+    expect(now.get('1'), JSON.stringify([...now.keys()])).toBeDefined();
+    expect(now.get('1')!.x).toBeCloseTo(before.get('1')!.x, 1);
+    expect(now.get('1')!.o).toBeCloseTo(before.get('1')!.o, 2);
+  });
+  /* the same on the y axis, and switched back to linear with new data mid-switch */
+  it('new data with a switch back, mid-switch, on either axis, starts every point where it is drawn', async () => {
+    const frames = holdFrames();
+    const A = [{ n: 'p', a: 1, b: 1 }, { n: 'q', a: 10, b: 10 }, { n: 'r', a: 100, b: 100 }];
+    const B = [{ n: 'p', a: 1, b: 2 }, { n: 'q', a: 10, b: 30 }, { n: 'r', a: 100, b: 90 }];
+    const cyOf = (c: HTMLElement) => [...c.querySelectorAll('circle.sg-scatter__point')].map((e) => Number(e.getAttribute('cy')));
+    const view = (scale: 'linear' | 'log', data: typeof A) => <ScatterChart aria-label="s" data={data} x="a" y="b" pointLabel="n" yScale={scale} />;
+    const { container, rerender } = render(view('linear', A));
+    await settle(frames);
+    await act(async () => { rerender(view('log', A)); });
+    await step(frames, 3);
+    const mid = cyOf(container);
+    await act(async () => { rerender(view('linear', B)); });
+    const first = cyOf(container);
+    first.forEach((y, i) => expect(y).toBeCloseTo(mid[i], 2));
+    await settle(frames);
+    const end = cyOf(container);
+    /* linear B: higher values higher up (a smaller y) */
+    expect(end[0]).toBeGreaterThan(end[1]); expect(end[1]).toBeGreaterThan(end[2]);
   });
 });
 
