@@ -270,7 +270,10 @@ const browse = async () => {
       const bx = await t.boundingBox(), y0 = await y();
       await p.mouse.move(bx.x + bx.width / 2, bx.y + bx.height / 2);
       await resetTimes();
-      await p.mouse.wheel(0, 100); await settle(p, 120);
+      /* the first notch: read once the strip has moved, or after 200 ms (a fixed 120 ms read 0 on a CI runner's
+         Firefox); a wait that long can split the gesture (250 ms), and the premise below sends it round again */
+      await p.mouse.wheel(0, 100);
+      await t.evaluate((e) => new Promise((r) => { const t0 = performance.now(); const f = () => (e.scrollLeft > 0 || performance.now() - t0 > 200 ? r() : requestAnimationFrame(f)); f(); }));
       const one = await st(), y1 = await y();
       for (let k = 0; k < 30; k++) await p.mouse.wheel(0, 100);
       await settle(p, 300);

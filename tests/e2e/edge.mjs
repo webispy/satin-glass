@@ -393,7 +393,12 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
    where it is, the same element, and ends open on screen and opaque: the exit held its end state, so once the
    entrance let go the open panel sat offscreen again (or transparent, after reduced motion's fade). Closed
    mid-entrance, the exit leaves from where the panel is, without first jumping back to fully open. Each case waits
-   for the motion to be part way, frame by frame, and acts in the same task as it samples. */
+   for the motion to be part way, frame by frame, then holds it there (its animations paused at their current
+   time), presses, and once React has handled the press (a microtask), before any frame, reads where the new motion
+   starts: the held motions are cancelled and a new one, not yet drawn, starts exactly where they were held. Read
+   in the press's own task, a frame held after the press (64-71 ms after every click on a CI runner's WebKit, #113)
+   cannot run the turn on unseen; held, the old motion cannot move on while React renders (WebKit's animation clock
+   runs on within a task). */
 for (const reduced of [false, true]) {
   const p = await newPage({ viewport: { width: 390, height: 844 }, reducedMotion: reduced ? 'reduce' : 'no-preference' });
   await p.goto(U('overlays')); await settle(p, 700);
@@ -405,60 +410,81 @@ for (const reduced of [false, true]) {
       const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
       const panel = () => document.querySelector(${JSON.stringify(panelSel)});
       const box = (el) => { const r = el.getBoundingClientRect(); return { top: r.top, left: r.left, opacity: +getComputedStyle(el).opacity, transform: getComputedStyle(el).transform, inline: el.style.transform }; };
-      const esc = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`;
+      const esc = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      /* moves(a): an animation of the panel's place (its opacity, under reduced motion); live(el): those running;
+         underWay(el): one of them past its start. hold(el): the panel's motions paused where they are now (pinned to their current time, as a
+         pause waits for the next frame); the motions held. After a press, handled(): React's render and effects
+         (queued as a microtask) have run, no frame yet. handedOver(el, held): a held motion of the panel's place was
+         cancelled, as all of them were, and a new one, not yet drawn, has started: what is read now is its start */
+      const moves = (a) => a.effect?.getKeyframes?.().some((k) => ${JSON.stringify(reduced ? 'opacity' : 'transform')} in k);
+      const live = (el) => el.getAnimations().filter((a) => moves(a) && a.playState === 'running');
+      const underWay = (el) => live(el).some((a) => a.effect.getComputedTiming().progress > 0.02);
+      const hold = (el) => { const held = el.getAnimations(); for (const a of held) { const t = a.currentTime; a.pause(); a.currentTime = t; } return held; };
+      const handled = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
+      const handedOver = (el, held) => held.some(moves) && held.filter(moves).every((a) => a.playState === 'idle') && el.getAnimations().some((a) => !held.includes(a) && a.pending && moves(a));
+      /* after a close: the next frames, the panel's box while it is there (null once it has gone) */
+      const after = async (el, n) => { const out = []; for (let i = 0; i < n; i++) { await frame(); out.push(el.isConnected ? box(el) : null); } return out; };`;
     const run = (body) => p.evaluate(`(async () => { ${page} ${body} })()`);
     await run('btn().click();'); await settle(p, 900);
     const rest = await run('return box(panel());');
     const away = (a) => Math.abs(a.top - rest.top) + Math.abs(a.left - rest.left);
+    /* the new motion starts where the old one was held: within 1 px each way, or 0.01 of opacity */
+    const same = (a, b) => (reduced ? Math.abs(a.opacity - b.opacity) <= 0.01 : Math.abs(a.top - b.top) <= 1 && Math.abs(a.left - b.left) <= 1);
 
     /* re-opened mid-exit: part way out (60 px, or between 0.05 and 0.7 opacity, the panel still there), then the
        opener. A machine that holds its frames longer than the exit (reduced motion's fade is 110 ms; a CI runner's
-       WebKit stops drawing for up to 200 ms, #113) shows no frame part way, or holds the first frame after the click:
-       nothing about turning round is seen, and the case is tried again, up to three times */
+       WebKit stops drawing for up to 200 ms, #113) shows no frame part way, and the case is tried again, up to three
+       times */
     let turn;
     for (let tries = 0; tries < 3; tries++) {
       if (tries) { await settle(p, 900); await run('btn().click();'); await settle(p, 900); }
       turn = await run(`const el = panel(), r0 = box(el); esc();
-        let at = null, missed = false;
-        for (let i = 0; i < 90 && !at && !missed; i++) {
+        let part = false, missed = false;
+        for (let i = 0; i < 90 && !part && !missed; i++) {
           await frame(); if (!el.isConnected) { missed = true; break; }
           const b = box(el);
-          if (${reduced} ? b.opacity > 0.05 && b.opacity < 0.7 : Math.abs(b.top - r0.top) + Math.abs(b.left - r0.left) > 60) at = b;
-          else if (${reduced} && b.opacity <= 0.05) missed = true;
+          if (${reduced} ? b.opacity > 0.05 && b.opacity < 0.7 : Math.abs(b.top - r0.top) + Math.abs(b.left - r0.left) > 60) part = underWay(el);
+          if (!part && (${reduced} ? b.opacity <= 0.05 : !live(el).length)) missed = true;   /* the exit ended unseen */
         }
-        if (missed) return { missed: true };
-        /* the first frame after the click must come at the machine's usual pace: a held frame lets the turn run on
-           unseen (0.11 to 0.55 in one frame on a CI runner), so how it turned cannot be judged */
-        const t0 = performance.now(); btn().click(); const path = [];
-        for (let i = 0; i < 10; i++) { await frame(); path.push(box(el)); if (i === 0 && performance.now() - t0 > 60) return { missed: true, held: Math.round(performance.now() - t0) }; }
-        return { at, path, same: panel() === el };`);
+        if (missed || !part) return { missed: true };
+        /* held there, the click, and where the entrance starts, in this task; then ten frames to see which way it goes */
+        const held = hold(el), at = box(el);
+        btn().click(); await handled(); const s0 = box(el), handed = handedOver(el, held), path = [];
+        for (let i = 0; i < 10; i++) { await frame(); path.push(box(el)); }
+        return { at, s0, handed, path, same: panel() === el };`);
       if (!turn.missed) break;
     }
     await settle(p, 1200);
-    const back = await run('return box(panel());');
-    /* the ten frames after the click: it turns round from where it was. Never back offscreen (WebKit's box can trail
-       by a frame, and the spring starts from rest), not at rest at once, and nearer rest by the tenth */
-    const first = turn.path?.[0], last = turn.path?.at(-1);
-    const handoff = turn.at && turn.same && (reduced
-      ? first.opacity >= turn.at.opacity - 0.05 && first.opacity < turn.at.opacity + 0.35 && last.opacity > first.opacity
-      : Math.max(...turn.path.map(away)) <= away(turn.at) * 1.3 + 2 && away(first) >= away(turn.at) * 0.3 && away(last) < away(turn.at));
-    const rests = Math.abs(back.top - rest.top) <= 1 && Math.abs(back.left - rest.left) <= 1 && back.opacity === 1 && back.transform === 'none' && !back.inline;
+    const back = await run('const el = panel(); return el && box(el);');
+    /* it starts where it was (not back offscreen, not at rest at once), and the ten frames after go its way: never
+       further out than the spring's carry past where it turned, and nearer rest (or more opaque) by the tenth */
+    const last = turn.path?.at(-1);
+    const handoff = turn.at && turn.same && turn.handed && same(turn.s0, turn.at) && (reduced
+      ? last.opacity > turn.s0.opacity
+      : Math.max(...turn.path.map(away)) <= away(turn.s0) * 1.3 + 2 && away(last) < away(turn.s0));
+    const rests = back && Math.abs(back.top - rest.top) <= 1 && Math.abs(back.left - rest.left) <= 1 && back.opacity === 1 && back.transform === 'none' && !back.inline;
+    const show = (b) => b && +(reduced ? b.opacity : away(b)).toFixed(2);
     ok(`${name}: re-opened mid-exit it turns round from where it is and ends open${tag}`, handoff && rests,
-      JSON.stringify(turn.missed ? { missed: turn.held ? `the first frame after the click held ${turn.held} ms, in three tries` : 'no frame part way in three tries', back } : { at: turn.at && (reduced ? turn.at.opacity : away(turn.at)), path: turn.path?.map((b) => +(reduced ? b.opacity : away(b)).toFixed(2)), same: turn.same, back }));
-    await p.keyboard.press('Escape'); await settle(p, 900);
+      JSON.stringify(turn.missed ? { missed: 'no frame part way in three tries', back } : { at: show(turn.at), start: show(turn.s0), handed: turn.handed, path: turn.path?.map(show), same: turn.same, back }));
+    if (back) { await p.keyboard.press('Escape'); await settle(p, 900); }
     if (reduced) {
       /* closed mid-fade-in: the fade out goes on from the opacity it had reached, not from full */
       /* the fade is 140 ms: a loaded machine can draw it in two frames, so any frame part way will do, and the open
          and close are tried again if none came */
       let fadeCut = null;
       for (let tries = 0; tries < 4 && !fadeCut?.at; tries++) {
-        if (fadeCut) await settle(p, 900);
-        fadeCut = await run(`btn().click(); let at = null;
-          for (let i = 0; i < 60 && !at; i++) { await frame(); const o = +getComputedStyle(panel()).opacity; if (o > 0.02 && o < 0.97) at = o; }
-          const el = panel(); esc(); await frame();
-          return { at, l0: +getComputedStyle(el).opacity, same: panel() === el };`);
+        /* none part way: the panel came fully in, so it is closed before the next try opens it again */
+        if (fadeCut) { await p.keyboard.press('Escape'); await settle(p, 900); }
+        fadeCut = await run(`btn().click(); let part = false;
+          for (let i = 0; i < 60 && !part; i++) { await frame(); const el = panel(), o = +getComputedStyle(el).opacity; if (o > 0.02 && o < 0.97 && underWay(el)) part = true; else if (o >= 0.97) break; }
+          if (!part) return { at: null };
+          const el = panel(), held = hold(el), at = +getComputedStyle(el).opacity; esc(); await handled();
+          const l0 = +getComputedStyle(el).opacity, handed = handedOver(el, held), same = panel() === el;
+          return { at, l0, handed, same, next: (await after(el, 10)).map((b) => b && b.opacity) };`);
       }
-      ok(`${name}: closed mid-fade-in it fades out from where it was${tag}`, fadeCut.at !== null && fadeCut.same && fadeCut.l0 <= fadeCut.at + 0.05 && fadeCut.l0 >= fadeCut.at - 0.35, JSON.stringify(fadeCut));
+      /* and it goes on fading: fainter within ten frames, or gone */
+      const fadeNext = fadeCut.next?.at(-1);
+      ok(`${name}: closed mid-fade-in it fades out from where it was${tag}`, fadeCut.at !== null && fadeCut.same && fadeCut.handed && Math.abs(fadeCut.l0 - fadeCut.at) <= 0.01 && (fadeNext == null || fadeNext < fadeCut.l0), JSON.stringify(fadeCut));
       await settle(p, 900);
       /* swiped away with reduced motion (the sheet still takes the swipe): it fades where it was let go, not back
          at rest under the finger */
@@ -481,15 +507,24 @@ for (const reduced of [false, true]) {
       continue;
     }
 
-    /* closed mid-entrance: the exit's first frame is no nearer rest than the entrance had come, give or take the
-       frame it moved meanwhile (WebKit's box can trail the animation's value by one) */
-    const cut = await run(`btn().click(); for (let i = 0; i < 3; i++) await frame();
-      const el = panel(), e1 = box(el); await frame(); const e2 = box(el);
-      esc(); await frame();
-      return { e1, e2, l0: panel() && box(panel()), same: panel() === el };`);
-    const step = Math.abs(away(cut.e1) - away(cut.e2));
-    ok(`${name}: closed mid-entrance it leaves from where it is`, cut.same && cut.l0 && away(cut.e2) > 40 && Math.abs(away(cut.l0) - away(cut.e2)) <= 1.5 * step + 2,
-      JSON.stringify({ entering: [away(cut.e1), away(cut.e2)], leaving: cut.l0 && away(cut.l0) }));
+    /* closed mid-entrance: the exit starts where the entrance had come, not back at rest */
+    /* part way in: more than 40 px from rest, the entrance past its start (a held frame can carry it past that: the
+       case is tried again, up to three times); then it goes on out: further from rest within ten frames, or gone */
+    let cut;
+    for (let tries = 0; tries < 3; tries++) {
+      if (tries) { await p.keyboard.press('Escape'); await settle(p, 900); }
+      cut = await run(`const d = (b) => Math.abs(b.top - ${rest.top}) + Math.abs(b.left - ${rest.left});
+        btn().click(); let part = false;
+        for (let i = 0; i < 60 && !part; i++) { await frame(); const el = panel(); if (d(box(el)) <= 40) break; part = underWay(el); }
+        if (!part) return { missed: true };
+        const el = panel(), held = hold(el), at = box(el); esc(); await handled();
+        const l0 = panel() && box(panel()), handed = handedOver(el, held), same = panel() === el;
+        return { at, l0, handed, same, next: await after(el, 10) };`);
+      if (!cut.missed) break;
+    }
+    const cutNext = cut.next?.at(-1);
+    ok(`${name}: closed mid-entrance it leaves from where it is`, !cut.missed && cut.same && cut.handed && cut.l0 && away(cut.at) > 40 && same(cut.l0, cut.at) && (cutNext == null || away(cutNext) > away(cut.l0)),
+      JSON.stringify(cut.missed ? { missed: 'no frame part way in three tries' } : { entering: +away(cut.at).toFixed(2), leaving: cut.l0 && +away(cut.l0).toFixed(2), next: cut.next.map((b) => b && Math.round(away(b))), handed: cut.handed, same: cut.same }));
     await settle(p, 900);
 
     /* swiped away (a mouse drag: the sheet by its grabber, the drawer sideways) and re-opened as it leaves: the
