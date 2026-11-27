@@ -9,7 +9,7 @@ import { glassClass } from './glass-class';
 import { Button } from './controls';
 import { CheckIcon, InfoIcon, SuccessIcon, AlertIcon } from './icons';
 
-import { AnchorSource, useAnchored, useOverlayLifecycle, useRelease, type Anchor, type CloseReason } from './overlay-hooks';
+import { AnchorSource, enterEdge, exitEdge, track, useAnchored, useOverlayLifecycle, useRelease, type Anchor, type CloseReason } from './overlay-hooks';
 import { useMessages } from './messages';
 export type { CloseReason } from './overlay-hooks';
 
@@ -102,6 +102,10 @@ export function Sheet({ open, onClose, title, leading, trailing, children, heigh
   /* read during the drag, so a change while open applies at once (as in the drawer) */
   const canSwipe = useRef(dismissible); canSwipe.current = dismissible;
   const wide = () => adaptive && typeof matchMedia === 'function' && matchMedia('(min-width: 900px)').matches;
+  /* a bloom (wide) is core's and not tracked: crossing to the edge path mid-bloom (the window resized across 900 px)
+     it is cancelled outright, as bloomIn and bloomOut cancel the panel's animations themselves */
+  const bloomed = useRef<HTMLElement | null>(null);   /* the panel element that bloomed last (a new mount is a new one) */
+  const unbloom = (p: HTMLElement) => { if (bloomed.current === p) { bloomed.current = null; p.getAnimations().forEach((a) => a.cancel()); } };
 
   const { mounted } = useOverlayLifecycle(open, () => {
     const p = panel.current!;
@@ -126,26 +130,24 @@ export function Sheet({ open, onClose, title, leading, trailing, children, heigh
         if (!cancelled && canSwipe.current && (y > p.offsetHeight * 0.3 || vy > 900)) { swiped.current = true; close.current('swipe'); return; }
         p.style.transform = '';
         if (scrim.current) scrim.current.style.opacity = '';
-        animate(p, [{ transform: `translateY(${y}px)` }, { transform: 'none' }], 'smooth');
+        track(p, animate(p, [{ transform: `translateY(${y}px)` }, { transform: 'none' }], 'smooth'));
         y = 0;
       },
     });
     /* hidden mid-drag (#79): the drag is cancelled (its release would land elsewhere) and the sheet shown again at
        rest, not half dismissed */
     release.set(() => { pop(); trap(); off(); }, { hide: () => { off.cancel(); pop.pause(true); }, show: () => { y = 0; p.style.transform = ''; if (scrim.current) scrim.current.style.opacity = ''; pop.pause(false); trap.resume(); } });
-    if (wide()) return bloomIn(p, { x: p.offsetWidth / 2, y: p.offsetHeight / 2 }, 0.94);
-    if (prefersReducedMotion(p)) return fade(p, 0, 1, timing.appear);   /* reduced: appears in place */
-    return animate(p, [{ transform: 'translateY(calc(100% + 24px))' }, { transform: 'none' }], 'gentle').finished.then(() => undefined, () => undefined);
+    if (wide()) { p.style.transform = ''; bloomed.current = p; return bloomIn(p, { x: p.offsetWidth / 2, y: p.offsetHeight / 2 }, 0.94); }
+    unbloom(p);
+    return enterEdge(p, 'translateY(calc(100% + 24px))', 'gentle');   /* re-opened mid-exit, from where it is (#106); reduced: a fade in place */
   }, () => {
     release.run();
     const p = panel.current!;
     scrim.current?.classList.remove('is-open');
     if (scrim.current) scrim.current.style.opacity = '';
-    if (wide() && !swiped.current) return bloomOut(p, 0.96);
-    const from = p.style.transform || 'none';
-    p.getAnimations().forEach((a) => a.cancel());
-    if (prefersReducedMotion(p)) return fade(p, 1, 0, timing.leave);
-    return p.animate([{ transform: from }, { transform: 'translateY(calc(100% + 24px))' }], { duration: timing.sheetOut, easing: easing.exit, fill: 'both' }).finished.then(() => undefined, () => undefined);
+    if (wide() && !swiped.current) { bloomed.current = p; return bloomOut(p, 0.96); }
+    unbloom(p);
+    return exitEdge(p, 'translateY(calc(100% + 24px))', timing.sheetOut);   /* from where it is: a release mid-drag, or closed mid-entrance */
   }, release);
   if (!mounted) return null;
   return (
@@ -316,13 +318,11 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
     const pop = pushLayer(() => close.current('escape'), true, b);
     const trap = trapFocus(b, b.querySelector<HTMLElement>('[data-cancel]'));
     release.set(() => { pop(); trap(); }, { hide: () => pop.pause(true), show: () => { pop.pause(false); trap.resume(); } });
-    if (prefersReducedMotion(b)) return fade(b, 0, 1, timing.appear);
-    return animate(b, [{ transform: 'translateY(calc(100% + 24px))' }, { transform: 'none' }], 'smooth').finished.then(() => undefined, () => undefined);
+    return enterEdge(b, 'translateY(calc(100% + 24px))', 'smooth');   /* re-opened mid-exit: from where it is (#106) */
   }, () => {
     release.run();
     scrim.current?.classList.remove('is-open');
-    if (prefersReducedMotion(box.current)) return fade(box.current!, 1, 0, timing.leave);
-    return box.current!.animate([{ transform: 'none' }, { transform: 'translateY(calc(100% + 24px))' }], { duration: timing.actionSheetOut, easing: easing.exit, fill: 'both' }).finished.then(() => undefined, () => undefined);
+    return exitEdge(box.current!, 'translateY(calc(100% + 24px))', timing.actionSheetOut);
   }, release);
   if (!mounted) return null;
   /* arrows move between the rows like a menu (Tab still works); Home / End go to the ends */

@@ -381,6 +381,134 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   await p.context().close();
 }
 
+/* ================================================================ edge panels turned round mid-motion (#106) */
+/* On a phone, a sheet, a drawer or an action sheet re-opened while its exit still moves it out turns round from
+   where it is, the same element, and ends open on screen and opaque: the exit held its end state, so once the
+   entrance let go the open panel sat offscreen again (or transparent, after reduced motion's fade). Closed
+   mid-entrance, the exit leaves from where the panel is, without first jumping back to fully open. Each case waits
+   for the motion to be part way, frame by frame, and acts in the same task as it samples. */
+for (const reduced of [false, true]) {
+  const p = await newPage({ viewport: { width: 390, height: 844 }, reducedMotion: reduced ? 'reduce' : 'no-preference' });
+  await p.goto(U('overlays')); await settle(p, 700);
+  const tag = reduced ? ' (reduced motion)' : '';
+  for (const [name, opener, panelSel] of [['sheet', '장소 편집', '.sg-sheet'], ['action sheet', '공유 옵션…', '.sg-actionsheet'], ['drawer', '필터 열기', '.sg-drawer']]) {
+    await p.locator('.docs__page button', { hasText: opener }).first().scrollIntoViewIfNeeded();
+    /* in the page: the opener (clicked from the page, as the scrim covers it while open), a frame, the panel's box */
+    const page = `const btn = () => [...document.querySelectorAll('.docs__page button')].find((x) => x.textContent.trim() === ${JSON.stringify(opener)});
+      const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+      const panel = () => document.querySelector(${JSON.stringify(panelSel)});
+      const box = (el) => { const r = el.getBoundingClientRect(); return { top: r.top, left: r.left, opacity: +getComputedStyle(el).opacity, transform: getComputedStyle(el).transform, inline: el.style.transform }; };
+      const esc = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`;
+    const run = (body) => p.evaluate(`(async () => { ${page} ${body} })()`);
+    await run('btn().click();'); await settle(p, 900);
+    const rest = await run('return box(panel());');
+    const away = (a) => Math.abs(a.top - rest.top) + Math.abs(a.left - rest.left);
+
+    /* re-opened mid-exit: part way out (60 px, or below 0.7 opacity), then the opener */
+    const turn = await run(`const el = panel(), r0 = box(el); esc();
+      let at = null;
+      for (let i = 0; i < 90 && !at; i++) { await frame(); const b = box(el); if (${reduced} ? b.opacity < 0.7 : Math.abs(b.top - r0.top) + Math.abs(b.left - r0.left) > 60) at = b; }
+      btn().click(); const path = [];
+      for (let i = 0; i < 10; i++) { await frame(); path.push(box(el)); }
+      return { at, path, same: panel() === el };`);
+    await settle(p, 1200);
+    const back = await run('return box(panel());');
+    /* the ten frames after the click: it turns round from where it was. Never back offscreen (WebKit's box can trail
+       by a frame, and the spring starts from rest), not at rest at once, and nearer rest by the tenth */
+    const first = turn.path?.[0], last = turn.path?.at(-1);
+    const handoff = turn.at && turn.same && (reduced
+      ? first.opacity >= turn.at.opacity - 0.05 && first.opacity < turn.at.opacity + 0.35 && last.opacity > first.opacity
+      : Math.max(...turn.path.map(away)) <= away(turn.at) * 1.3 + 2 && away(first) >= away(turn.at) * 0.3 && away(last) < away(turn.at));
+    const rests = Math.abs(back.top - rest.top) <= 1 && Math.abs(back.left - rest.left) <= 1 && back.opacity === 1 && back.transform === 'none' && !back.inline;
+    ok(`${name}: re-opened mid-exit it turns round from where it is and ends open${tag}`, handoff && rests,
+      JSON.stringify({ at: turn.at && (reduced ? turn.at.opacity : away(turn.at)), path: turn.path?.map((b) => +(reduced ? b.opacity : away(b)).toFixed(2)), same: turn.same, back }));
+    await p.keyboard.press('Escape'); await settle(p, 900);
+    if (reduced) {
+      /* closed mid-fade-in: the fade out goes on from the opacity it had reached, not from full */
+      /* the fade is 140 ms: a loaded machine can draw it in two frames, so any frame part way will do, and the open
+         and close are tried again if none came */
+      let fadeCut = null;
+      for (let tries = 0; tries < 4 && !fadeCut?.at; tries++) {
+        if (fadeCut) await settle(p, 900);
+        fadeCut = await run(`btn().click(); let at = null;
+          for (let i = 0; i < 60 && !at; i++) { await frame(); const o = +getComputedStyle(panel()).opacity; if (o > 0.02 && o < 0.97) at = o; }
+          const el = panel(); esc(); await frame();
+          return { at, l0: +getComputedStyle(el).opacity, same: panel() === el };`);
+      }
+      ok(`${name}: closed mid-fade-in it fades out from where it was${tag}`, fadeCut.at !== null && fadeCut.same && fadeCut.l0 <= fadeCut.at + 0.05 && fadeCut.l0 >= fadeCut.at - 0.35, JSON.stringify(fadeCut));
+      await settle(p, 900);
+      /* swiped away with reduced motion (the sheet still takes the swipe): it fades where it was let go, not back
+         at rest under the finger */
+      if (name !== 'sheet') continue;
+      await run('btn().click();'); await settle(p, 900);
+      const g = await p.locator('.sg-sheet__grabber').boundingBox();
+      const x0 = g.x + g.width / 2, y0 = g.y + 8;
+      await p.mouse.move(x0, y0); await p.mouse.down();
+      for (let i = 1; i <= 8; i++) { await p.mouse.move(x0, y0 + i * 40); await p.waitForTimeout(16); }
+      await p.mouse.up();
+      /* frame by frame until the fade has begun (the release reaches the exit through a render and an effect, a frame
+         or two later on a slow runner): it begins where it was let go, and no frame before it is back near rest */
+      const fading = await run(`const seen = [];
+        for (let i = 0; i < 20; i++) { await frame(); const el = panel(); if (!el) break; const b = box(el); seen.push(b); if (b.opacity < 1) break; }
+        return seen;`);
+      const fadeAt = fading.find((b) => b.opacity < 1), before = fading.slice(0, fading.indexOf(fadeAt));
+      ok('sheet: swiped away with reduced motion, it fades where it was let go', fadeAt && away(fadeAt) > 200 && before.every((b) => away(b) > 50),
+        JSON.stringify({ frames: fading.length, away: fadeAt && away(fadeAt), opacity: fadeAt?.opacity, before: before.map((b) => Math.round(away(b))) }));
+      await settle(p, 900);
+      continue;
+    }
+
+    /* closed mid-entrance: the exit's first frame is no nearer rest than the entrance had come, give or take the
+       frame it moved meanwhile (WebKit's box can trail the animation's value by one) */
+    const cut = await run(`btn().click(); for (let i = 0; i < 3; i++) await frame();
+      const el = panel(), e1 = box(el); await frame(); const e2 = box(el);
+      esc(); await frame();
+      return { e1, e2, l0: panel() && box(panel()), same: panel() === el };`);
+    const step = Math.abs(away(cut.e1) - away(cut.e2));
+    ok(`${name}: closed mid-entrance it leaves from where it is`, cut.same && cut.l0 && away(cut.e2) > 40 && Math.abs(away(cut.l0) - away(cut.e2)) <= 1.5 * step + 2,
+      JSON.stringify({ entering: [away(cut.e1), away(cut.e2)], leaving: cut.l0 && away(cut.l0) }));
+    await settle(p, 900);
+
+    /* swiped away (a mouse drag: the sheet by its grabber, the drawer sideways) and re-opened as it leaves: the
+       drag's last transform, left inline for the exit to start from, does not hold the panel part way */
+    const grab = name === 'sheet' ? '.sg-sheet__grabber' : name === 'drawer' ? '.sg-drawer__header' : null;
+    if (!grab) continue;
+    await run('btn().click();'); await settle(p, 900);
+    await run('panel().dataset.probe = "1";');
+    const g = await p.locator(grab).boundingBox();
+    const x0 = g.x + g.width / 2, y0 = g.y + Math.min(8, g.height / 2);
+    await p.mouse.move(x0, y0); await p.mouse.down();
+    /* within the viewport: Playwright's Firefox reports a pointer moved past it at the wrong place */
+    for (let i = 1; i <= 8; i++) { await p.mouse.move(name === 'sheet' ? x0 : x0 + i * 20, name === 'sheet' ? y0 + i * 40 : y0); await p.waitForTimeout(16); }
+    await p.mouse.up();
+    const going = await run('await frame(); const b = box(panel()); btn().click(); return b;');
+    await settle(p, 1200);
+    const swiped = await run('return { ...box(panel()), probe: panel().dataset.probe };');
+    ok(`${name}: swiped away and re-opened as it leaves, it ends open where it rests`,
+      away(going) > 100 && swiped.probe === '1' && Math.abs(swiped.top - rest.top) <= 1 && Math.abs(swiped.left - rest.left) <= 1 && swiped.transform === 'none' && !swiped.inline,
+      JSON.stringify({ going: away(going), swiped }));
+    await p.keyboard.press('Escape'); await settle(p, 900);
+  }
+  await p.context().close();
+}
+
+/* a sheet closed wide (folding into its bloom) and re-opened on a phone before that ends: the bloom is not left
+   holding the panel transparent (#106) */
+{
+  const p = await newPage({ viewport: { width: 1280, height: 900 } });
+  await p.goto(U('overlays')); await settle(p, 700);
+  const opener = p.locator('.docs__page button', { hasText: '장소 편집' }).first();
+  await opener.scrollIntoViewIfNeeded(); await opener.click(); await settle(p, 900);
+  await p.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  await p.waitForTimeout(40);
+  await p.setViewportSize({ width: 390, height: 844 });
+  await p.evaluate(() => [...document.querySelectorAll('.docs__page button')].find((x) => x.textContent.trim() === '장소 편집').click());
+  await settle(p, 1200);
+  const s = await p.evaluate(() => { const el = document.querySelector('.sg-sheet'); if (!el) return null; const r = el.getBoundingClientRect(), cs = getComputedStyle(el); return { top: Math.round(r.top), bottom: Math.round(r.bottom), opacity: +cs.opacity, transform: cs.transform }; });
+  ok('sheet: closed wide and re-opened on a phone mid-fold, it ends open and opaque', s && s.opacity === 1 && s.transform === 'none' && s.bottom <= 844 && s.top > 0, JSON.stringify(s));
+  await p.context().close();
+}
+
 /* ================================================================ keyboard only */
 {
   const p = await newPage();

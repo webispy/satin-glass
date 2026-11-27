@@ -1,6 +1,6 @@
 /* Internal overlay plumbing shared by the overlay components (not part of the public API). */
 import { createContext, useContext, useEffect, useRef } from 'react';
-import { bloomIn, bloomOut, canFocus, dirOf, focusables, holdScrollLock, inLayerAbove, place, pushLayer, tabFrom, type Placement } from '@satin-glass/core';
+import { animate, bloomIn, bloomOut, canFocus, easing, prefersReducedMotion, timing, type SpringName, type SpringParams, dirOf, focusables, holdScrollLock, inLayerAbove, place, pushLayer, tabFrom, type Placement } from '@satin-glass/core';
 import { useIsoLayoutEffect, usePresence } from './utils';
 
 /** why an overlay asks to close; 'backdrop': a press outside it (or Tab leaving a menu or popover); 'anchor': the
@@ -32,6 +32,59 @@ export function useRelease() {
   }).current;
   useEffect(() => () => api.run(), []);
   return api;
+}
+
+/* ---- edge panels (Sheet on a phone, ActionSheet, Drawer) turned round mid-motion (#106). Each panel's own
+   animations (its entrance, its exit, a drag's settle) are kept here, so taking over cancels only those: an app's
+   animation on the panel (a className's colour change) keeps running and does not read as a panel in motion. */
+const moving = new WeakMap<HTMLElement, Set<Animation>>();
+/** Keeps `a` as one of the panel's own animations: until it is cancelled, or once finished unless it holds its end
+    (an exit does, until the panel unmounts), so repeated drag releases do not pile up. */
+export function track(p: HTMLElement, a: Animation): Animation {
+  let set = moving.get(p);
+  if (!set) moving.set(p, (set = new Set()));
+  set.add(a);
+  const fill = (a.effect as KeyframeEffect | null)?.getTiming?.().fill;
+  a.finished?.then(() => { if (fill !== 'both' && fill !== 'forwards') set!.delete(a); }, () => set!.delete(a));
+  return a;
+}
+/* opacity: null when the panel's own animations were not fading it (an app's opacity is the app's) */
+type Drawn = { transform: string; opacity: number | null };
+const fades = (a: Animation) => !!(a.effect as KeyframeEffect | null)?.getKeyframes?.().some((k) => 'opacity' in k);
+/* Where the panel is drawn, when its own animations run (or hold an exit's end) or a drag's last transform is left
+   inline; those are stopped and cleared, so what comes next starts from there. Null: it is at rest. Re-opened while
+   the exit still ran, the exit's held end (fill: 'both') used to apply again once the entrance let go, leaving the
+   open panel offscreen, or transparent after reduced motion's fade; and a swipe's inline transform held it part way. */
+function takeOver(p: HTMLElement): Drawn | null {
+  const own = [...(moving.get(p) ?? [])].filter((a) => a.playState !== 'idle');   /* idle: cancelled (by a drag too) */
+  if (!own.length && !p.style.transform) return null;
+  const cs = getComputedStyle(p), o = parseFloat(cs.opacity);
+  const at = { transform: cs.transform || 'none', opacity: own.some(fades) && Number.isFinite(o) ? o : null };
+  own.forEach((a) => a.cancel());
+  moving.delete(p);
+  p.style.transform = '';
+  return at;
+}
+const done = (a: Animation) => a.finished.then(() => undefined, () => undefined);
+/** An edge panel's entrance: from `offscreen`, or re-opened mid-exit from where it is, the transform on `spring` (a
+    panel caught part faded comes back to full on the way). Reduced motion: a fade in, from its opacity. */
+export function enterEdge(p: HTMLElement, offscreen: string, spring: SpringName | SpringParams): Promise<void> {
+  const at = takeOver(p), from = at ? at.opacity ?? 1 : 0;
+  if (prefersReducedMotion(p)) return done(track(p, p.animate([{ opacity: from }, { opacity: 1 }], { duration: timing.appear, fill: 'backwards' })));
+  if (at && from < 1) track(p, p.animate([{ opacity: from }, { opacity: 1 }], { duration: timing.appear, fill: 'backwards' }));
+  return done(track(p, animate(p, [{ transform: at ? at.transform : offscreen }, { transform: 'none' }], spring)));
+}
+/** An edge panel's exit to `offscreen`: a short ease-in from where it is (a release mid-drag, an entrance cut short),
+    holding its end until the panel unmounts; caught part faded, it stays so. Reduced motion: a fade out where it is
+    (a swipe's release point too). */
+export function exitEdge(p: HTMLElement, offscreen: string, ms: number): Promise<void> {
+  const at = takeOver(p);
+  if (prefersReducedMotion(p)) {
+    if (at && at.transform !== 'none') p.style.transform = at.transform;   /* cleared by the next takeover */
+    return done(track(p, p.animate([{ opacity: at?.opacity ?? 1 }, { opacity: 0 }], { duration: timing.leave, fill: 'both' })));
+  }
+  const o = at?.opacity ?? null, held = o !== null && o < 1 ? { opacity: o } : {};
+  return done(track(p, p.animate([{ transform: at ? at.transform : 'none', ...held }, { transform: offscreen, ...held }], { duration: ms, easing: easing.exit, fill: 'both' })));
 }
 
 /** Shared lifecycle: mount → enter animation → (open) → exit animation → unmount. Hidden while open (Suspense,

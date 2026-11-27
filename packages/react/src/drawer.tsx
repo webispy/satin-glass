@@ -21,7 +21,7 @@ import { Portal, useGlassLight } from './foundation';
 import { glassClass } from './glass-class';
 import { IconButton } from './controls';
 import { CloseIcon } from './icons';
-import { useOverlayLifecycle, useRelease, type CloseReason } from './overlay-hooks';
+import { enterEdge, exitEdge, track, useOverlayLifecycle, useRelease, type CloseReason } from './overlay-hooks';
 import { useMessages } from './messages';
 
 type DrawerBase = {
@@ -176,7 +176,7 @@ export function Drawer(props: DrawerProps) {
         if (!cancelled && (s * x > extent() * 0.3 || s * (top ? vy : vx) > 900)) { swiped.current = true; close.current('swipe'); return; }
         p.style.transform = '';
         if (scrim.current) scrim.current.style.opacity = '';
-        animate(p, [{ transform: shift(x) }, { transform: 'none' }], 'smooth');
+        track(p, animate(p, [{ transform: shift(x) }, { transform: 'none' }], 'smooth'));
         x = 0;
       },
     });
@@ -202,21 +202,17 @@ export function Drawer(props: DrawerProps) {
     /* hidden mid-drag or mid-resize (#79): the gesture is cancelled (its release would land elsewhere) and the drawer
        shown again at rest */
     release.set(() => { pop(); trap(); off(); offGrip(); }, { hide: () => { off.cancel(); offGrip.cancel(); pop.pause(true); }, show: () => { x = 0; p.style.transform = ''; delete p.dataset.resizing; if (scrim.current) scrim.current.style.opacity = ''; pop.pause(false); trap.resume(); } });
-    if (prefersReducedMotion(p)) return fade(p, 0, 1, timing.appear);
     /* the smooth spring's pace with the gentle one's damping: quick, and it does not swing past its edge (a panel
-       docked to an edge that overshoots opens a gap there) */
+       docked to an edge that overshoots opens a gap there); re-opened mid-exit, from where it is (#106) */
     const m = motionFor(p);
-    return animate(p, [{ transform: offscreen(p) }, { transform: 'none' }], { response: m.smooth.response, damping: m.gentle.damping }).finished.then(() => undefined, () => undefined);
+    return enterEdge(p, offscreen(p), { response: m.smooth.response, damping: m.gentle.damping });
   }, () => {
     release.run();
     const p = panel.current!;
     scrim.current?.classList.remove('is-open');
     if (scrim.current) scrim.current.style.opacity = '';
-    const from = p.style.transform || 'none';
-    p.getAnimations().forEach((a) => a.cancel());
-    if (prefersReducedMotion(p)) return fade(p, 1, 0, timing.leave);
-    /* an exit: a short ease-in from wherever it is (a release mid-drag too), like the sheet */
-    return p.animate([{ transform: from }, { transform: offscreen(p) }], { duration: timing.sheetOut, easing: easing.exit, fill: 'both' }).finished.then(() => undefined, () => undefined);
+    /* an exit: a short ease-in from wherever it is (a release mid-drag, or closed mid-entrance), like the sheet */
+    return exitEdge(p, offscreen(p), timing.sheetOut);
   }, release);
   if (!mounted) return null;
   const w = typeof width === 'number' ? `${width}px` : width, h = typeof height === 'number' ? `${height}px` : height;
