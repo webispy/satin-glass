@@ -206,25 +206,30 @@ function useTween(target: number[], el: React.RefObject<Element | null>, key: st
     overshooting (a scale that swung past would misread the data mid-way). Values are in data units, so a resize
     redraws at once instead of tweening pixels. A change mid-way starts from what is shown. At once the first time,
     when the shape changes, and with reduced motion. `from` is the state the transition started from. */
-function useMorph(target: number[], el: React.RefObject<Element | null>): { now: number[]; from: number[]; p: number } {
-  const key = target.join(',');
-  const st = useRef<{ from: number[]; to: number[]; P: Spring | null; stop: (() => void) | null }>({ from: target, to: target, P: null, stop: null });
+/* rebase: where a new move starts from, given the move that was running (its from, to and progress) and what it drew
+   (the plain interpolation); for a chart whose move is not one in units (a scale switch, drawn on the screen) */
+type Rebase = (shownNow: number[], from: number[], to: number[], p: number) => number[];
+/* tag: what else makes a new target (a scatter chart's scales: the same numbers on a linear and a log axis are not the
+   same drawing) */
+function useMorph(target: number[], el: React.RefObject<Element | null>, rebase?: Rebase, tag = ''): { now: number[]; from: number[]; p: number } {
+  const key = `${tag}|${target.join(',')}`;
+  const st = useRef<{ from: number[]; to: number[]; key: string; P: Spring | null; stop: (() => void) | null }>({ from: target, to: target, key, P: null, stop: null });
   const [, paint] = useState(0);
   const lerp = (a: number[], b: number[], t: number) => b.map((v, i) => (a[i] ?? v) + (v - (a[i] ?? v)) * t);
   const p = st.current.P ? Math.min(1, Math.max(0, st.current.P.value)) : 1;
   useIsoLayoutEffect(() => {
-    const m = st.current, shownNow = lerp(m.from, m.to, m.P ? Math.min(1, Math.max(0, m.P.value)) : 1);
-    if (m.to.join(',') === key) {
+    const m = st.current, mp = m.P ? Math.min(1, Math.max(0, m.P.value)) : 1, shownNow = lerp(m.from, m.to, mp);
+    if (m.key === key) {
       /* set up again with the same target (shown after Activity or Suspense hid it): a change its hiding stopped
          half-way settles there rather than staying frozen (#82) */
       if (m.P && !m.stop) { m.P = null; m.from = m.to; paint((n) => n + 1); }
       return;
     }
     if (m.to.length !== target.length || prefersReducedMotion(el.current) || !el.current) {
-      m.stop?.(); m.stop = null; m.P = null; m.from = m.to = target; paint((n) => n + 1);
+      m.stop?.(); m.stop = null; m.P = null; m.from = m.to = target; m.key = key; paint((n) => n + 1);
       return;
     }
-    m.from = shownNow; m.to = target;
+    m.from = m.P && rebase ? rebase(shownNow, m.from, m.to, mp) : shownNow; m.to = target; m.key = key;
     m.P = new Spring(0, { response: motionFor(el.current).smooth.response, damping: 1 });
     m.P.target = 1;
     paint((n) => n + 1);
@@ -587,6 +592,47 @@ function axisOf(vals: number[], log: boolean, count: number): Axis {
   return { lo: t[0], hi: t[t.length - 1], ticks: t };
 }
 
+/* a scatter chart's ticks as a move draws them on the screen, at one point of it: each tick drawn, with its place (a
+   fraction of the plot), its opacity and its label. Values, not functions, so a chain of them costs nothing */
+type Carry = Map<number, { f: number; o: number; label: string }>;
+type Shown = { target: string; xl: boolean; yl: boolean; fromX: boolean; fromY: boolean; ticksX: number[]; ticksY: number[]; labelX: (t: number) => string; labelY: (t: number) => string; carryX: Carry | null; carryY: Carry | null };
+/* where a carried tick is drawn at progress p of a move from `from` to `to` (bounds at k): across a switch, on the screen
+   (as the points are), from its place f0 to its place on the new axis; else in units (as the points are, so a point and
+   its gridline stay together), from the value at f0 on the old bounds to its own value, on the moving scale. A tick
+   with no place on the new axis (0 on a log one) stays where it is drawn, leaving */
+function carriedPlace(f0: number, v1: number, switched: boolean, from: number[], to: number[], k: number, p: number): number {
+  if (switched) { const b = (v1 - to[k]) / (to[k + 1] - to[k] || 1); return isFinite(b) ? f0 + (b - f0) * p : f0; }
+  if (!isFinite(v1)) return f0;
+  const lo = from[k] + (to[k] - from[k]) * p, hi = from[k + 1] + (to[k + 1] - from[k + 1]) * p;
+  const t0 = from[k] + f0 * (from[k + 1] - from[k]);
+  return (t0 + (v1 - t0) * p - lo) / (hi - lo || 1);
+}
+/* the running move's ticks on one axis at progress p, when it draws them on the screen (a switch, or ticks carried from
+   an earlier such move); null for a move in units, whose ticks fade as usual. A tick not drawn (no place there, 0 on a
+   log axis; well outside the plot, where it is clipped; or faded out) is left out: one the next move shows fades in.
+   Near the edge it is kept (the plot shows a pixel past it; what shows is the renderer's to decide) */
+function drawnTicks(s: Shown, axis: 0 | 1, from: number[], to: number[], p: number): Carry | null {
+  const k = axis * 2, log0 = axis ? s.fromY : s.fromX, log1 = axis ? s.yl : s.xl, ticks = axis ? s.ticksY : s.ticksX;
+  const c = axis ? s.carryY : s.carryX, label = axis ? s.labelY : s.labelX;
+  const u = (v: number, log: boolean) => (log ? lg(v) : v);
+  const end = (t: number) => (u(t, log1) - to[k]) / (to[k + 1] - to[k] || 1);
+  if (!c && log0 === log1) return null;
+  const out: Carry = new Map();
+  const keep = (t: number, f: number, o: number, l: string) => { if (o > 0.001 && isFinite(f) && f >= -0.05 && f <= 1.05) out.set(t, { f, o, label: l }); };
+  if (c) {
+    for (const t of new Set([...ticks, ...c.keys()])) {
+      const e = c.get(t), mine = ticks.includes(t), o0 = e ? e.o : 0;
+      /* one not carried is drawn as the move draws a new tick: at its place, or on the moving scale */
+      const lo = from[k] + (to[k] - from[k]) * p, hi = from[k + 1] + (to[k + 1] - from[k + 1]) * p;
+      const f = e ? carriedPlace(e.f, u(t, log1), log0 !== log1, from, to, k, p) : log0 !== log1 ? end(t) : (u(t, log1) - lo) / (hi - lo || 1);
+      keep(t, f, mine ? o0 + (1 - o0) * p : o0 * (1 - p), mine || !e ? label(t) : e.label);
+    }
+  } else {
+    for (const t of ticks) { const a = (u(t, log0) - from[k]) / (from[k + 1] - from[k] || 1), b = end(t); keep(t, isFinite(a) ? a + (b - a) * p : b, p, label(t)); }
+  }
+  return out;
+}
+
 export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp, highlight, xScale = 'linear', yScale = 'linear', xLabel = x, yLabel = y, xFormat, yFormat, height = 280, legend = true, locale: localeProp, 'aria-label': label, caption, className, style }: ScatterChartProps) {
   const locale = useLocaleOf(localeProp);
   const fx = xFormat ?? defaultFmt(locale), fy = yFormat ?? defaultFmt(locale), groups = groupsProp ?? NO_GROUPS;
@@ -618,22 +664,71 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
   const leftTo = yAxisWidth(ay.ticks.map(tfy)), ih = height - top - bottom;
   /* the two scales and every point (in axis units) move as one */
   const mt = [ax.lo, ax.hi, ay.lo, ay.hi, ...data.flatMap((d) => [u(num(d, x, xl) ?? (xl ? 1 : 0), xl), u(num(d, y, yl) ?? (yl ? 1 : 0), yl)]), leftTo];
-  const morph = useMorph(mt, box);
+  /* the whole move's target with its scales: any new target (new bounds, a switch with the same bounds, new values within the
+     same bounds) is a new entry, so a settled switch is not taken for one still running */
+  const target = `${xl},${yl},${mt.join(',')}`;
+  /* the scales as last committed, the ones the move to them started from, their ticks, and the ticks as they were drawn
+     when the move began (see below) */
+  const shown = useRef<Shown>({ target, xl, yl, fromX: xl, fromY: yl, ticksX: ax.ticks, ticksY: ay.ticks, labelX: String, labelY: String, carryX: null, carryY: null });
+  /* the ticks' drawing carried into a move that starts while another is drawn on the screen, until it is committed */
+  const carried = useRef<{ x: Carry | null; y: Carry | null }>({ x: null, y: null });
+  /* new data while a switch is moving the points (#102): a switched axis's move is drawn on the screen, not in units,
+     so the next move starts from where each point is drawn, put in the units of the scale it was moving to (the one
+     committed, which the new move continues from). Its ticks, drawn on the screen too, carry on from where they are
+     drawn and as faded as they are. Run when the new move starts, before the committed scales are updated, so
+     shown.current is still the move that was running */
+  const rebase: Rebase = (now, from, to, p) => {
+    const s = shown.current, out = now.slice();
+    const onScreen = (axis: 0 | 1) => {
+      const k = axis * 2, lo0 = from[k], hi0 = from[k + 1], lo1 = to[k], hi1 = to[k + 1];
+      out[k] = lo1; out[k + 1] = hi1;
+      for (let j = 4 + axis; j < to.length - 1; j += 2) {
+        const b = (to[j] - lo1) / (hi1 - lo1 || 1), a = (from[j] - lo0) / (hi0 - lo0 || 1);
+        out[j] = lo1 + (isFinite(a) ? a + (b - a) * p : b) * (hi1 - lo1);
+      }
+    };
+    if (s.fromX !== s.xl) onScreen(0);
+    if (s.fromY !== s.yl) onScreen(1);
+    carried.current = { x: drawnTicks(s, 0, from, to, p), y: drawnTicks(s, 1, from, to, p) };
+    return out;
+  };
+  /* above the layout effect that commits `shown` (below): useMorph's own layout effect runs first and calls rebase,
+     which reads the move still running from `shown` and leaves `carried` for that effect to take */
+  const morph = useMorph(mt, box, rebase, `${xl},${yl}`);
   /* the gutter moves with the scales */
   const left = morph.now[morph.now.length - 1], iw = Math.max(10, width - left - M.right);
   const [sx0, sx1, sy0, sy1] = morph.now, [px0, px1, py0, py1] = morph.from;
   /* the scale the move started from: after a switch between linear and log the old range is in the other scale's units, so its
      ticks are not drawn again (they would be read in the new units); the new ticks fade in as the axis moves */
-  /* the whole move's target with its scales: any new target (new bounds, a switch with the same bounds, new values within the
-     same bounds) is a new entry, so a settled switch is not taken for one still running */
-  const target = `${xl},${yl},${mt.join(',')}`;
   /* the scales as last committed, and the ones the move to them started from: written in a layout effect, so a render
      React starts and then discards (a transition that suspends, an interrupted one) leaves them as shown (#83). A new
      target, not committed yet, moves from the scales on screen */
-  const shown = useRef({ target, xl, yl, fromX: xl, fromY: yl });
   const fromX = shown.current.target === target ? shown.current.fromX : shown.current.xl;
   const fromY = shown.current.target === target ? shown.current.fromY : shown.current.yl;
-  useIsoLayoutEffect(() => { const s = shown.current; if (s.target !== target) shown.current = { target, xl, yl, fromX: s.xl, fromY: s.yl }; });
+  useIsoLayoutEffect(() => {
+    const s = shown.current, c = carried.current;
+    carried.current = { x: null, y: null };
+    if (s.target !== target) shown.current = { target, xl, yl, fromX: s.xl, fromY: s.yl, ticksX: ax.ticks, ticksY: ay.ticks, labelX: xLabelOf, labelY: yLabelOf, carryX: c.x, carryY: c.y };
+    /* the same target, laid out again (a resize can change the ticks with the same bounds): the ticks and their labels
+       as drawn now */
+    else Object.assign(s, { ticksX: ax.ticks, ticksY: ay.ticks, labelX: xLabelOf, labelY: yLabelOf });
+  });
+  /* ticks carried from a move drawn on the screen: each from where it is drawn to its place on the new scale, and from
+     as faded as it is to shown (a tick of the new scale) or gone */
+  const cX = shown.current.target === target ? shown.current.carryX : null, cY = shown.current.target === target ? shown.current.carryY : null;
+  /* a tick not carried (not drawn then) is drawn as the move draws a new one, fading in: at its place across a switch,
+     else on the moving scale */
+  const carriedAt = (c: Carry, t: number, axis: 0 | 1, log: boolean, switched: boolean) => {
+    const k = axis * 2, e = c.get(t);
+    if (e) return carriedPlace(e.f, u(t, log), switched, morph.from, mt, k, morph.p);
+    const lo = morph.now[k], hi = morph.now[k + 1];
+    return switched ? (u(t, log) - mt[k]) / (mt[k + 1] - mt[k] || 1) : (u(t, log) - lo) / (hi - lo || 1);
+  };
+  const carriedLayer = (c: Carry, next: number[]) => [...new Set([...next, ...c.keys()])]
+    .map((t) => { const o0 = c.get(t)?.o ?? 0; return { t, o: next.includes(t) ? o0 + (1 - o0) * morph.p : o0 * (1 - morph.p) }; })
+    .filter(({ o }) => o > 0.001);
+  /* a carried tick leaving keeps the label it was drawn with */
+  const carriedLabel = (c: Carry | null, next: number[], own: (t: number) => string) => (t: number) => (c && !next.includes(t) ? c.get(t)?.label ?? own(t) : own(t));
   const xSwitched = fromX !== xl, ySwitched = fromY !== yl;
   /* across a switch the two ranges are in different units (log10 4–5 against 0–100,000), and a move in units would be all one or
      the other; so a switched axis moves on the screen instead: each point and tick from its place on the old axis to its place on
@@ -650,8 +745,8 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
     const b = (u(v, now) - lo1) / (hi1 - lo1 || 1), a = (f - lo0) / (hi0 - lo0 || 1);
     return isFinite(a) ? a + (b - a) * morph.p : b;
   };
-  const tx = (t: number) => (xSwitched ? xAt(t) : X(u(t, xl)));
-  const ty = (t: number) => (ySwitched ? yAt(t) : Y(u(t, yl)));
+  const tx = (t: number) => (cX ? left + carriedAt(cX, t, 0, xl, xSwitched) * iw : xSwitched ? xAt(t) : X(u(t, xl)));
+  const ty = (t: number) => (cY ? top + ih - carriedAt(cY, t, 1, yl, ySwitched) * ih : ySwitched ? yAt(t) : Y(u(t, yl)));
   const pos = (i: number): [number, number] => [
     xSwitched ? left + fromAlong(morph.from[4 + i * 2], num(data[i], x, xl)!, px0, px1, xl, ax.lo, ax.hi) * iw : X(morph.now[4 + i * 2]),
     ySwitched ? top + ih - fromAlong(morph.from[5 + i * 2], num(data[i], y, yl)!, py0, py1, yl, ay.lo, ay.hi) * ih : Y(morph.now[5 + i * 2]),
@@ -664,6 +759,7 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
   const prevX = xSwitched ? [] : px0 === ax.lo && px1 === ax.hi ? ax.ticks : xAxis.outgoing(morph.p);
   const prevY = ySwitched ? [] : py0 === ay.lo && py1 === ay.hi ? ay.ticks : yAxis.outgoing(morph.p);
   const xLabelOf = xAxis.label, yLabelOf = yAxis.label;
+  const xTickLabel = carriedLabel(cX, ax.ticks, xLabelOf), yTickLabel = carriedLabel(cY, ay.ticks, yLabelOf);
   const picked = new Set(highlight ?? []);
   const name = (i: number) => String(data[i][pointLabel] ?? '');
   /* entrance: the points pop in from left to right */
@@ -719,8 +815,8 @@ export function ScatterChart({ data, x, y, pointLabel, group, groups: groupsProp
         onPointerMove={onMove} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}
         onKeyDown={(e) => { setKbd(true); const at = active === null ? null : byX.indexOf(active); plotKeys(e, byX.length, at !== null && at >= 0 ? at : null, (n) => setActive(n === null ? null : byX[n] ?? null)); }}>
         {measured === null ? <div style={{ height }} /> : <svg width={width} height={height} aria-hidden="true">
-          {tickLayer(ay.ticks, prevY, morph.p).filter(({ t }) => inY(t)).map(({ t, o }) => <g key={`y${t}`} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={ty(t)} y2={ty(t)} /><text className="sg-chart__tick" x={left - 8} y={ty(t)} dy="0.35em" textAnchor="end">{yLabelOf(t)}</text></g>)}
-          {tickLayer(ax.ticks, prevX, morph.p).filter(({ t }) => inX(t)).map(({ t, o }) => <g key={`x${t}`} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={tx(t)} x2={tx(t)} y1={top} y2={top + ih} /><text className="sg-chart__tick" x={tx(t)} y={top + ih + 16} textAnchor="middle">{xLabelOf(t)}</text></g>)}
+          {(cY ? carriedLayer(cY, ay.ticks) : tickLayer(ay.ticks, prevY, morph.p)).filter(({ t }) => inY(t)).map(({ t, o }) => <g key={`y${t}`} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={left} x2={left + iw} y1={ty(t)} y2={ty(t)} /><text className="sg-chart__tick" x={left - 8} y={ty(t)} dy="0.35em" textAnchor="end">{yTickLabel(t)}</text></g>)}
+          {(cX ? carriedLayer(cX, ax.ticks) : tickLayer(ax.ticks, prevX, morph.p)).filter(({ t }) => inX(t)).map(({ t, o }) => <g key={`x${t}`} opacity={o < 1 ? o.toFixed(3) : undefined}><line className="sg-chart__grid" x1={tx(t)} x2={tx(t)} y1={top} y2={top + ih} /><text className="sg-chart__tick" x={tx(t)} y={top + ih + 16} textAnchor="middle">{xTickLabel(t)}</text></g>)}
           {yLabel && <text className="sg-chart__axis-title" x={left} y={M.top + 2} dy="0.35em" textAnchor="start">{yLabel}</text>}
           {xLabel && <text className="sg-chart__axis-title" x={left + iw} y={height - 4} textAnchor="end">{xLabel}</text>}
           <g ref={g} data-picking={picked.size > 0 || undefined}>
