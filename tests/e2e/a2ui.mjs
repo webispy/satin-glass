@@ -50,9 +50,21 @@ const card = (p, name) => p.locator('.a2ui-thumb', { has: p.locator('.a2ui-thumb
 /* the cards whose frame is on the screen, and whether each has drawn its example */
 const onScreen = (p) => p.evaluate(() => [...document.querySelectorAll('.a2ui-thumb__frame')].filter((f) => { const r = f.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; })
   .map((f) => !!f.querySelector('.a2ui-thumb__surface [data-a2ui-surface]')));
-const firstJson = (p) => p.locator('.a2ui-inspector__panel .a2ui-json').first().textContent();
+/* the open sheet's first JSON panel (openExample waits for a closing sheet to go first) */
+const firstJson = (p) => p.locator('[role="dialog"] .a2ui-inspector__panel .a2ui-json').first().textContent();
+/* Escape, then until the sheet has gone (its exit, or its fold on a wide screen, can run well past 600 ms on a busy CI
+   runner) and the focus has come back from it */
+async function closeAndWait(p) {
+  await p.keyboard.press('Escape');
+  const gone = await p.waitForFunction(() => !document.querySelector('.sg-sheet') && !document.querySelector('[role="dialog"]'), null, { timeout: 5000 }).then(() => true, () => false);
+  await p.waitForTimeout(100);
+  return gone;
+}
 const search = (p) => p.getByRole('searchbox', { name: '예제 찾기' });
 async function openExample(p, q) {
+  /* a sheet still closing from the last example is gone first, so what is read next is the new one's (a sheet that
+     never goes is a failure, not something to read past) */
+  await p.waitForFunction(() => !document.querySelector('.sg-sheet'), null, { timeout: 5000 }).catch(() => { throw new Error('the last example\'s sheet did not close'); });
   await search(p).fill(q);
   await p.waitForTimeout(300);
   const opener = p.locator('.a2ui-thumb__open').first();
@@ -104,9 +116,12 @@ async function openExample(p, q) {
   ok('v0.9.1: a card draws its example', /Sunrise Coffee/.test(await card(p, 'Coffee Order').locator('.a2ui-thumb__frame').textContent() ?? ''));
   /* the version is really switched: the messages are the v0.9 ones */
   await openExample(p, 'coffee');
-  ok('v0.9.1: the opened example\'s messages are v0.9 messages', /"version": "v0\.9"/.test(await firstJson(p)), (await firstJson(p)).slice(0, 40));
-  await p.keyboard.press('Escape');
-  await p.waitForTimeout(600);
+  /* read from the sheet named for the example opened */
+  const coffeeJson = p.getByRole('dialog', { name: /Coffee Order/ }).locator('.a2ui-inspector__panel .a2ui-json').first();
+  await p.waitForFunction((el) => /"version": "v0\.9"/.test(el?.textContent ?? ''), await coffeeJson.elementHandle(), { timeout: 5000 }).catch(() => {});
+  const v09 = (await coffeeJson.textContent()) ?? '';
+  ok('v0.9.1: the opened example\'s messages are v0.9 messages', /"version": "v0\.9"/.test(v09), v09.slice(0, 40));
+  await closeAndWait(p);
   await search(p).fill('');
   await p.locator('.a2ui-toolbar').getByRole('radio', { name: 'v1.0' }).click();
   await p.waitForTimeout(300);
@@ -219,17 +234,19 @@ async function openExample(p, q) {
       && Array.isArray(copied) && copied.length === 3 && 'createSurface' in copied[0]);
   }
 
-  await p.keyboard.press('Escape');
-  await p.waitForTimeout(600);
-  ok('Escape closes the sheet and focus goes back to the card that opened it', !(await sheet.isVisible()) && await opener.evaluate((e) => e === document.activeElement));
+  const escGone = await closeAndWait(p);
+  /* the focus comes back once the exit has ended */
+  await p.waitForFunction((el) => el === document.activeElement, await opener.elementHandle(), { timeout: 3000 }).catch(() => {});
+  ok('Escape closes the sheet and focus goes back to the card that opened it', escGone && await opener.evaluate((e) => e === document.activeElement));
 
   /* the close button in the header: the way out without a keyboard */
   await opener.click();
   await sheet.waitFor();
   await p.waitForTimeout(700);
   await sheet.getByRole('button', { name: '닫기', exact: true }).click();
-  await p.waitForTimeout(600);
-  ok('the close button closes the sheet and focus goes back to the card that opened it', !(await sheet.isVisible()) && await opener.evaluate((e) => e === document.activeElement));
+  const btnGone = await p.waitForFunction(() => !document.querySelector('.sg-sheet'), null, { timeout: 5000 }).then(() => true, () => false);
+  await p.waitForFunction((el) => el === document.activeElement, await opener.elementHandle(), { timeout: 3000 }).catch(() => {});
+  ok('the close button closes the sheet and focus goes back to the card that opened it', btnGone && await opener.evaluate((e) => e === document.activeElement));
   ok('nothing was requested from another site in the sheet with the switch off', outside.length === 0, outside.slice(0, 3).join(' '));
   await p.context().close();
 }
@@ -278,7 +295,7 @@ async function openExample(p, q) {
 /* ---------------------------------------------------------------- Satin Glass's look, at full size in the sheet */
 const screen = (p) => p.locator('.a2ui-inspector__surface');
 const style = (loc, ...keys) => loc.evaluate((e, keys) => { const cs = getComputedStyle(e); return Object.fromEntries(keys.map((k) => [k, cs[k]])); }, keys);
-const closeSheet = async (p) => { await p.keyboard.press('Escape'); await p.waitForTimeout(600); };
+const closeSheet = closeAndWait;
 /* the outermost card of the screen and its inner cards: lifted (a shadow, or in high contrast an outline) and outlined */
 const cards = (p) => screen(p).evaluate((s) => [...s.querySelectorAll('.sg-card')].map((c) => {
   const cs = getComputedStyle(c);

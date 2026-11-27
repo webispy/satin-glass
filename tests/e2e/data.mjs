@@ -110,9 +110,33 @@ await go('feedback');
   await p.waitForTimeout(500);
   const tip = p.getByRole('tooltip');
   ok('tooltip: appears after a short delay on hover and describes the button', early === 0 && (await tip.count()) === 1 && (await bold.getAttribute('aria-describedby'))?.includes(await tip.getAttribute('id')));
-  const tb = await tip.boundingBox(), hb = await bold.boundingBox();
-  await p.mouse.move(hb.x + hb.width / 2, hb.y - 2); await p.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2, { steps: 4 }); await p.waitForTimeout(300);
-  ok('tooltip: stays open while the pointer moves onto it (hoverable)', (await tip.count()) === 1);
+  /* from the button across the gap onto the tooltip. The tooltip waits 120 ms for the pointer (its grace): when the
+     pointer took longer than that to get from the button to the tooltip (a CI runner holding its frames, #113), the
+     move says nothing about the grace, and it is made again */
+  let hover = null;
+  for (let tries = 0; tries < 3; tries++) {
+    if (tries) { await bold.hover(); await p.waitForTimeout(800); }
+    if (!(await tip.count())) break;
+    const id = await tip.getAttribute('id');
+    /* the leave on this button, and the arrival where its tooltip is (a page-wide pointermove: it is timed even if
+       the tooltip has closed by then) */
+    await p.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find((x) => x.getAttribute('aria-label') === '굵게' || x.textContent === '굵게');
+      const r = document.querySelector('[role="tooltip"]').getBoundingClientRect();
+      const at = window.__tipMove = { leave: 0, enter: 0 };
+      b.addEventListener('pointerleave', () => { at.leave ||= performance.now(); }, { once: true });
+      const move = (e) => { if (at.leave && !at.enter && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) { at.enter = performance.now(); document.removeEventListener('pointermove', move, true); } };
+      document.addEventListener('pointermove', move, true);
+    });
+    const tb = await tip.boundingBox(), hb = await bold.boundingBox();
+    await p.mouse.move(hb.x + hb.width / 2, hb.y - 2); await p.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2, { steps: 4 }); await p.waitForTimeout(300);
+    const m = await p.evaluate(() => window.__tipMove);
+    /* the same tooltip, still describing this button, after a real crossing (left the button, then reached it) */
+    const same = (await tip.count()) === 1 && (await tip.getAttribute('id')) === id && (await bold.getAttribute('aria-describedby'))?.includes(id);
+    hover = { open: same, crossed: !!(m.leave && m.enter), crossing: m.leave && m.enter ? Math.round(m.enter - m.leave) : null, tries: tries + 1 };
+    if ((hover.open && hover.crossed) || !hover.crossed || hover.crossing <= 120) break;
+  }
+  ok('tooltip: stays open while the pointer moves onto it (hoverable)', !!(hover?.open && hover.crossed), JSON.stringify(hover));
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   ok('tooltip: Escape closes it', (await tip.count()) === 0);
   await bold.hover(); await p.waitForTimeout(700);
