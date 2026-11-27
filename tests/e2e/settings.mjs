@@ -340,21 +340,38 @@ for (const [w, locale] of [[390, 'en-US'], [1000, 'ko-KR'], [1359, 'en-US'], [13
     out.name = document.querySelector('.docs__contents-cur')?.textContent ?? null;
     return out;
   });
-  const first = await snap(), wide = w >= 1360;
-  const shown = ['menu', 'contents', 'settingsBtn', 'bar', 'rail'].filter((k) => first[k]).join(',');
+  const wide = w >= 1360;
   const want = wide ? 'bar,rail' : w <= 900 ? 'menu,contents,settingsBtn' : 'contents,settingsBtn';
-  ok(`docs top bar at ${w} px: ${want}`, shown === want, shown);
+  /* until what the width shows is there (the contents rail comes with the page's sections, later on a busy CI runner,
+     #113): a fixed wait read the bar without its rail */
+  const sel = { menu: '.docs__menu-btn', contents: '.docs__contents-btn', settingsBtn: '.docs__settings-btn', bar: '.docs__settings--bar', rail: '.docs__toc' };
+  const there = await q.waitForFunction((ss) => ss.every((x) => { const e = document.querySelector(x); return !!e && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().width > 0; }), want.split(',').map((k) => sel[k]), { timeout: 5000 }).then(() => true, () => false);
+  const first = await snap();
+  const shown = ['menu', 'contents', 'settingsBtn', 'bar', 'rail'].filter((k) => first[k]).join(',');
+  ok(`docs top bar at ${w} px: ${want}`, there && shown === want, there ? shown : `${shown} (not all there in 5 s)`);
   const btns = ['menu', 'contents', 'settingsBtn'].filter((k) => first[k]).map((k) => first[k]);
   ok(`docs top bar at ${w} px: one height and one middle`, btns.every((r) => r[3] === btns[0][3] && r[1] + r[3] / 2 === btns[0][1] + btns[0][3] / 2), JSON.stringify(btns));
   const H = await q.evaluate(() => document.documentElement.scrollHeight - innerHeight);
   let moved = '', names = new Set([first.name]);
+  const unsettled = [];   /* scroll positions where the name never became the section in view */
   for (let k = 1; k <= 6; k++) {
-    await q.evaluate((y) => scrollTo(0, y), Math.round((H * k) / 6)); await q.waitForTimeout(150);
+    /* then until the contents button names the section the docs take to be in view here (the last heading above a
+       third of the window, as shared.tsx reads it): it follows the scroll a little later, more so on a busy machine.
+       Before any heading is above that line, it names the page */
+    await q.evaluate((y) => scrollTo(0, y), Math.round((H * k) / 6));
+    if (!wide) await q.waitForFunction(() => {
+      const line = innerHeight / 3;
+      let want = null;
+      for (const h of document.querySelectorAll('.docs__page section > h2, .docs__page .api > h3')) if (h.getBoundingClientRect().top < line) want = (h.querySelector('code')?.textContent ?? h.textContent ?? '').trim();
+      const cur = document.querySelector('.docs__contents-cur')?.textContent ?? null;
+      return cur !== null && (want === null || cur === want);
+    }, null, { timeout: 3000 }).catch(() => { unsettled.push(`${k}/6`); });
+    else await q.waitForTimeout(150);
     const s2 = await snap(); names.add(s2.name);
     for (const key of ['menu', 'contents', 'settingsBtn', 'bar']) if (JSON.stringify(s2[key]) !== JSON.stringify(first[key])) moved ||= `${key} at ${k}/6`;
   }
   ok(`docs top bar at ${w} px: nothing moves while the page scrolls`, !moved, moved);
-  if (!wide) ok(`docs top bar at ${w} px: the contents button names the section in view`, names.size >= 3, [...names].join(' / '));
+  if (!wide) ok(`docs top bar at ${w} px: the contents button names the section in view`, names.size >= 3 && !unsettled.length, [...names].join(' / ') + (unsettled.length ? ` (not the section in view at ${unsettled.join(', ')})` : ''));
   await ctx.close();
 }
 
@@ -368,8 +385,13 @@ for (const [w, locale] of [[390, 'en-US'], [1000, 'ko-KR'], [1359, 'en-US'], [13
   await q.goto(`${pw.ORIGIN}/#/table`); await q.waitForTimeout(900);
   await q.locator('.docs__settings-btn').click(); await q.waitForTimeout(500);
   const before = await panels();
-  await q.setViewportSize({ width: 1500, height: 800 }); await q.waitForTimeout(700);
-  ok('anchored panel: closes when its anchor is hidden (settings popover, window widened)', before === 1 && (await panels()) === 0, `${before} → ${await panels()}`);
+  /* until it has closed (its exit, after the resize is seen, can outlast a fixed 700 ms on a busy CI runner, #113) */
+  await q.setViewportSize({ width: 1500, height: 800 });
+  /* closed: the popover gone from the page and its button no longer expanded (not only hidden) */
+  const closed = await q.waitForFunction(() => !document.querySelector('.sg-popover') && document.querySelector('.docs__settings-btn')?.getAttribute('aria-expanded') !== 'true', null, { timeout: 5000 }).then(() => true, () => false);
+  ok('anchored panel: closes when its anchor is hidden (settings popover, window widened)', before === 1 && closed && (await panels()) === 0, `${before} → ${await panels()}${closed ? '' : ' (still there after 5 s)'}`);
+  /* the bar's switches lay out their thumbs once shown (a ResizeObserver of their own): until they rest, at most 2 s */
+  await q.waitForFunction(() => { const ss = [...document.querySelectorAll('.docs__settings--bar .sg-switch')]; return ss.length === 3 && ss.every((s) => s.querySelector('.sg-switch__thumb').getBoundingClientRect().width >= 16); }, null, { timeout: 2000 }).catch(() => {});
   /* the bar's switches mounted hidden (display: none at this width) and are shown now: each thumb rests 20 px wide
      against the end its state says (they kept a sliver measured at 0 × 0) */
   const thumbs = await q.evaluate(() => [...document.querySelectorAll('.docs__settings--bar .sg-switch')].map((s) => {

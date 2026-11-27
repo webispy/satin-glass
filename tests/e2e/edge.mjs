@@ -413,8 +413,8 @@ for (const reduced of [false, true]) {
 
     /* re-opened mid-exit: part way out (60 px, or between 0.05 and 0.7 opacity, the panel still there), then the
        opener. A machine that holds its frames longer than the exit (reduced motion's fade is 110 ms; a CI runner's
-       WebKit stops drawing for up to 200 ms, #113) shows no frame part way: nothing about turning round is seen, and
-       the case is tried again, up to three times */
+       WebKit stops drawing for up to 200 ms, #113) shows no frame part way, or holds the first frame after the click:
+       nothing about turning round is seen, and the case is tried again, up to three times */
     let turn;
     for (let tries = 0; tries < 3; tries++) {
       if (tries) { await settle(p, 900); await run('btn().click();'); await settle(p, 900); }
@@ -427,8 +427,10 @@ for (const reduced of [false, true]) {
           else if (${reduced} && b.opacity <= 0.05) missed = true;
         }
         if (missed) return { missed: true };
-        btn().click(); const path = [];
-        for (let i = 0; i < 10; i++) { await frame(); path.push(box(el)); }
+        /* the first frame after the click must come at the machine's usual pace: a held frame lets the turn run on
+           unseen (0.11 to 0.55 in one frame on a CI runner), so how it turned cannot be judged */
+        const t0 = performance.now(); btn().click(); const path = [];
+        for (let i = 0; i < 10; i++) { await frame(); path.push(box(el)); if (i === 0 && performance.now() - t0 > 60) return { missed: true, held: Math.round(performance.now() - t0) }; }
         return { at, path, same: panel() === el };`);
       if (!turn.missed) break;
     }
@@ -442,7 +444,7 @@ for (const reduced of [false, true]) {
       : Math.max(...turn.path.map(away)) <= away(turn.at) * 1.3 + 2 && away(first) >= away(turn.at) * 0.3 && away(last) < away(turn.at));
     const rests = Math.abs(back.top - rest.top) <= 1 && Math.abs(back.left - rest.left) <= 1 && back.opacity === 1 && back.transform === 'none' && !back.inline;
     ok(`${name}: re-opened mid-exit it turns round from where it is and ends open${tag}`, handoff && rests,
-      JSON.stringify(turn.missed ? { missed: 'no frame part way in three tries', back } : { at: turn.at && (reduced ? turn.at.opacity : away(turn.at)), path: turn.path?.map((b) => +(reduced ? b.opacity : away(b)).toFixed(2)), same: turn.same, back }));
+      JSON.stringify(turn.missed ? { missed: turn.held ? `the first frame after the click held ${turn.held} ms, in three tries` : 'no frame part way in three tries', back } : { at: turn.at && (reduced ? turn.at.opacity : away(turn.at)), path: turn.path?.map((b) => +(reduced ? b.opacity : away(b)).toFixed(2)), same: turn.same, back }));
     await p.keyboard.press('Escape'); await settle(p, 900);
     if (reduced) {
       /* closed mid-fade-in: the fade out goes on from the opacity it had reached, not from full */
