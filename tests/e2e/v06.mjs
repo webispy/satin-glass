@@ -255,4 +255,5 @@ await go('charts');
 
 ok('no page errors', errs.length === 0, errs.join(' | ').slice(0, 200));
 await b.close();
+console.log(failed ? `${failed} FAILED` : 'ALL PASSED');   /* the end line CI reads to tell a finished run from one that stopped */
 process.exit(failed ? 1 : 0);

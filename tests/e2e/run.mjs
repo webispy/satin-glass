@@ -175,17 +175,20 @@ const keepFailure = (label, env, text, phaseJobs) => {
     writeFileSync(new URL(`${at}-${label.replace(/[^\w]+/g, '-').slice(0, 80)}.log`, FAILS), head + text + '\n');
   } catch { /* keeping the record must never fail the run */ }
 };
-let phaseJobs = 1, kept = 0;
+let phaseJobs = 1, kept = 0, phaseName = '';
 const secs = (t) => `${((performance.now() - t) / 1000).toFixed(0)}s`;
 const run = ([label, file, env], record = true) => new Promise((res) => {
   const t = performance.now(), out = [];
   /* Korean unless the suite is one of the English runs: an E2E_LANG left in the shell does not turn every suite */
   const c = spawn('node', [`tests/e2e/${file}`], { env: { ...process.env, E2E_LANG: 'ko', ...env } });
   c.stdout.on('data', (d) => out.push(d)); c.stderr.on('data', (d) => out.push(d));
-  c.on('exit', (n) => {
+  /* close, not exit: exit can come while stdout or stderr still hold output (an error thrown in teardown, after the
+     suite's summary line), and the log would end before it */
+  c.on('close', (n, signal) => {
     const pass = n === 0, text = Buffer.concat(out).toString().trimEnd();
     console.log(`\n=== ${pass ? 'PASS' : 'FAIL'}  ${label}  (${secs(t)})`);
-    logs.push(`=== ${pass ? 'PASS' : 'FAIL'}  ${label}  (${secs(t)})\n${text}\n`);
+    /* the log also keeps the phase and how the suite ended, for CI to tell a failed check from a crash */
+    logs.push(`=== ${pass ? 'PASS' : 'FAIL'}  ${label}  (${secs(t)})\n--- phase ${phaseName}, ${signal ? `signal ${signal}` : `exit ${n}`}\n${text}\n`);
     if (!pass) { kept++; keepFailure(label, env, text, phaseJobs); }
     if (VERBOSE || !pass) console.log(text);
     else console.log(text.split('\n').pop());
@@ -201,7 +204,7 @@ const phase = async (name, list, n) => {
   if (!list.length) return;
   const t = performance.now();
   console.log(`\n##### ${name}: ${list.length} suites, ${n} at a time`);
-  phaseJobs = n;
+  phaseJobs = n; phaseName = name.replace(/^\d+\/\d+ /, '');
   await pool(list, n);
   console.log(`\n##### ${name} done in ${secs(t)}`);
 };
@@ -287,7 +290,7 @@ try {
     console.log('\n##### 3/3 timing: one at a time');
     await wait(5000);
     for (const s of timing) {
-      phaseJobs = 1;
+      phaseJobs = 1; phaseName = 'timing';
       if (await run(s, false)) { results.push([s[0], true]); continue; }
       console.log(`    … running "${s[0]}" once more (a timing suite can be thrown by a one-off stall)`);
       const again = await run(s, false);
