@@ -186,6 +186,152 @@ await p.goto(`${pw.ORIGIN}/${Q}#/selection`); await wait(900);
   ok('range field: Escape keeps the 30-day range', (await field.textContent()) === shown, await field.textContent());
 }
 
+/* ================================================================ RangeCalendar months={2}: two months side by side (#5) */
+{
+  const rt = p.locator('[data-demo="range-two"]');
+  await rt.scrollIntoViewIfNeeded(); await wait(300);
+  const names = () => rt.locator('table[role="grid"]').evaluateAll((ts) => ts.map((t) => t.getAttribute('aria-label')));
+  const n0 = await names();
+  ok('two months: two grids, each named by its month; no day of another month drawn', n0.length === 2 && n0.every((x) => /\d{4}년 \d+월/.test(x)) && (await rt.locator('button.sg-day[data-outside]').count()) === 0, n0.join(' | '));
+  /* a month on, so both months are after today (min is today) */
+  await rt.getByRole('button', { name: '다음 달' }).click(); await wait(500);
+  const n1 = await names();
+  ok('two months: the arrow moves one month (the second month becomes the first)', n1[0] === n0[1], n1.join(' | '));
+  const first = await rt.locator('table[role="grid"]').first().locator('button.sg-day').evaluateAll((bs) => bs.map((x) => x.dataset.date));
+  const second = await rt.locator('table[role="grid"]').nth(1).locator('button.sg-day').evaluateAll((bs) => bs.map((x) => x.dataset.date));
+  const s = first[first.length - 3], e = second[2];
+  await dayIn(rt, s).click(); await wait(200); await dayIn(rt, e).click(); await wait(600);
+  ok('two months: a range from the first month into the second is taken', (await pressed(rt)).join() === `${s},${e}` && (await rt.locator('.sg-calendar__status').textContent()).includes(`${span(s, e)}박`), await rt.locator('.sg-calendar__status').textContent());
+  /* each strip of the band runs from its row's first banded day to its last (2 px in), in both grids */
+  const fit = () => rt.evaluate((root) => {
+    const key = (r) => Math.round(r.top) * 10000 + Math.round(r.left);
+    const strips = [...root.querySelectorAll('.sg-calendar__bands > *')].filter((x) => x.style.display !== 'none').map((x) => x.getBoundingClientRect()).sort((a, b2) => key(a) - key(b2));
+    const rows = [...root.querySelectorAll('tbody tr')].map((tr) => [...tr.querySelectorAll('td[data-band]')].map((td) => td.getBoundingClientRect())).filter((rs) => rs.length)
+      .map((rs) => ({ left: Math.min(...rs.map((r) => r.left)) + 2, right: Math.max(...rs.map((r) => r.right)) - 2, mid: rs[0].top + rs[0].height / 2, top: rs[0].top }))
+      .sort((a, b2) => key(a) - key(b2));
+    if (!strips.length || strips.length !== rows.length) return { err: -1, n: `${strips.length}/${rows.length}` };
+    return { err: Math.max(...strips.map((x, i) => Math.max(Math.abs(x.left - rows[i].left), Math.abs(x.right - rows[i].right), Math.abs(x.top + x.height / 2 - rows[i].mid)))), n: strips.length };
+  });
+  const f1 = await fit();
+  ok('two months: the band lies on its days in both grids', f1.err >= 0 && f1.err <= 1 && f1.n >= 2, JSON.stringify(f1));
+  /* the keys cross the gap: left from the second month's 1st is the first month's last day */
+  await dayIn(rt, second[0]).focus(); await p.keyboard.press('ArrowLeft'); await wait(150);
+  const crossed = await p.evaluate(() => document.activeElement?.getAttribute('data-date'));
+  ok('two months: the left arrow from the second month\'s 1st goes to the first month\'s last day', crossed === first[first.length - 1], String(crossed));
+  /* right to left (a page whose dir is set before the range is chosen): the grids mirror, the band follows its days,
+     and the left arrow is the next day */
+  await rt.evaluate((r) => { r.setAttribute('dir', 'rtl'); }); await wait(300);
+  await dayIn(rt, first[first.length - 5]).click(); await wait(200); await dayIn(rt, second[3]).click(); await wait(600);
+  const f2 = await fit();
+  ok('two months, right to left: the band lies on its days', f2.err >= 0 && f2.err <= 1, JSON.stringify(f2));
+  await dayIn(rt, first[0]).focus(); await p.keyboard.press('ArrowLeft'); await wait(150);
+  const next = await p.evaluate(() => document.activeElement?.getAttribute('data-date'));
+  ok('two months, right to left: the left arrow is the next day', next === first[1], String(next));
+  /* the next-month chevron points the way the months go */
+  const flip = await rt.evaluate((r) => getComputedStyle(r.querySelector('.sg-calendar__nav svg')).transform);
+  ok('two months, right to left: the arrows\' chevrons are mirrored', /^matrix\(-1,/.test(flip), flip);
+  await rt.evaluate((r) => { r.removeAttribute('dir'); }); await wait(300);
+  /* the room: the stylesheet and the script agree at 584 px (a fraction under is one month) */
+  const box = (w) => rt.evaluate((r, w) => { r.querySelector('.sg-rangecalendar').style.width = w; }, w);
+  const shown = () => rt.locator('table[role="grid"]').evaluateAll((ts) => ts.filter((t) => t.offsetParent !== null).length);
+  await box('583.75px'); await wait(400);
+  const under = { grids: (await names()).length, shown: await shown() };
+  await box('584px'); await wait(400);
+  const at = { grids: (await names()).length, shown: await shown() };
+  ok('two months: at 583.75 px one month (drawn and in the keys), at 584 px two', under.grids === 1 && under.shown === 1 && at.grids === 2 && at.shown === 2, JSON.stringify({ under, at }));
+  /* narrowed with a day focused: it keeps the focus, in the first month or the second (its month comes in) */
+  const focusAfter = async (iso) => {
+    await box(''); await wait(400);
+    await dayIn(rt, iso).focus(); await wait(100);
+    await box('400px'); await wait(500);
+    return p.evaluate(() => document.activeElement?.getAttribute('data-date'));
+  };
+  const f1st = await focusAfter(first[10]), f2nd = await focusAfter(second[10]);
+  ok('two months, narrowed with a day focused: the focus stays on it (first month, second month)', f1st === first[10] && f2nd === second[10], `${f1st} / ${f2nd}`);
+  const narrow = await names();
+  ok('two months, in 400 px: one month, its outside days shown', narrow.length === 1 && (await rt.locator('button.sg-day[data-outside]').count()) > 0, narrow.join(' | '));
+  /* widened again with that day focused: it keeps the focus (its button may be in the other grid now) */
+  await box(''); await wait(500);
+  const fWide = await p.evaluate(() => document.activeElement?.getAttribute('data-date'));
+  ok('two months, wide again: two, and the focused day keeps the focus', (await names()).length === 2 && fWide === second[10], `${(await names()).join(' | ')} / ${fWide}`);
+  /* the band's head goes along the days in order: while it grows into the second month, the first month's part
+     already reaches that month's last day (it never jumps the gap ahead of the days before it) */
+  await box(''); await wait(300);
+  await rt.getByRole('button', { name: '이전 달' }).click(); await wait(500);
+  const g1 = await rt.locator('table[role="grid"]').first().locator('button.sg-day').evaluateAll((bs) => bs.map((x) => x.dataset.date));
+  const g2 = await rt.locator('table[role="grid"]').nth(1).locator('button.sg-day').evaluateAll((bs) => bs.map((x) => x.dataset.date));
+  await dayIn(rt, g1[g1.length - 8]).click(); await wait(300);
+  const started = (await pressed(rt)).join();
+  /* the preview from the start to a day in the second month, sampled frame by frame. The head must move: some frame
+     with the band longer than at the start and shorter than at its end. When the first try shows none, it is kept
+     with the grids' layout before and after (what the band's geometry is measured from, #108): if that did not
+     change, the jump is a bug and the check fails; if it did, the head started anew in a grid laid out again, and the
+     preview is tried again from the start, up to three times */
+  const seam = await rt.evaluate(async (root, [startIso, lastIso, targetIso]) => {
+    const day = (iso) => root.querySelector(`button.sg-day[data-date="${iso}"]`);
+    const hover = (el) => { el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); el.dispatchEvent(new MouseEvent('mouseenter')); };
+    const frame = () => new Promise(requestAnimationFrame);
+    /* the layout the band is measured from: each table's place, width and rows */
+    /* rows from the first row, as bandGeometry takes them (WebKit measures a row's offsetTop from the body while it
+       slides, from the table after) */
+    const layout = () => [...root.querySelectorAll('table[role="grid"]')].map((t) => { const rows = [...t.tBodies[0].rows], r0 = rows[0]?.offsetTop ?? 0; return `${t.offsetLeft},${t.offsetTop},${getComputedStyle(t).width}:${t.tBodies[0].offsetTop}:${rows.map((r) => `${r.offsetTop - r0}/${r.offsetHeight}`).join(',')}`; }).join(' ; ');
+    let r, first;
+    for (let tries = 0; tries < 3; tries++) {
+      if (tries) { hover(day(startIso)); for (let i = 0; i < 30; i++) await frame(); }
+      const last = day(lastIso).getBoundingClientRect(), g2 = root.querySelectorAll('table[role="grid"]')[1].getBoundingClientRect();
+      const before = layout();
+      const lenOf = () => Math.round([...root.querySelectorAll('.sg-calendar__bands > *')].filter((e) => e.style.display !== 'none').reduce((a, e) => a + e.getBoundingClientRect().width, 0));
+      const pre = lenOf(), active = document.activeElement?.getAttribute('data-date') ?? document.activeElement?.tagName, status = root.querySelector('.sg-calendar__status')?.textContent;
+      hover(day(targetIso));
+      const frames = [];
+      for (let i = 0; i < 40; i++) {
+        await frame();
+        const strips = [...root.querySelectorAll('.sg-calendar__bands > *')].filter((e) => e.style.display !== 'none').map((e) => e.getBoundingClientRect());
+        const inSecond = strips.some((x) => x.left >= g2.left - 1), firstEnd = Math.max(0, ...strips.filter((x) => x.left < g2.left - 1 && Math.abs(x.top + x.height / 2 - (last.top + last.height / 2)) < 8).map((x) => x.right));
+        frames.push({ t: Math.round(performance.now()), inSecond, firstEnd, len: Math.round(strips.reduce((a, x) => a + x.width, 0)), w: strips.map((x) => Math.round(x.width)).join('+') });
+      }
+      const after = layout();
+      const bad = frames.filter((f) => f.inSecond && f.firstEnd < last.right - 4).length;
+      /* the head along every row: the band's whole length between where it began and where it settled */
+      /* longer than before the hover and shorter than at its end */
+      const end = frames[frames.length - 1].len;
+      const partWay = frames.some((f) => f.len > pre + 6 && f.len < end - 6);
+      r = { tries: tries + 1, frames: frames.length, bad, reached: frames.some((f) => f.inSecond), partWay };
+      if (!partWay && !first) first = { pre, active, status, laidOut: before !== after, before: before === after ? undefined : before, after: before === after ? undefined : after, trace: frames.slice(0, 10).map((f) => `${f.t}:${f.w}`).join(' | ') };
+      if (bad || partWay || before === after) break;   /* a jump in an unchanged layout is not retried, on any try */
+    }
+    return { ...r, first };
+  }, [g1[g1.length - 8], g1[g1.length - 1], g2[5]]);
+  /* with reduced motion the band is drawn at its end at once: no frame part way is asked for */
+  ok('two months: the band\'s head moves through the days, reaching the first month\'s last day before it goes on into the second', started === g1[g1.length - 8] && seam.reached && seam.bad === 0 && (/rm=1/.test(Q) || seam.partWay), JSON.stringify({ started, ...seam }));
+  /* with reduced motion the band is drawn at its end at once, so there is no first try to explain */
+  await p.keyboard.press('Escape'); await wait(200);
+}
+
+/* ================================================================ DateRangePicker months={2}: resized while open */
+{
+  const field = p.getByRole('button', { name: /휴가 기간/ });
+  const dlg = p.getByRole('dialog', { name: '휴가 기간' });
+  await field.scrollIntoViewIfNeeded(); await field.click(); await wait(600);
+  const count = () => dlg.locator('table[role="grid"]').count();
+  const two = await count();
+  const g2 = await dlg.locator('table[role="grid"]').nth(1).locator('button.sg-day').evaluateAll((bs) => bs.map((x) => x.dataset.date));
+  await dlg.locator(`button.sg-day[data-date="${g2[12]}"]`).focus(); await wait(100);
+  await p.setViewportSize({ width: 600, height: 900 }); await wait(600);
+  const narrow = { grids: await count(), focus: await p.evaluate(() => document.activeElement?.getAttribute('data-date')) };
+  await p.setViewportSize({ width: 1280, height: 900 }); await wait(600);
+  const wide = { grids: await count(), focus: await p.evaluate(() => document.activeElement?.getAttribute('data-date')) };
+  ok('range field, two months: resized while open, the focused day keeps the focus (632 px)', two === 2 && narrow.grids === 1 && narrow.focus === g2[12] && wide.grids === 2 && wide.focus === g2[12], JSON.stringify({ two, narrow, wide }));
+  /* a header chip keeps the focus too */
+  await dlg.locator('.sg-calendar__chip').first().focus(); await wait(100);
+  await p.setViewportSize({ width: 600, height: 900 }); await wait(500);
+  const chip = await p.evaluate(() => document.activeElement?.classList.contains('sg-calendar__chip'));
+  await p.setViewportSize({ width: 1280, height: 900 }); await wait(500);
+  const chip2 = await p.evaluate(() => document.activeElement?.classList.contains('sg-calendar__chip'));
+  ok('range field, two months: resized while open, a header chip keeps the focus', chip && chip2, `${chip} / ${chip2}`);
+  await p.keyboard.press('Escape'); await wait(400);
+}
+
 ok('no page errors', errs.length === 0, errs.join(' | '));
 await b.close();
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');

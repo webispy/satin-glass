@@ -3510,7 +3510,7 @@
     "type": "boolean",
     "required": false,
     "default": null,
-    "description": "Move focus to the selected (or today's) day when shown."
+    "description": "Move focus to the selected (or today's) day when shown; not if the focus moves elsewhere first (inside a shadow root, a move between two of its elements is not seen)."
    },
    {
     "name": "defaultMonth",
@@ -3757,7 +3757,7 @@
     "type": "boolean",
     "required": false,
     "default": null,
-    "description": "Move focus to the selected (or today's) day when shown."
+    "description": "Move focus to the selected (or today's) day when shown; not if the focus moves elsewhere first (inside a shadow root, a move between two of its elements is not seen)."
    },
    {
     "name": "className",
@@ -3896,6 +3896,13 @@
     "required": false,
     "default": "true",
     "description": "The line under the days that says what to choose next and how long the range is (default true)."
+   },
+   {
+    "name": "months",
+    "type": "1 | 2",
+    "required": false,
+    "default": "1",
+    "description": "How many months to show side by side: 1 (default) or 2. Two need 584 px of width (in a `DateRangePicker`'s panel, a window 632 px wide); with less room, or when `min` and `max` are in the same month, one is shown. In a container that sizes to its content, give a `RangeCalendar` a width."
    }
   ],
   "inherits": [
@@ -3921,7 +3928,7 @@
     "type": "boolean",
     "required": false,
     "default": null,
-    "description": "Move focus to the selected (or today's) day when shown."
+    "description": "Move focus to the selected (or today's) day when shown; not if the focus moves elsewhere first (inside a shadow root, a move between two of its elements is not seen)."
    },
    {
     "name": "aria-label",
@@ -4022,6 +4029,13 @@
     "required": false,
     "default": null,
     "description": "What the two days are called (check-in / check-out); default \"start date\" / \"end date\" (시작일 / 종료일 in Korean)."
+   },
+   {
+    "name": "months",
+    "type": "1 | 2",
+    "required": false,
+    "default": null,
+    "description": "How many months to show side by side: 1 (default) or 2. Two need 584 px of width (in a `DateRangePicker`'s panel, a window 632 px wide); with less room, or when `min` and `max` are in the same month, one is shown. In a container that sizes to its content, give a `RangeCalendar` a width."
    },
    {
     "name": "placeholder",

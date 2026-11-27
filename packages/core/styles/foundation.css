@@ -230,8 +230,9 @@
    alone does not set them, and dir="auto" keeps what it inherits. Not :dir(): Chrome and Edge before 120 lack it (a
    rule with it is dropped), and lightningcss (Vite's CSS minifier, for its default browser targets) rewrites :dir(rtl)
    into a list of right-to-left languages, so dir="rtl" alone would not match. */
-[dir="rtl"], :host([dir="rtl"]) { --_sg-start: right; --_sg-end: left; }
-[dir="ltr"], :host([dir="ltr"]) { --_sg-start: left; --_sg-end: right; }   /* :host: when the styles are loaded inside a shadow root */
+/* --_sg-flip: the scaleX for an arrow that points along the line (a next or previous chevron) */
+[dir="rtl"], :host([dir="rtl"]) { --_sg-start: right; --_sg-end: left; --_sg-flip: -1; }
+[dir="ltr"], :host([dir="ltr"]) { --_sg-start: left; --_sg-end: right; --_sg-flip: 1; }   /* :host: when the styles are loaded inside a shadow root */   /* :host: when the styles are loaded inside a shadow root */
 /* reduced motion: see base.css */
 
 /* ---------------------------------------------------------------- scrollbars inside panels

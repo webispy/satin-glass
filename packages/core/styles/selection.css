@@ -123,6 +123,7 @@
 .sg-calendar__head { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 0 2px 6px; }
 .sg-calendar__title { margin: 0; font-size: 16px; line-height: 22px; font-weight: 700; letter-spacing: -0.01em; }
 .sg-calendar__nav { display: flex; gap: 2px; }
+.sg-calendar__nav svg { transform: scaleX(var(--_sg-flip, 1)); }   /* right to left, the next month is to the left (foundation.css) */
 .sg-calendar__grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .sg-calendar__grid th { height: 28px; font-size: 12px; line-height: 16px; font-weight: 650; color: var(--sg-label-tertiary); text-align: center; }
 .sg-calendar__grid td { padding: 0; height: var(--_cell); text-align: center; }
@@ -164,6 +165,23 @@
 .sg-rangecalendar { display: inline-flex; flex-direction: column; gap: 6px; max-width: 100%; min-width: 0; }
 .sg-calendar__status { margin: 0; padding: 2px 6px 0; min-height: 18px; font-size: 13px; line-height: 18px; color: var(--sg-label-secondary); }
 .sg-calendar__status[data-done] { color: var(--sg-label); font-weight: 600; }
+/* two months side by side (#5): 2 × 7 days and 24 px between them. On the page the range calendar fills its container
+   up to that width and is a size container: the second month shows only where both fit (the script reads the same
+   584 px, and until it has, the server's markup shows one month in a narrower container) */
+.sg-rangecalendar[data-fit] { container: sg-range / inline-size; width: min(100%, 584px); }   /* the cap in the width, not max-width, which an app's own max-width: 100% would undo */
+.sg-calendar[data-pair] { width: calc(var(--_cell) * 14 + 24px); }
+.sg-calendar__pair { display: flex; gap: 24px; }
+.sg-calendar__month { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+.sg-calendar__mtitle { height: 28px; display: flex; align-items: center; padding: 0 6px; font-size: 15px; line-height: 20px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+.sg-calendar__head[data-split] { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; }
+.sg-calendar__half { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
+.sg-calendar__head[data-split] .sg-calendar__mtitle { height: auto; }
+.sg-calendar__half > .sg-calendar__nav:last-child { margin-inline-start: auto; }   /* at the end also while the months or years are shown (no second title) */
+@container sg-range (width < 584px) {
+  .sg-calendar[data-pair] { width: calc(var(--_cell) * 7); }
+  .sg-calendar__month + .sg-calendar__month, .sg-calendar__head[data-split] .sg-calendar__half + .sg-calendar__half > .sg-calendar__mtitle { display: none; }
+  .sg-calendar__head[data-split] { column-gap: 0; }
+}
 .sg-select__meta { flex: none; color: var(--sg-label-secondary); font-size: 0.92em; }
 .sg-datepicker-panel { position: absolute; left: 0; top: 0; padding: 12px; --_radius: var(--sg-radius-xl); outline: none; }
 
