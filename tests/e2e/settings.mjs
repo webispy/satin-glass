@@ -103,7 +103,10 @@ const deep = async () => p.evaluate(() => {
     }, theme);
     const look = {};
     /* the background's alpha (0-255) and its colour, read through a canvas */
-    const read = (el) => el.evaluate((e) => {
+    /* once the background's transition is over: WebKit on a CI runner was still in it 250-300 ms after the hover or
+       the focus, and read a colour half way (#113) */
+    const read = (el) => el.evaluate(async (e) => {
+      await Promise.all(e.getAnimations().map((a) => a.finished.catch(() => {})));
       const bg = getComputedStyle(e).backgroundColor, c = document.createElement('canvas').getContext('2d');
       c.fillStyle = '#0000'; c.fillStyle = bg; c.fillRect(0, 0, 1, 1);
       return { bg, alpha: c.getImageData(0, 0, 1, 1).data[3], image: /gradient/.test(getComputedStyle(e).backgroundImage) };
@@ -154,7 +157,7 @@ const deep = async () => p.evaluate(() => {
         <div data-sg-theme="light-hc" data-sg-reduce-transparency="false"><div data-sg-theme="light"><button class="sg-button sg-button--glass sg-glass" id="nhl">N</button></div></div>`;
       document.body.appendChild(d);
     });
-    const hovered = async (id) => { const el = p.locator(`#${id}`); await el.hover(); await p.waitForTimeout(250); return el.evaluate((e) => getComputedStyle(e).backgroundColor); };
+    const hovered = async (id) => { const el = p.locator(`#${id}`); await el.hover(); await p.waitForTimeout(250); return el.evaluate(async (e) => { await Promise.all(e.getAnimations().map((a) => a.finished.catch(() => {}))); return getComputedStyle(e).backgroundColor; }); };
     const plain = await hovered('nl'), nested = await hovered('nhl');
     await p.mouse.move(0, 0); await p.evaluate(() => document.getElementById('nest').remove());
     ok('a normal theme inside a high-contrast one hovers its glass as a normal theme does (#95)', plain === nested, `${plain} / ${nested}`);
@@ -178,8 +181,10 @@ const deep = async () => p.evaluate(() => {
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       return true;
     });
-    const read = (id) => p.evaluate((id) => {
-      const d = document.getElementById('nbf').contentDocument, e = d.getElementById(id), cs = getComputedStyle(e);
+    const read = (id) => p.evaluate(async (id) => {
+      const d = document.getElementById('nbf').contentDocument, e = d.getElementById(id);
+      await Promise.all(e.getAnimations().map((a) => a.finished.catch(() => {})));   /* a hover's transition over (#113) */
+      const cs = getComputedStyle(e);
       const px = (c) => { const x = document.createElement('canvas').getContext('2d'); x.fillStyle = '#0000'; x.fillStyle = c; x.fillRect(0, 0, 1, 1); const [r, g, b, a] = x.getImageData(0, 0, 1, 1).data; return { l: Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b), a }; };
       const r = e.getBoundingClientRect(), fr = document.getElementById('nbf').getBoundingClientRect();
       return { bg: px(cs.backgroundColor), ink: px(cs.color), filter: cs.backdropFilter || cs.webkitBackdropFilter || 'none', x: fr.left + r.left + r.width / 2, y: fr.top + r.top + r.height / 2 };
@@ -243,7 +248,7 @@ ok('JS: the nearest setting decides (inner false, outer true, none → system)',
     ok('system high contrast without a theme attribute: depth becomes outlines on :root', /1px/.test(d) && !/rgba/.test(d), d);
     /* a glass button under no theme follows the system's high contrast on hover too: as opaque as at rest (#95) */
     await q.evaluate(() => { const b = document.createElement('button'); b.className = 'sg-button sg-button--glass sg-glass'; b.id = 'sysb'; b.textContent = 'S'; b.style.cssText = 'position: fixed; left: 20px; top: 20px; z-index: 99999'; document.body.appendChild(b); });
-    const alpha = () => q.locator('#sysb').evaluate((e) => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = '#0000'; c.fillStyle = getComputedStyle(e).backgroundColor; c.fillRect(0, 0, 1, 1); return c.getImageData(0, 0, 1, 1).data[3]; });
+    const alpha = () => q.locator('#sysb').evaluate(async (e) => { await Promise.all(e.getAnimations().map((a) => a.finished.catch(() => {}))); const c = document.createElement('canvas').getContext('2d'); c.fillStyle = '#0000'; c.fillStyle = getComputedStyle(e).backgroundColor; c.fillRect(0, 0, 1, 1); return c.getImageData(0, 0, 1, 1).data[3]; });
     const bgOf = () => q.locator('#sysb').evaluate((e) => getComputedStyle(e).backgroundColor);
     const rest = await alpha(), restBg = await bgOf(); await q.locator('#sysb').hover(); await q.waitForTimeout(250); const hov = await alpha(), hovBg = await bgOf();
     ok('system high contrast without a theme attribute: a hovered glass button stays as opaque as at rest, and the hover shows (#95)', hov >= rest && hovBg !== restBg, `${rest} → ${hov}; ${restBg} → ${hovBg}`);

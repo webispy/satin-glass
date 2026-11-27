@@ -308,7 +308,7 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
     const cb = area.getByRole('combobox');
     await area.evaluate((e) => { e.scrollTop = 40; }); await settle(p, 200);
     await cb.click(); await settle(p, 600);
-    const gap = () => p.evaluate(() => { const l = document.querySelector('.sg-listbox').getBoundingClientRect(), a = document.querySelector('[data-lab="inner-scroll"] [role=combobox]').getBoundingClientRect(); return Math.round(l.top - a.top); });
+    const gap = () => p.evaluate(() => { const l = document.querySelector('.sg-listbox').getBoundingClientRect(), a = document.querySelector('[data-lab="inner-scroll"] [role=combobox]').getBoundingClientRect(); return +(l.top - a.top).toFixed(1); });
     const g0 = await gap();
     /* the wheel goes to whatever is under the pointer: put it on a corner of the area the open list does not cover
        (its middle may be under the list, depending on fonts and layout) */
@@ -317,7 +317,9 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
     const spot = [[ab.x + 6, ab.y + 6], [ab.x + ab.width - 6, ab.y + 6], [ab.x + 6, ab.y + ab.height - 6], [ab.x + ab.width - 6, ab.y + ab.height - 6]].find(([x, y]) => !inList(x, y)) ?? [ab.x + 6, ab.y + 6];
     await p.mouse.move(spot[0], spot[1]); await p.mouse.wheel(0, 60); await settle(p, 300);
     const moved = await area.evaluate((e) => e.scrollTop), g1 = await gap(), still = (await p.getByRole('listbox').count()) === 1;
-    ok('inner scroll area: scrolling it keeps the select open and its list glued to the field', still && moved > 40 && g0 === g1, `scrollTop ${moved}, gap ${g0} → ${g1}`);
+    /* within a pixel: the two are placed on whole pixels each, and a scroll by a fraction can round them apart by one
+       (WebKit on a CI runner, -139 → -140 rounded, #113) */
+    ok('inner scroll area: scrolling it keeps the select open and its list glued to the field', still && moved > 40 && Math.abs(g0 - g1) <= 1, `scrollTop ${moved}, gap ${g0} → ${g1}`);
     await p.keyboard.press('Escape'); await settle(p, 400);
   }
   for (let i = 0; i < 6; i++) { await dp.click({ delay: 0 }); }

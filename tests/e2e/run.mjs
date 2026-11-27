@@ -45,6 +45,7 @@
 //   E2E_SHARD=2/4                     run only the 2nd of 4 shares of the suites (CI: one share per runner)
 //   E2E_FULL=1                        E2E_ENGINES names one engine's part of the full run, not a quick run (CI on main)
 //   E2E_LIST=1                        print the suites that would run, with their estimated time, and stop
+//   E2E_SKIP=a.mjs,b.mjs              leave these suites out (CI: what an engine cannot measure on a shared runner)
 //   E2E_PORT=4180                     serve the docs on this port (unset: 4173, or the next free one up to 4189)
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -62,6 +63,7 @@ const QUICK = !process.env.E2E_FULL && (!ENGINES.includes('webkit') || !ENGINES.
 const ONLY = process.env.E2E_ONLY || '';
 const list = (v) => (v ? v.split(',').map((x) => x.trim()).filter(Boolean) : null);
 const FILES = list(process.env.E2E_FILES), BROAD = list(process.env.E2E_BROAD), PICKED = !!(FILES || BROAD);
+const SKIP = list(process.env.E2E_SKIP);
 const JOBS = Math.max(1, Number(process.env.E2E_JOBS) || Math.min(16, availableParallelism() - 2));
 const MOTION_JOBS = Math.max(1, Number(process.env.E2E_MOTION_JOBS) || Math.min(8, JOBS));
 const VERBOSE = !!process.env.E2E_VERBOSE;
@@ -135,6 +137,7 @@ const timing = ONLY || PICKED || process.env.E2E_TIMING === '0' || !ENGINES.incl
 ];
 const only = (l) => l.filter(([label, file, env]) => {
   if (ONLY && !label.includes(ONLY)) return false;
+  if (SKIP?.includes(file)) return false;
   if (!PICKED || FILES?.includes(file)) return true;
   return !!BROAD?.includes(file) && (env.BROWSER ?? 'chromium') === 'chromium' && !env.Q;
 });
