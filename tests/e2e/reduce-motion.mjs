@@ -19,7 +19,10 @@ const trace = (p, act, read, ms = 700) => p.evaluate(({ act, read, ms }) => new 
 }), { act, read, ms });
 /* a calm move: one direction only, never past the end, done within `limit` ms of starting to move (timed from the
    last still frame, not from the click: how soon the first frame comes is the machine's, not the motion's), and at
-   rest when the recording ends (its last three frames still), so the last frame is where it went, not where it was */
+   rest when the recording ends (its last three frames still), so the last frame is where it went, not where it was.
+   A stall in the move (a frame held more than three usual frames: WebKit on a shared CI runner stops drawing for
+   60-200 ms around an interaction, #113) hides when the move started or arrived: `stall` says so, and the caller may
+   record the move again; the time is judged all the same (a stall never passes a slow move) */
 function calm(tr, limit = 300) {
   const v = tr.map(([, x]) => x), end = v[v.length - 1], start = v[0], dir = Math.sign(end - start);
   /* onset: the first frame that moved, which must come within three frames of the action (a late start is not calm,
@@ -28,11 +31,16 @@ function calm(tr, limit = 300) {
   let back = 0, past = 0;
   for (let i = 1; i < v.length; i++) { if ((v[i] - v[i - 1]) * dir < -0.3) back++; if ((v[i] - end) * dir > 0.5) past++; }
   const tol = Math.max(0.5, Math.abs(end - start) * 0.01);   /* "arrived" = within 1 % of the distance */
-  const done = (tr.find(([, x]) => Math.abs(x - end) < tol)?.[0] ?? Infinity) - from;
+  const at = tr.findIndex(([, x]) => Math.abs(x - end) < tol);
+  const done = (at < 0 ? Infinity : tr[at][0]) - from;
+  /* the usual frame, from a trace long enough to know it (8 frame intervals or more) */
+  const gaps = tr.slice(1).map(([t], i) => t - tr[i][0]), sorted = [...gaps].sort((a, c) => a - c);
+  const usual = sorted.length >= 8 ? sorted[Math.floor(sorted.length / 2)] : Infinity;
+  const stall = first > 0 && at > 0 && gaps.slice(first - 1, at).some((g) => g > 3 * usual);
   const moved = v.filter((x) => Math.abs(x - start) > 0.5 && Math.abs(x - end) > 0.5).length;
   const rest = v.length >= 3 && Math.abs(v[v.length - 1] - v[v.length - 3]) < 0.3;
   const onset = first < 0 ? Infinity : first;
-  return { ok: rest && onset <= 3 && back === 0 && past === 0 && done <= limit, back, past, done: Math.round(done), moved, rest, onset };
+  return { ok: rest && onset <= 3 && back === 0 && past === 0 && done <= limit, back, past, done: Math.round(done), stall, moved, rest, onset };
 }
 
 async function check(label, setup) {
@@ -40,10 +48,16 @@ async function check(label, setup) {
   const go = await setup(p);
 
   await go('navigation');
-  const tab = await trace(p, `() => document.querySelectorAll('.sg-tabbar__bar .sg-tabbar__item')[3].click()`,
-    `() => { const i = document.querySelector('.sg-tabbar__indicator'), r = i.getBoundingClientRect(); return [r.left, r.width, new DOMMatrix(getComputedStyle(i).transform).d]; }`);
-  const tl = tab.map(([t, v]) => [t, v[0]]), tw = tab.map(([, v]) => v[1]), tsq = tab.map(([, v]) => 1 - v[2]);
-  const ct = calm(tl);
+  /* recorded again (from the first tab) while a stall hides its timing, up to three times; the last is judged as it is */
+  let tab, tl, ct;
+  for (let tries = 0; tries < 3; tries++) {
+    if (tries) { await p.evaluate(() => document.querySelectorAll('.sg-tabbar__bar .sg-tabbar__item')[0].click()); await p.waitForTimeout(500); }
+    tab = await trace(p, `() => document.querySelectorAll('.sg-tabbar__bar .sg-tabbar__item')[3].click()`,
+      `() => { const i = document.querySelector('.sg-tabbar__indicator'), r = i.getBoundingClientRect(); return [r.left, r.width, new DOMMatrix(getComputedStyle(i).transform).d]; }`);
+    tl = tab.map(([t, v]) => [t, v[0]]); ct = calm(tl);
+    if (!ct.stall) break;
+  }
+  const tw = tab.map(([, v]) => v[1]), tsq = tab.map(([, v]) => 1 - v[2]);
   ok(`${label}: tab selection slides briefly, rigid (no stretch, no squash, no overshoot)`, ct.ok && ct.moved >= 2 && Math.max(...tw) - Math.min(...tw) <= 1 && Math.max(...tsq) < 0.001, JSON.stringify({ ...ct, widthRange: +(Math.max(...tw) - Math.min(...tw)).toFixed(2) }));
 
   await go('inputs');

@@ -95,9 +95,6 @@ jobs:
     name: e2e ${{ matrix.engine }} ${{ matrix.shard }}/${{ matrix.of }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # WebKit on a shared runner misses a different timing check in most runs (#113): its jobs report, but do not fail
-    # the run; WebKit is checked in full on macOS before every push
-    continue-on-error: ${{ matrix.engine == 'webkit' }}
     # browsers and their system libraries come with the image (installing them took from 20 s to over 4 min);
     # keep the tag in step with the playwright version in package.json
     container:
@@ -123,9 +120,53 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build && pnpm --filter docs build
-      - run: node tests/e2e/run.mjs
+      # WebKit on a shared runner misses one timing check or another in most runs (#113): its failed checks are
+      # reported as warnings on the run and in the job's summary, and neither the job nor the commit turns red; WebKit
+      # is checked on macOS before every push. Only the suites that measure motion as it happens (run.mjs's motion
+      # phase) are downgraded, and only when one ran to its end and failed by its own checks; anything else (a
+      # setup or build step, another suite, a crash, a page or console error) still turns the job red
+      - id: e2e
+        run: node tests/e2e/run.mjs
+        continue-on-error: ${{ matrix.engine == 'webkit' }}
+      - name: Report WebKit's failed checks as warnings (#113)
+        if: steps.e2e.outcome == 'failure' && matrix.engine == 'webkit'
+        run: |
+          node -e '
+            const fs = require("fs"), file = "tests/e2e/last-run.log";
+            const log = fs.existsSync(file) ? fs.readFileSync(file, "utf8").replace(/\r\n?/g, "\n") : "";
+            /* each failed suite: its phase and how it ended (run.mjs writes them under the heading), its failed checks
+               and its last line */
+            const suites = log.split(/^(?==== )/m).filter((b) => b.startsWith("=== FAIL")).map((b) => {
+              const lines = b.split("\n"), how = /^--- phase (\w+), (exit|signal) (\S+)/.exec(lines[1] || "") || [];
+              return { name: lines[0].slice(8).trim().replace(/\s+\(\d+s\)$/, ""), phase: how[1], exit: how[2] === "exit" ? how[3] : `signal ${how[3]}`,
+                last: lines.slice(2).filter((l) => l.trim()).pop() || "",
+                checks: [...new Set(lines.filter((l) => /^FAIL [^ ]/.test(l)).map((l) => l.slice(5)))] };
+            });
+            /* a warning only for a suite of the motion phase (it measures animation as it happens: #113) that ran to its
+               end and failed by its own checks: exit 1, its last line the count of failed checks, and none of them a
+               page or console error. Anything else fails the job */
+            const why = (s) => s.phase !== "motion" ? "a failed check in a suite that does not measure motion"
+              : s.exit !== "1" ? `ended with ${s.exit}` : /^all passed$/i.test(s.last.trim()) ? "failed after all its checks passed"
+              : !/^\d+ (CHECKS )?FAILED$/i.test(s.last.trim()) ? "stopped before its end"
+              : !s.checks.length ? "failed without a failed check" : s.checks.some((c) => /page error|console error/i.test(c)) ? "a page error" : "";
+            const esc = (s) => s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+            const md = ["### WebKit on a CI runner: failed checks (#113)", "", "Motion suites only; reported, not failing the job: WebKit is checked on macOS before every push. Every failed check is listed here (the run shows at most 10 as warnings).", ""];
+            const errors = [];
+            for (const s of suites) {
+              const w = why(s);
+              if (w) { errors.push(`${s.name}: ${w}${s.checks.length ? ` (${s.checks.join("; ")})` : ""}`); continue; }
+              md.push(`- **${s.name}**`);
+              for (const c of s.checks) { console.log(`::warning title=WebKit on a CI runner (#113)::${esc(`${s.name}: ${c}`.slice(0, 900))}`); md.push(`  - ${c.replace(/\|/g, "\\|")}`); }
+            }
+            /* no failed suite at all: the run stopped before the suites, or wrote no log */
+            if (!suites.length) errors.push(`no failed suite in ${file} (the run stopped before the suites, or wrote no log)`);
+            if (errors.length) md.push("", "**Failing the job:**", "");
+            for (const e of errors) { console.log(`::error title=WebKit e2e::${esc(e.slice(0, 900))}`); md.push(`- ${e.replace(/\|/g, "\\|")}`); }
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md.join("\n") + "\n");
+            process.exitCode = errors.length ? 1 : 0;
+          '
       - name: Keep the failures (with engine, settings and load) for FLAKES.md
-        if: failure()
+        if: failure() || steps.e2e.outcome == 'failure'
         uses: actions/upload-artifact@v7
         with:
           name: e2e-failures-${{ matrix.engine }}-${{ matrix.shard }}
