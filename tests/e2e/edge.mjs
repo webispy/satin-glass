@@ -330,8 +330,13 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
 {
   const p = await newPage({ hasTouch: true, isMobile: engine !== 'firefox', viewport: { width: 390, height: 844 } });
   await p.goto(U('selection')); await settle(p, 700);
-  const cb = p.getByRole('combobox', { name: /이동 수단/ }); await cb.scrollIntoViewIfNeeded(); await cb.tap(); await settle(p, 600);
-  await p.getByRole('option', { name: '자전거' }).tap(); await settle(p, 500);
+  const cb = p.getByRole('combobox', { name: /이동 수단/ }); await cb.scrollIntoViewIfNeeded(); await cb.tap();
+  /* the list open and done moving in, then the tap; then until it has closed (each can outlast a fixed wait on a
+     busy CI runner, #113) */
+  await p.getByRole('listbox').waitFor();
+  await p.waitForFunction(() => { const l = document.querySelector('[role="listbox"]'); return !!l && [l, ...l.querySelectorAll('*')].every((e) => e.getAnimations().every((a) => a.playState !== 'running')); }, null, { timeout: 5000 }).catch(() => {});
+  await p.getByRole('option', { name: '자전거' }).tap();
+  await p.waitForFunction(() => !document.querySelector('[role="listbox"]'), null, { timeout: 5000 }).catch(() => {});
   ok('touch: tap a select, tap an option', (await cb.textContent()).includes('자전거') && (await p.getByRole('listbox').count()) === 0);
   const fit = await (async () => { await cb.tap(); await settle(p, 600); return p.evaluate(() => { const r = document.querySelector('.sg-listbox').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; }); })();
   ok('touch (390 px): the list fits the phone screen', fit);
@@ -340,7 +345,9 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   ok('touch: tap a checkbox', await box.isChecked());
   const dp = p.getByRole('button', { name: /방문 날짜/ }); await dp.scrollIntoViewIfNeeded(); await dp.tap(); await settle(p, 600);
   const inView = await p.evaluate(() => { const r = document.querySelector('.sg-datepicker-panel').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; });
-  await p.locator('.sg-datepicker-panel .sg-day:not([aria-disabled="true"]):not([data-outside])').nth(3).tap(); await settle(p, 500);
+  /* the first day that can be chosen (the fourth was missing on the month's last three days: the days before today
+     cannot be chosen) */
+  await p.locator('.sg-datepicker-panel .sg-day:not([aria-disabled="true"]):not([data-outside])').first().tap(); await settle(p, 500);
   ok('touch (390 px): the date panel fits; tapping a day chooses it', inView && (await p.locator('.sg-datepicker-panel').count()) === 0 && /\d/.test(await dp.textContent()));
   await p.context().close();
 }
@@ -404,13 +411,27 @@ for (const reduced of [false, true]) {
     const rest = await run('return box(panel());');
     const away = (a) => Math.abs(a.top - rest.top) + Math.abs(a.left - rest.left);
 
-    /* re-opened mid-exit: part way out (60 px, or below 0.7 opacity), then the opener */
-    const turn = await run(`const el = panel(), r0 = box(el); esc();
-      let at = null;
-      for (let i = 0; i < 90 && !at; i++) { await frame(); const b = box(el); if (${reduced} ? b.opacity < 0.7 : Math.abs(b.top - r0.top) + Math.abs(b.left - r0.left) > 60) at = b; }
-      btn().click(); const path = [];
-      for (let i = 0; i < 10; i++) { await frame(); path.push(box(el)); }
-      return { at, path, same: panel() === el };`);
+    /* re-opened mid-exit: part way out (60 px, or between 0.05 and 0.7 opacity, the panel still there), then the
+       opener. A machine that holds its frames longer than the exit (reduced motion's fade is 110 ms; a CI runner's
+       WebKit stops drawing for up to 200 ms, #113) shows no frame part way: nothing about turning round is seen, and
+       the case is tried again, up to three times */
+    let turn;
+    for (let tries = 0; tries < 3; tries++) {
+      if (tries) { await settle(p, 900); await run('btn().click();'); await settle(p, 900); }
+      turn = await run(`const el = panel(), r0 = box(el); esc();
+        let at = null, missed = false;
+        for (let i = 0; i < 90 && !at && !missed; i++) {
+          await frame(); if (!el.isConnected) { missed = true; break; }
+          const b = box(el);
+          if (${reduced} ? b.opacity > 0.05 && b.opacity < 0.7 : Math.abs(b.top - r0.top) + Math.abs(b.left - r0.left) > 60) at = b;
+          else if (${reduced} && b.opacity <= 0.05) missed = true;
+        }
+        if (missed) return { missed: true };
+        btn().click(); const path = [];
+        for (let i = 0; i < 10; i++) { await frame(); path.push(box(el)); }
+        return { at, path, same: panel() === el };`);
+      if (!turn.missed) break;
+    }
     await settle(p, 1200);
     const back = await run('return box(panel());');
     /* the ten frames after the click: it turns round from where it was. Never back offscreen (WebKit's box can trail
@@ -421,7 +442,7 @@ for (const reduced of [false, true]) {
       : Math.max(...turn.path.map(away)) <= away(turn.at) * 1.3 + 2 && away(first) >= away(turn.at) * 0.3 && away(last) < away(turn.at));
     const rests = Math.abs(back.top - rest.top) <= 1 && Math.abs(back.left - rest.left) <= 1 && back.opacity === 1 && back.transform === 'none' && !back.inline;
     ok(`${name}: re-opened mid-exit it turns round from where it is and ends open${tag}`, handoff && rests,
-      JSON.stringify({ at: turn.at && (reduced ? turn.at.opacity : away(turn.at)), path: turn.path?.map((b) => +(reduced ? b.opacity : away(b)).toFixed(2)), same: turn.same, back }));
+      JSON.stringify(turn.missed ? { missed: 'no frame part way in three tries', back } : { at: turn.at && (reduced ? turn.at.opacity : away(turn.at)), path: turn.path?.map((b) => +(reduced ? b.opacity : away(b)).toFixed(2)), same: turn.same, back }));
     await p.keyboard.press('Escape'); await settle(p, 900);
     if (reduced) {
       /* closed mid-fade-in: the fade out goes on from the opacity it had reached, not from full */
