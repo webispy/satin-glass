@@ -22,6 +22,13 @@ const active = () => p.evaluate(() => { const a = document.activeElement; const 
 const bodyRows = (grid) => grid.locator('tbody:last-of-type tr:not([aria-hidden])');
 const firstCells = (grid) => bodyRows(grid).evaluateAll((trs) => trs.map((tr) => tr.querySelector('th')?.textContent?.trim()));
 const PAGER = { name: (n) => `${n} 페이지` };
+/* where an element's left edge is once it has held still for three frames (or after 3 s): a fixed wait reads a move
+   still running on a slow engine (WebKit on a CI runner draws far fewer frames, #113) */
+const restingLeft = (loc) => loc.evaluate((e) => new Promise((done) => {
+  let last = NaN, same = 0; const t0 = performance.now();
+  const f = () => { const v = e.getBoundingClientRect().left; same = Math.abs(v - last) < 0.05 ? same + 1 : 0; last = v; if (same >= 3 || performance.now() - t0 > 3000) done(v); else requestAnimationFrame(f); };
+  requestAnimationFrame(f);
+}));
 
 /* ================================================================ navigation: tabs, pagination */
 await go('navigation');
@@ -31,7 +38,7 @@ await go('navigation');
   const tabs = d.getByRole('tab'), ind = d.locator('.sg-tabs__indicator');
   const x0 = await ind.evaluate((e) => e.getBoundingClientRect().left);
   await tabs.nth(0).focus(); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(700);
-  const x1 = await ind.evaluate((e) => e.getBoundingClientRect().left), t1 = await tabs.nth(1).boundingBox();
+  const x1 = await restingLeft(ind), t1 = await tabs.nth(1).boundingBox();
   ok('tabs: → selects the next tab and the underline travels under it', (await tabs.nth(1).getAttribute('aria-selected')) === 'true' && x1 > x0 && Math.abs(x1 - t1.x) < 1.5, `${x0.toFixed(0)} → ${x1.toFixed(0)} (tab at ${t1.x.toFixed(0)})`);
   ok('tabs: the panel is labelled by its tab and focus stays on the tab', (await d.getByRole('tabpanel').getAttribute('aria-labelledby')) === (await tabs.nth(1).getAttribute('id')) && await tabs.nth(1).evaluate((e) => e === document.activeElement));
   await p.keyboard.press('End'); await p.waitForTimeout(300);
@@ -163,7 +170,9 @@ await go('table');
   ok('table: start- and end-aligned header titles sit on the same line', tops.length === 1, tops.join(' / '));
   const edges = await grid.evaluate((t) => [...t.querySelectorAll('thead th[data-align=end]')].map((th) => { const c = th.dataset.c, cell = t.querySelector(`tbody tr td[data-c="${c}"]`), r = document.createRange(); r.selectNodeContents(cell); return Math.abs(th.querySelector('.sg-table__title').getBoundingClientRect().right - r.getBoundingClientRect().right); }));
   ok('table: end-aligned header text ends where the numbers end', edges.every((d) => d < 1), edges.map((d) => d.toFixed(1)).join(','));
-  /* the sort direction is drawn by transform + opacity (the CSS d property, used before, does not exist in WebKit) */
+  /* the sort direction is drawn by transform + opacity (the CSS d property, used before, does not exist in WebKit);
+     read once the chevrons' fades are over (a slow engine is still in them after the clicks above, #113) */
+  await grid.evaluate((t) => Promise.all([...t.querySelectorAll('.sg-table__sort-up, .sg-table__sort-down')].flatMap((c) => c.getAnimations().map((a) => a.finished.catch(() => {})))));
   const dir = await grid.evaluate((t) => { const th = t.querySelector('th[aria-sort=descending], th[aria-sort=ascending]'); const op = (s) => +getComputedStyle(th.querySelector(s)).opacity; return { sort: th.getAttribute('aria-sort'), up: op('.sg-table__sort-up'), down: op('.sg-table__sort-down') }; });
   /* within 0.02: the other chevron's fade can still be in its last frames on a loaded machine */
   const on = (v) => v > 0.98, off = (v) => v < 0.02;

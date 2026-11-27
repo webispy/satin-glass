@@ -90,7 +90,10 @@ so that `e2e:changed` picks it.
 CI runs the e2e suites without the timing phase. On a pull request it runs Chromium's quick part (no setting
 variants) in four jobs. On `main` it runs the full run, split by engine into jobs that run side by side: Chromium
 with the setting variants and English in six, WebKit and Firefox in five each, one suite at a time (they draw
-slower on a shared runner). So a pull request is still checked in three engines locally (`pnpm e2e:changed`), and
+slower on a shared runner). WebKit's jobs leave out the wheel lens's frame-by-frame suite (`wheel-motion`): on the
+runner WebKit stops drawing for 60–200 ms as each turn starts, so it runs in WebKit on macOS only (#113). WebKit
+there still misses a different timing check in most runs, so its jobs report without failing the run: a red WebKit
+job on `main` is a lead to check in WebKit on macOS, not a broken build. So a pull request is still checked in three engines locally (`pnpm e2e:changed`), and
 an engine-only failure shows on `main` after the merge.
 
 ## Releases

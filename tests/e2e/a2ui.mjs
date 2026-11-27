@@ -68,17 +68,26 @@ async function openExample(p, q) {
 /* ---------------------------------------------------------------- the grid, the versions, search */
 {
   const p = await open();
+  /* until the cards on the screen have drawn (or 15 s): drawing a dozen examples at once took WebKit on a CI runner
+     about 7 s, where Chromium on the same machine took half a second (#113); one never drawn still fails below */
+  await p.waitForFunction(() => [...document.querySelectorAll('.a2ui-thumb__frame')].filter((f) => { const r = f.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; })
+    .every((f) => f.querySelector('.a2ui-thumb__surface [data-a2ui-surface]')), null, { timeout: 15000 }).catch(() => {});
   ok('v1.0: all 43 examples in the grid', (await thumbs(p)) === 43 && /43개 중 43개/.test(await count(p)), `${await thumbs(p)} · ${await count(p)}`);
   /* a card is drawn once it comes near the screen, not before; drawn, it stays drawn */
   const seen = await onScreen(p);
   const drawn = await p.locator('.a2ui-thumb__surface').count();
   ok('the cards on the screen have drawn their example; the ones far below have not yet', seen.length > 0 && seen.every(Boolean) && drawn < 43, `${seen.filter(Boolean).length}/${seen.length} on screen drawn, ${drawn} of 43 mounted`);
-  ok('a card shows what its example draws (Coffee Order: Sunrise Coffee)', /Sunrise Coffee/.test(await card(p, 'Coffee Order').locator('.a2ui-thumb__frame').textContent() ?? ''));
+  /* brought on screen first, and drawn: WebKit scrolls the tall gallery to its middle, which leaves the first cards
+     well above the view, too far to be drawn (#113) */
+  const coffee = card(p, 'Coffee Order').locator('.a2ui-thumb__frame');
+  await coffee.scrollIntoViewIfNeeded();
+  await coffee.locator('[data-a2ui-surface]').waitFor({ timeout: 15000 }).catch(() => {});
+  ok('a card shows what its example draws (Coffee Order: Sunrise Coffee)', /Sunrise Coffee/.test(await coffee.textContent() ?? ''));
   /* the first card's drawing, marked: scrolled far away from it, it is the same node, still in the page */
   await p.locator('.a2ui-thumb__surface').first().evaluate((e) => { e.dataset.e2eFirst = ''; });
   await p.locator('.a2ui-thumb').last().scrollIntoViewIfNeeded();
   const end = await p.waitForFunction(() => { const on = [...document.querySelectorAll('.a2ui-thumb__frame')].filter((f) => { const r = f.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; });
-    return on.length > 0 && on.every((f) => f.querySelector('.a2ui-thumb__surface [data-a2ui-surface]')); }, null, { timeout: 5000 }).then(() => true, () => false);
+    return on.length > 0 && on.every((f) => f.querySelector('.a2ui-thumb__surface [data-a2ui-surface]')); }, null, { timeout: 15000 }).then(() => true, () => false);
   const first = await p.evaluate(() => { const e = document.querySelector('[data-e2e-first]'); const r = e?.closest('.a2ui-thumb__frame')?.getBoundingClientRect(); return { kept: !!e?.isConnected, away: !!r && (r.bottom < 0 || r.top > innerHeight) }; });
   ok('scrolled to the last card, the cards there draw; the first card, now out of view, keeps its drawing', end && first.kept && first.away, JSON.stringify(first));
   /* each card's name is a button named by the example; the drawn picture is inert and hidden from assistive technology */
