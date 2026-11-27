@@ -21,18 +21,48 @@ function numbers(s: string, key: string): ReactNode[] {
   if (last < s.length) out.push(s.slice(last));
   return out;
 }
-function inline(s: string): ReactNode[] {
+/* a token too long for a word (#100): more than 20 Unicode code points in a row (decided from the text alone, so the
+   server and the browser split alike) with no whitespace and no Chinese, Japanese or Korean character or punctuation
+   among them — a URL, an email address, an ID, a path. CJK characters break between themselves: their prose is left to
+   the browser, while a long ID inside it is still found. Such a token may also break anywhere, as a last resort
+   (overflow-wrap: anywhere takes the token out of the Text's min-content width, which break-word does not, leaving
+   ordinary words as the floor — or one character if there are none), so beside an icon or an avatar it wraps inside
+   the card instead of running out of it, while a short label beside a long sentence keeps its words whole. Grouped
+   numbers are found first and stay whole, even inside a longer token. Skipped in a table's cells (KeepWords) and
+   inside a button (InButtonContext). */
+const TOKEN = /[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f]{21,}/gu;
+function tokens(s: string, key: string, keep: boolean): ReactNode[] {
+  if (keep) return numbers(s, key);
+  /* the text between grouped numbers (each number is one piece, kept whole by numbers()) */
+  const out: ReactNode[] = [];
+  let k = 0;
+  for (const piece of numbers(s, key)) {
+    if (typeof piece !== 'string') { out.push(piece); continue; }
+    let last = 0, m: RegExpExecArray | null;
+    TOKEN.lastIndex = 0;
+    while ((m = TOKEN.exec(piece))) {
+      if (m.index > last) out.push(piece.slice(last, m.index));
+      out.push(<span key={`${key}-t${k++}`} style={{ overflowWrap: 'anywhere' }}>{m[0]}</span>);
+      last = TOKEN.lastIndex;
+    }
+    out.push(last ? piece.slice(last) : piece);
+  }
+  return out.filter((n) => n !== '');
+}
+/* keep: a table's cell or a button's label, whose words stay whole */
+function inline(s: string, keep = false): ReactNode[] {
   const raw: ReactNode[] = [];
-  const out = { push: (n: ReactNode) => { if (typeof n === 'string') raw.push(...numbers(n, `n${raw.length}`)); else raw.push(n); } };
+  const text = (t: string) => tokens(t, `n${raw.length}`, keep);
+  const out = { push: (n: ReactNode) => { if (typeof n === 'string') raw.push(...text(n)); else raw.push(n); } };
   /* ![alt](url) and [text](url) keep their text; **bold**, *italic* / _italic_, `code` */
   const re = /!?\[([^\]]*)\]\([^)]*\)|\*\*([^*]+)\*\*|\*([^*]+)\*|_([^_]+)_|`([^`]+)`/g;
   let last = 0, m: RegExpExecArray | null, k = 0;
   while ((m = re.exec(s))) {
     if (m.index > last) out.push(s.slice(last, m.index));
     if (m[1] !== undefined) out.push(m[1]);
-    else if (m[2] !== undefined) out.push(<strong key={k++}>{m[2]}</strong>);
-    else if (m[3] !== undefined || m[4] !== undefined) out.push(<em key={k++}>{m[3] ?? m[4]}</em>);
-    else if (m[5] !== undefined) out.push(<code key={k++} style={{ fontFamily: 'var(--sg-font-mono)', fontSize: '0.92em' }}>{m[5]}</code>);
+    else if (m[2] !== undefined) out.push(<strong key={k++}>{text(m[2])}</strong>);
+    else if (m[3] !== undefined || m[4] !== undefined) out.push(<em key={k++}>{text(m[3] ?? m[4])}</em>);
+    else if (m[5] !== undefined) out.push(<code key={k++} style={{ fontFamily: 'var(--sg-font-mono)', fontSize: '0.92em' }}>{text(m[5])}</code>);
     last = re.lastIndex;
   }
   if (last < s.length) out.push(s.slice(last));
@@ -56,6 +86,8 @@ function blocks(md: string): Block[] {
 export function A2uiText(r: Rendered<{ text?: unknown; variant?: string }>) {
   const { props } = r;
   const inButton = useContext(InButtonContext);
+  /* a table's cell (measured at its narrowest width without breaking a word) and a button's label keep words whole */
+  const keep = useContext(KeepWords) || inButton;
   const slot = useSlot(r);
   const raw = props.text == null ? '' : String(props.text);
   const caption = props.variant === 'caption';
@@ -70,24 +102,24 @@ export function A2uiText(r: Rendered<{ text?: unknown; variant?: string }>) {
   };
   if (vh) {
     const level = Number(vh[1]);
-    return <Text variant={HEADING[level]} as={`h${Math.min(level + 1, 6)}` as 'h2'} style={style}>{inline(raw)}</Text>;
+    return <Text variant={HEADING[level]} as={`h${Math.min(level + 1, 6)}` as 'h2'} style={style}>{inline(raw, keep)}</Text>;
   }
   const list = blocks(raw);
   /* a plain label in a button: no paragraph and no text style of its own, so it takes the button's type and colour.
      Its line breaks and wrapping stay as the paragraph had them (the button keeps its own label on one line) */
   if (inButton && !caption && list.length <= 1 && (!list[0] || list[0].kind === 'p')) {
-    return <span style={{ ...style, whiteSpace: 'pre-line' }}>{inline(list[0]?.kind === 'p' ? list[0].text : raw)}</span>;
+    return <span style={{ ...style, whiteSpace: 'pre-line' }}>{inline(list[0]?.kind === 'p' ? list[0].text : raw, true)}</span>;
   }
   const para = (s: string, key?: number) => (
-    <Text key={key} variant={caption ? 'footnote' : 'body'} tone={caption ? 'secondary' : 'default'} style={{ whiteSpace: 'pre-line', ...(key === undefined ? style : {}) }}>{inline(s)}</Text>
+    <Text key={key} variant={caption ? 'footnote' : 'body'} tone={caption ? 'secondary' : 'default'} style={{ whiteSpace: 'pre-line', ...(key === undefined ? style : {}) }}>{inline(s, keep)}</Text>
   );
   if (list.length <= 1 && (!list[0] || list[0].kind === 'p')) return para(list[0]?.kind === 'p' ? list[0].text : raw);
   return (
     <Stack gap={2} style={style}>
       {list.map((b, i) => b.kind === 'h'
-        ? <Text key={i} variant={HEADING[b.level] ?? 'headline'} as={`h${Math.min(b.level + 1, 6)}` as 'h2'}>{inline(b.text)}</Text>
+        ? <Text key={i} variant={HEADING[b.level] ?? 'headline'} as={`h${Math.min(b.level + 1, 6)}` as 'h2'}>{inline(b.text, keep)}</Text>
         : b.kind === 'p' ? para(b.text, i)
-          : <Text key={i} as={b.kind} variant={caption ? 'footnote' : 'body'} style={{ margin: 0, paddingInlineStart: '1.4em' }}>{b.items.map((it, j) => <li key={j}>{inline(it)}</li>)}</Text>)}
+          : <Text key={i} as={b.kind} variant={caption ? 'footnote' : 'body'} style={{ margin: 0, paddingInlineStart: '1.4em' }}>{b.items.map((it, j) => <li key={j}>{inline(it, keep)}</li>)}</Text>)}
     </Stack>
   );
 }
@@ -214,7 +246,12 @@ export const a2uiFlow = (direction: 'row' | 'column') => function A2uiFlow({ pro
     </Stack>
   );
   const inner = <FlowContext.Provider value={{ direction, ids: members, align, aligned: props.align !== undefined, media }}>{stack}</FlowContext.Provider>;
-  const flow = host ? <TableContext.Provider value={host}>{inner}</TableContext.Provider> : inner;
+  /* a table's row (one that reports to its Column): its cells keep their words whole, long ones too (#100) */
+  const inherited = useContext(KeepWords);
+  /* always there, its value changing: a Row that becomes a table's row (a second weight arrives) does not remount
+     its children */
+  const kept = <KeepWords.Provider value={inherited || Boolean(gridRow && table)}>{inner}</KeepWords.Provider>;
+  const flow = host ? <TableContext.Provider value={host}>{kept}</TableContext.Provider> : kept;
   return direction === 'row' ? <RowContext.Provider value={members}>{flow}</RowContext.Provider> : flow;
 };
 
@@ -252,6 +289,9 @@ function useChildKinds(context: Rendered<unknown>['context'], ids: string[]) {
 /* a table's rows report the width they need to their Column */
 type TableHost = { report: (key: object, width: number) => void; drop: (key: object) => void };
 const TableContext = createContext<TableHost | null>(null);
+/* words are kept whole here, long tokens too: in a table's row, whose cells are measured at their narrowest width
+   without breaking a word (#100); everything inside a cell, a nested Column's text too, is part of that width */
+const KeepWords = createContext(false);
 function useTableHost(on: boolean, setNeed: (n: number) => void): TableHost | null {
   const needs = useRef(new Map<object, number>());
   return useMemo(() => (on ? {

@@ -944,6 +944,58 @@ describe.each<V>(['1.0', '0.9'])('layout as the catalog means it, in v%s', (v) =
     expect(screen.getByText('$850,000,000,000.00').style.whiteSpace).toBe('nowrap');
     expect(screen.getByText('Market cap').style.fontVariantNumeric).toBe('tabular-nums');
   });
+  /* a token long for a word (a URL, an email, an ID) may break anywhere, as a last resort, so beside an icon or an
+     avatar it wraps inside the card instead of running out of it; words of ordinary length, grouped numbers, CJK
+     prose, a table's cells and a button's label keep their words whole (#100) */
+  it('lets a token long for a word break anywhere, and nothing else', () => {
+    const anywhere = () => [...document.querySelectorAll<HTMLElement>('span')].filter((x) => x.style.overflowWrap === 'anywhere').map((x) => x.textContent);
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'tbl', 'btn'] },
+      t('a', 'Write to verylongname.surname@example-company.com today'),
+      t('b', 'twentycharacterword! stays whole'),                          /* 20: a word */
+      t('c', 'Cap $850,000,000,000,000,000.00 today'),                     /* a grouped number of 27: whole */
+      t('d', 'これは区切りのない長い日本語の文章でブラウザが文字の間で改行できるもの'),   /* CJK prose: the browser's */
+      t('e', '注文番号 ORD-2026-11-27-ABCDEFGHIJKLMNOP を確認'),              /* a long ID in CJK prose */
+      t('f', 'See **https://example.com/a/very/long/path/to/a/page** and `0123456789abcdef0123456789`'),
+      t('g', '## Heading with averyveryveryverylongtokenhere'),
+      t('h', 'Short words only, many of them, in a long sentence that wraps'),
+      t('i', 'twentyonecharacterwrd and *anitalictokenthatislongerthantwenty*'),   /* 21: a token */
+      t('j', 'amount=$850,000,000,000.00&cur=USD'),                   /* a grouped number inside a token: kept whole, the rest too short */
+      t('k', 'Han 𠀀𠀁𠀂𠀃𠀄𠀅𠀆𠀇𠀈𠀉𠀊𠀋𠀌𠀍𠀎𠀏𠀐𠀑𠀒𠀓𠀔𠀕 and ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵ'),    /* Extension B prose; a fullwidth Latin ID */
+      t('l', '- first item\n- second item with averyveryveryverylongtokeninalist'),
+      /* a table's row (a weighted Column or Card would make it a row of panels instead, which wraps) */
+      { id: 'tbl', component: 'Row', children: ['c1', 'c2'] }, t('c1', 'ID', { weight: 1 }), t('c2', 'abcdefghijklmnopqrstuvwxyz0123', { weight: 1 }),
+      { id: 'btn', component: 'Button', child: 'bt', action: { event: { name: 'go' } } }, t('bt', 'Open https://example.com/a/long/path'),
+    ]));
+    expect(anywhere()).toEqual([
+      'verylongname.surname@example-company.com',
+      'ORD-2026-11-27-ABCDEFGHIJKLMNOP',
+      'https://example.com/a/very/long/path/to/a/page',
+      '0123456789abcdef0123456789',
+      'averyveryveryverylongtokenhere',
+      'twentyonecharacterwrd',
+      'anitalictokenthatislongerthantwenty',
+      'ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵ',
+      'averyveryveryverylongtokeninalist',
+    ]);
+    /* a grouped number inside a longer token stays whole */
+    expect(screen.getByText('$850,000,000,000.00').style.whiteSpace).toBe('nowrap');
+    expect(screen.getByText('$850,000,000,000,000,000.00').style.whiteSpace).toBe('nowrap');
+    /* the strong and the code keep their elements, the token inside them */
+    expect(screen.getByText('https://example.com/a/very/long/path/to/a/page').parentElement!.tagName).toBe('STRONG');
+    expect(screen.getByText('0123456789abcdef0123456789').parentElement!.tagName).toBe('CODE');
+  });
+  it('keeps a Row\'s children mounted when a second weight makes it a table\'s row', () => {
+    const { feed } = mount();
+    feed(create(v), components(v, [
+      { id: 'root', component: 'Column', children: ['r'] },
+      { id: 'r', component: 'Row', children: ['x', 'y'] }, t('x', 'Label', { weight: 1 }), t('y', 'Value'),
+    ]));
+    const before = screen.getByText('Label');
+    feed(components(v, [t('y', 'Value', { weight: 1 })]));   /* now two weights: a table's row */
+    expect(screen.getByText('Label')).toBe(before);
+  });
   it('makes Rows of two or more weighted cells rows of one table in their Column', () => {
     const { feed } = mount();
     feed(create(v), components(v, [

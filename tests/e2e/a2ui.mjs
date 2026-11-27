@@ -608,6 +608,38 @@ for (const query of ['', '?rm=1']) {
   await p.context().close();
 }
 
+/* ---------------------------------------------------------------- tokens long for a word (#100) */
+/* the lab page's Chat Message and Contact Card, given a long URL, ID and email address, in surfaces of 320 and 390 px:
+   nothing runs out of the card, the tokens wrap inside it, and a short label beside a long sentence stays one word
+   on one line while the sentence wraps */
+{
+  const ctx = await b.newContext({ viewport: { width: 1280, height: 1000 } });
+  const p = await ctx.newPage();
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+  await p.goto(`${pw.ORIGIN}/#/lab`); await p.waitForSelector('[data-lab="a2ui-long-390"] [data-a2ui-surface]');
+  for (const w of [320, 390]) {
+    const box = p.locator(`[data-lab="a2ui-long-${w}"]`);
+    await box.scrollIntoViewIfNeeded(); await p.waitForTimeout(300);
+    const m = await box.evaluate((root) => {
+      /* each against its own card (surface): nothing of it outside */
+      const out = [...root.querySelectorAll('[data-a2ui-surface]')].flatMap((sf) => {
+        const card = (sf.querySelector('.sg-card') ?? sf).getBoundingClientRect();
+        return [...sf.querySelectorAll('*')].filter((e) => { const r = e.getBoundingClientRect(); return r.width && (r.right > card.right + 0.5 || r.left < card.left - 0.5); }).map((e) => String(e.className || e.tagName));
+      });
+      const lines = (el) => { if (!el) return 0; const rg = document.createRange(); rg.selectNodeContents(el); return new Set([...rg.getClientRects()].filter((r) => r.width).map((r) => Math.round(r.top))).size; };
+      const find = (re) => [...root.querySelectorAll('*')].find((e) => e.children.length === 0 && re.test(e.textContent));
+      const email = find(/konstantinopoulou/), row = email?.closest('.sg-stack--row'), icon = row?.querySelector('svg')?.getBoundingClientRect(), er = email?.getBoundingClientRect();
+      return { out: out.slice(0, 3), status: lines(find(/^Status:$/)), sentence: lines(find(/^Waiting for/)), email: lines(email), url: lines(find(/^https:\/\/ci\./)), id: lines(find(/^ORD-2026/)),
+        iconBeside: !!icon && !!er && icon.right <= er.left + 0.5 && icon.top < er.bottom };
+    });
+    ok(`A2UI long tokens at ${w} px: nothing runs out of its card; the URL wraps inside it, the ID and the email fit, the email beside its icon (#100)`,
+      m.out.length === 0 && m.url >= 2 && m.id >= 1 && m.email >= 1 && (w > 360 || m.email >= 2) && m.iconBeside, JSON.stringify(m));
+    ok(`A2UI long tokens at ${w} px: a short label beside a long sentence stays whole on one line (#100)`, m.status === 1 && m.sentence >= 2, JSON.stringify({ status: m.status, sentence: m.sentence }));
+  }
+  await ctx.close();
+}
+
 ok('no page errors', errors.length === 0, [...new Set(errors)].slice(0, 3).join(' | '));
 await b.close();
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');
