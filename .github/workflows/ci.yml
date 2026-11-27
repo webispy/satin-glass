@@ -56,8 +56,39 @@ jobs:
         run: node scripts/docs-props.mjs --check
       - run: pnpm test
 
+  # which e2e jobs run: on a pull request, Chromium's quick part in 4 shares; on main (and when run by hand), the full
+  # run split by engine, each engine its own jobs side by side: Chromium with the setting variants and English in 6,
+  # WebKit and Firefox in 5 each, one suite at a time. The timing phase stays off (shared runners): the full
+  # `pnpm e2e` before a release runs it
+  plan:
+    name: e2e plan
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        env:
+          EVENT: ${{ github.event_name }}
+          ENGINES: ${{ github.event.inputs.engines }}
+        run: |
+          node -e '
+            const pr = process.env.EVENT === "pull_request";
+            const of = { chromium: pr ? 4 : 6, webkit: 5, firefox: 5 };
+            /* the input by hand: each engine once, and only ones there are */
+            const asked = [...new Set((process.env.ENGINES || "chromium,webkit,firefox").split(",").map((s) => s.trim()).filter(Boolean))];
+            const unknown = asked.filter((e) => !(e in of));
+            if (unknown.length || !asked.length) { console.error(`engines: ${unknown.join(", ") || "none given"}; choose from ${Object.keys(of).join(", ")}`); process.exit(1); }
+            const engines = pr ? ["chromium"] : asked;
+            /* WebKit and Firefox draw slower on a shared runner: one suite at a time there, in more jobs */
+            const jobs = { webkit: "1", firefox: "1" };
+            const include = engines.flatMap((engine) => Array.from({ length: of[engine] }, (_, i) => ({ engine, shard: i + 1, of: of[engine], full: pr ? "" : "1", jobs: jobs[engine] ?? "" })));
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({ include })}\n`);
+            console.log(include.map((j) => `${j.engine} ${j.shard}/${j.of}`).join("\n"));
+          '
+
   e2e:
-    name: e2e ${{ matrix.shard }}/4 (${{ github.event.inputs.engines || 'chromium' }})
+    needs: plan
+    name: e2e ${{ matrix.engine }} ${{ matrix.shard }}/${{ matrix.of }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # browsers and their system libraries come with the image (installing them took from 20 s to over 4 min);
@@ -67,12 +98,13 @@ jobs:
       options: --ipc=host
     strategy:
       fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
-      E2E_ENGINES: ${{ github.event.inputs.engines || 'chromium' }}
+      E2E_ENGINES: ${{ matrix.engine }}
+      E2E_FULL: ${{ matrix.full }}
+      E2E_JOBS: ${{ matrix.jobs }}
       E2E_TIMING: '0'
-      E2E_SHARD: ${{ matrix.shard }}/4
+      E2E_SHARD: ${{ matrix.shard }}/${{ matrix.of }}
       HOME: /root
     steps:
       - uses: actions/checkout@v7
@@ -88,6 +120,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: e2e-failures-${{ matrix.shard }}
+          name: e2e-failures-${{ matrix.engine }}-${{ matrix.shard }}
           path: tests/e2e/failures/
           retention-days: 30
