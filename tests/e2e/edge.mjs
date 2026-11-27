@@ -340,7 +340,9 @@ const indicatorOn = (p, bar, ind, item) => p.evaluate(({ bar, ind, item }) => {
   ok('touch: tap a checkbox', await box.isChecked());
   const dp = p.getByRole('button', { name: /방문 날짜/ }); await dp.scrollIntoViewIfNeeded(); await dp.tap(); await settle(p, 600);
   const inView = await p.evaluate(() => { const r = document.querySelector('.sg-datepicker-panel').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; });
-  await p.locator('.sg-datepicker-panel .sg-day:not([aria-disabled="true"]):not([data-outside])').nth(3).tap(); await settle(p, 500);
+  /* the last day open to choose: the picker opens on this month with min = today, so near a month's end only a few
+     days are open (on the 28th of a 30-day month, three: the fourth did not exist) */
+  await p.locator('.sg-datepicker-panel .sg-day:not([aria-disabled="true"]):not([data-outside])').last().tap(); await settle(p, 500);
   ok('touch (390 px): the date panel fits; tapping a day chooses it', inView && (await p.locator('.sg-datepicker-panel').count()) === 0 && /\d/.test(await dp.textContent()));
   await p.context().close();
 }
