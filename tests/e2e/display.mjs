@@ -203,6 +203,81 @@ await go('display');
   await p.waitForTimeout(900);
   const hiddenLeft = await page.locator('[data-demo=media] button').evaluateAll((bs) => bs.filter((x) => getComputedStyle(x).visibility === 'hidden').length);
   ok('viewer: 6 rapid open/close → nothing left open, no thumbnail left hidden, no scroll lock', (await dlg.count()) === 0 && hiddenLeft === 0 && (await p.evaluate(() => getComputedStyle(document.body).overflow)) !== 'hidden', `hidden thumbs ${hiddenLeft}`);
+  /* opened again while the photo still folds back into its thumbnail (#105): it turns round from where it is (the
+     same element, never back at the thumbnail, not full size at once) and ends open, the backdrop and the bars
+     shown, its thumbnail hidden and the focus in the viewer; the old exit, ending meanwhile, leaves them be */
+  await page.getByRole('button', { name: /숲길의 아침/ }).click(); await p.waitForTimeout(900);
+  const turn = await p.evaluate(async (rm) => {
+    const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+    const thumb = [...document.querySelectorAll('[data-demo=media] button')].find((b) => (b.getAttribute('aria-label') ?? '').includes('숲길'));
+    const layer = () => document.querySelector('.sg-media .sg-media__dismiss[style], .sg-media [data-sg-slide] .sg-media__dismiss');
+    const read = (el) => { const cs = getComputedStyle(el); return { a: new DOMMatrix(cs.transform).a, o: +cs.opacity }; };
+    const root = document.querySelector('.sg-media'), l = [...document.querySelectorAll('.sg-media [data-sg-slide] .sg-media__dismiss')].find((x) => x.getBoundingClientRect().left >= 0 && x.getBoundingClientRect().left < innerWidth) ?? layer();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    let at = null;
+    for (let i = 0; i < 60 && !at; i++) { await frame(); const r = rm ? read(root) : read(l); if (rm ? r.o < 0.8 : r.a < 0.85) at = r; }
+    thumb.click();
+    const path = [];
+    for (let i = 0; i < 8; i++) { await frame(); path.push(rm ? read(root) : read(l)); }
+    await new Promise((r) => setTimeout(r, 1200));
+    const bd = document.querySelector('.sg-media__backdrop'), bar = document.querySelector('.sg-media__bar');
+    return { at, path, same: document.querySelector('.sg-media') === root, layer: getComputedStyle(l).transform, backdrop: bd && +getComputedStyle(bd).opacity, bar: bar && +getComputedStyle(bar).opacity,
+      root: +getComputedStyle(root).opacity, thumb: getComputedStyle(thumb).visibility, focusIn: root.contains(document.activeElement) };
+  }, reduced);
+  const v = (r) => (reduced ? r.o : r.a);
+  const turned = turn.at && turn.same && Math.min(...turn.path.map(v)) >= v(turn.at) - 0.05 && v(turn.path[0]) < 0.99;
+  ok(`viewer${reduced ? ' (reduced motion)' : ''}: opened again as it closes, it turns round and ends open (#105)`,
+    turned && turn.layer === 'none' && turn.backdrop === 1 && turn.bar === 1 && turn.root === 1 && turn.thumb === 'hidden' && turn.focusIn,
+    JSON.stringify({ at: turn.at && +v(turn.at).toFixed(3), path: turn.path.map((r) => +v(r).toFixed(3)), same: turn.same, layer: turn.layer, backdrop: turn.backdrop, bar: turn.bar, root: turn.root, thumb: turn.thumb, focusIn: turn.focusIn }));
+  /* closed again: that close gives the thumbnail and the focus back as any close does */
+  await p.keyboard.press('Escape'); await p.waitForTimeout(900);
+  const back = await p.evaluate(() => { const t = [...document.querySelectorAll('[data-demo=media] button')].find((b) => (b.getAttribute('aria-label') ?? '').includes('숲길')); return { open: !!document.querySelector('.sg-media'), thumb: getComputedStyle(t).visibility, focus: document.activeElement === t }; });
+  ok('viewer: closed again after that, the thumbnail shows and has the focus (#105)', !back.open && back.thumb === 'visible' && back.focus, JSON.stringify(back));
+
+  /* swiped away and opened again as it leaves: the swipe's offset is not left on the photo once it is open */
+  const thumbs = page.locator('[data-demo=media] button');
+  await thumbs.nth(1).click(); await p.waitForTimeout(900);
+  await p.mouse.move(640, 300); await p.mouse.down();
+  for (let i = 1; i <= 8; i++) { await p.mouse.move(640, 300 + i * 30); await p.waitForTimeout(16); }
+  await p.mouse.up();
+  await p.evaluate(() => document.querySelectorAll('[data-demo=media] button')[1].click());
+  await p.waitForTimeout(1300);
+  const swiped = await p.evaluate(() => { const l = document.querySelector('.sg-media [data-sg-slide="1"] .sg-media__dismiss'); return l && { transform: getComputedStyle(l).transform, inline: l.style.transform, backdrop: +getComputedStyle(document.querySelector('.sg-media__backdrop')).opacity }; });
+  ok('viewer: swiped away and opened again as it leaves, the photo is at rest (#105)', swiped && swiped.transform === 'none' && !swiped.inline && swiped.backdrop === 1, JSON.stringify(swiped));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(900);
+
+  /* opened again on the next photo while the first still folds back: paged back to it, the first is whole */
+  await thumbs.nth(1).click(); await p.waitForTimeout(900);
+  await p.evaluate(async () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    for (let i = 0; i < 4; i++) await new Promise((r) => requestAnimationFrame(() => r()));
+    document.querySelectorAll('[data-demo=media] button')[2].click();
+  });
+  await p.waitForTimeout(1200);
+  await p.keyboard.press('ArrowLeft'); await p.waitForTimeout(900);
+  const first = await p.evaluate(() => { const l = document.querySelector('.sg-media [data-sg-slide="1"] .sg-media__dismiss'), cs = l && getComputedStyle(l); return cs && { count: document.querySelector('.sg-media__count')?.textContent, transform: cs.transform, clip: cs.clipPath, opacity: +cs.opacity }; });
+  ok('viewer: opened again on the next photo as the first folds back, the first is whole when paged back to (#105)',
+    first && first.count === '2 / 6' && first.transform === 'none' && first.clip === 'none' && first.opacity === 1, JSON.stringify(first));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(900);
+  if (!reduced) {
+    /* zoomed in, closed, and opened again as the photo eases back to 1: it goes on easing from there, not at once */
+    await thumbs.nth(1).click(); await p.waitForTimeout(900);
+    await p.keyboard.press('+'); await p.waitForTimeout(700);
+    const unzoom = await p.evaluate(async () => {
+      const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+      const f = document.querySelector('.sg-media [data-sg-slide="1"] .sg-media__frame'), s = () => new DOMMatrix(getComputedStyle(f).transform).a;
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await frame(); await frame(); const at = s();
+      document.querySelectorAll('[data-demo=media] button')[1].click();
+      const path = []; for (let i = 0; i < 6; i++) { await frame(); path.push(s()); }
+      await new Promise((r) => setTimeout(r, 600));
+      return { at, path, end: s() };
+    });
+    ok('viewer: a zoomed photo opened again as it closes eases back to 1, not at once (#105)',
+      unzoom.at > 1.1 && unzoom.path[0] > 1.05 && unzoom.path.every((x, i) => i === 0 || x <= unzoom.path[i - 1] + 0.01) && Math.abs(unzoom.end - 1) < 0.01,
+      JSON.stringify({ at: +unzoom.at.toFixed(3), path: unzoom.path.map((x) => +x.toFixed(3)), end: +unzoom.end.toFixed(3) }));
+    await p.keyboard.press('Escape'); await p.waitForTimeout(900);
+  }
 }
 
 /* ---------------------------------------------------------------- touch: tap toggles the bars, double tap zooms, pinch (Chromium) */
