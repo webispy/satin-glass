@@ -228,8 +228,10 @@ describe('charts: a scatter chart keeps the scale history of what it showed (#83
      middle point jumped from about 145 px to 70 px when it started from a mix of linear and log units) */
   const step = async (frames: FrameRequestCallback[], n: number) => { for (let k = 0; k < n && frames.length; k++) { clock += 16; const t = clock, f = frames.splice(0); await act(async () => { f.forEach((cb) => cb(t)); }); } };
   /* an axis's ticks as drawn: label → place and opacity */
-  const xTicks = (c: HTMLElement) => new Map([...c.querySelectorAll('text.sg-chart__tick[text-anchor="middle"]')].map((e) => [e.textContent!, { x: Number(e.getAttribute('x')), o: Number(e.parentElement!.getAttribute('opacity') ?? 1) }]));
-  const yTicks = (c: HTMLElement) => new Map([...c.querySelectorAll('text.sg-chart__tick[text-anchor="end"]')].map((e) => [e.textContent!, { x: Number(e.getAttribute('y')), o: Number(e.parentElement!.getAttribute('opacity') ?? 1) }]));
+  /* what is drawn: a tick the painter keeps mounted for the rest of a move but does not show is not (#85) */
+  const drawn = (e: Element) => e.parentElement!.getAttribute('display') !== 'none';
+  const xTicks = (c: HTMLElement) => new Map([...c.querySelectorAll('text.sg-chart__tick[text-anchor="middle"]')].filter(drawn).map((e) => [e.textContent!, { x: Number(e.getAttribute('x')), o: Number(e.parentElement!.getAttribute('opacity') ?? 1) }]));
+  const yTicks = (c: HTMLElement) => new Map([...c.querySelectorAll('text.sg-chart__tick[text-anchor="end"]')].filter(drawn).map((e) => [e.textContent!, { x: Number(e.getAttribute('y')), o: Number(e.parentElement!.getAttribute('opacity') ?? 1) }]));
   /* every tick drawn before is drawn now at the same place and opacity, and no other tick shows */
   const sameTicks = (a: ReturnType<typeof xTicks>, b: ReturnType<typeof xTicks>) => {
     for (const [k, v] of a) { if (v.o < 0.01) continue; expect(b.get(k), k).toBeDefined(); expect(b.get(k)!.x, k).toBeCloseTo(v.x, 1); expect(b.get(k)!.o, k).toBeCloseTo(v.o, 2); }
@@ -1025,6 +1027,69 @@ describe('charts: hidden mid-change and shown again (#82)', () => {
       expect(next).not.toBe(atB); expect(next).not.toBe(atC);               /* moves, not snaps */
       act(() => { settle(); });
       expect(drawn(container)).toBe(atC);
+    });
+  }
+});
+
+describe('charts: a move is drawn in its own frame, without a render (#85)', () => {
+  /* each frame of a move is written into the SVG by the frame's own callback: React renders at its start and end only.
+     A render per frame waited for React's scheduler and could miss its frame; one forced per frame (flushSync)
+     restarted every pending transition. So frames run outside act draw the next step at once, and none of them asks
+     React for anything but the last (React reports an update outside act) */
+  const frames: FrameRequestCallback[] = [];
+  let t = 0;
+  const step = (n = 1) => { for (let i = 0; i < n; i++) { t += 16; for (const cb of frames.splice(0)) cb(t); } };
+  const settle = () => { for (let i = 0; i < 300 && frames.length; i++) step(); };
+  beforeEach(() => {
+    frames.length = 0; t = performance.now();
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { frames.push(cb); return frames.length; });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+  });
+  afterEach(() => { vi.restoreAllMocks(); });
+  const rows = (v: number[]) => v.map((n, i) => ({ x: `c${i}`, v: n, w: n / 2 + 1 }));
+  const two = [{ key: 'v', label: 'V' }, { key: 'w', label: 'W' }];
+  /* each part that moves, checked on its own (one moving part must not pass for another) */
+  const grid = ['line.sg-chart__grid', 'text.sg-chart__tick'];
+  /* 60 categories whose values grow 10^8 times, written out in full: the gutter widens with the labels, so fewer
+     category labels fit and the stride changes mid-move, and the scale's ticks change too */
+  const long = (v: number[], k: number) => Array.from({ length: 60 }, (_, i) => v[i % v.length] * k);
+  const A = [1, 4, 2, 5], B = [40, 10, 30, 20];
+  const charts: [string, (v: number[]) => ReactElement, string[], number[], number[]][] = [
+    ['a line chart with its area and gridlines', (v) => <LineChart aria-label="l" area x="x" series={two} data={rows(v)} />, ['.sg-chart__line', '[data-fade]', ...grid], A, B],
+    ['a bar chart and its gridlines', (v) => <BarChart aria-label="b" x="x" series={two} data={rows(v)} />, ['.sg-chart__bar', ...grid], A, B],
+    ['a scatter chart and its gridlines', (v) => <ScatterChart aria-label="s" x="v" y="w" pointLabel="x" data={rows(v)} />, ['circle', ...grid], A, B],
+    ['a donut chart', (v) => <DonutChart aria-label="d" data={v.map((n, i) => ({ label: `c${i}`, value: n }))} />, ['.sg-donut__slice'], A, B],
+    ['a sparkline', (v) => <Sparkline aria-label="s" values={v} />, ['.sg-sparkline__line', '[data-fade]', 'svg circle'], A, B],
+    ['a line chart whose labels thin out as its gutter widens', (v) => <LineChart aria-label="l" x="x" yFormat={String} series={two.slice(0, 1)} data={rows(v)} />, ['.sg-chart__line', ...grid], long(A, 1), long(A, 1e8)],
+    ['a bar chart whose labels thin out as its gutter widens', (v) => <BarChart aria-label="b" x="x" yFormat={String} series={two.slice(0, 1)} data={rows(v)} />, ['.sg-chart__bar', ...grid], long(A, 1), long(A, 1e8)],
+  ];
+  for (const [name, chart, parts, from, to] of charts) {
+    it(`${name}: each frame drawn by the frame itself, ending as drawn from scratch`, async () => {
+      const part = (c: HTMLElement, sel: string) => [...c.querySelectorAll(sel)].filter((e) => e.closest('[display="none"]') === null).map((e) => e.outerHTML.replace(/url\(#[^)]*\)/g, 'url(#)')).join('');
+      const drawn = (c: HTMLElement) => parts.map((sel) => part(c, sel));
+      /* drawn from scratch and settled (a chart's first measured layout moves in from its unmeasured one) */
+      const ref = (v: number[]) => { const r = render(chart(v)); act(() => { settle(); }); const d = drawn(r.container); r.unmount(); return d; };
+      const atB = ref(to);
+      frames.length = 0;
+      const { container, rerender } = render(chart(from));
+      act(() => { settle(); });
+      act(() => { rerender(chart(to)); });
+      const asked = vi.spyOn(console, 'error').mockImplementation(() => {});
+      let prev = drawn(container), n = 0;
+      while (frames.length && n < 300) {
+        step(); n++;                                      /* outside act: nothing React would render is flushed */
+        if (!frames.length) break;                        /* the frame that settles asks React to render the end */
+        expect(asked, `frame ${n} asked React to render`).not.toHaveBeenCalled();
+        const now = drawn(container);
+        /* the first frames move every part (later ones may round to the same attribute) */
+        if (n <= 3) parts.forEach((sel, j) => { expect(now[j], `${sel}, frame ${n}`).not.toBe(prev[j]); expect(now[j], sel).not.toBe(atB[j]); });
+        prev = now;
+      }
+      expect(n).toBeGreaterThan(5);
+      /* that render, asked for outside act, runs in React's scheduler task */
+      await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+      asked.mockRestore();
+      expect(drawn(container)).toEqual(atB);
     });
   }
 });

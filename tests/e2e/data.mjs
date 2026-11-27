@@ -381,34 +381,45 @@ await go('charts');
     await new Promise(requestAnimationFrame); ro.disconnect(); box.remove();
     return { base, frames: out };
   });
-  /* a jump, two ways. Scaled: a step larger than the motion makes in one 60 Hz frame, each step scaled to the time
-     its frame covers as loop() advances the morph (1 to 50 ms a step: motion.ts), so a frame the machine dropped is
-     not a jump and a faster display counts in full; plus one 60 Hz frame, because React's scheduler can still miss a
-     frame and draw two steps in the next (#85: seen once in 11 Firefox runs, 5.5 px in a 7 ms frame) — remove that
-     frame when #85 is fixed. Measured so, a steady frame moves at most about 3.3 px and two of the spring's fastest
-     steps in an 8 ms frame 8.8 px: the limit, 9, is under three times a steady step. Unscaled: no single painted step, the first from the layout before
-     the click included, covers more of a bar's whole travel than the morph's spring (the personality's smooth
-     response, critically damped: charts.tsx useMorph) moves in three of loop()'s 50 ms steps, while a snap covers all
-     of it */
+  /* a jump, three ways. A missed frame: no bar's edge holds still for a frame between two that move it, and no painted
+     step of one is faster, for the time its frame covers, than 1.4 times both the step before it and the step after
+     it; the spring's own steps change smoothly (from rest they grow frame by frame, so only a step larger than both
+     its neighbours counts), while a frame held and then drawn with the next is about twice as fast, or 1.5 times for
+     a short frame held into a long one. React's scheduler did this before each frame was drawn by its own callback
+     (#85). Scaled: no step larger than about twice a steady frame's
+     (4.3 px), each step scaled to the time its frame covers as loop() advances the morph (1 to 50 ms a step: motion.ts),
+     so a frame the machine dropped is not a jump and a faster display counts in full. Unscaled: no single painted step,
+     the first from the layout before the click included, covers more of a bar's whole travel than the morph's spring
+     (the personality's smooth response, critically damped: charts.tsx useMorph) moves in three of loop()'s 50 ms steps,
+     while a snap covers all of it */
   const morph = { response: motions[/motion=(\w+)/.exec(Q)?.[1] ?? 'lively'].smooth.response, damping: 1 };
   let most = 0; for (let t = 0; t < 1500; t++) most = Math.max(most, springAt(morph, (t + 150) / 1000) - springAt(morph, t / 1000));
   let jump = 0, moved = 0, raw = 0, share = 0;
   const first = base, final = frames.length ? frames[frames.length - 1][1] : base;
   const seq = [[null, base], ...frames];
+  /* each painted step of each edge, as a speed (px per ms of the frame it was drawn in) */
+  const speed = [];
   for (let i = 1; i < seq.length; i++) {
     const [t, bars] = seq[i], [t0, prev] = seq[i - 1];
-    const per = t0 === null ? 0 : 16.7 / (Math.min(50, Math.max(1, t - t0)) + 16.7);
+    const dt = t0 === null ? 0 : Math.min(50, Math.max(1, t - t0)), per = dt ? 16.7 / dt : 0;
     let m = false;
-    bars.forEach((bx, k) => bx.forEach((v, j) => {
+    speed.push(bars.map((bx, k) => bx.map((v, j) => {
       const d = Math.abs(v - (prev[k]?.[j] ?? v)), whole = Math.abs((final[k]?.[j] ?? v) - (first[k]?.[j] ?? v));
       if (d > 0.05) m = true;
       jump = Math.max(jump, d * per); if (per) raw = Math.max(raw, d);
       if (whole > 1) share = Math.max(share, d / whole);
-    }));
+      return dt ? [d, d / dt] : [d, 0];
+    })));
     if (m) moved++;
   }
+  let missed = 0, worst = '';
+  for (let i = 1; i < speed.length - 1; i++) speed[i].forEach((bx, k) => bx.forEach(([d, v], j) => {
+    const [d0, v0] = speed[i - 1][k]?.[j] ?? [0, 0], [d1, v1] = speed[i + 1][k]?.[j] ?? [0, 0], around = Math.max(v0, v1);
+    if (d < 0.05 && d0 > 0.5 && d1 > 0.5) { missed++; worst ||= `frame ${i + 1} held between steps of ${d0.toFixed(1)} and ${d1.toFixed(1)} px`; }
+    else if (d > 1 && v > 1.4 * around) { missed++; worst ||= `frame ${i + 1}: ${d.toFixed(1)} px at ${(v / (around || 1)).toFixed(1)} × its neighbours`; }
+  }));
   if (/rm=1/.test(Q)) ok('bar chart (reduced motion): grouped → stacked changes at once', moved <= 1, `${moved} moving frames`);
-  else ok('bar chart: grouped → stacked slides the bars together and widens them over many frames (no jump)', moved >= 8 && jump < 9 && share < most, `${moved} moving frames, largest step ${jump.toFixed(1)} px per 60 Hz frame, one missed frame allowed (${raw.toFixed(1)} px as drawn, ${(share * 100).toFixed(0)} % of its travel; limit ${(most * 100).toFixed(0)} %)`);
+  else ok('bar chart: grouped → stacked slides the bars together and widens them over many frames (no jump)', moved >= 8 && missed === 0 && jump < 9 && share < most, `${moved} moving frames, ${missed} missed frames${worst ? ` (${worst})` : ''}, largest step ${jump.toFixed(1)} px per 60 Hz frame (${raw.toFixed(1)} px as drawn, ${(share * 100).toFixed(0)} % of its travel; limit ${(most * 100).toFixed(0)} %)`);
   await p.waitForTimeout(600);
   const stacked = await bar.locator('.sg-chart__bar').count();
   ok('bar chart: one bar per series and month, grouped and stacked', grouped === 18 && stacked === 18, `${grouped} / ${stacked}`);
