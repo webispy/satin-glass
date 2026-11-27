@@ -91,6 +91,15 @@ defects these checks would have found.
 
 ## Commits and pushing
 
+- **Code is reviewed before it is pushed, in proportion to its reach.**
+  - **Two independent reviews** (as for decisions, see Before building) for a change to shared internals or to the
+    public contract: `@satin-glass/core`, a hook or helper several components share (overlays, anchoring, motion,
+    layout; also one kept in a component's file, such as the charts' `useMorph`), the stylesheets every component
+    reads (tokens, foundation), or an export or type, a public option, default, built-in word or callback.
+  - **One review** for a change confined to one component's internals, or to tests, scripts or CI.
+  - Prose is still reviewed separately in either case (see Docs and words).
+  - If a one-review change widens during review (a component fix that ends up changing a shared hook, for example),
+    get a second, independent review.
 - Commit locally once a change is verified, and for visual work once the owner has chosen. Before pushing, drop
   studies that were not chosen and fold fix-ups into the feature commit they belong to, so that every pushed commit
   builds and passes.
