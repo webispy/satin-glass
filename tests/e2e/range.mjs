@@ -69,6 +69,29 @@ await p.goto(`${pw.ORIGIN}/${Q}#/selection`); await wait(900);
     return strips.length && strips.length === rows.length ? Math.max(...strips.map((y, i) => Math.abs(y - rows[i]))) : -1;
   });
   ok('range calendar: each strip of the band lies on its own row', off >= 0 && off <= 2, `${off.toFixed(1)} px off`);
+  /* the band follows the grid it lies on (#108): narrowed to a width the seven columns share unevenly (below the
+     280 px cap), and with the weekday header grown so every row moves down, each strip still runs from its first
+     day to its last (2 px in from their edges) on its row */
+  const fit = () => rc.evaluate((root) => {
+    const strips = [...root.querySelectorAll('.sg-calendar__bands > *')].filter((e) => e.style.display !== 'none').map((e) => e.getBoundingClientRect());
+    const rows = [...root.querySelectorAll('tbody tr')].map((tr) => [...tr.querySelectorAll('td[data-band]')]).filter((tds) => tds.length).map((tds) => {
+      const a = tds[0].getBoundingClientRect(), z = tds[tds.length - 1].getBoundingClientRect(), r = tds[0].parentElement.getBoundingClientRect();
+      return { left: a.left + 2, right: z.right - 2, mid: r.top + r.height / 2 };
+    });
+    if (!strips.length || strips.length !== rows.length) return { err: -1, n: `${strips.length}/${rows.length}` };
+    const err = Math.max(...strips.map((s, i) => Math.max(Math.abs(s.left - rows[i].left), Math.abs(s.right - rows[i].right), Math.abs(s.top + s.height / 2 - rows[i].mid))));
+    return { err, n: strips.length };
+  });
+  const calEl = rc.locator('.sg-calendar').first();
+  await calEl.evaluate((c) => { c.style.width = '257.5px'; }); await wait(400);
+  const narrowed = await fit();
+  ok('range calendar: narrowed below its cap, the band still lies on its days', narrowed.err >= 0 && narrowed.err <= 1, JSON.stringify(narrowed));
+  await calEl.evaluate((c) => { c.querySelector('thead th').style.height = '44px'; }); await wait(400);
+  const lowered = await fit();
+  ok('range calendar: with the weekday header grown, the band moves down with its rows', lowered.err >= 0 && lowered.err <= 1, JSON.stringify(lowered));
+  await calEl.evaluate((c) => { c.style.width = ''; c.querySelector('thead th').style.height = ''; }); await wait(400);
+  const back = await fit();
+  ok('range calendar: back at full size, the band lies on its days again', back.err >= 0 && back.err <= 1, JSON.stringify(back));
 
   /* a complete range: the next pick starts again; an earlier day than the start starts over from there */
   await dayIn(rc, plus(d0, 2)).click(); await wait(200);
