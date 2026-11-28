@@ -137,7 +137,9 @@ writeFileSync(new URL('../dist/tokens.css', import.meta.url), out.join('\n') + '
 /* ---- contrast report (WCAG 2): fails the build if a required pair is below its target ---- */
 const pairs: [string, string, number][] = [
   ['label', 'bg', 7], ['label', 'bg-elevated', 7], ['label-secondary', 'bg', 4.5], ['label-secondary', 'bg-grouped', 4.5],
-  ['label-tertiary', 'bg', 4.5], ['label-tertiary', 'surface', 4.5], ['label-tertiary', 'bg-grouped', 4.5], ['accent-text', 'bg', 4.5], ['accent-text', 'bg-elevated', 4.5], ['on-accent', 'accent', 4.5],
+  ['label-tertiary', 'bg', 4.5], ['label-tertiary', 'surface', 4.5], ['label-tertiary', 'bg-grouped', 4.5], ['accent-text', 'bg', 4.5], ['accent-text', 'bg-elevated', 4.5],
+  /* a text link sits in running text on any ground, a selected table row included (DataTable mixes 9% accent into the surface) */
+  ['link-text', 'bg', 4.5], ['link-text', 'bg-grouped', 4.5], ['link-text', 'surface', 4.5], ['link-text', 'bg-elevated', 4.5], ['link-text', 'selected-row', 4.5], ['on-accent', 'accent', 4.5],
   ['danger-text', 'bg', 4.5], ['success-text', 'bg', 4.5], ['info-text', 'bg', 4.5], ['warning-text', 'bg', 4.5],
   ['focus-ring', 'bg', 3],
   /* data marks (lines, bars, slices) are non-text graphics: 3:1 against the card they sit on */
@@ -162,10 +164,13 @@ pairs.push(['on-accent', 'accent-hover', 4.5], ['on-accent', 'accent-pressed', 4
 /* high contrast only: the outline a groove or field gets is non-text and must reach 3:1 against the page */
 const hcOnly = new Set(['separator-strong/bg']);
 pairs.push(['separator-strong', 'bg', 3]);
+const mix = (a: string, b: string, t: number) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, '0')).join('');
 let failed = 0;
 for (const t of Object.keys(themes) as ThemeName[]) {
   const th = { ...(themes[t] as Record<string, string>), '#ffffff': '#ffffff' } as Record<string, string>;
   for (const [, bg] of pairs) if (bg.includes('@')) { const [f, u] = bg.split('@'); th[bg] = composite(th[f], th[u]); }
+  /* DataTable's selected row: color-mix(in srgb, surface, accent 9%) */
+  th['selected-row'] = mix(th['surface'], th['accent'], 0.09);
   const row = pairs.filter(([fg, bg]) => t.endsWith('hc') || !hcOnly.has(`${fg}/${bg}`)).map(([fg, bg, min]) => {
     const r = contrast(th[fg], th[bg]);
     const target = t.endsWith('hc') && !hcOnly.has(`${fg}/${bg}`) ? Math.max(min, min >= 4.5 ? 7 : 4.5) : min;

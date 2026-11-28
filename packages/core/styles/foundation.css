@@ -60,6 +60,33 @@
 
 .sg-visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
+/* text links (Link, or class "sg-link" on a plain anchor): the link colour and an underline that is always there, so
+   colour is not the only cue (WCAG 1.4.1), and a touch screen, which has no hover, shows it too. The rest is the surrounding text's
+   font. Hover, keyboard focus and press thicken the underline at once, and press also draws it closer to the text;
+   the text itself does not move and stays fully opaque (a link inside a sentence is not a control to press in).
+   Visited links look the same unless an app sets --sg-link-visited. High contrast: always 2 px, decided by the
+   nearest theme boundary (a standard theme inside a high-contrast one is standard again), or by the system's
+   setting when no ThemeProvider is present */
+:root, [data-sg-theme] { --_link-line: max(1px, 0.065em); }
+[data-sg-theme$="-hc"] { --_link-line: 2px; }
+@media (prefers-contrast: more) { :root:not([data-sg-theme]) { --_link-line: 2px; } }
+.sg-link {
+  color: var(--sg-link-text); cursor: pointer;
+  text-decoration-line: underline; text-decoration-color: currentColor;
+  text-decoration-thickness: var(--_link-line); text-underline-offset: 0.18em;
+  /* a link wrapped over two lines gets a whole focus ring on each */
+  border-radius: var(--sg-radius-xs); -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.sg-link:visited { color: var(--sg-link-visited, var(--sg-link-text)); }
+.sg-link--inherit, .sg-link--inherit:visited { color: inherit; }
+@media (hover: hover) { .sg-link:hover { text-decoration-thickness: 2px; } }
+.sg-link:focus-visible { text-decoration-thickness: 2px; }
+.sg-link:active { text-decoration-thickness: 2px; text-underline-offset: 0.12em; }
+/* an up-right arrow after the text: the link leaves the app, or opens in a new tab or window */
+.sg-link__arrow { width: 0.85em; height: 0.85em; margin-inline-start: 0.15em; vertical-align: -0.05em; }
+/* rendered without a destination (an <a> with no href): plain text */
+a.sg-link:not([href]) { color: inherit; text-decoration: none; cursor: auto; }
+
 /* the shared focus ring (keyboard only) */
 .sg-focusable:focus-visible, .sg-root :where(button, [href], [tabindex]):focus-visible { outline: var(--sg-focus-outline); outline-offset: var(--sg-focus-offset); }
 
@@ -222,6 +249,9 @@
 @media (forced-colors: active) {
   .sg-glass { background: Canvas; color: CanvasText; border: 1px solid CanvasText; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .sg-glass::before, .sg-glass::after { display: none; }
+  .sg-link { color: LinkText; }
+  .sg-link:visited { color: VisitedText; }
+  .sg-link--inherit, .sg-link--inherit:visited { color: inherit; }
 }
 /* ---------------------------------------------------------------- writing direction
    The inline start and end as keywords for properties with no logical form (transform-origin, background-position),

@@ -392,6 +392,61 @@
    "SVGAttributes"
   ]
  },
+ "Link": {
+  "kind": "component",
+  "category": "foundation",
+  "description": "A text link in a sentence or a table cell: the surrounding text's font, the link colour and an underline that is always there. `target=\"_blank\"` adds `rel=\"noopener\"`, the arrow, and a description telling screen readers that it opens in a new tab or window.",
+  "props": [
+   {
+    "name": "tone",
+    "type": "\"accent\" | \"inherit\"",
+    "required": false,
+    "default": "'accent'",
+    "description": "The text colour: 'accent' (default) uses the link colour; 'inherit' takes the surrounding text's (for a link in secondary text or a table cell), so the underline alone marks it and the parent's colour sets the contrast."
+   },
+   {
+    "name": "external",
+    "type": "boolean",
+    "required": false,
+    "default": null,
+    "description": "The link leaves the app: adds an arrow after the text. It does not change where the link opens (use `target` for that)."
+   },
+   {
+    "name": "labels",
+    "type": "{ opensInNewTab?: string; }",
+    "required": false,
+    "default": null,
+    "description": "Words in place of the built-in ones for the theme's locale: `opensInNewTab`, which screen readers announce after the name of a link with `target=\"_blank\"`."
+   },
+   {
+    "name": "dangerouslySetInnerHTML",
+    "type": "undefined",
+    "required": false,
+    "default": null,
+    "description": "Not taken: Link draws its own children (the arrow, the new-tab notice), so the text goes in `children`."
+   },
+   {
+    "name": "href",
+    "type": "string",
+    "required": true,
+    "default": null,
+    "description": "Where the link goes."
+   },
+   {
+    "name": "component",
+    "type": "\"a\"",
+    "required": false,
+    "default": null,
+    "description": "A router's link component to render in place of the `<a>`; Link then takes that component's options (`to`, …) instead of `href`, and the component must render an `<a href>` (default: 'a')."
+   }
+  ],
+  "inherits": [
+   "AnchorHTMLAttributes",
+   "AriaAttributes",
+   "DOMAttributes",
+   "HTMLAttributes"
+  ]
+ },
  "Spinner": {
   "kind": "component",
   "category": "controls",
@@ -549,6 +604,34 @@
     "description": "The colour: accent, danger for destructive actions, or neutral."
    },
    {
+    "name": "component",
+    "type": "ElementType",
+    "required": false,
+    "default": null,
+    "description": "Render as another element, e.g. a router link (default: 'a' when there is an `href`, else 'button')."
+   },
+   {
+    "name": "href",
+    "type": "string",
+    "required": false,
+    "default": null,
+    "description": "The link target: the button is then a link (an `<a>`, unless `component` says otherwise)."
+   },
+   {
+    "name": "download",
+    "type": "string | boolean",
+    "required": false,
+    "default": null,
+    "description": "With `href`: download the linked file instead of opening it, optionally under this name."
+   },
+   {
+    "name": "target",
+    "type": "HTMLAttributeAnchorTarget",
+    "required": false,
+    "default": null,
+    "description": "With `href`: where the link opens, e.g. '_blank' (add `rel=\"noopener\"` for another site)."
+   },
+   {
     "name": "size",
     "type": "\"sm\" | \"md\" | \"lg\"",
     "required": false,
@@ -575,34 +658,6 @@
     "required": false,
     "default": null,
     "description": "Shows a spinner in place of the content and sets aria-busy; until it ends the button cannot be pressed (a link loses its href, as with `disabled`)."
-   },
-   {
-    "name": "component",
-    "type": "ElementType",
-    "required": false,
-    "default": null,
-    "description": "Render as another element, e.g. a router link (default: 'a' when there is an `href`, else 'button')."
-   },
-   {
-    "name": "href",
-    "type": "string",
-    "required": false,
-    "default": null,
-    "description": "The link target: the button is then a link (an `<a>`, unless `component` says otherwise)."
-   },
-   {
-    "name": "target",
-    "type": "HTMLAttributeAnchorTarget",
-    "required": false,
-    "default": null,
-    "description": "With `href`: where the link opens, e.g. '_blank' (add `rel=\"noopener\"` for another site)."
-   },
-   {
-    "name": "download",
-    "type": "string | boolean",
-    "required": false,
-    "default": null,
-    "description": "With `href`: download the linked file instead of opening it, optionally under this name."
    },
    {
     "name": "icon",
@@ -3946,6 +4001,13 @@
     "description": "Called when both days are chosen."
    },
    {
+    "name": "labels",
+    "type": "{ start?: string; end?: string; }",
+    "required": false,
+    "default": null,
+    "description": "What the two days are called (check-in / check-out); default \"start date\" / \"end date\" (시작일 / 종료일 in Korean)."
+   },
+   {
     "name": "value",
     "type": "DateRange | null",
     "required": false,
@@ -4022,13 +4084,6 @@
     "required": false,
     "default": "'days'",
     "description": "How the length is written: 'days' (\"3 days\", default) or 'nights' (\"2 nights\"; \"2박 3일\" in Korean)."
-   },
-   {
-    "name": "labels",
-    "type": "{ start?: string; end?: string; }",
-    "required": false,
-    "default": null,
-    "description": "What the two days are called (check-in / check-out); default \"start date\" / \"end date\" (시작일 / 종료일 in Korean)."
    },
    {
     "name": "months",

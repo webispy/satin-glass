@@ -137,8 +137,10 @@ for (const cat of CATS) {
     const decl = sym.valueDeclaration ?? sym.declarations?.[0];
     if (!decl) continue;
     if (sym.flags & (ts.SymbolFlags.Function | ts.SymbolFlags.Variable)) {
-      /* a component: called with one props object that returns JSX */
-      const sig = checker.getTypeOfSymbolAtLocation(sym, decl).getCallSignatures()[0];
+      /* a component: called with one props object that returns JSX. With several signatures the documented one is
+         written last, by convention (Link: a router's, then the native one, which createElement and ComponentProps
+         also read) */
+      const sig = checker.getTypeOfSymbolAtLocation(sym, decl).getCallSignatures().at(-1);
       const param = sig?.getParameters()[0];
       if (!sig || !param || sig.getParameters().length > 2) continue;
       const ret = checker.typeToString(sig.getReturnType());

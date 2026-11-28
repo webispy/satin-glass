@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { contrast, palette, STEPS, motions, springAt, springDuration, typography, SPRING_NAMES, type Hue, type MotionName, type SpringName } from '@satin-glass/tokens';
-import { Button, Card, CardBody, Glass, Stack, Text, SegmentedControl, Switch, Slider, Stepper, Progress, PageControl, TabBar, Tab, MotionScope, Menu, MenuItem, Badge, useTheme } from '@satin-glass/react';
+import { Button, Card, CardBody, Glass, Link, Stack, Text, SegmentedControl, Switch, Slider, Stepper, Progress, PageControl, TabBar, Tab, MotionScope, Menu, MenuItem, Badge, useTheme } from '@satin-glass/react';
 import { Home, Map, Bookmark, User, Footprints, Bike, Car } from 'lucide-react';
 import { Sun, Sparkles, MousePointer2 } from 'lucide-react';
-import { Demo, Page, Photo, Section, sceneTint } from '../shared';
+import { Code, Demo, Page, Photo, Section, Usage, sceneTint } from '../shared';
 import { L, useT, type Pair } from '../i18n';
+import TypeLink from '../examples/type-link';
+import typeLinkSrc from '../examples/type-link?raw';
 
 const PRINCIPLES: { title: Pair; body: Pair }[] = [
   { title: { en: 'Satin glass', ko: '새틴 유리' }, body: { en: 'Not clear glass that bends light, but a textured translucency that scatters it evenly. Colours and shapes behind show through softly, never warped as by a lens.', ko: '빛을 굴절시키는 맑은 유리가 아니라, 빛을 고르게 흩뜨리는 결 있는 반투명. 뒤의 색과 형태가 부드럽게 비치되, 렌즈처럼 휘지 않습니다.' } },
@@ -89,7 +91,7 @@ export function Colors() {
 export function Typography() {
   const t = useT();
   return (
-    <Page title={t({ en: 'Typography', ko: '타이포그래피' })} intro={<L
+    <Page title={t({ en: 'Typography', ko: '타이포그래피' })} api={['Text', 'Link']} intro={<L
       en="Body text is 16 px (on the web), and letter spacing tightens as the size grows. The font is Pretendard, then the system font."
       ko="본문은 16px(웹 기준)이고, 크기가 커질수록 자간을 좁힙니다. 글꼴은 Pretendard를 먼저, 없으면 시스템 글꼴을 씁니다." />}>
       <Demo col>
@@ -100,6 +102,22 @@ export function Typography() {
           </div>
         ))}
       </Demo>
+      <Section title={t({ en: 'Links', ko: '링크' })} intro={<L
+        en={<>A link in a sentence takes the sentence's font and is always underlined, so colour is not the only thing that sets it apart. <code>tone="inherit"</code> keeps the surrounding colour, for a link in secondary text or a table cell. <code>external</code> adds an arrow for a link that leaves the app; <code>target</code> decides where it opens, and with <code>"_blank"</code> screen readers also announce that it opens in a new tab or window. A router's link goes in <code>component</code>, as with Button.</>}
+        ko={<>문장 속의 링크는 문장의 글꼴을 따르고 늘 밑줄이 있어서, 색만으로 구분하지 않습니다. <code>tone="inherit"</code>는 주변 텍스트 색을 그대로 써서, 보조 텍스트나 표 셀 속의 링크에 맞습니다. <code>external</code>은 앱 밖으로 나가는 링크에 화살표를 붙입니다. 어디에서 열지는 <code>target</code>이 정하고, <code>"_blank"</code>이면 스크린 리더가 새 탭이나 창에서 열린다는 것도 읽어 줍니다. 라우터의 링크는 Button처럼 <code>component</code>에 넘깁니다.</>} />}>
+        <Demo col>
+          <Text>{t({ en: 'Read the ', ko: '배포 전에 ' })}<Link href="#/a11y">{t({ en: 'accessibility guide', ko: '접근성 가이드' })}</Link>{t({ en: ' before you ship.', ko: '를 읽어 보세요.' })}</Text>
+          <Text variant="footnote" tone="secondary">{t({ en: 'Icons from ', ko: '아이콘: ' })}<Link href="https://lucide.dev" external target="_blank" tone="inherit">Lucide</Link>{t({ en: ', ISC License.', ko: ', ISC 라이선스.' })}</Text>
+        </Demo>
+        <Usage example={TypeLink} code={typeLinkSrc} />
+        <Text variant="subhead" tone="secondary" as="p" style={{ margin: '16px 0 8px' }}><L
+          en={<>With a router, the router's link goes in <code>component</code>, and Link takes its options (<code>to</code>, and a NavLink's <code>className</code> and <code>children</code> as functions) in place of <code>href</code>:</>}
+          ko={<>라우터를 쓸 때는 라우터의 링크를 <code>component</code>에 넘기고, <code>href</code> 대신 그 링크의 옵션(<code>to</code>, NavLink의 함수형 <code>className</code>·<code>children</code>)을 씁니다.</>} /></Text>
+        <Code lang="tsx">{`import { Link } from '@satin-glass/react';
+import { NavLink } from 'react-router';
+
+<Link component={NavLink} to="/settings">Settings</Link>`}</Code>
+      </Section>
     </Page>
   );
 }

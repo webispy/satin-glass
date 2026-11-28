@@ -16,6 +16,8 @@ const en = {
   page: 'Page', pageOf: (label: string, n: number, count: number) => `${label} ${n} of ${count}`,
   people: (n: number) => plural(n, 'person', 'people'), more: (n: number) => `${n} more`,
   breadcrumb: 'Breadcrumb', hiddenLevels: 'Show hidden levels',
+  /** a link with target="_blank": the browser decides whether it is a tab or a window */
+  opensInNewTab: 'opens in a new tab or window',
   selectPlaceholder: 'Select…',
   combobox: { empty: 'No results', loading: 'Loading…', toggle: 'Show suggestions', count: (n: number) => `${n} selected` },
   filters: { clear: 'Clear', applied: (n: number) => `${n} applied` },
@@ -50,6 +52,7 @@ const ko: Messages = {
   page: '페이지', pageOf: (label, n, count) => `${count}개 중 ${n}번째 ${label}`,
   people: (n) => `${n}명`, more: (n) => `${n}명 더`,
   breadcrumb: '이동 경로', hiddenLevels: '숨은 경로 보기',
+  opensInNewTab: '새 탭 또는 창에서 열림',
   selectPlaceholder: '선택…',
   combobox: { empty: '결과 없음', loading: '불러오는 중…', toggle: '목록 보기', count: (n) => `${n}개 선택됨` },
   filters: { clear: '초기화', applied: (n) => `${n}개 적용됨` },

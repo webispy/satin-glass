@@ -104,6 +104,8 @@ if (ENGINES.includes('chromium')) checks.push(['concentric corners · chromium',
 /* the docs in both languages (no Korean left in English pages, every option described): content, not rendering — once, in Chromium */
 if (ENGINES.includes('chromium')) checks.push(['docs in both languages · chromium', 'i18n.mjs', {}]);
 perEngine(checks, 'blur budget', 'blur-budget.mjs');
+/* text links: colour, underline, new-tab notice, focus over two lines (forced colours in Chromium) */
+perEngine(checks, 'text links', 'link.mjs');
 /* keyboard focus visible in every theme and with forced colours (emulated in Chromium) */
 /* one share per theme (five): as one suite it was the longest of the run */
 if (ENGINES.includes('chromium')) for (let i = 1; i <= 5; i++) checks.push([`focus visible · chromium ${i}/5`, 'focus.mjs', { SHARD: `${i}/5` }]);
@@ -147,7 +149,7 @@ const only = (l) => l.filter(([label, file, env]) => {
    engines a third longer); every runner computes the same split */
 const EST = { 'css-split.mjs': 126, 'focus.mjs': 40, 'edge.mjs': 75, 'axe.mjs': 30, 'overflow.mjs': 95, 'overflow.mjs#browse': 15, 'matrix.mjs': 52, 'interact.mjs': 59, 'data.mjs': 57,
   'corners.mjs': 51, 'reduce-motion.mjs': 49, 'pickers.mjs': 37, 'wheel-motion.mjs': 33, 'display.mjs': 32, 'selection.mjs': 28,
-  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'sweep.mjs': 48, 'settings.mjs': 4, 'a2ui.mjs': 20, 'v06.mjs': 20 };
+  'blur-budget.mjs': 23, 'touch.mjs': 23, 'range.mjs': 15, 'v05.mjs': 45, 'sweep.mjs': 48, 'settings.mjs': 4, 'a2ui.mjs': 20, 'v06.mjs': 20, 'link.mjs': 8 };
 const SHARD = /^(\d+)\/(\d+)$/.exec(process.env.E2E_SHARD || '');
 const est = ([, file, env]) => (EST[env.OVF_PART === 'browse' ? 'overflow.mjs#browse' : file] ?? 60) * ((env.BROWSER ?? 'chromium') === 'chromium' ? 1 : 1.3);
 let mine = null;
