@@ -40,6 +40,9 @@ const light = {
   'accent-text': p.iris[600],
   /* text on the soft (tinted) accent fill: one step darker than accent-text, so tinted buttons and chips reach 4.5:1 */
   'accent-on-soft': p.iris[700],
+  /* a text link (Link, .sg-link): one step darker than accent-text, which is 4.21:1 on bg-grouped and 4.36:1 on a
+     selected table row; this one keeps 4.5:1 on every ground a link sits on in running text */
+  'link-text': p.iris[700],
   'on-accent': '#ffffff',
   'success': p.jade[600], 'success-soft': rgba(p.jade[500], 0.14), 'success-text': p.jade[700],
   'warning': p.amber[500], 'warning-soft': rgba(p.amber[400], 0.2), 'warning-text': p.amber[800],
@@ -101,6 +104,7 @@ const dark: Semantic = {
   'accent-soft': rgba(p.iris[400], 0.2),
   'accent-text': p.iris[300],
   'accent-on-soft': p.iris[200],
+  'link-text': p.iris[300],
   'on-accent': '#ffffff',
   'success': p.jade[500], 'success-soft': rgba(p.jade[400], 0.18), 'success-text': p.jade[300],
   'warning': p.amber[400], 'warning-soft': rgba(p.amber[400], 0.18), 'warning-text': p.amber[300],
@@ -142,7 +146,7 @@ const lightHc: Semantic = {
   'fill': rgba(p.slate[700], 0.14),
   'fill-strong': rgba(p.slate[700], 0.24),
   'groove': rgba(p.slate[700], 0.24), 'groove-soft': rgba(p.slate[700], 0.14),
-  'accent': p.iris[800], 'accent-hover': p.iris[900], 'accent-pressed': p.iris[950], 'accent-text': p.iris[800], 'accent-on-soft': p.iris[900],
+  'accent': p.iris[800], 'accent-hover': p.iris[900], 'accent-pressed': p.iris[950], 'accent-text': p.iris[800], 'accent-on-soft': p.iris[900], 'link-text': p.iris[800],
   'danger-fill': p.ruby[800], 'danger-on-soft': p.ruby[900], 'badge-fill': p.ruby[800],
   'danger-text': p.ruby[800], 'success-text': p.jade[800], 'info-text': p.azure[800], 'warning-text': p.amber[900],
   'focus-ring': '#000000',
@@ -164,7 +168,7 @@ const darkHc: Semantic = {
   'label-disabled': p.slate[500],
   'separator': p.slate[400],
   'separator-strong': p.slate[200],
-  'accent': p.iris[800], 'accent-hover': p.iris[900], 'accent-pressed': p.iris[950], 'accent-text': p.iris[200], 'accent-on-soft': p.iris[100],
+  'accent': p.iris[800], 'accent-hover': p.iris[900], 'accent-pressed': p.iris[950], 'accent-text': p.iris[200], 'accent-on-soft': p.iris[100], 'link-text': p.iris[200],
   'danger-fill': p.ruby[800], 'danger-on-soft': p.ruby[100], 'badge-fill': p.ruby[800],
   'danger-text': p.ruby[200], 'success-text': p.jade[200], 'info-text': p.azure[200], 'warning-text': p.amber[200],
   'focus-ring': '#ffffff',

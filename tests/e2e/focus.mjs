@@ -9,7 +9,7 @@ import * as pw from './pw.mjs';
 const b = await pw.chromium.launch();
 let failed = 0;
 const ok = (name, cond, detail = '') => { if (!cond) failed++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
-const PAGES = ['buttons', 'inputs', 'selection', 'navigation', 'lists', 'display', 'feedback', 'table', 'charts'];
+const PAGES = ['type', 'buttons', 'inputs', 'selection', 'navigation', 'lists', 'display', 'feedback', 'table', 'charts'];
 const STOPS = 18;
 const MODES = [['light', '?mode=light&rm=1', {}], ['dark', '?mode=dark&rm=1', {}], ['light-hc', '?mode=light&hc=1&rm=1', {}], ['dark-hc', '?mode=dark&hc=1&rm=1', {}], ['forced colours', '?mode=light&rm=1', { forcedColors: 'active' }]];
 

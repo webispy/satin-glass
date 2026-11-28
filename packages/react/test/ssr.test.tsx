@@ -114,6 +114,7 @@ const everything: Tree = (L) => createElement(L.ThemeProvider, { theme: L.create
     createElement(L.BarChart, { data: DATA, x: 'm', series: SERIES, 'aria-label': 'Totals' }),
     createElement(L.Sparkline, { values: [1, 3, 2, 5], 'aria-label': 'Recent' }),
     createElement(L.Meter, { value: 40, label: 'Storage' }),
+    createElement('p', null, createElement(L.Link, { href: 'https://example.com', target: '_blank', external: true }, 'Source')),
     createElement(L.Dialog, { open: true, onClose: () => {}, title: 'Delete the file?' }, 'It cannot be restored.'),
   ));
 

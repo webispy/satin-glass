@@ -1,4 +1,4 @@
-import { Banner, Text } from '@satin-glass/react';
+import { Banner, Link, Text } from '@satin-glass/react';
 import { Code, Page, Section } from '../shared';
 import { L, useT } from '../i18n';
 
@@ -66,8 +66,8 @@ export function App() {
       <Section title={t({ en: 'Next', ko: '다음' })}>
         <div className="guide">
           <Banner tone="info" title={t({ en: 'Each component page shows live demos, the code to use them and every option.', ko: '컴포넌트 페이지마다 실제로 동작하는 데모, 쓰는 코드, 모든 옵션이 있습니다.' })} />
-          <Text variant="subhead" tone="secondary" as="p"><L en={<>Start with <a href="#/buttons">Buttons</a> or <a href="#/table">Tables</a>; the <a href="#/overview">Introduction</a> explains the material and its light. <a href="#/theming">Theming</a> covers the settings and colours, <a href="#/a11y">Accessibility</a> what the components do and what they need from you.</>}
-            ko={<><a href="#/buttons">버튼</a>이나 <a href="#/table">표</a>부터 보세요. <a href="#/overview">소개</a>에서 재질과 빛을 설명합니다. 설정과 색은 <a href="#/theming">테마</a>에, 컴포넌트가 하는 것과 앱이 해 줘야 하는 것은 <a href="#/a11y">접근성</a>에 있습니다.</>} /></Text>
+          <Text variant="subhead" tone="secondary" as="p"><L en={<>Start with <Link href="#/buttons">Buttons</Link> or <Link href="#/table">Tables</Link>; the <Link href="#/overview">Introduction</Link> explains the material and its light. <Link href="#/theming">Theming</Link> covers the settings and colours, <Link href="#/a11y">Accessibility</Link> what the components do and what they need from you.</>}
+            ko={<><Link href="#/buttons">버튼</Link>이나 <Link href="#/table">표</Link>부터 보세요. <Link href="#/overview">소개</Link>에서 재질과 빛을 설명합니다. 설정과 색은 <Link href="#/theming">테마</Link>에, 컴포넌트가 하는 것과 앱이 해 줘야 하는 것은 <Link href="#/a11y">접근성</Link>에 있습니다.</>} /></Text>
         </div>
       </Section>
     </Page>
@@ -148,8 +148,8 @@ const theme = createTheme({ reduceMotion: true, reduceTransparency: true, motion
           <Banner tone="warning" title={t({ en: 'Check the contrast of colours you bring', ko: '직접 정한 색은 대비를 확인하세요' })}>
             {t({ en: 'The built-in themes are checked for WCAG contrast when the tokens are built (7:1 body text, 4.5:1 secondary and accent text). A colour set at run time skips that check: keep text on it at 4.5:1 or more, and set it in each theme you use, high contrast included.', ko: '내장 테마는 토큰을 빌드할 때 WCAG 대비를 검사합니다(본문 7:1, 보조·강조 텍스트 4.5:1). 런타임에 지정한 색은 이 검사를 거치지 않으니, 그 위 텍스트의 대비를 4.5:1 이상으로 맞추고, 고대비를 포함해 쓰는 테마마다 지정하세요.' })}
           </Banner>
-          <p><L en={<>The <a href="#/colors">Colour</a> page lists the palette and the semantic colours, each step with its contrast against white and black text.</>}
-            ko={<><a href="#/colors">색</a> 페이지에 팔레트와 시맨틱 컬러가 있고, 칸마다 흰·검은 글자와의 대비가 적혀 있습니다.</>} /></p>
+          <p><L en={<>The <Link href="#/colors">Colour</Link> page lists the palette and the semantic colours, each step with its contrast against white and black text.</>}
+            ko={<><Link href="#/colors">색</Link> 페이지에 팔레트와 시맨틱 컬러가 있고, 칸마다 흰·검은 글자와의 대비가 적혀 있습니다.</>} /></p>
         </div>
       </Section>
 

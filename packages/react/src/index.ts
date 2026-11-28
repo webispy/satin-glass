@@ -11,6 +11,7 @@ export * from './combobox';
 export * from './filterbar';
 export * from './date';
 export * from './breadcrumbs';
+export * from './link';
 export * from './skeleton';
 export * from './media';
 export * from './tabs';

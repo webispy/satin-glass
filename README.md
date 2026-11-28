@@ -62,7 +62,7 @@ import { DataTable, LineChart } from '@satin-glass/react/data';
 
 | Category | Components | CSS to load as well (besides foundation) |
 |---|---|---|
-| `foundation` | `ThemeProvider` `createTheme` `useTheme` `useLocale` `useMotion` `MotionScope` `Glass` `Text` `Stack` `Divider` `Portal` `VisuallyHidden`, icons, `useControllable` `useImageTint` `useGlassLight` | — |
+| `foundation` | `ThemeProvider` `createTheme` `useTheme` `useLocale` `useMotion` `MotionScope` `Glass` `Text` `Link` `Stack` `Divider` `Portal` `VisuallyHidden`, icons, `useControllable` `useImageTint` `useGlassLight` | — |
 | `controls` | `Button` `IconButton` `ButtonGroup` `Switch` `Slider` `Stepper` `SegmentedControl` `TextField` `SearchField` `FilterBar` `Chip` `Badge` `BadgeAnchor` `Avatar` `AvatarGroup` `Progress` `Spinner` `PageControl` | — |
 | `layout` | `Card` `CardMedia` `CardBody` `CardHeader` `List` `ListItem` `ListSection` `Accordion` `Skeleton` `MediaViewer` `Timeline` `TimelineItem` | — |
 | `navigation` | `TabBar` `Tab` `TabBarAction` `Tabs` `AppBar` `ScrollFade` `Sidebar` `SidebarSection` `SidebarItem` `Breadcrumbs` `NavigationStack` `NavigationPage` `useNavigation` `Pagination` `pageWindow` | — |
